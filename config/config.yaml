@@ -1,0 +1,45 @@
+timezone: Asia/Shanghai
+server:
+  port: 8080
+  mode: debug # debug | release | test
+
+database:
+  driver: mysql
+  host: 127.0.0.1
+  port: 3306
+  username: root
+  password: 123456
+  dbname: app
+  charset: utf8mb4
+  max_idle_conns: 10
+  max_open_conns: 100
+  log_level: info # silent | error | warn | info
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: ""
+  db: 0
+  key_prefix: "video:"
+
+jwt:
+  secret: frame-jwt-secret-key-change-in-production
+  expire: 7200    # token 过期时间（秒）
+  issuer: frame
+
+casbin:
+  model_path: config/rbac_model.conf
+task:
+  concurrency: 10                  # Worker 并发数
+  queues:                          # 队列列表（按优先级从高到低）
+    - critical
+    - default
+    - low
+
+log:
+  level: info       # debug | info | warn | error
+  format: console   # console | json
+  directory: logs    # 文件日志目录；当前文件为 app.log
+  max_size: 100      # MB，达到大小后轮转，不按天主动切分
+  max_backups: 10    # 保留旧日志文件数量
+  max_age: 30        # days，文件日志旧文件最长保留天数；0 表示不按天数清理。数据库操作日志由系统配置 log.operation_retain_days 控制

@@ -1,0 +1,77 @@
+package task
+
+import (
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/hibiken/asynq"
+)
+
+// CronTask defines a scheduled task with cron expression.
+type CronTask struct {
+	Cron     string        // cron expression, e.g. "0 2 * * *" or "@every 5m"
+	TypeName string        // task type name
+	Payload  interface{}   // task payload (will be JSON-marshaled)
+	Queue    string        // target queue (optional, defaults to "default")
+	Unique   time.Duration // if > 0, dedupe enqueues within this TTL (set < the cron interval)
+}
+
+// Scheduler wraps asynq.Scheduler for cron jobs.
+//
+// asynq.Scheduler does NOT perform leader election: running it in N processes
+// enqueues each cron task N times. Deploy exactly ONE scheduler instance
+// (see cmd/scheduler). As a safety net, give each CronTask a Unique TTL so that
+// duplicate enqueues — e.g. from an accidentally started second instance — are
+// deduplicated by Redis.
+type Scheduler struct {
+	scheduler *asynq.Scheduler
+}
+
+func NewScheduler(redisAddr, password string, db int) *Scheduler {
+	s := asynq.NewScheduler(
+		asynq.RedisClientOpt{
+			Addr:     redisAddr,
+			Password: password,
+			DB:       db,
+		},
+		// Location follows the process-wide time.Local (set by app.InitTimezone),
+		// so cron expressions like DailyAt(2,0) fire in the configured timezone
+		// instead of asynq's default UTC.
+		&asynq.SchedulerOpts{Location: time.Local},
+	)
+	return &Scheduler{scheduler: s}
+}
+
+// Register adds a cron task to the scheduler.
+func (s *Scheduler) Register(ct CronTask) (string, error) {
+	data, err := json.Marshal(ct.Payload)
+	if err != nil {
+		return "", fmt.Errorf("marshal cron task payload: %w", err)
+	}
+	task := asynq.NewTask(ct.TypeName, data)
+
+	var opts []asynq.Option
+	if ct.Queue != "" {
+		opts = append(opts, asynq.Queue(ct.Queue))
+	}
+	if ct.Unique > 0 {
+		opts = append(opts, asynq.Unique(ct.Unique))
+	}
+
+	entryID, err := s.scheduler.Register(ct.Cron, task, opts...)
+	if err != nil {
+		return "", fmt.Errorf("register cron task [%s]: %w", ct.TypeName, err)
+	}
+	return entryID, nil
+}
+
+// Start starts the scheduler (blocking).
+func (s *Scheduler) Start() error {
+	return s.scheduler.Start()
+}
+
+// Stop shuts down the scheduler.
+func (s *Scheduler) Stop() {
+	s.scheduler.Shutdown()
+}
