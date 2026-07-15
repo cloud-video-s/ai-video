@@ -45,7 +45,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		h.svc.Logout(c.Request.Context(), parts[1])
 	}
 
-	userID := middleware.GetUserID(c)
+	userID := middleware.GetAdminID(c)
 	cache.ClearUserPermissions(userID)
 
 	middleware.RecordLogin(c, "登出", userID, middleware.GetUsername(c), true, "")
@@ -53,7 +53,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 }
 
 func (h *AuthHandler) GetProfile(c *gin.Context) {
-	userID := middleware.GetUserID(c)
+	userID := middleware.GetAdminID(c)
 	userSvc := service.NewUserService()
 	user, err := userSvc.GetProfile(c.Request.Context(), userID)
 	if err != nil {
@@ -64,7 +64,7 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 }
 
 func (h *AuthHandler) GetPermissions(c *gin.Context) {
-	userID := middleware.GetUserID(c)
+	userID := middleware.GetAdminID(c)
 
 	// Try cache first
 	if perms, ok := cache.GetUserPermissions(userID); ok {

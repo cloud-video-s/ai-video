@@ -45,7 +45,7 @@ func validateConfigDef(typ, options string) error {
 	return nil
 }
 
-func (s *ConfigService) List(ctx context.Context, group string) ([]model.SysConfig, error) {
+func (s *ConfigService) List(ctx context.Context, group string) ([]model.VideoConfig, error) {
 	q := &repository.QueryOptions{Order: []string{"sort ASC", "id ASC"}}
 	if group != "" {
 		q.Where = map[string]interface{}{"group": group}
@@ -105,7 +105,7 @@ func (s *ConfigService) Create(ctx context.Context, req *CreateConfigRequest) er
 	if exists {
 		return errors.New("配置键已存在")
 	}
-	c := &model.SysConfig{
+	c := &model.VideoConfig{
 		Group: req.Group, Key: req.Key, Name: req.Name, Value: req.Value,
 		Type: typ, Options: req.Options, IsPublic: req.IsPublic,
 		Remark: req.Remark, Sort: req.Sort, Editable: true, Builtin: false,

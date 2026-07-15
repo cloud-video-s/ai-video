@@ -1,6 +1,6 @@
 package model
 
-type SysConfig struct {
+type VideoConfig struct {
 	ID       uint   `json:"id" gorm:"primaryKey"`
 	Group    string `json:"group" gorm:"size:64;index;comment:分组"`
 	Key      string `json:"key" gorm:"size:128;uniqueIndex;not null;comment:配置键"`
@@ -16,6 +16,6 @@ type SysConfig struct {
 	BaseModel
 }
 
-func (SysConfig) TableName() string {
-	return "sys_config"
+func (VideoConfig) TableName() string {
+	return "video_config"
 }

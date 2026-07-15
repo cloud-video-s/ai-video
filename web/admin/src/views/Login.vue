@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <h2 class="login-title">Frame Admin</h2>
+      <h2 class="login-title">AI Video Admin</h2>
       <p class="login-subtitle">后台管理系统</p>
       <el-form ref="formRef" :model="form" :rules="rules" @keyup.enter="handleLogin">
         <el-form-item prop="username">
@@ -23,7 +23,6 @@
           </el-button>
         </el-form-item>
       </el-form>
-      <p v-if="isDev" class="login-hint">默认账号: admin / admin123</p>
     </div>
   </div>
 </template>

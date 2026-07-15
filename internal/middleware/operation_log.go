@@ -73,9 +73,9 @@ func OperationLog() gin.HandlerFunc {
 		bizCode, bizMsg := parseBizResult(blw.body.Bytes())
 		status := c.Writer.Status()
 
-		entry := &model.SysOperationLog{
+		entry := &model.VideoOperationLog{
 			TraceID:    c.GetString("trace_id"),
-			UserID:     GetUserID(c),
+			UserID:     GetAdminID(c),
 			Username:   GetUsername(c),
 			RoleCodes:  strings.Join(GetRoleCodes(c), ","),
 			Module:     m.module,
@@ -111,7 +111,7 @@ func OperationLog() gin.HandlerFunc {
 // public route with no AdminAuth/OperationLog middleware, and a failed login has
 // no authenticated user — so auth handlers record it directly. Best-effort.
 func RecordLogin(c *gin.Context, action string, userID uint, username string, success bool, errMsg string) {
-	entry := &model.SysOperationLog{
+	entry := &model.VideoOperationLog{
 		TraceID:   c.GetString("trace_id"),
 		UserID:    userID,
 		Username:  username,

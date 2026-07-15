@@ -1,10 +1,6 @@
 package model
 
-// SysOperationLog is an audit record of a single admin mutation (or a
-// login/logout event). Retention and "clear" purge rows with Unscoped (hard
-// delete) so the table actually shrinks; a single-record delete uses the soft
-// delete from BaseModel.
-type SysOperationLog struct {
+type VideoOperationLog struct {
 	ID         uint   `json:"id" gorm:"primaryKey"`
 	TraceID    string `json:"trace_id" gorm:"size:32;comment:链路ID，关联应用日志"`
 	UserID     uint   `json:"user_id" gorm:"index;comment:操作人ID"`
@@ -28,6 +24,6 @@ type SysOperationLog struct {
 	BaseModel
 }
 
-func (SysOperationLog) TableName() string {
-	return "sys_operation_log"
+func (VideoOperationLog) TableName() string {
+	return "video_operation_log"
 }

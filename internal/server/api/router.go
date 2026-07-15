@@ -1,6 +1,7 @@
 package api
 
 import (
+	"ai-video/internal/middleware"
 	"ai-video/internal/server/api/handler"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,18 @@ func (m *Module) Name() string {
 func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	healthHandler := handler.NewHealthHandler()
 	configHandler := handler.NewConfigHandler()
+	authHandler := handler.NewAuthHandler()
 
 	rg.GET("/health", healthHandler.Health)
 	rg.GET("/configs/public", configHandler.Public)
+
+	rg.POST("/auth/device-register", authHandler.DeviceRegister)
+	rg.POST("/auth/re-register", authHandler.ReRegister)
+
+	authenticated := rg.Group("", middleware.ApiAuth())
+	{
+		authenticated.POST("/auth/logout", authHandler.Logout)
+		authenticated.GET("/users/me", authHandler.Profile)
+		authenticated.PUT("/users/me/country", authHandler.UpdateCountry)
+	}
 }

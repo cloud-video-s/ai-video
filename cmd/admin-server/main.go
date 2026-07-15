@@ -27,13 +27,17 @@ func main() {
 		panic(fmt.Sprintf("init app failed: %v", err))
 	}
 
-	if err := app.AutoMigrate(); err != nil {
-		panic(fmt.Sprintf("auto migrate failed: %v", err))
-	}
-	app.Log.Info("database migrated")
+	//if err := app.AutoMigrate(); err != nil {
+	//	panic(fmt.Sprintf("auto migrate failed: %v", err))
+	//}
+	//app.Log.Info("database migrated")
 
 	if err := app.SeedData(); err != nil {
 		app.Log.Warnf("seed data: %v", err)
+	}
+
+	if err := app.SeedOBDelayConfig(app.DefaultOBDelayConfigPath); err != nil {
+		app.Log.Warnf("seed ob delay config: %v", err)
 	}
 
 	// Seed default config values into DB and warm the Redis cache.

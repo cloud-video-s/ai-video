@@ -27,6 +27,14 @@ jwt:
   expire: 7200    # token 过期时间（秒）
   issuer: frame
 
+geoip:
+  # Set country_header only when a trusted reverse proxy overwrites it.
+  country_header: ""
+  # Optional JSON lookup endpoint; {ip} is replaced with the client IP.
+  lookup_url: ""
+  country_field: country_code
+  timeout_ms: 3000
+
 casbin:
   model_path: config/rbac_model.conf
 task:

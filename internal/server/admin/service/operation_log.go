@@ -28,7 +28,7 @@ type ListOperationLogRequest struct {
 // List builds a QueryOptions from the request and delegates to BaseRepo.PageList.
 // Equality filters go in Where; the time range and the keyword OR (which Where /
 // Search can't express) go in Conds.
-func (s *OperationLogService) List(ctx context.Context, page, pageSize int, req *ListOperationLogRequest) ([]model.SysOperationLog, int64, error) {
+func (s *OperationLogService) List(ctx context.Context, page, pageSize int, req *ListOperationLogRequest) ([]model.VideoOperationLog, int64, error) {
 	q := &repository.QueryOptions{
 		Where: map[string]interface{}{},
 		Order: []string{"id DESC"},
@@ -58,7 +58,7 @@ func (s *OperationLogService) List(ctx context.Context, page, pageSize int, req 
 	return s.repo.PageList(ctx, page, pageSize, q)
 }
 
-func (s *OperationLogService) GetByID(ctx context.Context, id uint) (*model.SysOperationLog, error) {
+func (s *OperationLogService) GetByID(ctx context.Context, id uint) (*model.VideoOperationLog, error) {
 	return s.repo.GetByID(ctx, id)
 }
 

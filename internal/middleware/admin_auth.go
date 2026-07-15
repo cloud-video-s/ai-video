@@ -11,13 +11,13 @@ import (
 )
 
 const (
-	CtxUserIDKey    = "user_id"
-	CtxUsernameKey  = "username"
+	CtxAdminIDKey   = "admin_id"
+	CtxAdminnameKey = "username"
 	CtxRoleCodesKey = "role_codes"
 )
 
 func AdminAuth() gin.HandlerFunc {
-	userRepo := repository.NewUserRepo()
+	userRepo := repository.NewAdminRepo()
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -51,15 +51,15 @@ func AdminAuth() gin.HandlerFunc {
 			return
 		}
 
-		c.Set(CtxUserIDKey, claims.UserID)
-		c.Set(CtxUsernameKey, claims.Username)
+		c.Set(CtxAdminIDKey, claims.UserID)
+		c.Set(CtxAdminnameKey, claims.Username)
 		c.Set(CtxRoleCodesKey, claims.RoleCodes)
 		c.Next()
 	}
 }
 
-func GetUserID(c *gin.Context) uint {
-	val, exists := c.Get(CtxUserIDKey)
+func GetAdminID(c *gin.Context) uint {
+	val, exists := c.Get(CtxAdminIDKey)
 	if !exists {
 		return 0
 	}
@@ -68,7 +68,7 @@ func GetUserID(c *gin.Context) uint {
 }
 
 func GetUsername(c *gin.Context) string {
-	val, exists := c.Get(CtxUsernameKey)
+	val, exists := c.Get(CtxAdminnameKey)
 	if !exists {
 		return ""
 	}

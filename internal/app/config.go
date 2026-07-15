@@ -14,6 +14,7 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	Redis    RedisConfig    `mapstructure:"redis"`
 	JWT      JWTConfig      `mapstructure:"jwt"`
+	GeoIP    GeoIPConfig    `mapstructure:"geoip"`
 	Casbin   CasbinConfig   `mapstructure:"casbin"`
 	Log      LogConfig      `mapstructure:"log"`
 	Task     TaskConfig     `mapstructure:"task"`
@@ -79,6 +80,13 @@ type JWTConfig struct {
 	Issuer string `mapstructure:"issuer"`
 }
 
+type GeoIPConfig struct {
+	CountryHeader string `mapstructure:"country_header"`
+	LookupURL     string `mapstructure:"lookup_url"`
+	CountryField  string `mapstructure:"country_field"`
+	TimeoutMS     int    `mapstructure:"timeout_ms"`
+}
+
 type CasbinConfig struct {
 	ModelPath string `mapstructure:"model_path"`
 }
@@ -132,6 +140,8 @@ func setConfigDefaults() {
 	viper.SetDefault("database.max_idle_conns", 10)
 	viper.SetDefault("database.max_open_conns", 100)
 	viper.SetDefault("jwt.expire", 7200)
+	viper.SetDefault("geoip.country_field", "country_code")
+	viper.SetDefault("geoip.timeout_ms", 3000)
 	viper.SetDefault("task.concurrency", 10)
 }
 

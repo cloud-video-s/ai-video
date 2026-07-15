@@ -12,11 +12,11 @@ import (
 )
 
 type AuthService struct {
-	userRepo *repository.UserRepo
+	userRepo *repository.AdminRepo
 }
 
 func NewAuthService() *AuthService {
-	return &AuthService{userRepo: repository.NewUserRepo()}
+	return &AuthService{userRepo: repository.NewAdminRepo()}
 }
 
 type LoginRequest struct {

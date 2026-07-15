@@ -65,7 +65,7 @@ func (s *RoleService) Create(ctx context.Context, req *CreateRoleRequest) error 
 		status = *req.Status
 	}
 
-	role := &model.SysRole{
+	role := &model.VideoRole{
 		Name:   req.Name,
 		Code:   req.Code,
 		Sort:   req.Sort,
@@ -81,7 +81,7 @@ func (s *RoleService) Create(ctx context.Context, req *CreateRoleRequest) error 
 	return nil
 }
 
-func (s *RoleService) GetByID(ctx context.Context, id uint) (*model.SysRole, error) {
+func (s *RoleService) GetByID(ctx context.Context, id uint) (*model.VideoRole, error) {
 	return s.roleRepo.GetByID(ctx, id)
 }
 
@@ -124,13 +124,13 @@ func (s *RoleService) Delete(ctx context.Context, id uint) error {
 	return nil
 }
 
-func (s *RoleService) List(ctx context.Context, page, pageSize int) ([]model.SysRole, int64, error) {
+func (s *RoleService) List(ctx context.Context, page, pageSize int) ([]model.VideoRole, int64, error) {
 	return s.roleRepo.PageList(ctx, page, pageSize, &repository.QueryOptions{
 		Order: []string{"sort ASC", "id ASC"},
 	})
 }
 
-func (s *RoleService) ListAll(ctx context.Context) ([]model.SysRole, error) {
+func (s *RoleService) ListAll(ctx context.Context) ([]model.VideoRole, error) {
 	return s.roleRepo.ListAll(ctx)
 }
 

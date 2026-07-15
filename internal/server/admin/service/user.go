@@ -12,11 +12,11 @@ import (
 )
 
 type UserService struct {
-	userRepo *repository.UserRepo
+	userRepo *repository.AdminRepo
 }
 
 func NewUserService() *UserService {
-	return &UserService{userRepo: repository.NewUserRepo()}
+	return &UserService{userRepo: repository.NewAdminRepo()}
 }
 
 type CreateUserRequest struct {
@@ -58,7 +58,7 @@ func (s *UserService) Create(ctx context.Context, req *CreateUserRequest) error 
 		status = *req.Status
 	}
 
-	user := &model.SysUser{
+	user := &model.VideoAdmin{
 		Username: req.Username,
 		Password: hashed,
 		Nickname: req.Nickname,
@@ -82,7 +82,7 @@ func (s *UserService) Create(ctx context.Context, req *CreateUserRequest) error 
 	})
 }
 
-func (s *UserService) GetByID(ctx context.Context, id uint) (*model.SysUser, error) {
+func (s *UserService) GetByID(ctx context.Context, id uint) (*model.VideoAdmin, error) {
 	return s.userRepo.GetByID(ctx, id)
 }
 
@@ -146,14 +146,14 @@ func (s *UserService) Delete(ctx context.Context, id, currentUserID uint) error 
 	return s.userRepo.Delete(ctx, id)
 }
 
-func (s *UserService) List(ctx context.Context, page, pageSize int) ([]model.SysUser, int64, error) {
+func (s *UserService) List(ctx context.Context, page, pageSize int) ([]model.VideoAdmin, int64, error) {
 	return s.userRepo.PageList(ctx, page, pageSize, &repository.QueryOptions{
 		Order:    []string{"id DESC"},
 		Preloads: []string{"Roles"},
 	})
 }
 
-func (s *UserService) GetProfile(ctx context.Context, id uint) (*model.SysUser, error) {
+func (s *UserService) GetProfile(ctx context.Context, id uint) (*model.VideoAdmin, error) {
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "用户不存在")

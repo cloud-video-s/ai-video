@@ -2,6 +2,7 @@ package repository
 
 import (
 	"ai-video/internal/app"
+	"ai-video/internal/gen/query"
 	"context"
 
 	"gorm.io/gorm"
@@ -32,4 +33,8 @@ func dbFrom(ctx context.Context) *gorm.DB {
 		return tx.WithContext(ctx)
 	}
 	return app.DB.WithContext(ctx)
+}
+
+func qFrom(ctx context.Context) *query.Query {
+	return query.Use(dbFrom(ctx))
 }

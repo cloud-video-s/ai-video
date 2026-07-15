@@ -48,7 +48,7 @@ type UpdateMenuRequest struct {
 }
 
 func (s *MenuService) Create(ctx context.Context, req *CreateMenuRequest) error {
-	menu := &model.SysMenu{
+	menu := &model.VideoMenu{
 		ParentID:   req.ParentID,
 		Name:       req.Name,
 		Path:       req.Path,
@@ -71,7 +71,7 @@ func (s *MenuService) Create(ctx context.Context, req *CreateMenuRequest) error 
 	})
 }
 
-func (s *MenuService) GetByID(ctx context.Context, id uint) (*model.SysMenu, error) {
+func (s *MenuService) GetByID(ctx context.Context, id uint) (*model.VideoMenu, error) {
 	return s.menuRepo.GetByID(ctx, id)
 }
 
@@ -126,7 +126,7 @@ func (s *MenuService) Delete(ctx context.Context, id uint) error {
 	return s.menuRepo.Delete(ctx, id)
 }
 
-func (s *MenuService) GetTree(ctx context.Context) ([]*model.SysMenu, error) {
+func (s *MenuService) GetTree(ctx context.Context) ([]*model.VideoMenu, error) {
 	menus, err := s.menuRepo.ListAll(ctx)
 	if err != nil {
 		return nil, err
@@ -134,8 +134,8 @@ func (s *MenuService) GetTree(ctx context.Context) ([]*model.SysMenu, error) {
 	return repository.BuildMenuTree(menus, 0), nil
 }
 
-func (s *MenuService) GetUserMenuTree(ctx context.Context, userID uint) ([]*model.SysMenu, error) {
-	userDAO := repository.NewUserRepo()
+func (s *MenuService) GetUserMenuTree(ctx context.Context, userID uint) ([]*model.VideoMenu, error) {
+	userDAO := repository.NewAdminRepo()
 	user, err := userDAO.GetByID(ctx, userID)
 	if err != nil {
 		return nil, notFoundOr(err, "用户不存在")
@@ -153,7 +153,7 @@ func (s *MenuService) GetUserMenuTree(ctx context.Context, userID uint) ([]*mode
 	}
 
 	if len(menuIDSet) == 0 {
-		return []*model.SysMenu{}, nil
+		return []*model.VideoMenu{}, nil
 	}
 
 	ids := make([]uint, 0, len(menuIDSet))
@@ -167,7 +167,7 @@ func (s *MenuService) GetUserMenuTree(ctx context.Context, userID uint) ([]*mode
 	}
 
 	// Filter: only directories (0) and menus (1), visible and enabled
-	visible := make([]model.SysMenu, 0, len(menus))
+	visible := make([]model.VideoMenu, 0, len(menus))
 	for _, m := range menus {
 		if m.Type <= 1 && m.Visible == 1 && m.Status == 1 {
 			visible = append(visible, m)
@@ -179,7 +179,7 @@ func (s *MenuService) GetUserMenuTree(ctx context.Context, userID uint) ([]*mode
 
 // GetUserPermissions returns all permission identifiers (including buttons) for a user.
 func (s *MenuService) GetUserPermissions(ctx context.Context, userID uint) ([]string, error) {
-	userDAO := repository.NewUserRepo()
+	userDAO := repository.NewAdminRepo()
 	user, err := userDAO.GetByID(ctx, userID)
 	if err != nil {
 		return nil, notFoundOr(err, "用户不存在")

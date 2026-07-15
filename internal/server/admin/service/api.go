@@ -29,7 +29,7 @@ type UpdateAPIRequest struct {
 }
 
 func (s *APIService) Create(ctx context.Context, req *CreateAPIRequest) error {
-	api := &model.SysAPI{
+	api := &model.VideoAPI{
 		Path:        req.Path,
 		Method:      req.Method,
 		Group:       req.Group,
@@ -38,7 +38,7 @@ func (s *APIService) Create(ctx context.Context, req *CreateAPIRequest) error {
 	return s.apiRepo.Create(ctx, api)
 }
 
-func (s *APIService) GetByID(ctx context.Context, id uint) (*model.SysAPI, error) {
+func (s *APIService) GetByID(ctx context.Context, id uint) (*model.VideoAPI, error) {
 	return s.apiRepo.GetByID(ctx, id)
 }
 
@@ -66,12 +66,12 @@ func (s *APIService) Delete(ctx context.Context, id uint) error {
 	return s.apiRepo.Delete(ctx, id)
 }
 
-func (s *APIService) List(ctx context.Context, page, pageSize int) ([]model.SysAPI, int64, error) {
+func (s *APIService) List(ctx context.Context, page, pageSize int) ([]model.VideoAPI, int64, error) {
 	return s.apiRepo.PageList(ctx, page, pageSize, &repository.QueryOptions{
 		Order: []string{"`group` ASC", "id ASC"},
 	})
 }
 
-func (s *APIService) ListAll(ctx context.Context) ([]model.SysAPI, error) {
+func (s *APIService) ListAll(ctx context.Context) ([]model.VideoAPI, error) {
 	return s.apiRepo.ListAll(ctx)
 }

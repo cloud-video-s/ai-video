@@ -88,7 +88,7 @@ func (h *UserHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.Delete(c.Request.Context(), uint(id), middleware.GetUserID(c)); err != nil {
+	if err := h.svc.Delete(c.Request.Context(), uint(id), middleware.GetAdminID(c)); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}

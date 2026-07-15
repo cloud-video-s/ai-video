@@ -97,7 +97,7 @@ func (h *MenuHandler) GetTree(c *gin.Context) {
 }
 
 func (h *MenuHandler) GetUserMenuTree(c *gin.Context) {
-	userID := middleware.GetUserID(c)
+	userID := middleware.GetAdminID(c)
 	tree, err := h.svc.GetUserMenuTree(c.Request.Context(), userID)
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())

@@ -20,6 +20,7 @@ func (m *Module) Name() string {
 func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	authHandler := handler.NewAuthHandler()
 	userHandler := handler.NewUserHandler()
+	appUserHandler := handler.NewAppUserHandler()
 	roleHandler := handler.NewRoleHandler()
 	menuHandler := handler.NewMenuHandler()
 	apiHandler := handler.NewAPIHandler()
@@ -53,6 +54,13 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.GET("/users/:id", userHandler.GetByID)
 		auth.PUT("/users/:id", userHandler.Update)
 		auth.DELETE("/users/:id", userHandler.Delete)
+
+		// Client app users
+		auth.GET("/app-users", appUserHandler.List)
+		auth.POST("/app-users", appUserHandler.Create)
+		auth.GET("/app-users/:id", appUserHandler.GetByID)
+		auth.PUT("/app-users/:id", appUserHandler.Update)
+		auth.DELETE("/app-users/:id", appUserHandler.Delete)
 
 		// Roles
 		auth.GET("/roles", roleHandler.List)
