@@ -23,7 +23,7 @@ type VideoUser struct {
 	FirstOpenedAt            *time.Time     `gorm:"column:first_opened_at;type:datetime(3);index:idx_video_user_first_opened_at,priority:1" json:"first_opened_at"`
 	LastOpenedAt             *time.Time     `gorm:"column:last_opened_at;type:datetime(3);index:idx_video_user_last_opened_at,priority:1" json:"last_opened_at"`
 	LoginType                *string        `gorm:"column:login_type;type:varchar(16);not null;index:idx_video_user_login_type,priority:1;default:guest" json:"login_type"`
-	LoginAccount             *string        `gorm:"column:login_account;type:varchar(255);index:idx_video_user_login_account,priority:1" json:"login_account"`
+	PhoneCode                string         `gorm:"column:phone_code;type:varchar(128);not null;uniqueIndex:uidx_video_user_phone_registration,priority:1;index:idx_video_user_login_account,priority:1" json:"phone_code"`
 	UserType                 *string        `gorm:"column:user_type;type:varchar(16);not null;index:idx_video_user_user_type,priority:1;default:free" json:"user_type"`
 	ActiveDays               uint32         `gorm:"column:active_days;type:int unsigned;not null" json:"active_days"`
 	AvgDailyUsageSeconds     uint64         `gorm:"column:avg_daily_usage_seconds;type:bigint unsigned;not null" json:"avg_daily_usage_seconds"`
@@ -47,7 +47,6 @@ type VideoUser struct {
 	PaymentMet               bool           `gorm:"column:payment_met;type:tinyint(1);not null;index:idx_video_user_payment_met,priority:1" json:"payment_met"`
 	FirstPaymentMet          bool           `gorm:"column:first_payment_met;type:tinyint(1);not null;index:idx_video_user_first_payment_met,priority:1" json:"first_payment_met"`
 	Registered               bool           `gorm:"column:registered;type:tinyint(1);not null;index:idx_video_user_registered,priority:1" json:"registered"`
-	PhoneCode                string         `gorm:"column:phone_code;type:varchar(128);not null;uniqueIndex:uidx_video_user_phone_registration,priority:1" json:"phone_code"`
 	AttributionClickedAt     *time.Time     `gorm:"column:attribution_clicked_at;type:datetime(3);index:idx_video_user_attribution_clicked_at,priority:1" json:"attribution_clicked_at"`
 	PhoneModel               *string        `gorm:"column:phone_model;type:varchar(128);index:idx_video_user_phone_model,priority:1" json:"phone_model"`
 	CreatedAt                *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_video_user_created_at,priority:1" json:"created_at"`
@@ -56,11 +55,12 @@ type VideoUser struct {
 	RegistrationNo           *uint32        `gorm:"column:registration_no;type:int unsigned;not null;uniqueIndex:uidx_video_user_phone_registration,priority:2;default:1" json:"registration_no"`
 	ReRegisteredFromID       *uint64        `gorm:"column:re_registered_from_id;type:bigint unsigned;index:idx_video_user_re_registered_from_id,priority:1" json:"re_registered_from_id"`
 	Email                    *string        `gorm:"column:email;type:varchar(255);uniqueIndex:idx_video_user_email,priority:1" json:"email"`
-	EmailVerified            bool           `gorm:"column:email_verified;type:tinyint(1);not null" json:"email_verified"`
+	EmailVerified            bool           `gorm:"column:email_verified;type:tinyint(1);primaryKey" json:"email_verified"`
 	TokenVersion             int64          `gorm:"column:token_version;type:bigint;not null" json:"token_version"`
 	Status                   *int32         `gorm:"column:status;type:tinyint;not null;index:idx_video_user_status,priority:1;default:1" json:"status"`
 	LastLoginAt              *time.Time     `gorm:"column:last_login_at;type:datetime(3)" json:"last_login_at"`
 	LastLoginIP              *string        `gorm:"column:last_login_ip;type:varchar(64)" json:"last_login_ip"`
+	LoginAccount             *string        `gorm:"column:login_account;type:varchar(255)" json:"login_account"`
 }
 
 // TableName VideoUser's table name

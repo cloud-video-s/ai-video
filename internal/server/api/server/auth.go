@@ -66,12 +66,11 @@ func (s *AuthService) RegisterDevice(ctx context.Context, req *DeviceRegisterReq
 			return err
 		}
 
-		createNew := errors.Is(err, gorm.ErrRecordNotFound) || req.ForceNew
+		createNew := shouldCreateDeviceAccount(latest, req.ForceNew)
 		if latest != nil {
 			if latest.Status != 1 {
 				return errors.New("当前设备账号已停用")
 			}
-			createNew = createNew || latest.Email != nil || latest.Registered
 		}
 
 		if !createNew {
@@ -226,4 +225,8 @@ func newGuestUsername() string {
 		return "guest_" + hex.EncodeToString(randomBytes)
 	}
 	return fmt.Sprintf("guest_%d", time.Now().UnixNano())
+}
+
+func shouldCreateDeviceAccount(latest *model.VideoUser, forceNew bool) bool {
+	return latest == nil || forceNew || latest.Email != nil || latest.Registered
 }

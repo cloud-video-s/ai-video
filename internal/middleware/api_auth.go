@@ -19,18 +19,17 @@ func ApiAuth() gin.HandlerFunc {
 	userRepo := repository.NewAppUserRepo()
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		if strings.TrimSpace(authHeader) == "" {
 			response.Unauthorized(c, "缺少 Authorization 头")
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
+		tokenString, ok := extractBearerToken(authHeader)
+		if !ok {
 			response.Unauthorized(c, "Authorization 格式错误")
 			return
 		}
 
-		tokenString := parts[1]
 		if cache.IsTokenBlacklisted(tokenString) {
 			response.Unauthorized(c, "Token 已失效，请重新登录")
 			return
@@ -51,6 +50,14 @@ func ApiAuth() gin.HandlerFunc {
 		c.Set(CtxPhoneCodeKey, claims.PhoneCode)
 		c.Next()
 	}
+}
+
+func extractBearerToken(header string) (string, bool) {
+	parts := strings.Fields(header)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || parts[1] == "" {
+		return "", false
+	}
+	return parts[1], true
 }
 
 func GetAPIUserID(c *gin.Context) uint64 {

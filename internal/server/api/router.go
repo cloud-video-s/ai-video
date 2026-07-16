@@ -20,6 +20,7 @@ func (m *Module) Name() string {
 func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	healthHandler := handler.NewHealthHandler()
 	configHandler := handler.NewConfigHandler()
+	delayConfigHandler := handler.NewDelayConfigHandler()
 	authHandler := handler.NewAuthHandler()
 
 	rg.GET("/health", healthHandler.Health)
@@ -31,6 +32,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	authenticated := rg.Group("", middleware.ApiAuth())
 	{
 		authenticated.POST("/auth/logout", authHandler.Logout)
+		authenticated.GET("/delay-configs", delayConfigHandler.All)
 		authenticated.GET("/users/me", authHandler.Profile)
 		authenticated.PUT("/users/me/country", authHandler.UpdateCountry)
 	}

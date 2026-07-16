@@ -26,6 +26,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	apiHandler := handler.NewAPIHandler()
 	operationLogHandler := handler.NewOperationLogHandler()
 	configHandler := handler.NewConfigHandler()
+	delayConfigHandler := handler.NewDelayConfigHandler()
 
 	// Public routes (no auth required)
 	rg.POST("/login", authHandler.Login)
@@ -98,5 +99,15 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.PUT("/configs/:id", configHandler.Update)
 		auth.DELETE("/configs/:id", configHandler.Delete)
 		auth.POST("/configs/refresh", configHandler.Refresh)
+
+		// OB delay configs
+		auth.GET("/delay-configs", delayConfigHandler.List)
+		auth.GET("/delay-configs/groups", delayConfigHandler.ListGroups)
+		auth.POST("/delay-configs", delayConfigHandler.Create)
+		auth.PUT("/delay-configs/values", delayConfigHandler.BatchUpdateValues)
+		auth.POST("/delay-configs/sync", delayConfigHandler.Sync)
+		auth.GET("/delay-configs/:id", delayConfigHandler.GetByID)
+		auth.PUT("/delay-configs/:id", delayConfigHandler.Update)
+		auth.DELETE("/delay-configs/:id", delayConfigHandler.Delete)
 	}
 }

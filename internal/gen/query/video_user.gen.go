@@ -36,7 +36,7 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.FirstOpenedAt = field.NewTime(tableName, "first_opened_at")
 	_videoUser.LastOpenedAt = field.NewTime(tableName, "last_opened_at")
 	_videoUser.LoginType = field.NewString(tableName, "login_type")
-	_videoUser.LoginAccount = field.NewString(tableName, "login_account")
+	_videoUser.PhoneCode = field.NewString(tableName, "phone_code")
 	_videoUser.UserType = field.NewString(tableName, "user_type")
 	_videoUser.ActiveDays = field.NewUint32(tableName, "active_days")
 	_videoUser.AvgDailyUsageSeconds = field.NewUint64(tableName, "avg_daily_usage_seconds")
@@ -60,7 +60,6 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.PaymentMet = field.NewBool(tableName, "payment_met")
 	_videoUser.FirstPaymentMet = field.NewBool(tableName, "first_payment_met")
 	_videoUser.Registered = field.NewBool(tableName, "registered")
-	_videoUser.PhoneCode = field.NewString(tableName, "phone_code")
 	_videoUser.AttributionClickedAt = field.NewTime(tableName, "attribution_clicked_at")
 	_videoUser.PhoneModel = field.NewString(tableName, "phone_model")
 	_videoUser.CreatedAt = field.NewTime(tableName, "created_at")
@@ -74,6 +73,7 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.Status = field.NewInt32(tableName, "status")
 	_videoUser.LastLoginAt = field.NewTime(tableName, "last_login_at")
 	_videoUser.LastLoginIP = field.NewString(tableName, "last_login_ip")
+	_videoUser.LoginAccount = field.NewString(tableName, "login_account")
 
 	_videoUser.fillFieldMap()
 
@@ -93,7 +93,7 @@ type videoUser struct {
 	FirstOpenedAt            field.Time
 	LastOpenedAt             field.Time
 	LoginType                field.String
-	LoginAccount             field.String
+	PhoneCode                field.String
 	UserType                 field.String
 	ActiveDays               field.Uint32
 	AvgDailyUsageSeconds     field.Uint64
@@ -117,7 +117,6 @@ type videoUser struct {
 	PaymentMet               field.Bool
 	FirstPaymentMet          field.Bool
 	Registered               field.Bool
-	PhoneCode                field.String
 	AttributionClickedAt     field.Time
 	PhoneModel               field.String
 	CreatedAt                field.Time
@@ -131,6 +130,7 @@ type videoUser struct {
 	Status                   field.Int32
 	LastLoginAt              field.Time
 	LastLoginIP              field.String
+	LoginAccount             field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -156,7 +156,7 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.FirstOpenedAt = field.NewTime(table, "first_opened_at")
 	v.LastOpenedAt = field.NewTime(table, "last_opened_at")
 	v.LoginType = field.NewString(table, "login_type")
-	v.LoginAccount = field.NewString(table, "login_account")
+	v.PhoneCode = field.NewString(table, "phone_code")
 	v.UserType = field.NewString(table, "user_type")
 	v.ActiveDays = field.NewUint32(table, "active_days")
 	v.AvgDailyUsageSeconds = field.NewUint64(table, "avg_daily_usage_seconds")
@@ -180,7 +180,6 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.PaymentMet = field.NewBool(table, "payment_met")
 	v.FirstPaymentMet = field.NewBool(table, "first_payment_met")
 	v.Registered = field.NewBool(table, "registered")
-	v.PhoneCode = field.NewString(table, "phone_code")
 	v.AttributionClickedAt = field.NewTime(table, "attribution_clicked_at")
 	v.PhoneModel = field.NewString(table, "phone_model")
 	v.CreatedAt = field.NewTime(table, "created_at")
@@ -194,6 +193,7 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.Status = field.NewInt32(table, "status")
 	v.LastLoginAt = field.NewTime(table, "last_login_at")
 	v.LastLoginIP = field.NewString(table, "last_login_ip")
+	v.LoginAccount = field.NewString(table, "login_account")
 
 	v.fillFieldMap()
 
@@ -230,7 +230,7 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["first_opened_at"] = v.FirstOpenedAt
 	v.fieldMap["last_opened_at"] = v.LastOpenedAt
 	v.fieldMap["login_type"] = v.LoginType
-	v.fieldMap["login_account"] = v.LoginAccount
+	v.fieldMap["phone_code"] = v.PhoneCode
 	v.fieldMap["user_type"] = v.UserType
 	v.fieldMap["active_days"] = v.ActiveDays
 	v.fieldMap["avg_daily_usage_seconds"] = v.AvgDailyUsageSeconds
@@ -254,7 +254,6 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["payment_met"] = v.PaymentMet
 	v.fieldMap["first_payment_met"] = v.FirstPaymentMet
 	v.fieldMap["registered"] = v.Registered
-	v.fieldMap["phone_code"] = v.PhoneCode
 	v.fieldMap["attribution_clicked_at"] = v.AttributionClickedAt
 	v.fieldMap["phone_model"] = v.PhoneModel
 	v.fieldMap["created_at"] = v.CreatedAt
@@ -268,6 +267,7 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["status"] = v.Status
 	v.fieldMap["last_login_at"] = v.LastLoginAt
 	v.fieldMap["last_login_ip"] = v.LastLoginIP
+	v.fieldMap["login_account"] = v.LoginAccount
 }
 
 func (v videoUser) clone(db *gorm.DB) videoUser {

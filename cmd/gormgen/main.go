@@ -74,6 +74,9 @@ func main() {
 		if err := app.SeedOBDelayConfig(app.DefaultOBDelayConfigPath); err != nil {
 			panic(fmt.Sprintf("seed ob delay config failed: %v", err))
 		}
+		if err := app.SeedDelayConfigAdmin(); err != nil {
+			panic(fmt.Sprintf("seed delay config admin failed: %v", err))
+		}
 	}
 
 	g := gen.NewGenerator(gen.Config{

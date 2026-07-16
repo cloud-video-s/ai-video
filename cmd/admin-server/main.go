@@ -35,6 +35,9 @@ func main() {
 	if err := app.SeedData(); err != nil {
 		app.Log.Warnf("seed data: %v", err)
 	}
+	if err := app.SeedDelayConfigAdmin(); err != nil {
+		app.Log.Warnf("seed delay config admin: %v", err)
+	}
 
 	if err := app.SeedOBDelayConfig(app.DefaultOBDelayConfigPath); err != nil {
 		app.Log.Warnf("seed ob delay config: %v", err)
@@ -45,14 +48,14 @@ func main() {
 		app.Log.Warnf("init settings: %v", err)
 	}
 
-	router := router.NewRouter(
+	engine := router.NewRouter(
 		AdminDist,
 		admin.New(),
 		api.New(),
 	)
 
 	addr := fmt.Sprintf(":%d", app.Cfg.Server.Port)
-	srv := &http.Server{Addr: addr, Handler: router}
+	srv := &http.Server{Addr: addr, Handler: engine}
 
 	go func() {
 		app.Log.Infof("server starting at %s", addr)

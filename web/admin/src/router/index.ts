@@ -44,6 +44,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '系统配置' },
       },
       {
+        path: 'system/delay-config',
+        name: 'SystemDelayConfig',
+        component: () => import('@/views/system/DelayConfigList.vue'),
+        meta: { title: 'OB 延迟配置' },
+      },
+      {
         path: 'system/operlog',
         name: 'SystemOperLog',
         component: () => import('@/views/system/OperationLogList.vue'),

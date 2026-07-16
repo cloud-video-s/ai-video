@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { useTabStore } from '@/store/tab'
@@ -71,6 +71,10 @@ const isCollapse = ref(false)
 const showPage = ref(true)
 const tabBarRef = ref()
 
+function handleViewportChange() {
+  if (window.innerWidth < 960) isCollapse.value = true
+}
+
 async function handleRefresh() {
   showPage.value = false
   await nextTick()
@@ -78,6 +82,8 @@ async function handleRefresh() {
 }
 
 onMounted(async () => {
+  handleViewportChange()
+  window.addEventListener('resize', handleViewportChange)
   if (userStore.token) {
     try {
       if (!userStore.userInfo) {
@@ -95,6 +101,8 @@ onMounted(async () => {
     }
   }
 })
+
+onBeforeUnmount(() => window.removeEventListener('resize', handleViewportChange))
 
 async function handleCommand(command: string) {
   if (command === 'logout') {

@@ -1,0 +1,85 @@
+configs:
+  - group: config
+    key: OBPaymentCloseDely
+    value: "5"
+    type: int
+    options: ""
+    remark: 延迟时长，默认3s，拉取到配置根据配置进行展示
+    sort: 1
+  - group: config
+    key: OBPaymentRetain
+    value: "0"
+    type: bool
+    options: '["0","1"]'
+    remark: OB 付费页兑换留弹框
+    sort: 2
+  - group: config
+    key: HomePaymentBannerShow
+    value: "0"
+    type: bool
+    options: '["0","1"]'
+    remark: 0 表示开启，1 表示关闭
+    sort: 3
+  - group: config
+    key: LaunchPaymentCloseDelay
+    value: "5"
+    type: int
+    options: ""
+    remark: 老用户（非付费）启动付费页关闭按钮延迟，默认3s
+    sort: 4
+  - group: config
+    key: LaunchPaymentRetain
+    value: "0"
+    type: bool
+    options: '["0","1"]'
+    remark: 老用户付费页挽留弹框配置，0 表示开启，1 表示关闭
+    sort: 5
+  - group: config
+    key: BannerPaumentCloseDelay
+    value: "5"
+    type: int
+    options: ""
+    remark: 首页banner进入付费页关闭按钮延迟，默认3s
+    sort: 6
+  - group: config
+    key: BannerPaymentCloseRetain
+    value: "0"
+    type: bool
+    options: '["0","1"]'
+    remark: 首页banner付费页挽留弹框配置，0 表示开启，1 表示关闭
+    sort: 7
+  - group: config
+    key: PaymenCloseDelay
+    value: "5"
+    type: int
+    options: ""
+    remark: 个人中心进入付费页关闭按钮延迟，默认3s
+    sort: 8
+  - group: config
+    key: PaymenCloseRetain
+    value: "0"
+    type: bool
+    options: '["0","1"]'
+    remark: 个人中心付费页挽留弹框配置，0 表示开启，1 表示关闭
+    sort: 9
+  - group: config
+    key: FunctionPaymentCloseDelay
+    value: "5"
+    type: int
+    options: ""
+    remark: 功能页进入付费页关闭按钮延迟，默认3s
+    sort: 10
+  - group: config
+    key: FunctionPaymentCloseRetain
+    value: "0"
+    type: bool
+    options: '["0","1"]'
+    remark: 功能进入付费页挽留弹框配置，0 表示开启，1 表示关闭
+    sort: 11
+  - group: config
+    key: FunctionUseLoging
+    value: "0"
+    type: bool
+    options: '["0","1"]'
+    remark: 功能使用是否强制登陆，0 不强制，1 强制
+    sort: 12
