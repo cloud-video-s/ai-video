@@ -11,8 +11,12 @@ import (
 )
 
 const (
-	CtxUserIDKey    = "user_id"
-	CtxPhoneCodeKey = "phone_code"
+	CtxUserIDKey        = "user_id"
+	CtxPhoneCodeKey     = "phone_code"
+	CtxAPPVersionKey    = "app_version"
+	CtxDeviceCountryKey = "device_country"
+	CtxChannelIDKey     = "channel_id"
+	CtxPhoneModelKey    = "phone_model"
 )
 
 func ApiAuth() gin.HandlerFunc {
@@ -46,6 +50,14 @@ func ApiAuth() gin.HandlerFunc {
 			return
 		}
 
+		deviceCountry := c.GetHeader("Video_Device_Country")
+		appVersion := c.GetHeader("Video_App_Version")
+		channelID := c.GetHeader("Video_Channel_ID")
+		phoneModel := c.GetHeader("Video_Phone_Model")
+		c.Set(CtxPhoneModelKey, phoneModel)
+		c.Set(CtxChannelIDKey, channelID)
+		c.Set(CtxAPPVersionKey, appVersion)
+		c.Set(CtxDeviceCountryKey, deviceCountry)
 		c.Set(CtxUserIDKey, claims.UserID)
 		c.Set(CtxPhoneCodeKey, claims.PhoneCode)
 		c.Next()
