@@ -19,9 +19,9 @@ type VideoAPI struct {
 	Method      string         `gorm:"column:method;type:varchar(16);not null" json:"method"`
 	Group       *string        `gorm:"column:group;type:varchar(64)" json:"group"`
 	Description *string        `gorm:"column:description;type:varchar(255)" json:"description"`
-	CreatedAt   *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_sys_api_created_at,priority:1" json:"created_at"`
+	CreatedAt   *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_sys_api_created_at,priority:1;index:idx_video_api_created_at,priority:1" json:"created_at"`
 	UpdatedAt   *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_sys_api_deleted_at,priority:1" json:"deleted_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_sys_api_deleted_at,priority:1;index:idx_video_api_deleted_at,priority:1" json:"deleted_at"`
 }
 
 // TableName VideoAPI's table name

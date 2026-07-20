@@ -4,27 +4,51 @@ import (
 	"ai-video/internal/pkg/cache"
 	"ai-video/internal/pkg/jwt"
 	"ai-video/internal/pkg/response"
-	"ai-video/internal/repository"
+	"ai-video/internal/pkg/utils"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 const (
-	CtxUserIDKey        = "user_id"
-	CtxPhoneCodeKey     = "phone_code"
-	CtxAPPVersionKey    = "app_version"
-	CtxDeviceCountryKey = "device_country"
-	CtxChannelIDKey     = "channel_id"
-	CtxPhoneModelKey    = "phone_model"
+	HeaderUserIDKey      = "Video_user_id"
+	HeaderPhoneModel     = "Video_Phone_Model"
+	HeaderChannelID      = "Video_Channel_ID"
+	HeaderChannelPackage = "Video_Channel_Package"
+	HeaderAppVersion     = "Video_App_Version"
+	HeaderDeviceCountry  = "Video_Device_Country"
+	HeaderTokenVersion   = "Video_Token_Version"
+	HeaderAppPackage     = "Video_App_Package"
+	HeaderLoginType      = "Video_Login_Type"
 )
 
-func ApiAuth() gin.HandlerFunc {
-	userRepo := repository.NewAppUserRepo()
+func ApiAuth(userRepo UserRepo) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if strings.TrimSpace(authHeader) == "" {
 			response.Unauthorized(c, "缺少 Authorization 头")
+			return
+		}
+		headerChannelID := c.GetHeader(HeaderChannelID)
+		if headerChannelID == "" {
+			response.Unauthorized(c, "缺少 Channel_ID 头")
+			return
+		}
+
+		headerAppVersion := c.GetHeader(HeaderAppVersion)
+		if headerAppVersion == "" {
+			response.Unauthorized(c, "缺少 App_Version 头")
+			return
+		}
+
+		headerPhoneModel := c.GetHeader(HeaderPhoneModel)
+		if headerPhoneModel == "" {
+			response.Unauthorized(c, "缺少 Phone_Model 头")
+			return
+		}
+		headerAppPackage := c.GetHeader(HeaderAppPackage)
+		if headerAppPackage == "" {
+			response.Unauthorized(c, "缺少 App_Package 头")
 			return
 		}
 
@@ -44,22 +68,24 @@ func ApiAuth() gin.HandlerFunc {
 			response.Unauthorized(c, "Token 无效或已过期")
 			return
 		}
-		version, err := userRepo.GetTokenVersion(c.Request.Context(), claims.UserID)
-		if err != nil || version != claims.TokenVersion {
+		imei, version, err := userRepo.GetAuthState(c.Request.Context(), claims.UserID)
+		if err != nil || imei != claims.IMEI || version != claims.TokenVersion {
 			response.Unauthorized(c, "登录状态已失效，请重新注册或登录")
 			return
 		}
-
-		deviceCountry := c.GetHeader("Video_Device_Country")
-		appVersion := c.GetHeader("Video_App_Version")
-		channelID := c.GetHeader("Video_Channel_ID")
-		phoneModel := c.GetHeader("Video_Phone_Model")
-		c.Set(CtxPhoneModelKey, phoneModel)
-		c.Set(CtxChannelIDKey, channelID)
-		c.Set(CtxAPPVersionKey, appVersion)
-		c.Set(CtxDeviceCountryKey, deviceCountry)
-		c.Set(CtxUserIDKey, claims.UserID)
-		c.Set(CtxPhoneCodeKey, claims.PhoneCode)
+		headerDeviceCountry := c.GetHeader(HeaderDeviceCountry)
+		if headerDeviceCountry == "" {
+			headerDeviceCountry, _ = utils.GetCountryByIP(c.ClientIP())
+		}
+		c.Set(HeaderUserIDKey, claims.UserID)
+		c.Set(HeaderTokenVersion, claims.TokenVersion)
+		c.Set(HeaderLoginType, claims.LoginType)
+		c.Set(HeaderChannelID, headerChannelID)
+		c.Set(HeaderChannelPackage, c.GetHeader(HeaderChannelPackage))
+		c.Set(HeaderAppVersion, headerAppVersion)
+		c.Set(HeaderDeviceCountry, headerDeviceCountry)
+		c.Set(HeaderPhoneModel, headerPhoneModel)
+		c.Set(HeaderAppPackage, headerAppPackage)
 		c.Next()
 	}
 }
@@ -73,10 +99,109 @@ func extractBearerToken(header string) (string, bool) {
 }
 
 func GetAPIUserID(c *gin.Context) uint64 {
-	value, ok := c.Get(CtxUserIDKey)
+	value, ok := c.Get(HeaderUserIDKey)
 	if !ok {
 		return 0
 	}
-	id, _ := value.(uint64)
+	id, ok := value.(uint64)
+	if !ok {
+		return 0
+	}
 	return id
+}
+
+func GetAPITokenVersion(c *gin.Context) int64 {
+	value, ok := c.Get(HeaderTokenVersion)
+	if !ok {
+		return 0
+	}
+	version, ok := value.(int64)
+	if !ok {
+		return 0
+	}
+	return version
+}
+
+func GetAPIChannelID(c *gin.Context) string {
+	value, ok := c.Get(HeaderChannelID)
+	if !ok {
+		return ""
+	}
+	channelID, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return channelID
+}
+
+func GetAPIChannelPackage(c *gin.Context) string {
+	value, ok := c.Get(HeaderChannelPackage)
+	if !ok {
+		return ""
+	}
+	channelPackage, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return channelPackage
+}
+
+func GetAPIAppVersion(c *gin.Context) string {
+	value, ok := c.Get(HeaderAppVersion)
+	if !ok {
+		return ""
+	}
+	appVersion, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return appVersion
+}
+
+func GetAPIDeviceCountry(c *gin.Context) string {
+	value, ok := c.Get(HeaderDeviceCountry)
+	if !ok {
+		return ""
+	}
+	deviceCountry, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return deviceCountry
+}
+
+func GetAPIPhoneModel(c *gin.Context) string {
+	value, ok := c.Get(HeaderPhoneModel)
+	if !ok {
+		return ""
+	}
+	phoneModel, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return phoneModel
+}
+
+func GetAPIAppPackage(c *gin.Context) string {
+	value, ok := c.Get(HeaderAppPackage)
+	if !ok {
+		return ""
+	}
+	appPackage, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return appPackage
+}
+
+func GetAPILoginType(c *gin.Context) uint32 {
+	value, ok := c.Get(HeaderLoginType)
+	if !ok {
+		return 0
+	}
+	loginType, ok := value.(uint32)
+	if !ok {
+		return 0
+	}
+	return loginType
 }

@@ -1,0 +1,183 @@
+package service
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+
+	"ai-video/internal/model"
+	"ai-video/internal/repository"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+type ClientBannerService struct {
+	bannerRepo  *repository.BannerRepo
+	userRepo    *repository.AppUserRepo
+	countryRepo *repository.CountryRepo
+	channelRepo *repository.ChannelRepo
+	packageRepo *repository.PackageRepo
+}
+
+func NewClientBannerService() *ClientBannerService {
+	return &ClientBannerService{
+		bannerRepo: repository.NewBannerRepo(), userRepo: repository.NewAppUserRepo(),
+		countryRepo: repository.NewCountryRepo(), channelRepo: repository.NewChannelRepo(),
+		packageRepo: repository.NewPackageRepo(),
+	}
+}
+
+type ClientBannerRequest struct {
+	Country        string `form:"country"`
+	Channel        string `form:"channel"`
+	ChannelPackage string `form:"channel_package"`
+	PackageCode    string `form:"package_code"`
+	PackageVersion string `form:"package_version"`
+	PositionKey    string `form:"position_key" binding:"required,max=100"`
+}
+
+type ClientBannerTemplate struct {
+	ID             uint64 `json:"id"`
+	Name           string `json:"name"`
+	TemplateType   string `json:"template_type"`
+	CoverImage     string `json:"cover_image"`
+	TemplateVideo  string `json:"template_video"`
+	ThumbnailVideo string `json:"thumbnail_video"`
+	Status         int8   `json:"status"`
+}
+
+type ClientBanner struct {
+	ID             uint64                `json:"id"`
+	Name           string                `json:"name"`
+	PositionKey    string                `json:"position_key"`
+	Status         int8                  `json:"status"`
+	JumpType       uint8                 `json:"jump_type"`
+	CoverImage     string                `json:"cover_image"`
+	Route          string                `json:"route"`
+	TargetTemplate *ClientBannerTemplate `json:"target_template,omitempty"`
+	TemplateID     *uint64               `json:"template_id,omitempty"`
+	Sort           uint64                `json:"sort"`
+}
+
+func (s *ClientBannerService) List(ctx *gin.Context, userID uint64, req *ClientBannerRequest) ([]ClientBanner, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	countryCode := req.Country
+	if countryCode == "" {
+		countryCode = strings.ToUpper(strings.TrimSpace(user.DeviceCountry))
+	}
+	var countryID uint64
+	if countryCode != "" {
+		country, lookupErr := s.countryRepo.GetEnabledByCode(ctx, countryCode)
+		if lookupErr == nil {
+			countryID = country.ID
+		} else if !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+			return nil, lookupErr
+		}
+	}
+
+	channelValue := req.Channel
+	if channelValue == "" {
+		channelValue = strings.TrimSpace(user.ChannelID)
+	}
+	channels, err := s.channelRepo.ResolveEnabledTargets(ctx, channelValue, strings.TrimSpace(req.ChannelPackage))
+	if err != nil {
+		return nil, err
+	}
+
+	packages, err := s.packageRepo.ResolveEnabledTargets(ctx, req.PackageCode, req.PackageVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.bannerRepo.ListForClient(ctx, repository.ClientBannerTargets{
+		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
+		ChannelIDs: clientChannelIDs(channels), PackageIDs: clientPackageIDs(packages),
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]ClientBanner, 0, len(rows))
+	for i := range rows {
+		item := mapClientBanner(&rows[i])
+		item.PositionKey = strings.TrimSpace(req.PositionKey)
+		result = append(result, item)
+	}
+	return result, nil
+}
+
+func mapClientBanner(item *model.VideoBanner) ClientBanner {
+	positionKeys := clientBannerPositionKeys(item.DisplayPositions)
+	positionKey := ""
+	if len(positionKeys) > 0 {
+		positionKey = positionKeys[0]
+	}
+	result := ClientBanner{
+		ID: item.ID, Name: item.Name, PositionKey: positionKey,
+		Status: item.Status, JumpType: item.JumpType,
+		CoverImage: item.CoverImage, Route: clientBannerRoute(item), TemplateID: item.TemplateID, Sort: item.Sort,
+	}
+	if item.Template != nil {
+		result.TargetTemplate = &ClientBannerTemplate{
+			ID: item.Template.ID, Name: item.Template.Name, TemplateType: item.Template.TemplateType,
+			CoverImage: item.Template.CoverImage, TemplateVideo: item.Template.TemplateVideo,
+			ThumbnailVideo: item.Template.ThumbnailVideo, Status: item.Template.Status,
+		}
+	}
+	return result
+}
+
+func clientBannerPositionKeys(items []model.VideoDisplayPosition) []string {
+	result := make([]string, 0, len(items))
+	for i := range items {
+		if key := strings.TrimSpace(items[i].PositionKey); key != "" {
+			result = append(result, key)
+		}
+	}
+	return result
+}
+
+func clientBannerRoute(item *model.VideoBanner) string {
+	if item.JumpURL != "" {
+		return item.JumpURL
+	}
+	switch item.JumpType {
+	case model.BannerJumpTypeTemplate:
+		if item.TemplateID != nil {
+			return fmt.Sprintf("/templates/%d", *item.TemplateID)
+		}
+	case model.BannerJumpTypeTextToImage:
+		return "/text-to-image"
+	case model.BannerJumpTypeTextToVideo:
+		return "/text-to-video"
+	}
+	return ""
+}
+
+func clientChannelIDs(items []model.VideoChannel) []uint64 {
+	result := make([]uint64, len(items))
+	for i := range items {
+		result[i] = items[i].ChannelID
+	}
+	return result
+}
+
+func clientPackageIDs(items []model.VideoPackage) []uint64 {
+	result := make([]uint64, len(items))
+	for i := range items {
+		result[i] = items[i].ID
+	}
+	return result
+}
+
+func firstNotEmpty(values ...string) string {
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			return value
+		}
+	}
+	return ""
+}

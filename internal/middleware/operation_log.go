@@ -26,14 +26,16 @@ const writeLogTimeout = 3 * time.Second
 // sensitiveKeys are redacted (value -> ***) wherever they appear in a captured
 // JSON request or response body.
 var sensitiveKeys = map[string]struct{}{
-	"password":         {},
-	"old_password":     {},
-	"new_password":     {},
-	"confirm_password": {},
-	"token":            {},
-	"secret":           {},
-	"access_token":     {},
-	"refresh_token":    {},
+	"password":          {},
+	"old_password":      {},
+	"new_password":      {},
+	"confirm_password":  {},
+	"token":             {},
+	"secret":            {},
+	"access_token":      {},
+	"refresh_token":     {},
+	"access_key_id":     {},
+	"access_key_secret": {},
 }
 
 type apiMeta struct {
@@ -211,8 +213,13 @@ func redactJSON(raw []byte) string {
 func redactValue(v interface{}) {
 	switch t := v.(type) {
 	case map[string]interface{}:
+		if configKey, ok := t["key"].(string); ok && isSensitiveName(configKey) {
+			if _, hasValue := t["value"]; hasValue {
+				t["value"] = "***"
+			}
+		}
 		for k := range t {
-			if _, ok := sensitiveKeys[strings.ToLower(k)]; ok {
+			if isSensitiveName(k) {
 				t[k] = "***"
 			} else {
 				redactValue(t[k])
@@ -223,6 +230,16 @@ func redactValue(v interface{}) {
 			redactValue(item)
 		}
 	}
+}
+
+func isSensitiveName(name string) bool {
+	name = strings.ToLower(strings.TrimSpace(name))
+	for sensitive := range sensitiveKeys {
+		if name == sensitive || strings.HasSuffix(name, "."+sensitive) || strings.HasSuffix(name, "_"+sensitive) {
+			return true
+		}
+	}
+	return false
 }
 
 // parseBizResult extracts the {code,message} envelope from a response body to

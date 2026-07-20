@@ -9,7 +9,7 @@ const TableNameVideoMenuAPI = "video_menu_api"
 // VideoMenuAPI mapped from table <video_menu_api>
 type VideoMenuAPI struct {
 	VideoMenuID uint64 `gorm:"column:video_menu_id;type:bigint unsigned;primaryKey" json:"video_menu_id"`
-	VideoAPIID  uint64 `gorm:"column:video_api_id;type:bigint unsigned;primaryKey;index:fk_sys_menu_api_sys_api,priority:1" json:"video_api_id"`
+	VideoAPIID  uint64 `gorm:"column:video_api_id;type:bigint unsigned;primaryKey;index:fk_video_menu_api_video_api,priority:1" json:"video_api_id"`
 }
 
 // TableName VideoMenuAPI's table name

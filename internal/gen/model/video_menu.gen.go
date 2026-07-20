@@ -25,9 +25,9 @@ type VideoMenu struct {
 	Permission *string        `gorm:"column:permission;type:varchar(128);comment:权限标识" json:"permission"`     // 权限标识
 	Visible    *int32         `gorm:"column:visible;type:tinyint;default:1;comment:1-显示 0-隐藏" json:"visible"` // 1-显示 0-隐藏
 	Status     *int32         `gorm:"column:status;type:tinyint;default:1;comment:1-正常 0-禁用" json:"status"`   // 1-正常 0-禁用
-	CreatedAt  *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_sys_menu_created_at,priority:1" json:"created_at"`
+	CreatedAt  *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_sys_menu_created_at,priority:1;index:idx_video_menu_created_at,priority:1" json:"created_at"`
 	UpdatedAt  *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt  gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_sys_menu_deleted_at,priority:1" json:"deleted_at"`
+	DeletedAt  gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_sys_menu_deleted_at,priority:1;index:idx_video_menu_deleted_at,priority:1" json:"deleted_at"`
 }
 
 // TableName VideoMenu's table name

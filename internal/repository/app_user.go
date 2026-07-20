@@ -5,57 +5,52 @@ import (
 
 	"ai-video/internal/model"
 
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 type AppUserRepo struct{}
 
-func NewAppUserRepo() *AppUserRepo {
-	return &AppUserRepo{}
-}
+func NewAppUserRepo() *AppUserRepo { return &AppUserRepo{} }
 
 type AppUserListFilter struct {
 	Keyword            string
 	DeviceCountry      string
-	IPCountry          string
 	ChannelID          string
 	AppVersion         string
-	LoginType          string
-	UserType           string
-	SubscriptionStatus string
-	Activated          *bool
+	AppName            string
+	LoginType          uint32
+	UserType           uint32
+	SubscriptionStatus uint32
+	Activated          *uint32
 	Registered         *bool
 	PaymentMet         *bool
+	Status             *int32
 }
 
 func (d *AppUserRepo) Create(ctx context.Context, user *model.VideoUser) error {
-	return qFrom(ctx).VideoUser.WithContext(ctx).UnderlyingDB().Create(user).Error
+	return dbFrom(ctx).Create(user).Error
 }
 
 func (d *AppUserRepo) GetByID(ctx context.Context, id uint64) (*model.VideoUser, error) {
 	var user model.VideoUser
-	q := qFrom(ctx).VideoUser
-	err := q.WithContext(ctx).Where(q.ID.Eq(id)).UnderlyingDB().First(&user).Error
-	if err != nil {
+	if err := dbFrom(ctx).First(&user, id).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
 }
 
-func (d *AppUserRepo) GetTokenVersion(ctx context.Context, id uint64) (int, error) {
+func (d *AppUserRepo) GetByIDForUpdate(ctx context.Context, id uint64) (*model.VideoUser, error) {
 	var user model.VideoUser
-	q := qFrom(ctx).VideoUser
-	err := q.WithContext(ctx).Select(q.TokenVersion).Where(q.ID.Eq(id), q.Status.Eq(1)).UnderlyingDB().First(&user).Error
-	if err != nil {
-		return 0, err
+	if err := dbFrom(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, id).Error; err != nil {
+		return nil, err
 	}
-	return user.TokenVersion, nil
+	return &user, nil
 }
 
-func (d *AppUserRepo) GetLatestByPhoneCode(ctx context.Context, phoneCode string, lock bool) (*model.VideoUser, error) {
+func (d *AppUserRepo) GetByIMEI(ctx context.Context, imei string, lock bool) (*model.VideoUser, error) {
 	var user model.VideoUser
-	q := qFrom(ctx).VideoUser
-	db := q.WithContext(ctx).Where(q.PhoneCode.Eq(phoneCode)).Order(q.RegistrationNo.Desc(), q.ID.Desc()).UnderlyingDB()
+	db := dbFrom(ctx).Where("imei = ?", imei)
 	if lock {
 		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
@@ -65,71 +60,105 @@ func (d *AppUserRepo) GetLatestByPhoneCode(ctx context.Context, phoneCode string
 	return &user, nil
 }
 
+func (d *AppUserRepo) GetByProviderSubject(ctx context.Context, provider, subject string, lock bool) (*model.VideoUser, error) {
+	column := "google_third_code"
+	if provider == model.IdentityProviderApple {
+		column = "appid_third_code"
+	}
+	var user model.VideoUser
+	db := dbFrom(ctx).Where(column+" = ?", subject)
+	if lock {
+		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	if err := db.First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (d *AppUserRepo) GetAuthState(ctx context.Context, id uint64) (string, int64, error) {
+	var user model.VideoUser
+	if err := dbFrom(ctx).Select("imei", "token_version").Where("id = ? AND status = 1", id).First(&user).Error; err != nil {
+		return "", 0, err
+	}
+	return user.IMEI, user.TokenVersion, nil
+}
+
 func (d *AppUserRepo) Update(ctx context.Context, id uint64, updates map[string]interface{}) error {
 	if len(updates) == 0 {
 		return nil
 	}
-	q := qFrom(ctx).VideoUser
-	return q.WithContext(ctx).Where(q.ID.Eq(id)).UnderlyingDB().
-		Model(&model.VideoUser{}).
-		Updates(updates).Error
+	return dbFrom(ctx).Model(&model.VideoUser{}).Where("id = ?", id).Updates(updates).Error
+}
+
+// IncrementTokenVersion atomically rotates the user's session version. API
+// middleware compares this value with the JWT claim, so older tokens stop
+// working immediately.
+func (d *AppUserRepo) IncrementTokenVersion(ctx context.Context, id uint64) error {
+	result := dbFrom(ctx).Model(&model.VideoUser{}).Where("id = ?", id).
+		UpdateColumn("token_version", gorm.Expr("token_version + 1"))
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (d *AppUserRepo) Delete(ctx context.Context, id uint64) error {
-	q := qFrom(ctx).VideoUser
-	return q.WithContext(ctx).Where(q.ID.Eq(id)).UnderlyingDB().Delete(&model.VideoUser{}).Error
+	return dbFrom(ctx).Delete(&model.VideoUser{}, id).Error
 }
 
 func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *AppUserListFilter) ([]model.VideoUser, int64, error) {
-	q := qFrom(ctx).VideoUser
-	dao := q.WithContext(ctx)
+	db := dbFrom(ctx).Model(&model.VideoUser{})
 	if filter != nil {
 		if filter.DeviceCountry != "" {
-			dao = dao.Where(q.DeviceCountry.Eq(filter.DeviceCountry))
-		}
-		if filter.IPCountry != "" {
-			dao = dao.Where(q.IPCountry.Eq(filter.IPCountry))
+			db = db.Where("device_country = ?", filter.DeviceCountry)
 		}
 		if filter.ChannelID != "" {
-			dao = dao.Where(q.ChannelID.Eq(filter.ChannelID))
+			db = db.Where("channel_id = ?", filter.ChannelID)
 		}
 		if filter.AppVersion != "" {
-			dao = dao.Where(q.AppVersion.Eq(filter.AppVersion))
+			db = db.Where("app_version = ?", filter.AppVersion)
 		}
-		if filter.LoginType != "" {
-			dao = dao.Where(q.LoginType.Eq(filter.LoginType))
+		if filter.AppName != "" {
+			db = db.Where("app_name = ?", filter.AppName)
 		}
-		if filter.UserType != "" {
-			dao = dao.Where(q.UserType.Eq(filter.UserType))
+		if filter.LoginType != 0 {
+			db = db.Where("login_type = ?", filter.LoginType)
 		}
-		if filter.SubscriptionStatus != "" {
-			dao = dao.Where(q.SubscriptionStatus.Eq(filter.SubscriptionStatus))
+		if filter.UserType != 0 {
+			db = db.Where("user_type = ?", filter.UserType)
+		}
+		if filter.SubscriptionStatus != 0 {
+			db = db.Where("subscription_status = ?", filter.SubscriptionStatus)
 		}
 		if filter.Activated != nil {
-			dao = dao.Where(q.Activated.Is(*filter.Activated))
+			db = db.Where("activated = ?", *filter.Activated)
 		}
 		if filter.Registered != nil {
-			dao = dao.Where(q.Registered.Is(*filter.Registered))
+			db = db.Where("registered = ?", *filter.Registered)
 		}
 		if filter.PaymentMet != nil {
-			dao = dao.Where(q.PaymentMet.Is(*filter.PaymentMet))
+			db = db.Where("payment_met = ?", *filter.PaymentMet)
 		}
-	}
-
-	db := dao.UnderlyingDB().Model(&model.VideoUser{})
-	if filter != nil && filter.Keyword != "" {
-		keyword := "%" + filter.Keyword + "%"
-		db = db.Where(
-			"username LIKE ? OR login_account LIKE ? OR phone_code LIKE ? OR email LIKE ?",
-			keyword, keyword, keyword, keyword,
-		)
+		if filter.Status != nil {
+			db = db.Where("status = ?", *filter.Status)
+		}
+		if filter.Keyword != "" {
+			keyword := "%" + filter.Keyword + "%"
+			db = db.Where(
+				"username LIKE ? OR login_account LIKE ? OR imei LIKE ? OR google_email LIKE ? OR appid_email LIKE ? OR google_third_code LIKE ? OR appid_third_code LIKE ? OR app_name LIKE ?",
+				keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword,
+			)
+		}
 	}
 
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-
 	var users []model.VideoUser
 	if err := db.Order("id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&users).Error; err != nil {
 		return nil, 0, err

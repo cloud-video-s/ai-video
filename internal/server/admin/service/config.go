@@ -3,12 +3,18 @@ package service
 import (
 	"ai-video/internal/model"
 	"ai-video/internal/pkg/setting"
+	"ai-video/internal/pkg/upload"
 	"ai-video/internal/repository"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/mail"
+	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 type ConfigService struct {
@@ -21,8 +27,10 @@ func NewConfigService() *ConfigService {
 
 var allowedConfigTypes = map[string]bool{
 	"string": true, "int": true, "float": true,
-	"bool": true, "text": true, "json": true, "select": true,
+	"bool": true, "text": true, "json": true, "select": true, "password": true, "color": true,
 }
+
+const sensitiveValueMask = "******"
 
 // validateConfigDef ensures the type is known and, for select, that options is a
 // non-empty JSON array — so bad definitions can't reach the DB/UI.
@@ -45,12 +53,101 @@ func validateConfigDef(typ, options string) error {
 	return nil
 }
 
+const (
+	minimumUploadFileSize = int64(1 << 20)
+	maximumUploadFileSize = int64(100 << 30)
+)
+
+var (
+	appPhonePattern = regexp.MustCompile(`^[0-9+() -]{5,32}$`)
+	appColorPattern = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
+)
+
+func validateConfigValue(key, value string) error {
+	value = strings.TrimSpace(value)
+	switch key {
+	case setting.APPNameKey:
+		if value == "" || utf8.RuneCountInString(value) > 128 {
+			return errors.New("应用名称不能为空且不能超过 128 个字符")
+		}
+	case setting.APPAboutKey:
+		if utf8.RuneCountInString(value) > 5000 {
+			return errors.New("关于我们不能超过 5000 个字符")
+		}
+	case setting.APPServicePhoneKey:
+		if value != "" && !appPhonePattern.MatchString(value) {
+			return errors.New("客服电话格式无效")
+		}
+	case setting.APPServiceEmailKey:
+		if value != "" {
+			address, err := mail.ParseAddress(value)
+			if err != nil || !strings.EqualFold(address.Address, value) {
+				return errors.New("客服邮箱格式无效")
+			}
+		}
+	case setting.APPWebsiteKey:
+		if value != "" {
+			parsed, err := url.ParseRequestURI(value)
+			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+				return errors.New("官方网站必须是有效的 http 或 https 地址")
+			}
+		}
+	case setting.APPThemeColorKey:
+		if !appColorPattern.MatchString(value) {
+			return errors.New("主题皮肤颜色必须使用 #RRGGBB 格式")
+		}
+	case setting.APPThemeModeKey:
+		if value != "system" && value != "light" && value != "dark" {
+			return errors.New("皮肤模式仅支持 system、light 或 dark")
+		}
+	case setting.APPLanguageKey:
+		if value != "zh-CN" && value != "en-US" && value != "ja-JP" && value != "ko-KR" {
+			return errors.New("默认语言不受支持")
+		}
+	case "upload.image_extensions", "upload.video_extensions":
+		kind := upload.MediaImage
+		label := "图片"
+		if key == "upload.video_extensions" {
+			kind, label = upload.MediaVideo, "视频"
+		}
+		if _, err := upload.PolicyForExtensions(kind, minimumUploadFileSize, splitConfigExtensions(value)); err != nil {
+			return fmt.Errorf("%s上传格式配置无效: %w", label, err)
+		}
+	case "upload.image_max_file_size", "upload.video_max_file_size":
+		size, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+		if err != nil || size < minimumUploadFileSize || size > maximumUploadFileSize {
+			return errors.New("单文件大小必须在 1 MB 到 102400 MB 之间")
+		}
+	}
+	return nil
+}
+
+func splitConfigExtensions(value string) []string {
+	return strings.FieldsFunc(value, func(r rune) bool {
+		switch r {
+		case ',', ';', ' ', '\t', '\r', '\n':
+			return true
+		default:
+			return false
+		}
+	})
+}
+
 func (s *ConfigService) List(ctx context.Context, group string) ([]model.VideoConfig, error) {
 	q := &repository.QueryOptions{Order: []string{"sort ASC", "id ASC"}}
 	if group != "" {
 		q.Where = map[string]interface{}{"group": group}
 	}
-	return s.repo.List(ctx, q)
+	list, err := s.repo.List(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		if list[i].Sensitive {
+			list[i].Value = sensitiveValueMask
+		}
+	}
+	return list, nil
 }
 
 type ConfigItem struct {
@@ -63,8 +160,21 @@ func (s *ConfigService) BatchUpdate(ctx context.Context, items []ConfigItem) err
 	if len(items) == 0 {
 		return nil
 	}
+	for i := range items {
+		items[i].Value = normalizeConfigValue(items[i].Key, items[i].Value)
+		if err := validateConfigValue(items[i].Key, items[i].Value); err != nil {
+			return err
+		}
+	}
 	if err := repository.Transaction(ctx, func(ctx context.Context) error {
 		for _, it := range items {
+			config, err := s.repo.GetByKey(ctx, it.Key)
+			if err != nil {
+				return err
+			}
+			if config.Sensitive && it.Value == sensitiveValueMask {
+				continue
+			}
 			if err := s.repo.UpdateValue(ctx, it.Key, it.Value); err != nil {
 				return err
 			}
@@ -89,11 +199,15 @@ type CreateConfigRequest struct {
 }
 
 func (s *ConfigService) Create(ctx context.Context, req *CreateConfigRequest) error {
+	req.Value = normalizeConfigValue(req.Key, req.Value)
 	typ := req.Type
 	if typ == "" {
 		typ = "string"
 	}
 	if err := validateConfigDef(typ, req.Options); err != nil {
+		return err
+	}
+	if err := validateConfigValue(req.Key, req.Value); err != nil {
 		return err
 	}
 	exists, err := s.repo.Exists(ctx, &repository.QueryOptions{
@@ -108,7 +222,7 @@ func (s *ConfigService) Create(ctx context.Context, req *CreateConfigRequest) er
 	c := &model.VideoConfig{
 		Group: req.Group, Key: req.Key, Name: req.Name, Value: req.Value,
 		Type: typ, Options: req.Options, IsPublic: req.IsPublic,
-		Remark: req.Remark, Sort: req.Sort, Editable: true, Builtin: false,
+		Sensitive: typ == "password", Remark: req.Remark, Sort: req.Sort, Editable: true, Builtin: false,
 	}
 	if err := s.repo.Create(ctx, c); err != nil {
 		return err
@@ -135,6 +249,7 @@ func (s *ConfigService) Update(ctx context.Context, id uint, req *UpdateConfigRe
 	if err != nil {
 		return notFoundOr(err, "配置不存在")
 	}
+	req.Value = normalizeConfigValue(c.Key, req.Value)
 	typ := req.Type
 	if typ == "" {
 		typ = "string"
@@ -142,9 +257,14 @@ func (s *ConfigService) Update(ctx context.Context, id uint, req *UpdateConfigRe
 	if err := validateConfigDef(typ, req.Options); err != nil {
 		return err
 	}
+	if err := validateConfigValue(c.Key, req.Value); err != nil {
+		return err
+	}
 	c.Group = req.Group
 	c.Name = req.Name
-	c.Value = req.Value
+	if !(c.Sensitive && req.Value == sensitiveValueMask) {
+		c.Value = req.Value
+	}
 	c.Type = typ
 	c.Options = req.Options
 	c.IsPublic = req.IsPublic
@@ -155,6 +275,13 @@ func (s *ConfigService) Update(ctx context.Context, id uint, req *UpdateConfigRe
 	}
 	_ = setting.RefreshKey(context.Background(), c.Key)
 	return nil
+}
+
+func normalizeConfigValue(key, value string) string {
+	if strings.HasPrefix(key, "app.") {
+		return strings.TrimSpace(value)
+	}
+	return value
 }
 
 func (s *ConfigService) Delete(ctx context.Context, id uint) error {

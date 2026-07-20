@@ -9,15 +9,17 @@ import (
 )
 
 type Config struct {
-	Timezone string         `mapstructure:"timezone"`
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	GeoIP    GeoIPConfig    `mapstructure:"geoip"`
-	Casbin   CasbinConfig   `mapstructure:"casbin"`
-	Log      LogConfig      `mapstructure:"log"`
-	Task     TaskConfig     `mapstructure:"task"`
+	Timezone       string               `mapstructure:"timezone"`
+	Server         ServerConfig         `mapstructure:"server"`
+	Database       DatabaseConfig       `mapstructure:"database"`
+	Redis          RedisConfig          `mapstructure:"redis"`
+	JWT            JWTConfig            `mapstructure:"jwt"`
+	GeoIP          GeoIPConfig          `mapstructure:"geoip"`
+	ThirdPartyAuth ThirdPartyAuthConfig `mapstructure:"third_party_auth"`
+	Upload         UploadConfig         `mapstructure:"upload"`
+	Casbin         CasbinConfig         `mapstructure:"casbin"`
+	Log            LogConfig            `mapstructure:"log"`
+	Task           TaskConfig           `mapstructure:"task"`
 }
 
 type TaskConfig struct {
@@ -87,6 +89,41 @@ type GeoIPConfig struct {
 	TimeoutMS     int    `mapstructure:"timeout_ms"`
 }
 
+type ThirdPartyAuthConfig struct {
+	HTTPTimeoutMS    int                `mapstructure:"http_timeout_ms"`
+	JWKSCacheSeconds int64              `mapstructure:"jwks_cache_seconds"`
+	Google           OIDCProviderConfig `mapstructure:"google"`
+	Apple            OIDCProviderConfig `mapstructure:"apple"`
+}
+
+type OIDCProviderConfig struct {
+	ClientIDs []string `mapstructure:"client_ids"`
+	Issuers   []string `mapstructure:"issuers"`
+	JWKSURL   string   `mapstructure:"jwks_url"`
+}
+
+type UploadConfig struct {
+	RootDir            string   `mapstructure:"root_dir"`
+	LocalRootDir       string   `mapstructure:"local_root_dir"`
+	LocalBaseURL       string   `mapstructure:"local_base_url"`
+	StorageProvider    string   `mapstructure:"storage_provider"`
+	OSSEndpoint        string   `mapstructure:"oss_endpoint"`
+	OSSAccessKeyID     string   `mapstructure:"oss_access_key_id"`
+	OSSAccessKeySecret string   `mapstructure:"oss_access_key_secret"`
+	OSSBucket          string   `mapstructure:"oss_bucket"`
+	OSSObjectPrefix    string   `mapstructure:"oss_object_prefix"`
+	OSSBaseURL         string   `mapstructure:"oss_base_url"`
+	ChunkSize          int64    `mapstructure:"chunk_size"`
+	MaxBatchFiles      int      `mapstructure:"max_batch_files"`
+	SessionTTLSeconds  int64    `mapstructure:"session_ttl_seconds"`
+	ImageMaxFileSize   int64    `mapstructure:"image_max_file_size"`
+	VideoMaxFileSize   int64    `mapstructure:"video_max_file_size"`
+	ImageExtensions    []string `mapstructure:"image_extensions"`
+	VideoExtensions    []string `mapstructure:"video_extensions"`
+	ImageMIMETypes     []string `mapstructure:"image_mime_types"`
+	VideoMIMETypes     []string `mapstructure:"video_mime_types"`
+}
+
 type CasbinConfig struct {
 	ModelPath string `mapstructure:"model_path"`
 }
@@ -142,6 +179,25 @@ func setConfigDefaults() {
 	viper.SetDefault("jwt.expire", 7200)
 	viper.SetDefault("geoip.country_field", "country_code")
 	viper.SetDefault("geoip.timeout_ms", 3000)
+	viper.SetDefault("third_party_auth.http_timeout_ms", 5000)
+	viper.SetDefault("third_party_auth.jwks_cache_seconds", int64(21600))
+	viper.SetDefault("third_party_auth.google.issuers", []string{"https://accounts.google.com", "accounts.google.com"})
+	viper.SetDefault("third_party_auth.google.jwks_url", "https://www.googleapis.com/oauth2/v3/certs")
+	viper.SetDefault("third_party_auth.apple.issuers", []string{"https://appleid.apple.com"})
+	viper.SetDefault("third_party_auth.apple.jwks_url", "https://appleid.apple.com/auth/keys")
+	viper.SetDefault("upload.root_dir", "storage/uploads/tmp")
+	viper.SetDefault("upload.local_root_dir", "storage/uploads/files")
+	viper.SetDefault("upload.local_base_url", "/uploads")
+	viper.SetDefault("upload.storage_provider", "local")
+	viper.SetDefault("upload.chunk_size", int64(5<<20))
+	viper.SetDefault("upload.max_batch_files", 20)
+	viper.SetDefault("upload.session_ttl_seconds", int64(86400))
+	viper.SetDefault("upload.image_max_file_size", int64(20<<20))
+	viper.SetDefault("upload.video_max_file_size", int64(2<<30))
+	viper.SetDefault("upload.image_extensions", []string{".jpg", ".jpeg", ".png", ".gif", ".webp"})
+	viper.SetDefault("upload.video_extensions", []string{".mp4", ".mov", ".webm", ".mkv"})
+	viper.SetDefault("upload.image_mime_types", []string{"image/jpeg", "image/png", "image/gif", "image/webp"})
+	viper.SetDefault("upload.video_mime_types", []string{"video/mp4", "video/quicktime", "video/webm", "video/x-matroska"})
 	viper.SetDefault("task.concurrency", 10)
 }
 
@@ -168,6 +224,10 @@ func validateConfig() error {
 	}
 	if Cfg.JWT.Secret == "" {
 		return fmt.Errorf("jwt.secret is required")
+	}
+	if Cfg.Upload.RootDir == "" || Cfg.Upload.LocalRootDir == "" || Cfg.Upload.ChunkSize <= 0 || Cfg.Upload.MaxBatchFiles <= 0 ||
+		Cfg.Upload.SessionTTLSeconds <= 0 || Cfg.Upload.ImageMaxFileSize <= 0 || Cfg.Upload.VideoMaxFileSize <= 0 {
+		return fmt.Errorf("upload config values must be positive")
 	}
 	if Cfg.Server.Mode == "release" {
 		if Cfg.JWT.Secret == defaultJWTSecret {

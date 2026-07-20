@@ -27,10 +27,45 @@
             <el-table-column label="值" min-width="360">
               <template #default="{ row }">
                 <!-- 按类型给合理宽高：数字短、文本中等、select 中等，text/json 宽且高 -->
-                <el-switch v-if="row.type === 'bool'" v-model="row.value" active-value="true" inactive-value="false" />
+                <el-checkbox-group
+                  v-if="isUploadExtensionConfig(row.key)"
+                  :model-value="extensionValues(row.value)"
+                  :disabled="!canEdit"
+                  class="extension-options"
+                  @change="setExtensionValue(row, $event)"
+                >
+                  <el-checkbox-button
+                    v-for="opt in parseOptions(row.options)"
+                    :key="opt.value"
+                    :value="opt.value"
+                  >{{ opt.label }}</el-checkbox-button>
+                </el-checkbox-group>
+                <div v-else-if="isUploadSizeConfig(row.key)" class="file-size-editor">
+                  <el-input-number
+                    :model-value="bytesToMB(row.value)"
+                    :min="1"
+                    :max="102400"
+                    :step="1"
+                    :disabled="!canEdit"
+                    controls-position="right"
+                    @update:model-value="setFileSizeMB(row, $event)"
+                  />
+                  <span>MB / 单文件</span>
+                </div>
+                <LogoImageUploader
+                  v-else-if="row.key === 'site.logo'"
+                  v-model="row.value"
+                  :disabled="!canEdit"
+                  :upload-disabled="!canUpload"
+                />
+                <el-switch v-else-if="row.type === 'bool'" v-model="row.value" active-value="true" inactive-value="false" />
                 <el-select v-else-if="row.type === 'select'" v-model="row.value" style="width: 320px" placeholder="请选择">
                   <el-option v-for="opt in parseOptions(row.options)" :key="opt.value" :label="opt.label" :value="opt.value" />
                 </el-select>
+                <div v-else-if="row.type === 'color'" class="color-editor">
+                  <el-color-picker v-model="row.value" :disabled="!canEdit" />
+                  <el-input v-model="row.value" :disabled="!canEdit" maxlength="7" style="width: 130px" placeholder="#409EFF" />
+                </div>
                 <el-input
                   v-else-if="row.type === 'json'"
                   v-model="row.value"
@@ -50,6 +85,14 @@
                   v-model="row.value"
                   style="width: 180px"
                   placeholder="数字"
+                />
+                <el-input
+                  v-else-if="row.type === 'password' || row.sensitive"
+                  v-model="row.value"
+                  type="password"
+                  show-password
+                  autocomplete="new-password"
+                  style="width: 360px"
                 />
                 <el-input v-else v-model="row.value" style="width: 360px" />
               </template>
@@ -100,12 +143,52 @@
         </el-form-item>
 
         <el-form-item label="值">
-          <el-switch v-if="form.type === 'bool'" v-model="form.value" active-value="true" inactive-value="false" />
+          <el-checkbox-group
+            v-if="isUploadExtensionConfig(form.key)"
+            :model-value="extensionValues(form.value)"
+            class="extension-options"
+            @change="setFormExtensionValue"
+          >
+            <el-checkbox-button
+              v-for="opt in optionRows"
+              :key="opt.value"
+              :value="opt.value"
+            >{{ opt.label || opt.value }}</el-checkbox-button>
+          </el-checkbox-group>
+          <div v-else-if="isUploadSizeConfig(form.key)" class="file-size-editor">
+            <el-input-number
+              :model-value="bytesToMB(form.value)"
+              :min="1"
+              :max="102400"
+              :step="1"
+              controls-position="right"
+              @update:model-value="setFormFileSizeMB"
+            />
+            <span>MB / 单文件</span>
+          </div>
+          <LogoImageUploader
+            v-else-if="form.key === 'site.logo'"
+            v-model="form.value"
+            :disabled="!canEdit"
+            :upload-disabled="!canUpload"
+          />
+          <el-switch v-else-if="form.type === 'bool'" v-model="form.value" active-value="true" inactive-value="false" />
           <el-select v-else-if="form.type === 'select'" v-model="form.value" style="width: 100%" placeholder="默认值（从选项中选）">
             <el-option v-for="(o, i) in validOptionRows" :key="i" :label="o.label || o.value" :value="o.value" />
           </el-select>
+          <div v-else-if="form.type === 'color'" class="color-editor">
+            <el-color-picker v-model="form.value" />
+            <el-input v-model="form.value" maxlength="7" placeholder="#409EFF" />
+          </div>
           <el-input v-else-if="form.type === 'text' || form.type === 'json'" v-model="form.value" type="textarea" :rows="3" />
-          <el-input v-else v-model="form.value" :placeholder="form.type === 'int' || form.type === 'float' ? '数字' : ''" />
+          <el-input
+            v-else
+            v-model="form.value"
+            :type="form.type === 'password' ? 'password' : 'text'"
+            :show-password="form.type === 'password'"
+            autocomplete="new-password"
+            :placeholder="form.type === 'int' || form.type === 'float' ? '数字' : ''"
+          />
         </el-form-item>
 
         <el-form-item label="公开读"><el-switch v-model="form.is_public" /></el-form-item>
@@ -125,11 +208,13 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, type FormInstance } from 'element-plus'
 import { getConfigList, batchUpdateConfig, createConfig, updateConfig, deleteConfig, refreshConfig } from '@/api/config'
 import { useUserStore } from '@/store/user'
+import LogoImageUploader from '@/components/LogoImageUploader.vue'
 
 const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPermission('system:config:edit'))
 const canAdd = computed(() => userStore.hasPermission('system:config:add'))
 const canDelete = computed(() => userStore.hasPermission('system:config:delete'))
+const canUpload = computed(() => userStore.hasPermission('system:upload'))
 
 const loading = ref(false)
 const saving = ref(false)
@@ -138,7 +223,10 @@ const submitLoading = ref(false)
 const configs = ref<any[]>([])
 const activeGroup = ref('')
 
-const types = ['string', 'int', 'float', 'bool', 'text', 'json', 'select']
+const types = ['string', 'int', 'float', 'bool', 'text', 'json', 'select', 'password', 'color']
+const bytesPerMB = 1024 * 1024
+const uploadExtensionKeys = new Set(['upload.image_extensions', 'upload.video_extensions'])
+const uploadSizeKeys = new Set(['upload.image_max_file_size', 'upload.video_max_file_size'])
 
 const grouped = computed<Record<string, any[]>>(() => {
   const m: Record<string, any[]> = {}
@@ -165,6 +253,7 @@ async function fetchData() {
 }
 
 async function handleSave() {
+  if (!validateUploadConfigs(configs.value)) return
   saving.value = true
   try {
     const items = configs.value.map((c) => ({ key: c.key, value: String(c.value ?? '') }))
@@ -207,6 +296,62 @@ function parseOptions(options: string): { label: string; value: string }[] {
   } catch {
     return []
   }
+}
+
+function isUploadExtensionConfig(key: string) {
+  return uploadExtensionKeys.has(key)
+}
+
+function isUploadSizeConfig(key: string) {
+  return uploadSizeKeys.has(key)
+}
+
+function extensionValues(value: string) {
+  return String(value || '').split(',').map((item) => item.trim().toLowerCase()).filter(Boolean)
+}
+
+function normalizeExtensions(values: unknown) {
+  return Array.isArray(values) ? [...new Set(values.map((value) => String(value).trim().toLowerCase()).filter(Boolean))] : []
+}
+
+function setExtensionValue(target: { value: string }, values: unknown) {
+  target.value = normalizeExtensions(values).join(',')
+}
+
+function setFormExtensionValue(values: unknown) {
+  form.value = normalizeExtensions(values).join(',')
+}
+
+function bytesToMB(value: unknown) {
+  const bytes = Number(value)
+  if (!Number.isFinite(bytes) || bytes <= 0) return 1
+  return Math.max(1, Math.round(bytes / bytesPerMB))
+}
+
+function setFileSizeMB(target: { value: string }, value: number | undefined) {
+  target.value = String(Math.max(1, Math.round(Number(value) || 1)) * bytesPerMB)
+}
+
+function setFormFileSizeMB(value: number | undefined) {
+  setFileSizeMB(form, value)
+}
+
+function validateUploadConfigs(rows: { key: string; value: string }[]) {
+  for (const row of rows) {
+    if (isUploadExtensionConfig(row.key) && extensionValues(row.value).length === 0) {
+      ElMessage.warning(row.key.includes('image') ? '请至少选择一种图片格式' : '请至少选择一种视频格式')
+      return false
+    }
+    if (isUploadSizeConfig(row.key)) {
+		  const bytes = Number(row.value)
+		  const sizeMB = bytes / bytesPerMB
+		  if (!Number.isFinite(bytes) || !Number.isInteger(bytes) || sizeMB < 1 || sizeMB > 102400) {
+        ElMessage.warning('单文件大小必须在 1 MB 到 102400 MB 之间')
+        return false
+      }
+    }
+  }
+  return true
 }
 
 // ── 新增 / 编辑弹窗 ──
@@ -252,6 +397,8 @@ function openEdit(row: any) {
 async function handleSubmit() {
   await formRef.value?.validate()
 
+  if (!validateUploadConfigs([{ key: form.key, value: form.value }])) return
+
   let options = ''
   if (form.type === 'select') {
     const rows = optionRows.value.filter((o) => o.value !== '')
@@ -280,3 +427,11 @@ async function handleSubmit() {
 
 onMounted(fetchData)
 </script>
+
+<style scoped>
+.extension-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.extension-options :deep(.el-checkbox-button__inner) { border-left: 1px solid var(--el-border-color); border-radius: 4px; box-shadow: none; }
+.file-size-editor { display: flex; align-items: center; gap: 10px; color: #606266; }
+.file-size-editor :deep(.el-input-number) { width: 180px; }
+.color-editor { display: flex; align-items: center; gap: 10px; }
+</style>

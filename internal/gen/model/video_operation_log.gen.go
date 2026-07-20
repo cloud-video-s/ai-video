@@ -15,28 +15,28 @@ const TableNameVideoOperationLog = "video_operation_log"
 // VideoOperationLog mapped from table <video_operation_log>
 type VideoOperationLog struct {
 	ID         uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	TraceID    *string        `gorm:"column:trace_id;type:varchar(32);comment:链路ID，关联应用日志" json:"trace_id"`                                                     // 链路ID，关联应用日志
-	UserID     *uint64        `gorm:"column:user_id;type:bigint unsigned;index:idx_sys_operation_log_user_id,priority:1;comment:操作人ID" json:"user_id"`          // 操作人ID
-	Username   *string        `gorm:"column:username;type:varchar(64);comment:操作人用户名(冗余存储)" json:"username"`                                                    // 操作人用户名(冗余存储)
-	RoleCodes  *string        `gorm:"column:role_codes;type:varchar(255);comment:操作人角色快照(逗号分隔)" json:"role_codes"`                                              // 操作人角色快照(逗号分隔)
-	Module     *string        `gorm:"column:module;type:varchar(64);index:idx_sys_operation_log_module,priority:1;comment:所属模块(取自sys_api.group)" json:"module"` // 所属模块(取自sys_api.group)
-	Action     *string        `gorm:"column:action;type:varchar(128);comment:操作描述(取自sys_api.description)" json:"action"`                                        // 操作描述(取自sys_api.description)
-	Method     *string        `gorm:"column:method;type:varchar(16);comment:HTTP方法" json:"method"`                                                              // HTTP方法
-	Route      *string        `gorm:"column:route;type:varchar(255);comment:路由模板" json:"route"`                                                                 // 路由模板
-	Path       *string        `gorm:"column:path;type:varchar(255);comment:实际请求路径" json:"path"`                                                                 // 实际请求路径
-	TargetID   *string        `gorm:"column:target_id;type:varchar(64);comment:目标资源ID" json:"target_id"`                                                        // 目标资源ID
-	ReqParams  *string        `gorm:"column:req_params;type:text;comment:请求参数(脱敏+截断)" json:"req_params"`                                                        // 请求参数(脱敏+截断)
-	RespParams *string        `gorm:"column:resp_params;type:text;comment:响应参数(脱敏+截断)" json:"resp_params"`                                                      // 响应参数(脱敏+截断)
-	Status     *int64         `gorm:"column:status;type:bigint;comment:HTTP状态码" json:"status"`                                                                  // HTTP状态码
-	BizCode    *int64         `gorm:"column:biz_code;type:bigint;comment:业务返回码" json:"biz_code"`                                                                // 业务返回码
-	Success    *bool          `gorm:"column:success;type:tinyint(1);index:idx_sys_operation_log_success,priority:1;comment:是否成功" json:"success"`                // 是否成功
-	ErrorMsg   *string        `gorm:"column:error_msg;type:text;comment:失败信息" json:"error_msg"`                                                                 // 失败信息
-	ClientIP   *string        `gorm:"column:client_ip;type:varchar(64);index:idx_sys_operation_log_client_ip,priority:1;comment:客户端IP" json:"client_ip"`        // 客户端IP
-	UserAgent  *string        `gorm:"column:user_agent;type:varchar(255);comment:User-Agent" json:"user_agent"`                                                 // User-Agent
-	LatencyMs  *int64         `gorm:"column:latency_ms;type:bigint;comment:耗时(毫秒)" json:"latency_ms"`                                                           // 耗时(毫秒)
-	CreatedAt  *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_sys_operation_log_created_at,priority:1" json:"created_at"`
+	TraceID    *string        `gorm:"column:trace_id;type:varchar(32);comment:链路ID，关联应用日志" json:"trace_id"`                                                                                                     // 链路ID，关联应用日志
+	UserID     *uint64        `gorm:"column:user_id;type:bigint unsigned;index:idx_sys_operation_log_user_id,priority:1;index:idx_video_operation_log_user_id,priority:1;comment:操作人ID" json:"user_id"`         // 操作人ID
+	Username   *string        `gorm:"column:username;type:varchar(64);comment:操作人用户名(冗余存储)" json:"username"`                                                                                                    // 操作人用户名(冗余存储)
+	RoleCodes  *string        `gorm:"column:role_codes;type:varchar(255);comment:操作人角色快照(逗号分隔)" json:"role_codes"`                                                                                              // 操作人角色快照(逗号分隔)
+	Module     *string        `gorm:"column:module;type:varchar(64);index:idx_sys_operation_log_module,priority:1;index:idx_video_operation_log_module,priority:1;comment:所属模块(取自sys_api.group)" json:"module"` // 所属模块(取自sys_api.group)
+	Action     *string        `gorm:"column:action;type:varchar(128);comment:操作描述(取自sys_api.description)" json:"action"`                                                                                        // 操作描述(取自sys_api.description)
+	Method     *string        `gorm:"column:method;type:varchar(16);comment:HTTP方法" json:"method"`                                                                                                              // HTTP方法
+	Route      *string        `gorm:"column:route;type:varchar(255);comment:路由模板" json:"route"`                                                                                                                 // 路由模板
+	Path       *string        `gorm:"column:path;type:varchar(255);comment:实际请求路径" json:"path"`                                                                                                                 // 实际请求路径
+	TargetID   *string        `gorm:"column:target_id;type:varchar(64);comment:目标资源ID" json:"target_id"`                                                                                                        // 目标资源ID
+	ReqParams  *string        `gorm:"column:req_params;type:text;comment:请求参数(脱敏+截断)" json:"req_params"`                                                                                                        // 请求参数(脱敏+截断)
+	RespParams *string        `gorm:"column:resp_params;type:text;comment:响应参数(脱敏+截断)" json:"resp_params"`                                                                                                      // 响应参数(脱敏+截断)
+	Status     *int64         `gorm:"column:status;type:bigint;comment:HTTP状态码" json:"status"`                                                                                                                  // HTTP状态码
+	BizCode    *int64         `gorm:"column:biz_code;type:bigint;comment:业务返回码" json:"biz_code"`                                                                                                                // 业务返回码
+	Success    *bool          `gorm:"column:success;type:tinyint(1);index:idx_sys_operation_log_success,priority:1;index:idx_video_operation_log_success,priority:1;comment:是否成功" json:"success"`               // 是否成功
+	ErrorMsg   *string        `gorm:"column:error_msg;type:text;comment:失败信息" json:"error_msg"`                                                                                                                 // 失败信息
+	ClientIP   *string        `gorm:"column:client_ip;type:varchar(64);index:idx_sys_operation_log_client_ip,priority:1;index:idx_video_operation_log_client_ip,priority:1;comment:客户端IP" json:"client_ip"`     // 客户端IP
+	UserAgent  *string        `gorm:"column:user_agent;type:varchar(255);comment:User-Agent" json:"user_agent"`                                                                                                 // User-Agent
+	LatencyMs  *int64         `gorm:"column:latency_ms;type:bigint;comment:耗时(毫秒)" json:"latency_ms"`                                                                                                           // 耗时(毫秒)
+	CreatedAt  *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_sys_operation_log_created_at,priority:1;index:idx_video_operation_log_created_at,priority:1" json:"created_at"`
 	UpdatedAt  *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt  gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_sys_operation_log_deleted_at,priority:1" json:"deleted_at"`
+	DeletedAt  gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_sys_operation_log_deleted_at,priority:1;index:idx_video_operation_log_deleted_at,priority:1" json:"deleted_at"`
 }
 
 // TableName VideoOperationLog's table name

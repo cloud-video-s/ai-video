@@ -28,52 +28,53 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	tableName := _videoUser.videoUserDo.TableName()
 	_videoUser.ALL = field.NewAsterisk(tableName)
 	_videoUser.ID = field.NewUint64(tableName, "id")
+	_videoUser.Imei = field.NewString(tableName, "imei")
 	_videoUser.Username = field.NewString(tableName, "username")
 	_videoUser.DeviceCountry = field.NewString(tableName, "device_country")
-	_videoUser.IPCountry = field.NewString(tableName, "ip_country")
 	_videoUser.ChannelID = field.NewString(tableName, "channel_id")
 	_videoUser.AppVersion = field.NewString(tableName, "app_version")
 	_videoUser.FirstOpenedAt = field.NewTime(tableName, "first_opened_at")
 	_videoUser.LastOpenedAt = field.NewTime(tableName, "last_opened_at")
-	_videoUser.LoginType = field.NewString(tableName, "login_type")
-	_videoUser.PhoneCode = field.NewString(tableName, "phone_code")
-	_videoUser.UserType = field.NewString(tableName, "user_type")
+	_videoUser.LoginType = field.NewUint32(tableName, "login_type")
+	_videoUser.UserType = field.NewUint32(tableName, "user_type")
 	_videoUser.ActiveDays = field.NewUint32(tableName, "active_days")
 	_videoUser.AvgDailyUsageSeconds = field.NewUint64(tableName, "avg_daily_usage_seconds")
 	_videoUser.VipExpiresAt = field.NewTime(tableName, "vip_expires_at")
-	_videoUser.PointsBalance = field.NewInt64(tableName, "points_balance")
-	_videoUser.SubscriptionStatus = field.NewString(tableName, "subscription_status")
+	_videoUser.PointsBalance = field.NewUint64(tableName, "points_balance")
+	_videoUser.SubscriptionStatus = field.NewUint32(tableName, "subscription_status")
 	_videoUser.FirstOrderCreatedAt = field.NewTime(tableName, "first_order_created_at")
 	_videoUser.FirstPaidAt = field.NewTime(tableName, "first_paid_at")
 	_videoUser.OrderCount = field.NewUint64(tableName, "order_count")
 	_videoUser.PaymentCount = field.NewUint64(tableName, "payment_count")
 	_videoUser.SubscriptionPaymentCount = field.NewUint64(tableName, "subscription_payment_count")
 	_videoUser.OneTimePaymentCount = field.NewUint64(tableName, "one_time_payment_count")
-	_videoUser.OrderAmountCents = field.NewInt64(tableName, "order_amount_cents")
-	_videoUser.ActualAmountCents = field.NewInt64(tableName, "actual_amount_cents")
+	_videoUser.OrderAmountMoney = field.NewFloat64(tableName, "order_amount_money")
+	_videoUser.ActualAmountMoney = field.NewFloat64(tableName, "actual_amount_money")
 	_videoUser.LastPaidAt = field.NewTime(tableName, "last_paid_at")
-	_videoUser.RefundAmountCents = field.NewInt64(tableName, "refund_amount_cents")
-	_videoUser.PointsCost = field.NewUint64(tableName, "points_cost")
-	_videoUser.AiVersion = field.NewString(tableName, "ai_version")
-	_videoUser.Activated = field.NewBool(tableName, "activated")
-	_videoUser.KeyBehaviorMet = field.NewBool(tableName, "key_behavior_met")
+	_videoUser.RefundAmountMoney = field.NewFloat64(tableName, "refund_amount_money")
+	_videoUser.PointsMoney = field.NewFloat64(tableName, "points_money")
+	_videoUser.AiCotsMoney = field.NewFloat64(tableName, "ai_cots_money")
+	_videoUser.Activated = field.NewUint32(tableName, "activated")
+	_videoUser.KeyBehaviorMet = field.NewUint32(tableName, "key_behavior_met")
 	_videoUser.PaymentMet = field.NewBool(tableName, "payment_met")
 	_videoUser.FirstPaymentMet = field.NewBool(tableName, "first_payment_met")
 	_videoUser.Registered = field.NewBool(tableName, "registered")
 	_videoUser.AttributionClickedAt = field.NewTime(tableName, "attribution_clicked_at")
 	_videoUser.PhoneModel = field.NewString(tableName, "phone_model")
-	_videoUser.CreatedAt = field.NewTime(tableName, "created_at")
-	_videoUser.UpdatedAt = field.NewTime(tableName, "updated_at")
-	_videoUser.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoUser.RegistrationNo = field.NewUint32(tableName, "registration_no")
 	_videoUser.ReRegisteredFromID = field.NewUint64(tableName, "re_registered_from_id")
-	_videoUser.Email = field.NewString(tableName, "email")
-	_videoUser.EmailVerified = field.NewBool(tableName, "email_verified")
+	_videoUser.AppName = field.NewString(tableName, "app_name")
 	_videoUser.TokenVersion = field.NewInt64(tableName, "token_version")
 	_videoUser.Status = field.NewInt32(tableName, "status")
 	_videoUser.LastLoginAt = field.NewTime(tableName, "last_login_at")
 	_videoUser.LastLoginIP = field.NewString(tableName, "last_login_ip")
 	_videoUser.LoginAccount = field.NewString(tableName, "login_account")
+	_videoUser.AppidEmail = field.NewString(tableName, "appid_email")
+	_videoUser.AppidThirdCode = field.NewString(tableName, "appid_third_code")
+	_videoUser.GoogleEmail = field.NewString(tableName, "google_email")
+	_videoUser.GoogleThirdCode = field.NewString(tableName, "google_third_code")
+	_videoUser.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoUser.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoUser.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoUser.fillFieldMap()
 
@@ -85,52 +86,53 @@ type videoUser struct {
 
 	ALL                      field.Asterisk
 	ID                       field.Uint64
-	Username                 field.String
-	DeviceCountry            field.String
-	IPCountry                field.String
-	ChannelID                field.String
-	AppVersion               field.String
-	FirstOpenedAt            field.Time
-	LastOpenedAt             field.Time
-	LoginType                field.String
-	PhoneCode                field.String
-	UserType                 field.String
-	ActiveDays               field.Uint32
-	AvgDailyUsageSeconds     field.Uint64
-	VipExpiresAt             field.Time
-	PointsBalance            field.Int64
-	SubscriptionStatus       field.String
-	FirstOrderCreatedAt      field.Time
-	FirstPaidAt              field.Time
-	OrderCount               field.Uint64
-	PaymentCount             field.Uint64
-	SubscriptionPaymentCount field.Uint64
-	OneTimePaymentCount      field.Uint64
-	OrderAmountCents         field.Int64
-	ActualAmountCents        field.Int64
-	LastPaidAt               field.Time
-	RefundAmountCents        field.Int64
-	PointsCost               field.Uint64
-	AiVersion                field.String
-	Activated                field.Bool
-	KeyBehaviorMet           field.Bool
-	PaymentMet               field.Bool
-	FirstPaymentMet          field.Bool
-	Registered               field.Bool
-	AttributionClickedAt     field.Time
-	PhoneModel               field.String
+	Imei                     field.String  // 设备编号
+	Username                 field.String  // 昵称
+	DeviceCountry            field.String  // 国家
+	ChannelID                field.String  // 渠道id
+	AppVersion               field.String  // 激活版本号
+	FirstOpenedAt            field.Time    // 首次打开时间
+	LastOpenedAt             field.Time    // 上次打开时间
+	LoginType                field.Uint32  // 登录方式 1=未登录 2=google 3=appid
+	UserType                 field.Uint32  // 用户类型 1=免费 2=付费
+	ActiveDays               field.Uint32  // 活跃天数
+	AvgDailyUsageSeconds     field.Uint64  // 平均日使用时长
+	VipExpiresAt             field.Time    // vip 到期时间
+	PointsBalance            field.Uint64  // 积分
+	SubscriptionStatus       field.Uint32  // 订阅状态 1未订阅 2订阅中 3=已取消
+	FirstOrderCreatedAt      field.Time    // 首单创建时间
+	FirstPaidAt              field.Time    // 首单付费时间
+	OrderCount               field.Uint64  // 订单创建次数
+	PaymentCount             field.Uint64  // 付费次数（订阅和积分订单累计）
+	SubscriptionPaymentCount field.Uint64  // 完成付费次数
+	OneTimePaymentCount      field.Uint64  // 付费金额
+	OrderAmountMoney         field.Float64 // 累计付费金额
+	ActualAmountMoney        field.Float64 // 累计税后金额
+	LastPaidAt               field.Time    // 最后付费时间
+	RefundAmountMoney        field.Float64 // 累计退款金额
+	PointsMoney              field.Float64 // 累计积分成本
+	AiCotsMoney              field.Float64 // 累计ai成本
+	Activated                field.Uint32  // 是否激活达标 1 是 0否
+	KeyBehaviorMet           field.Uint32  // 关键行为是否达标 1 是 0否
+	PaymentMet               field.Bool    // 付费是否达标 1 是 0否
+	FirstPaymentMet          field.Bool    // 首次付费是否达标 1 是 0否
+	Registered               field.Bool    // 注册达标 1 是 0否
+	AttributionClickedAt     field.Time    // 归因点击时间
+	PhoneModel               field.String  // 手机品牌、型号
+	ReRegisteredFromID       field.Uint64  // 原用户ID
+	AppName                  field.String  // APP应用名称
+	TokenVersion             field.Int64   // token版本 防止多端账号登录
+	Status                   field.Int32   // 状态 1正常 0禁用
+	LastLoginAt              field.Time    // 上次登录时间
+	LastLoginIP              field.String  // 上次登录IP
+	LoginAccount             field.String
+	AppidEmail               field.String // 苹果邮箱
+	AppidThirdCode           field.String // 苹果三方唯一码
+	GoogleEmail              field.String // 谷歌邮箱
+	GoogleThirdCode          field.String // 谷歌唯一编码
 	CreatedAt                field.Time
 	UpdatedAt                field.Time
 	DeletedAt                field.Field
-	RegistrationNo           field.Uint32
-	ReRegisteredFromID       field.Uint64
-	Email                    field.String
-	EmailVerified            field.Bool
-	TokenVersion             field.Int64
-	Status                   field.Int32
-	LastLoginAt              field.Time
-	LastLoginIP              field.String
-	LoginAccount             field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -148,52 +150,53 @@ func (v videoUser) As(alias string) *videoUser {
 func (v *videoUser) updateTableName(table string) *videoUser {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
+	v.Imei = field.NewString(table, "imei")
 	v.Username = field.NewString(table, "username")
 	v.DeviceCountry = field.NewString(table, "device_country")
-	v.IPCountry = field.NewString(table, "ip_country")
 	v.ChannelID = field.NewString(table, "channel_id")
 	v.AppVersion = field.NewString(table, "app_version")
 	v.FirstOpenedAt = field.NewTime(table, "first_opened_at")
 	v.LastOpenedAt = field.NewTime(table, "last_opened_at")
-	v.LoginType = field.NewString(table, "login_type")
-	v.PhoneCode = field.NewString(table, "phone_code")
-	v.UserType = field.NewString(table, "user_type")
+	v.LoginType = field.NewUint32(table, "login_type")
+	v.UserType = field.NewUint32(table, "user_type")
 	v.ActiveDays = field.NewUint32(table, "active_days")
 	v.AvgDailyUsageSeconds = field.NewUint64(table, "avg_daily_usage_seconds")
 	v.VipExpiresAt = field.NewTime(table, "vip_expires_at")
-	v.PointsBalance = field.NewInt64(table, "points_balance")
-	v.SubscriptionStatus = field.NewString(table, "subscription_status")
+	v.PointsBalance = field.NewUint64(table, "points_balance")
+	v.SubscriptionStatus = field.NewUint32(table, "subscription_status")
 	v.FirstOrderCreatedAt = field.NewTime(table, "first_order_created_at")
 	v.FirstPaidAt = field.NewTime(table, "first_paid_at")
 	v.OrderCount = field.NewUint64(table, "order_count")
 	v.PaymentCount = field.NewUint64(table, "payment_count")
 	v.SubscriptionPaymentCount = field.NewUint64(table, "subscription_payment_count")
 	v.OneTimePaymentCount = field.NewUint64(table, "one_time_payment_count")
-	v.OrderAmountCents = field.NewInt64(table, "order_amount_cents")
-	v.ActualAmountCents = field.NewInt64(table, "actual_amount_cents")
+	v.OrderAmountMoney = field.NewFloat64(table, "order_amount_money")
+	v.ActualAmountMoney = field.NewFloat64(table, "actual_amount_money")
 	v.LastPaidAt = field.NewTime(table, "last_paid_at")
-	v.RefundAmountCents = field.NewInt64(table, "refund_amount_cents")
-	v.PointsCost = field.NewUint64(table, "points_cost")
-	v.AiVersion = field.NewString(table, "ai_version")
-	v.Activated = field.NewBool(table, "activated")
-	v.KeyBehaviorMet = field.NewBool(table, "key_behavior_met")
+	v.RefundAmountMoney = field.NewFloat64(table, "refund_amount_money")
+	v.PointsMoney = field.NewFloat64(table, "points_money")
+	v.AiCotsMoney = field.NewFloat64(table, "ai_cots_money")
+	v.Activated = field.NewUint32(table, "activated")
+	v.KeyBehaviorMet = field.NewUint32(table, "key_behavior_met")
 	v.PaymentMet = field.NewBool(table, "payment_met")
 	v.FirstPaymentMet = field.NewBool(table, "first_payment_met")
 	v.Registered = field.NewBool(table, "registered")
 	v.AttributionClickedAt = field.NewTime(table, "attribution_clicked_at")
 	v.PhoneModel = field.NewString(table, "phone_model")
-	v.CreatedAt = field.NewTime(table, "created_at")
-	v.UpdatedAt = field.NewTime(table, "updated_at")
-	v.DeletedAt = field.NewField(table, "deleted_at")
-	v.RegistrationNo = field.NewUint32(table, "registration_no")
 	v.ReRegisteredFromID = field.NewUint64(table, "re_registered_from_id")
-	v.Email = field.NewString(table, "email")
-	v.EmailVerified = field.NewBool(table, "email_verified")
+	v.AppName = field.NewString(table, "app_name")
 	v.TokenVersion = field.NewInt64(table, "token_version")
 	v.Status = field.NewInt32(table, "status")
 	v.LastLoginAt = field.NewTime(table, "last_login_at")
 	v.LastLoginIP = field.NewString(table, "last_login_ip")
 	v.LoginAccount = field.NewString(table, "login_account")
+	v.AppidEmail = field.NewString(table, "appid_email")
+	v.AppidThirdCode = field.NewString(table, "appid_third_code")
+	v.GoogleEmail = field.NewString(table, "google_email")
+	v.GoogleThirdCode = field.NewString(table, "google_third_code")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -220,17 +223,16 @@ func (v *videoUser) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoUser) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 47)
+	v.fieldMap = make(map[string]field.Expr, 48)
 	v.fieldMap["id"] = v.ID
+	v.fieldMap["imei"] = v.Imei
 	v.fieldMap["username"] = v.Username
 	v.fieldMap["device_country"] = v.DeviceCountry
-	v.fieldMap["ip_country"] = v.IPCountry
 	v.fieldMap["channel_id"] = v.ChannelID
 	v.fieldMap["app_version"] = v.AppVersion
 	v.fieldMap["first_opened_at"] = v.FirstOpenedAt
 	v.fieldMap["last_opened_at"] = v.LastOpenedAt
 	v.fieldMap["login_type"] = v.LoginType
-	v.fieldMap["phone_code"] = v.PhoneCode
 	v.fieldMap["user_type"] = v.UserType
 	v.fieldMap["active_days"] = v.ActiveDays
 	v.fieldMap["avg_daily_usage_seconds"] = v.AvgDailyUsageSeconds
@@ -243,12 +245,12 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["payment_count"] = v.PaymentCount
 	v.fieldMap["subscription_payment_count"] = v.SubscriptionPaymentCount
 	v.fieldMap["one_time_payment_count"] = v.OneTimePaymentCount
-	v.fieldMap["order_amount_cents"] = v.OrderAmountCents
-	v.fieldMap["actual_amount_cents"] = v.ActualAmountCents
+	v.fieldMap["order_amount_money"] = v.OrderAmountMoney
+	v.fieldMap["actual_amount_money"] = v.ActualAmountMoney
 	v.fieldMap["last_paid_at"] = v.LastPaidAt
-	v.fieldMap["refund_amount_cents"] = v.RefundAmountCents
-	v.fieldMap["points_cost"] = v.PointsCost
-	v.fieldMap["ai_version"] = v.AiVersion
+	v.fieldMap["refund_amount_money"] = v.RefundAmountMoney
+	v.fieldMap["points_money"] = v.PointsMoney
+	v.fieldMap["ai_cots_money"] = v.AiCotsMoney
 	v.fieldMap["activated"] = v.Activated
 	v.fieldMap["key_behavior_met"] = v.KeyBehaviorMet
 	v.fieldMap["payment_met"] = v.PaymentMet
@@ -256,18 +258,20 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["registered"] = v.Registered
 	v.fieldMap["attribution_clicked_at"] = v.AttributionClickedAt
 	v.fieldMap["phone_model"] = v.PhoneModel
-	v.fieldMap["created_at"] = v.CreatedAt
-	v.fieldMap["updated_at"] = v.UpdatedAt
-	v.fieldMap["deleted_at"] = v.DeletedAt
-	v.fieldMap["registration_no"] = v.RegistrationNo
 	v.fieldMap["re_registered_from_id"] = v.ReRegisteredFromID
-	v.fieldMap["email"] = v.Email
-	v.fieldMap["email_verified"] = v.EmailVerified
+	v.fieldMap["app_name"] = v.AppName
 	v.fieldMap["token_version"] = v.TokenVersion
 	v.fieldMap["status"] = v.Status
 	v.fieldMap["last_login_at"] = v.LastLoginAt
 	v.fieldMap["last_login_ip"] = v.LastLoginIP
 	v.fieldMap["login_account"] = v.LoginAccount
+	v.fieldMap["appid_email"] = v.AppidEmail
+	v.fieldMap["appid_third_code"] = v.AppidThirdCode
+	v.fieldMap["google_email"] = v.GoogleEmail
+	v.fieldMap["google_third_code"] = v.GoogleThirdCode
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoUser) clone(db *gorm.DB) videoUser {

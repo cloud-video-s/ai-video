@@ -20,9 +20,9 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '控制台' },
       },
       {
-        path: 'system/user',
-        name: 'SystemUser',
-        component: () => import('@/views/system/UserList.vue'),
+        path: 'system/admin',
+        name: 'SystemAdmin',
+        component: () => import('@/views/system/AdminList.vue'),
         meta: { title: '用户管理' },
       },
       {
@@ -50,10 +50,82 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'OB 延迟配置' },
       },
       {
+        path: 'system/country',
+        name: 'SystemCountry',
+        component: () => import('@/views/system/CountryList.vue'),
+        meta: { title: '国家管理' },
+      },
+      {
         path: 'system/operlog',
         name: 'SystemOperLog',
         component: () => import('@/views/system/OperationLogList.vue'),
         meta: { title: '操作日志' },
+      },
+      {
+        path: 'subscription/vip',
+        name: 'VIPSubscriptionList',
+        component: () => import('@/views/subscription/VIPSubscriptionList.vue'),
+        meta: { title: 'VIP 订阅' },
+      },
+      {
+        path: 'package/list',
+        name: 'PackageList',
+        component: () => import('@/views/package/PackageList.vue'),
+        meta: { title: '安装包管理' },
+      },
+      {
+        path: 'channel/list',
+        name: 'ChannelList',
+        component: () => import('@/views/channel/ChannelList.vue'),
+        meta: { title: '渠道管理' },
+      },
+      {
+        path: 'template/positions',
+        name: 'DisplayPositionList',
+        component: () => import('@/views/template/DisplayPositionList.vue'),
+        meta: { title: '展示位置' },
+      },
+      {
+        path: 'template/types',
+        name: 'TemplateTypeList',
+        component: () => import('@/views/template/TemplateTypeList.vue'),
+        meta: { title: '模板分类' },
+      },
+      {
+        path: 'template/list',
+        name: 'VideoTemplateList',
+        component: () => import('@/views/template/TemplateList.vue'),
+        meta: { title: '视频模板' },
+      },
+      {
+        path: 'template/banners',
+        name: 'BannerList',
+        component: () => import('@/views/template/BannerList.vue'),
+        meta: { title: 'Banner 管理' },
+      },
+      {
+        path: 'user/list',
+        name: 'UserList',
+        component: () => import('@/views/user/UserList.vue'),
+        meta: { title: '客户端用户' },
+      },
+      {
+        path: 'attribution/list',
+        name: 'AttributionList',
+        component: () => import('@/views/attribution/AttributionList.vue'),
+        meta: { title: '用户归因' },
+      },
+      {
+        path: 'subscription/points',
+        name: 'PointsPackageList',
+        component: () => import('@/views/subscription/PointsPackageList.vue'),
+        meta: { title: '积分套餐' },
+      },
+      {
+        path: 'subscription/points-ledger',
+        name: 'UserPointsLedgerList',
+        component: () => import('@/views/subscription/UserPointsLedgerList.vue'),
+        meta: { title: '积分明细' },
       },
     ],
   },
@@ -65,7 +137,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  document.title = `${to.meta.title || ''} - Frame Admin`
+  document.title = `${to.meta.title || ''} - AI Video Admin`
   const token = localStorage.getItem('token')
   if (!to.meta.noAuth && !token) {
     next('/login')

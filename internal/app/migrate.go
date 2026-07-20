@@ -9,16 +9,70 @@ import (
 
 // AutoMigrate creates or updates the schema for every model.
 func AutoMigrate() error {
-	return DB.AutoMigrate(
+	if err := PrepareVideoUserColumns(DB); err != nil {
+		return err
+	}
+	if err := NormalizeUserAttributionColumns(DB); err != nil {
+		return err
+	}
+	if err := MigrateLegacyUploadOwnerColumns(DB); err != nil {
+		return err
+	}
+	if err := NormalizeBannerJumpTypes(DB); err != nil {
+		return err
+	}
+	if err := MigrateBannerDisplayPositionKeys(DB); err != nil {
+		return err
+	}
+	if err := MigrateTemplateTypeDisplayPositionKeys(DB); err != nil {
+		return err
+	}
+	if err := DB.AutoMigrate(
 		&model.VideoAdmin{},
 		&model.VideoUser{},
+		&model.VideoUserIdentity{},
 		&model.VideoRole{},
 		&model.VideoMenu{},
 		&model.VideoAPI{},
 		&model.VideoConfig{},
 		&model.VideoDelayConfig{},
+		&model.VideoCountry{},
+		&model.VideoChannel{},
+		&model.VideoTemplateType{},
+		&model.VideoTemplateTypeDisplayPosition{},
+		&model.VideoDisplayPosition{},
+		&model.VideoTemplate{},
+		&model.VideoPackage{},
+		&model.VideoVIPSubscription{},
+		&model.VideoPointsPackage{},
+		&model.VideoUserPointsLedger{},
+		&model.VideoBanner{},
+		&model.VideoBannerDisplayPosition{},
 		&model.VideoOperationLog{},
-	)
+		&model.VideoUpload{},
+		&model.VideoUserAttribution{},
+	); err != nil {
+		return err
+	}
+	if err := DropDeprecatedVideoUserColumns(DB); err != nil {
+		return err
+	}
+	if err := MigrateLegacyTemplateTypePositions(DB); err != nil {
+		return err
+	}
+	if err := MigrateLegacyTemplateTypeTargets(DB); err != nil {
+		return err
+	}
+	if err := MigrateLegacyBannerPositions(DB); err != nil {
+		return err
+	}
+	if err := RemoveLegacyBannerPositionKey(DB); err != nil {
+		return err
+	}
+	if err := RemoveTemplateDisplayPositionTargets(DB); err != nil {
+		return err
+	}
+	return RemoveLegacyTemplateTypeColumns(DB)
 }
 
 // SeedData populates the default super-admin plus the full RBAC tree — every

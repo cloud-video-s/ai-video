@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 
 	"ai-video/internal/app"
 	bizmodel "ai-video/internal/model"
+	"ai-video/internal/repository"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -38,6 +40,15 @@ func main() {
 	app.DB = db
 
 	if *migrate {
+		if err := app.PrepareVideoUserColumns(db); err != nil {
+			panic(fmt.Sprintf("prepare video user columns failed: %v", err))
+		}
+		if err := app.NormalizeUserAttributionColumns(db); err != nil {
+			panic(fmt.Sprintf("normalize attribution columns failed: %v", err))
+		}
+		if err := app.MigrateLegacyUploadOwnerColumns(db); err != nil {
+			panic(fmt.Sprintf("migrate upload owner columns failed: %v", err))
+		}
 		if db.Migrator().HasTable("video_app_user") && !db.Migrator().HasTable(&bizmodel.VideoUser{}) {
 			if err := db.Migrator().RenameTable("video_app_user", bizmodel.VideoUser{}.TableName()); err != nil {
 				panic(fmt.Sprintf("rename client user table failed: %v", err))
@@ -50,11 +61,37 @@ func main() {
 				panic(fmt.Sprintf("rename video app user VIP column failed: %v", err))
 			}
 		}
+		if err := app.MigrateTemplateTypeDisplayPositionKeys(db); err != nil {
+			panic(fmt.Sprintf("migrate template type position keys failed: %v", err))
+		}
 		if err := db.AutoMigrate(
 			&bizmodel.VideoDelayConfig{},
+			&bizmodel.VideoTemplateType{},
+			&bizmodel.VideoTemplateTypeDisplayPosition{},
+			&bizmodel.VideoDisplayPosition{},
+			&bizmodel.VideoTemplate{},
+			&bizmodel.VideoPackage{},
+			&bizmodel.VideoVIPSubscription{},
+			&bizmodel.VideoBanner{},
 			&bizmodel.VideoUser{},
+			&bizmodel.VideoUserIdentity{},
+			&bizmodel.VideoConfig{},
+			&bizmodel.VideoUpload{},
+			&bizmodel.VideoUserAttribution{},
 		); err != nil {
 			panic(fmt.Sprintf("migrate generated models failed: %v", err))
+		}
+		if err := app.DropDeprecatedVideoUserColumns(db); err != nil {
+			panic(fmt.Sprintf("drop deprecated video user columns failed: %v", err))
+		}
+		if err := app.MigrateLegacyBannerPositions(db); err != nil {
+			panic(fmt.Sprintf("migrate legacy banner positions failed: %v", err))
+		}
+		if err := app.MigrateLegacyTemplateTypeTargets(db); err != nil {
+			panic(fmt.Sprintf("migrate legacy template type targets failed: %v", err))
+		}
+		if err := app.RemoveLegacyTemplateTypeColumns(db); err != nil {
+			panic(fmt.Sprintf("remove legacy template type columns failed: %v", err))
 		}
 		indexes, err := db.Migrator().GetIndexes(&bizmodel.VideoUser{})
 		if err != nil {
@@ -76,6 +113,33 @@ func main() {
 		}
 		if err := app.SeedDelayConfigAdmin(); err != nil {
 			panic(fmt.Sprintf("seed delay config admin failed: %v", err))
+		}
+		if err := app.SeedAppUserAdmin(); err != nil {
+			panic(fmt.Sprintf("seed app user admin failed: %v", err))
+		}
+		if err := app.SeedUserAttributionAdmin(); err != nil {
+			panic(fmt.Sprintf("seed user attribution admin failed: %v", err))
+		}
+		if _, err := repository.NewUserAttributionRepo().SyncUsers(context.Background()); err != nil {
+			panic(fmt.Sprintf("sync user attributions failed: %v", err))
+		}
+		if err := app.SeedUploadAdmin(); err != nil {
+			panic(fmt.Sprintf("seed upload admin failed: %v", err))
+		}
+		if err := app.SeedTemplateAdmin(); err != nil {
+			panic(fmt.Sprintf("seed template admin failed: %v", err))
+		}
+		if err := app.SeedDisplayPositionAdmin(); err != nil {
+			panic(fmt.Sprintf("seed display position admin failed: %v", err))
+		}
+		if err := app.SeedPackageAdmin(); err != nil {
+			panic(fmt.Sprintf("seed package admin failed: %v", err))
+		}
+		if err := app.SeedVIPSubscriptionAdmin(); err != nil {
+			panic(fmt.Sprintf("seed VIP subscription admin failed: %v", err))
+		}
+		if err := app.SeedBannerAdmin(); err != nil {
+			panic(fmt.Sprintf("seed banner admin failed: %v", err))
 		}
 	}
 

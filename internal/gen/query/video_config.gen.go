@@ -42,6 +42,7 @@ func newVideoConfig(db *gorm.DB, opts ...gen.DOOption) videoConfig {
 	_videoConfig.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoConfig.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoConfig.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoConfig.Sensitive = field.NewBool(tableName, "sensitive")
 
 	_videoConfig.fillFieldMap()
 
@@ -57,7 +58,7 @@ type videoConfig struct {
 	Key       field.String // 配置键
 	Name      field.String // 显示名
 	Value     field.String // 值(统一字符串存储)
-	Type      field.String // string/int/bool/float/json/text/select
+	Type      field.String // string/int/bool/float/json/text/select/password/color
 	Options   field.String // select 选项或校验规则(JSON)
 	IsPublic  field.Bool   // 是否免鉴权可读
 	Editable  field.Bool   // 是否允许后台编辑
@@ -67,6 +68,7 @@ type videoConfig struct {
 	CreatedAt field.Time
 	UpdatedAt field.Time
 	DeletedAt field.Field
+	Sensitive field.Bool // 后台响应是否隐藏值
 
 	fieldMap map[string]field.Expr
 }
@@ -98,6 +100,7 @@ func (v *videoConfig) updateTableName(table string) *videoConfig {
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
+	v.Sensitive = field.NewBool(table, "sensitive")
 
 	v.fillFieldMap()
 
@@ -124,7 +127,7 @@ func (v *videoConfig) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoConfig) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 15)
+	v.fieldMap = make(map[string]field.Expr, 16)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["group"] = v.Group
 	v.fieldMap["key"] = v.Key
@@ -140,6 +143,7 @@ func (v *videoConfig) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+	v.fieldMap["sensitive"] = v.Sensitive
 }
 
 func (v videoConfig) clone(db *gorm.DB) videoConfig {

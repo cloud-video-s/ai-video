@@ -2,6 +2,9 @@ package admin
 
 import (
 	"ai-video/internal/middleware"
+	"ai-video/internal/pkg/upload"
+	"ai-video/internal/pkg/uploadruntime"
+	"ai-video/internal/repository"
 	"ai-video/internal/server/admin/handler"
 
 	"github.com/gin-gonic/gin"
@@ -21,12 +24,38 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	authHandler := handler.NewAuthHandler()
 	userHandler := handler.NewUserHandler()
 	appUserHandler := handler.NewAppUserHandler()
+	attributionHandler := handler.NewUserAttributionHandler()
 	roleHandler := handler.NewRoleHandler()
 	menuHandler := handler.NewMenuHandler()
 	apiHandler := handler.NewAPIHandler()
 	operationLogHandler := handler.NewOperationLogHandler()
 	configHandler := handler.NewConfigHandler()
 	delayConfigHandler := handler.NewDelayConfigHandler()
+	countryHandler := handler.NewCountryHandler()
+	channelHandler := handler.NewChannelHandler()
+	templateTypeHandler := handler.NewTemplateTypeHandler()
+	templateHandler := handler.NewTemplateHandler()
+	displayPositionHandler := handler.NewDisplayPositionHandler()
+	packageHandler := handler.NewPackageHandler()
+	vipSubscriptionHandler := handler.NewVIPSubscriptionHandler()
+	pointsPackageHandler := handler.NewPointsPackageHandler()
+	userPointsLedgerHandler := handler.NewUserPointsLedgerHandler()
+	bannerHandler := handler.NewBannerHandler()
+	uploadConfig, err := uploadruntime.ManagerConfig()
+	if err != nil {
+		panic(err)
+	}
+	uploadManager, err := upload.SharedManager(uploadConfig)
+	if err != nil {
+		panic(err)
+	}
+	uploadRecordHandler := handler.NewUploadHandler()
+	uploadHandler := upload.NewHTTPHandler(uploadManager, upload.WithCompletionRecording(
+		repository.NewUploadRepo(),
+		func(c *gin.Context) (upload.UploadOwner, error) {
+			return upload.UploadOwner{Type: upload.UploaderAdmin, ID: uint64(middleware.GetAdminID(c))}, nil
+		},
+	))
 
 	// Public routes (no auth required)
 	rg.POST("/login", authHandler.Login)
@@ -42,6 +71,12 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		authenticated.GET("/roles/all", roleHandler.ListAll)
 		authenticated.GET("/menus/tree", menuHandler.GetTree)
 		authenticated.GET("/apis/all", apiHandler.ListAll)
+		authenticated.GET("/countries/options", countryHandler.ListOptions)
+		authenticated.GET("/channels/options", channelHandler.ListOptions)
+		authenticated.GET("/template-types/options", templateTypeHandler.ListOptions)
+		authenticated.GET("/display-positions/options", displayPositionHandler.ListOptions)
+		authenticated.GET("/packages/options", packageHandler.ListOptions)
+		authenticated.GET("/points-packages/options", pointsPackageHandler.ListOptions)
 	}
 
 	// Protected routes (JWT + Casbin RBAC)
@@ -62,6 +97,13 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.GET("/app-users/:id", appUserHandler.GetByID)
 		auth.PUT("/app-users/:id", appUserHandler.Update)
 		auth.DELETE("/app-users/:id", appUserHandler.Delete)
+
+		// User attribution
+		auth.GET("/user-attributions", attributionHandler.List)
+		auth.POST("/user-attributions/sync", attributionHandler.SyncUsers)
+		auth.GET("/user-attributions/:id", attributionHandler.GetByID)
+		auth.PUT("/user-attributions/:id", attributionHandler.Update)
+		auth.POST("/user-attributions/:id/events", attributionHandler.RecordEvent)
 
 		// Roles
 		auth.GET("/roles", roleHandler.List)
@@ -109,5 +151,84 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.GET("/delay-configs/:id", delayConfigHandler.GetByID)
 		auth.PUT("/delay-configs/:id", delayConfigHandler.Update)
 		auth.DELETE("/delay-configs/:id", delayConfigHandler.Delete)
+
+		// Country reference data
+		auth.GET("/countries", countryHandler.List)
+		auth.POST("/countries", countryHandler.Create)
+		auth.GET("/countries/:id", countryHandler.GetByID)
+		auth.PUT("/countries/:id", countryHandler.Update)
+		auth.PATCH("/countries/:id/status", countryHandler.UpdateStatus)
+		auth.DELETE("/countries/:id", countryHandler.Delete)
+
+		// Advertising and distribution channels
+		auth.GET("/channels", channelHandler.List)
+		auth.POST("/channels", channelHandler.Create)
+		auth.GET("/channels/:id", channelHandler.GetByID)
+		auth.PUT("/channels/:id", channelHandler.Update)
+		auth.PATCH("/channels/:id/status", channelHandler.UpdateStatus)
+		auth.DELETE("/channels/:id", channelHandler.Delete)
+
+		// Video template categories
+		auth.GET("/template-types", templateTypeHandler.List)
+		auth.POST("/template-types", templateTypeHandler.Create)
+		auth.GET("/template-types/:id", templateTypeHandler.GetByID)
+		auth.PUT("/template-types/:id", templateTypeHandler.Update)
+		auth.DELETE("/template-types/:id", templateTypeHandler.Delete)
+
+		// Video templates
+		auth.GET("/templates", templateHandler.List)
+		auth.POST("/templates", templateHandler.Create)
+		auth.GET("/templates/:id", templateHandler.GetByID)
+		auth.PUT("/templates/:id", templateHandler.Update)
+		auth.DELETE("/templates/:id", templateHandler.Delete)
+
+		// Display positions
+		auth.GET("/display-positions", displayPositionHandler.List)
+		auth.POST("/display-positions", displayPositionHandler.Create)
+		auth.GET("/display-positions/:id", displayPositionHandler.GetByID)
+		auth.PUT("/display-positions/:id", displayPositionHandler.Update)
+		auth.DELETE("/display-positions/:id", displayPositionHandler.Delete)
+
+		// Downloadable application packages
+		auth.GET("/packages", packageHandler.List)
+		auth.POST("/packages", packageHandler.Create)
+		auth.GET("/packages/:id", packageHandler.GetByID)
+		auth.PUT("/packages/:id", packageHandler.Update)
+		auth.DELETE("/packages/:id", packageHandler.Delete)
+
+		// VIP subscription plans
+		auth.GET("/vip-subscriptions", vipSubscriptionHandler.List)
+		auth.POST("/vip-subscriptions", vipSubscriptionHandler.Create)
+		auth.GET("/vip-subscriptions/:id", vipSubscriptionHandler.GetByID)
+		auth.PUT("/vip-subscriptions/:id", vipSubscriptionHandler.Update)
+		auth.DELETE("/vip-subscriptions/:id", vipSubscriptionHandler.Delete)
+		auth.PATCH("/vip-subscriptions/:id/status", vipSubscriptionHandler.UpdateStatus)
+		auth.PATCH("/vip-subscriptions/:id/display", vipSubscriptionHandler.UpdateDisplayMode)
+		auth.PATCH("/vip-subscriptions/:id/default", vipSubscriptionHandler.SetDefault)
+		auth.POST("/vip-subscriptions/:id/clone", vipSubscriptionHandler.Clone)
+
+		// One-time points packages
+		auth.GET("/points-packages", pointsPackageHandler.List)
+		auth.POST("/points-packages", pointsPackageHandler.Create)
+		auth.GET("/points-packages/:id", pointsPackageHandler.GetByID)
+		auth.PUT("/points-packages/:id", pointsPackageHandler.Update)
+		auth.DELETE("/points-packages/:id", pointsPackageHandler.Delete)
+		auth.PATCH("/points-packages/:id/status", pointsPackageHandler.UpdateStatus)
+		auth.PATCH("/points-packages/:id/default", pointsPackageHandler.SetDefault)
+
+		// Read-only user points ledger
+		auth.GET("/user-points-ledgers", userPointsLedgerHandler.List)
+		auth.GET("/user-points-ledgers/:id", userPointsLedgerHandler.GetByID)
+
+		// Banners
+		auth.GET("/banners", bannerHandler.List)
+		auth.POST("/banners", bannerHandler.Create)
+		auth.GET("/banners/:id", bannerHandler.GetByID)
+		auth.PUT("/banners/:id", bannerHandler.Update)
+		auth.DELETE("/banners/:id", bannerHandler.Delete)
+
+		// Chunked image/video uploads
+		auth.GET("/uploads", uploadRecordHandler.List)
+		uploadHandler.RegisterRoutes(auth.Group("/uploads"))
 	}
 }

@@ -32,7 +32,9 @@ request.interceptors.response.use(
   (response) => {
     const res = response.data
     if (res.code !== 0) {
-      ElMessage.error(res.message || '请求失败')
+      if (!(response.config as any).silentError) {
+        ElMessage.error(res.message || '请求失败')
+      }
       if (res.code === 401) {
         handleUnauthorized()
       }
@@ -41,10 +43,15 @@ request.interceptors.response.use(
     return res
   },
   (error) => {
+    if (axios.isCancel(error)) {
+      return Promise.reject(error)
+    }
     if (error.response?.status === 401) {
       handleUnauthorized()
     }
-    ElMessage.error(error.message || '网络错误')
+    if (!(error.config as any)?.silentError) {
+      ElMessage.error(error.message || '网络错误')
+    }
     return Promise.reject(error)
   }
 )

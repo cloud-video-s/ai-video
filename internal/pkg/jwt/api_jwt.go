@@ -11,19 +11,21 @@ import (
 
 type ApiClaims struct {
 	UserID       uint64 `json:"user_id"`
-	PhoneCode    string `json:"phone_code"`
-	TokenVersion int    `json:"token_version"`
+	IMEI         string `json:"imei"`
+	TokenVersion int64  `json:"token_version"`
 	TokenType    string `json:"token_type"`
+	LoginType    uint32 `json:"login_type"`
 	jwt.RegisteredClaims
 }
 
-func GenerateApiToken(userID uint64, phoneCode string, tokenVersion int) (string, error) {
+func GenerateApiToken(userID uint64, imei string, tokenVersion int64, loginType uint32) (string, error) {
 	cfg := app.Cfg.JWT
 	claims := ApiClaims{
 		UserID:       userID,
-		PhoneCode:    phoneCode,
+		IMEI:         imei,
 		TokenVersion: tokenVersion,
 		TokenType:    "client",
+		LoginType:    loginType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(cfg.Expire) * time.Second)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

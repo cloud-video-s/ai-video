@@ -2,6 +2,9 @@ package api
 
 import (
 	"ai-video/internal/middleware"
+	"ai-video/internal/pkg/upload"
+	"ai-video/internal/pkg/uploadruntime"
+	"ai-video/internal/repository"
 	"ai-video/internal/server/api/handler"
 
 	"github.com/gin-gonic/gin"
@@ -18,22 +21,79 @@ func (m *Module) Name() string {
 }
 
 func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
+	rg.Use(middleware.APILocalization(repository.NewPackageRepo()))
 	healthHandler := handler.NewHealthHandler()
 	configHandler := handler.NewConfigHandler()
 	delayConfigHandler := handler.NewDelayConfigHandler()
 	authHandler := handler.NewAuthHandler()
+	bannerHandler := handler.NewBannerHandler()
+	templateHandler := handler.NewTemplateHandler()
+	vipHandler := handler.NewVipHandler()
+	uploadConfig, err := uploadruntime.ManagerConfig()
+	if err != nil {
+		panic(err)
+	}
+	uploadManager, err := upload.SharedManager(uploadConfig)
+	if err != nil {
+		panic(err)
+	}
+	uploadHandler := upload.NewHTTPHandler(uploadManager, upload.WithCompletionRecording(
+		repository.NewUploadRepo(),
+		func(c *gin.Context) (upload.UploadOwner, error) {
+			return upload.UploadOwner{Type: upload.UploaderAPIUser, ID: middleware.GetAPIUserID(c)}, nil
+		},
+	))
 
 	rg.GET("/health", healthHandler.Health)
 	rg.GET("/configs/public", configHandler.Public)
 
-	rg.POST("/auth/device-register", authHandler.DeviceRegister)
+	rg.POST("/auth/login", authHandler.Login)
 	rg.POST("/auth/re-register", authHandler.ReRegister)
-
-	authenticated := rg.Group("", middleware.ApiAuth())
+	rg.POST("/auth/google", authHandler.GoogleLogin)
+	rg.POST("/auth/apple", authHandler.AppleLogin)
+	authenticated := rg.Group("", middleware.ApiAuth(repository.NewAppUserRepo()))
 	{
-		authenticated.POST("/auth/logout", authHandler.Logout)
 		authenticated.GET("/delay-configs", delayConfigHandler.All)
-		authenticated.GET("/users/me", authHandler.Profile)
-		authenticated.PUT("/users/me/country", authHandler.UpdateCountry)
+		authenticated.GET("/ob-delay-configs", delayConfigHandler.All)
+		authenticated.GET("/ob_delay", delayConfigHandler.All)
+
+		uploadHandler.RegisterRoutes(authenticated.Group("/uploads"))
+		auth := authenticated.Group("/auth")
+		{
+			auth.POST("/logout", authHandler.Logout)
+		}
+
+		users := authenticated.Group("/users")
+		{
+			users.GET("/me", authHandler.Profile)
+			users.PUT("/me/country", authHandler.UpdateCountry)
+			users.GET("/me/identities", authHandler.ListIdentities)
+			users.POST("/me/identities/google", authHandler.BindGoogle)
+			users.POST("/me/identities/apple", authHandler.BindApple)
+			users.DELETE("/me/identities/:provider", authHandler.UnbindIdentity)
+		}
+
+		banners := authenticated.Group("/banners")
+		{
+			banners.GET("/list", bannerHandler.List)
+		}
+
+		templates := authenticated.Group("/templates")
+		{
+			templates.GET("/recommend", templateHandler.Recommend)
+			templates.GET("/list", templateHandler.List)
+			templates.GET("/categories", templateHandler.Categories)
+		}
+
+		vip := authenticated.Group("/vip")
+		{
+			vip.GET("/recommend", vipHandler.Recommend)
+		}
+
+		conf := authenticated.Group("/configs")
+		{
+			conf.GET("/list", configHandler.Public)
+		}
+
 	}
 }

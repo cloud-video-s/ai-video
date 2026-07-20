@@ -1,6 +1,7 @@
 package router
 
 import (
+	"ai-video/internal/apidoc"
 	"ai-video/internal/app"
 	"ai-video/internal/middleware"
 	"ai-video/internal/pkg/response"
@@ -8,6 +9,7 @@ import (
 	"io/fs"
 	"net/http"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -33,10 +35,45 @@ func NewRouter(adminDist embed.FS, modules ...Module) *gin.Engine {
 		apiPrefixes = append(apiPrefixes, "/"+m.Name()+"/")
 		app.Log.Infof("module [%s] registered at /%s", m.Name(), m.Name())
 	}
+	apidoc.Register(r)
 
+	setupUploadFiles(r)
 	setupStaticFiles(r, adminDist, apiPrefixes)
 
 	return r
+}
+
+// fileOnlyFS serves uploaded media files while refusing directory requests,
+// preventing the default http.FileServer directory listing.
+type fileOnlyFS struct {
+	http.FileSystem
+}
+
+func (f fileOnlyFS) Open(name string) (http.File, error) {
+	file, err := f.FileSystem.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return nil, err
+	}
+	if info.IsDir() {
+		file.Close()
+		return nil, fs.ErrNotExist
+	}
+	return file, nil
+}
+
+func setupUploadFiles(r *gin.Engine) {
+	root, err := filepath.Abs(app.Cfg.Upload.LocalRootDir)
+	if err != nil {
+		app.Log.Warnf("resolve upload static directory: %v", err)
+		return
+	}
+	r.StaticFS("/uploads", fileOnlyFS{FileSystem: http.Dir(root)})
+	app.Log.Infof("uploaded media static files registered from %s", root)
 }
 
 func setupStaticFiles(r *gin.Engine, adminDist embed.FS, apiPrefixes []string) {

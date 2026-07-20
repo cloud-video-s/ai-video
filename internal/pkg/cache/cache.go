@@ -120,6 +120,9 @@ const configHashKey = "config"
 // GetConfigCache returns (value, true) on a cache hit. A miss or any Redis error
 // returns ("", false) so the caller falls back to the DB.
 func GetConfigCache(key string) (string, bool) {
+	if store == nil {
+		return "", false
+	}
 	val, err := store.HGet(configHashKey, key)
 	if err != nil {
 		return "", false
@@ -128,16 +131,25 @@ func GetConfigCache(key string) (string, bool) {
 }
 
 func SetConfigCache(key, value string) error {
+	if store == nil {
+		return nil
+	}
 	return store.HSet(configHashKey, key, value)
 }
 
 func DelConfigCache(key string) error {
+	if store == nil {
+		return nil
+	}
 	return store.HDel(configHashKey, key)
 }
 
 // RebuildConfigCache atomically-ish replaces the whole config hash with kv
 // (used by the "refresh all" maintenance action and startup warm-up).
 func RebuildConfigCache(kv map[string]string) error {
+	if store == nil {
+		return nil
+	}
 	if err := store.Del(configHashKey); err != nil {
 		return err
 	}

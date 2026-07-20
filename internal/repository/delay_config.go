@@ -17,6 +17,11 @@ type DelayConfigListFilter struct {
 	Keyword string
 }
 
+type DelayConfigValue struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 func (d *DelayConfigRepo) Create(ctx context.Context, config *model.VideoDelayConfig) error {
 	return qFrom(ctx).VideoDelayConfig.WithContext(ctx).UnderlyingDB().Create(config).Error
 }
@@ -94,6 +99,18 @@ func (d *DelayConfigRepo) ListAll(ctx context.Context) ([]model.VideoDelayConfig
 		Order(q.Sort.Asc(), q.ID.Asc()).
 		UnderlyingDB().
 		Find(&list).Error
+	return list, err
+}
+
+// ListValues returns the client-facing projection only. Management metadata is
+// intentionally excluded from the API response.
+func (d *DelayConfigRepo) ListValues(ctx context.Context) ([]DelayConfigValue, error) {
+	q := qFrom(ctx).VideoDelayConfig
+	var list []DelayConfigValue
+	err := q.WithContext(ctx).
+		Select(q.Key, q.Value).
+		Order(q.Sort.Asc(), q.ID.Asc()).
+		Scan(&list)
 	return list, err
 }
 

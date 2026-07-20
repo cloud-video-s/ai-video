@@ -16,9 +16,9 @@ func NewDelayConfigHandler() *DelayConfigHandler {
 	return &DelayConfigHandler{repo: repository.NewDelayConfigRepo()}
 }
 
-// All returns every active delay config in stable display order.
+// All returns only the config key and value in stable display order.
 func (h *DelayConfigHandler) All(c *gin.Context) {
-	list, err := h.repo.ListAll(c.Request.Context())
+	list, err := h.repo.ListValues(c.Request.Context())
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return

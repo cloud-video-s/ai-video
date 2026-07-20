@@ -11,12 +11,16 @@ func TestAdminAndClientTokensAreSeparated(t *testing.T) {
 	app.Cfg.JWT = app.JWTConfig{Secret: "test-secret-with-enough-entropy", Expire: 3600, Issuer: "test"}
 	t.Cleanup(func() { app.Cfg.JWT = previous })
 
-	clientToken, err := GenerateApiToken(42, "device-42", 3)
+	clientToken, err := GenerateApiToken(42, "device-42", 3, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ParseApiToken(clientToken); err != nil {
+	claims, err := ParseApiToken(clientToken)
+	if err != nil {
 		t.Fatalf("parse client token: %v", err)
+	}
+	if claims.IMEI != "device-42" {
+		t.Fatalf("client token imei=%q, want device-42", claims.IMEI)
 	}
 	if _, err := ParseToken(clientToken); err == nil {
 		t.Fatal("client token must not be accepted as an admin token")

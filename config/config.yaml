@@ -35,6 +35,44 @@ geoip:
   country_field: country_code
   timeout_ms: 3000
 
+# Google/Apple ID Token backend verification. Configure every mobile/web
+# OAuth client ID or Apple bundle/service ID that is allowed to call this API.
+third_party_auth:
+  http_timeout_ms: 5000
+  jwks_cache_seconds: 21600
+  google:
+    client_ids: []
+    issuers: [https://accounts.google.com, accounts.google.com]
+    jwks_url: https://www.googleapis.com/oauth2/v3/certs
+  apple:
+    client_ids: []
+    issuers: [https://appleid.apple.com]
+    jwks_url: https://appleid.apple.com/auth/keys
+
+upload:
+  # Temporary upload sessions and chunks. This directory is never served publicly.
+  root_dir: storage/uploads/tmp
+  # Final local files are served from /uploads. The active provider can also be
+  # changed in Admin -> System Config without restarting the service.
+  local_root_dir: storage/uploads/files
+  local_base_url: /uploads
+  storage_provider: local            # local | aliyun_oss
+  oss_endpoint: ""
+  oss_access_key_id: ""
+  oss_access_key_secret: ""
+  oss_bucket: ""
+  oss_object_prefix: uploads
+  oss_base_url: ""                   # Optional CDN/custom domain
+  chunk_size: 5242880               # 5 MB
+  max_batch_files: 20
+  session_ttl_seconds: 86400        # 24 hours
+  image_max_file_size: 20971520     # 20 MB
+  video_max_file_size: 2147483648   # 2 GB
+  image_extensions: [.jpg, .jpeg, .png, .gif, .webp]
+  video_extensions: [.mp4, .mov, .webm, .mkv]
+  image_mime_types: [image/jpeg, image/png, image/gif, image/webp]
+  video_mime_types: [video/mp4, video/quicktime, video/webm, video/x-matroska]
+
 casbin:
   model_path: config/rbac_model.conf
 task:

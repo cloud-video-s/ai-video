@@ -15,7 +15,7 @@ const TableNameVideoAdmin = "video_admin"
 // VideoAdmin mapped from table <video_admin>
 type VideoAdmin struct {
 	ID           uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	Username     string         `gorm:"column:username;type:varchar(64);not null;uniqueIndex:idx_video_user_username,priority:1" json:"username"`
+	Username     string         `gorm:"column:username;type:varchar(64);not null;uniqueIndex:idx_video_admin_username,priority:1" json:"username"`
 	Password     string         `gorm:"column:password;type:varchar(128);not null" json:"password"`
 	Nickname     *string        `gorm:"column:nickname;type:varchar(64)" json:"nickname"`
 	Avatar       *string        `gorm:"column:avatar;type:varchar(255)" json:"avatar"`
@@ -23,9 +23,9 @@ type VideoAdmin struct {
 	Phone        *string        `gorm:"column:phone;type:varchar(20)" json:"phone"`
 	Status       *int32         `gorm:"column:status;type:tinyint;default:1;comment:1-正常 0-禁用" json:"status"`             // 1-正常 0-禁用
 	TokenVersion *int64         `gorm:"column:token_version;type:bigint;comment:会话版本，自增使旧 token 失效" json:"token_version"` // 会话版本，自增使旧 token 失效
-	CreatedAt    *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_sys_user_created_at,priority:1;index:idx_video_user_created_at,priority:1" json:"created_at"`
+	CreatedAt    *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_sys_user_created_at,priority:1;index:idx_video_admin_created_at,priority:1;index:idx_video_user_created_at,priority:1" json:"created_at"`
 	UpdatedAt    *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_sys_user_deleted_at,priority:1;index:idx_video_user_deleted_at,priority:1" json:"deleted_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_sys_user_deleted_at,priority:1;index:idx_video_admin_deleted_at,priority:1;index:idx_video_user_deleted_at,priority:1" json:"deleted_at"`
 }
 
 // TableName VideoAdmin's table name

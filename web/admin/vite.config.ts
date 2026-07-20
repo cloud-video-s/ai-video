@@ -10,9 +10,11 @@ export default defineConfig({
     vue(),
     AutoImport({
       resolvers: [ElementPlusResolver()],
+      dts: false,
     }),
     Components({
       resolvers: [ElementPlusResolver()],
+      dts: false,
     }),
   ],
   resolve: {
@@ -22,8 +24,9 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/admin': 'http://localhost:8080',
-      '/api': 'http://localhost:8080',
+      '/admin': process.env.VITE_PROXY_TARGET || 'http://localhost:8080',
+      '/api': process.env.VITE_PROXY_TARGET || 'http://localhost:8080',
+      '/uploads': process.env.VITE_PROXY_TARGET || 'http://localhost:8080',
     },
   },
   build: {
