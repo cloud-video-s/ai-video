@@ -14,6 +14,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gen"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -190,4 +191,73 @@ func openDB() (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
 	return db, nil
+}
+
+func dbInit() {
+	g := gen.NewGenerator(gen.Config{
+		OutPath:      "./internal/gen/query", // 生成代码的输出目录
+		ModelPkgPath: "./internal/gen/model",
+		Mode:         gen.WithDefaultQuery | gen.WithQueryInterface, // 关键：生成默认查询和接口
+		// 自定义生成的结构体字段类型
+		FieldNullable:     true, // 字段可为空
+		FieldCoverable:    true, // 字段可覆盖
+		FieldSignable:     true, // 字段符号
+		FieldWithIndexTag: true, // 生成索引标签
+		FieldWithTypeTag:  true, // 生成类型标签
+	})
+
+	g.UseDB(app.DB)
+
+	g.GenerateAllTable()
+
+	casbinRuleModel := g.GenerateModel("casbin_rule")
+
+	roleModel := g.GenerateModel("video_role")
+
+	adminRoleModel := g.GenerateModel("video_admin_role", gen.FieldRelate(
+		field.Many2Many, "Role", roleModel,
+		&field.RelateConfig{
+			RelateSlicePointer: true,
+			GORMTag: field.GormTag{"many2many": []string{"video_admin_role"},
+				"foreignKey":     []string{"ID"},
+				"joinForeignKey": []string{"RoleID"},
+				"joinReferences": []string{"ID"},
+				"References":     []string{"ID"},
+			},
+		},
+	))
+
+	adminModel := g.GenerateModel("video_admin", gen.FieldRelate(
+		field.Many2Many, "Menu", adminRoleModel,
+		&field.RelateConfig{
+			RelateSlicePointer: true,
+			GORMTag: field.GormTag{
+				"many2many":      []string{"video_admin_role"},
+				"foreignKey":     []string{"ID"},
+				"joinForeignKey": []string{"ID"},
+				"joinReferences": []string{"RoleID"},
+				"References":     []string{"ID"},
+			},
+		},
+	))
+
+	//// 生成基础查询代码（关键步骤）
+	//g.ApplyBasic(
+	//	adminModel,
+	//	postModel,
+	//	// 可以添加更多表...
+	//)
+	//
+	//// 生成关联查询代码（如果需要）
+	//g.ApplyInterface(func(Interface) {}, userModel, postModel)
+
+	// 生成关联查询代码
+	g.ApplyBasic(
+		casbinRuleModel,
+		adminRoleModel,
+		adminModel,
+	)
+
+	// 执行生成
+	g.Execute()
 }
