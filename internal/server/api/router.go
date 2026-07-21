@@ -81,6 +81,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		templates := authenticated.Group("/templates")
 		{
 			templates.GET("/recommend", templateHandler.Recommend)
+			templates.GET("/by-position", templateHandler.ByPosition)
 			templates.GET("/list", templateHandler.List)
 			templates.GET("/categories", templateHandler.Categories)
 		}

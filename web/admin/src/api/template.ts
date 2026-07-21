@@ -75,6 +75,10 @@ export function getTemplateTypeOptions() {
   return request.get('/admin/template-types/options')
 }
 
+export function getTemplateOptions() {
+  return request.get('/admin/templates/options')
+}
+
 export function getTemplateType(id: number) {
   return request.get(`/admin/template-types/${id}`)
 }
@@ -109,4 +113,41 @@ export function updateTemplate(id: number, data: VideoTemplatePayload) {
 
 export function deleteTemplate(id: number) {
   return request.delete(`/admin/templates/${id}`)
+}
+
+export interface TemplateDisplayConfig {
+  id: number
+  template_id: number
+  position_key: string
+  sort: number
+  status: number
+  remark: string
+  template: VideoTemplate
+  display_position: DisplayPosition
+  created_at: string
+  updated_at: string
+}
+
+export interface TemplateDisplayConfigPayload {
+  template_id: number
+  position_key: string
+  sort: number
+  status: number
+  remark: string
+}
+
+export function getTemplateDisplayConfigList(params: Record<string, unknown>) {
+  return request.get('/admin/template-display-configs', { params })
+}
+
+export function createTemplateDisplayConfig(data: TemplateDisplayConfigPayload) {
+  return request.post('/admin/template-display-configs', data)
+}
+
+export function updateTemplateDisplayConfig(id: number, data: TemplateDisplayConfigPayload) {
+  return request.put(`/admin/template-display-configs/${id}`, data)
+}
+
+export function deleteTemplateDisplayConfig(id: number) {
+  return request.delete(`/admin/template-display-configs/${id}`)
 }

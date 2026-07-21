@@ -112,6 +112,13 @@ func (s *DisplayPositionService) Delete(ctx context.Context, id uint64) error {
 	if typeCount > 0 {
 		return errors.New("该展示位置仍被模板分类使用，无法删除")
 	}
+	configCount, err := s.repo.TemplateDisplayConfigCount(ctx, item.PositionKey)
+	if err != nil {
+		return err
+	}
+	if configCount > 0 {
+		return errors.New("该展示位置仍被模板展示配置使用，无法删除")
+	}
 	return s.repo.Delete(ctx, uint(id))
 }
 

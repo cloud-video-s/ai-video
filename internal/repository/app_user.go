@@ -54,7 +54,7 @@ func (d *AppUserRepo) GetByIMEI(ctx context.Context, imei string, lock bool) (*m
 	if lock {
 		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
-	if err := db.First(&user).Error; err != nil {
+	if err := db.Order("last_login_at DESC").First(&user).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil

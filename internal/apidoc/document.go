@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	adminservice "ai-video/internal/server/admin/service"
 	apiservice "ai-video/internal/server/api/server"
 
 	"ai-video/internal/pkg/upload"
@@ -32,98 +31,29 @@ type endpointType struct {
 }
 
 var endpointTypes = map[string]endpointType{
-	"POST /admin/login":                          {body: typeOf[adminservice.LoginRequest]()},
-	"POST /admin/users":                          {body: typeOf[adminservice.CreateUserRequest]()},
-	"PUT /admin/users/:id":                       {body: typeOf[adminservice.UpdateUserRequest]()},
-	"POST /admin/app-users":                      {body: typeOf[adminservice.CreateAppUserRequest]()},
-	"PUT /admin/app-users/:id":                   {body: typeOf[adminservice.UpdateAppUserRequest]()},
-	"GET /admin/app-users":                       {query: typeOf[adminservice.ListAppUserRequest]()},
-	"GET /admin/user-attributions":               {query: typeOf[adminservice.ListUserAttributionRequest]()},
-	"PUT /admin/user-attributions/:id":           {body: typeOf[adminservice.UpdateUserAttributionRequest]()},
-	"POST /admin/user-attributions/:id/events":   {body: typeOf[adminservice.RecordAttributionEventRequest]()},
-	"POST /admin/roles":                          {body: typeOf[adminservice.CreateRoleRequest]()},
-	"PUT /admin/roles/:id":                       {body: typeOf[adminservice.UpdateRoleRequest]()},
-	"PUT /admin/roles/:id/menus":                 {body: typeOf[adminservice.SetRoleMenusRequest]()},
-	"PUT /admin/roles/:id/apis":                  {body: typeOf[adminservice.SetRoleAPIsRequest]()},
-	"POST /admin/menus":                          {body: typeOf[adminservice.CreateMenuRequest]()},
-	"PUT /admin/menus/:id":                       {body: typeOf[adminservice.UpdateMenuRequest]()},
-	"POST /admin/apis":                           {body: typeOf[adminservice.CreateAPIRequest]()},
-	"PUT /admin/apis/:id":                        {body: typeOf[adminservice.UpdateAPIRequest]()},
-	"GET /admin/operation-logs":                  {query: typeOf[adminservice.ListOperationLogRequest]()},
-	"POST /admin/configs":                        {body: typeOf[adminservice.CreateConfigRequest]()},
-	"PUT /admin/configs/:id":                     {body: typeOf[adminservice.UpdateConfigRequest]()},
-	"GET /admin/delay-configs":                   {query: typeOf[adminservice.ListDelayConfigRequest]()},
-	"POST /admin/delay-configs":                  {body: typeOf[adminservice.CreateDelayConfigRequest]()},
-	"PUT /admin/delay-configs/:id":               {body: typeOf[adminservice.UpdateDelayConfigRequest]()},
-	"GET /admin/countries":                       {query: typeOf[adminservice.ListCountryRequest]()},
-	"POST /admin/countries":                      {body: typeOf[adminservice.CountryPayload]()},
-	"PUT /admin/countries/:id":                   {body: typeOf[adminservice.CountryPayload]()},
-	"PATCH /admin/countries/:id/status":          {body: typeOf[adminservice.CountryStatusPayload]()},
-	"GET /admin/channels":                        {query: typeOf[adminservice.ListChannelRequest]()},
-	"POST /admin/channels":                       {body: typeOf[adminservice.ChannelPayload]()},
-	"PUT /admin/channels/:id":                    {body: typeOf[adminservice.ChannelPayload]()},
-	"PATCH /admin/channels/:id/status":           {body: typeOf[adminservice.ChannelStatusPayload]()},
-	"GET /admin/template-types":                  {query: typeOf[adminservice.ListTemplateTypeRequest]()},
-	"POST /admin/template-types":                 {body: typeOf[adminservice.TemplateTypePayload]()},
-	"PUT /admin/template-types/:id":              {body: typeOf[adminservice.TemplateTypePayload]()},
-	"GET /admin/templates":                       {query: typeOf[adminservice.ListTemplateRequest]()},
-	"POST /admin/templates":                      {body: typeOf[adminservice.TemplatePayload]()},
-	"PUT /admin/templates/:id":                   {body: typeOf[adminservice.TemplatePayload]()},
-	"GET /admin/display-positions":               {query: typeOf[adminservice.ListDisplayPositionRequest]()},
-	"POST /admin/display-positions":              {body: typeOf[adminservice.DisplayPositionPayload]()},
-	"PUT /admin/display-positions/:id":           {body: typeOf[adminservice.DisplayPositionPayload]()},
-	"GET /admin/packages":                        {query: typeOf[adminservice.ListPackageRequest]()},
-	"POST /admin/packages":                       {body: typeOf[adminservice.PackagePayload]()},
-	"PUT /admin/packages/:id":                    {body: typeOf[adminservice.PackagePayload]()},
-	"GET /admin/vip-subscriptions":               {query: typeOf[adminservice.ListVIPSubscriptionRequest]()},
-	"POST /admin/vip-subscriptions":              {body: typeOf[adminservice.VIPSubscriptionPayload]()},
-	"PUT /admin/vip-subscriptions/:id":           {body: typeOf[adminservice.VIPSubscriptionPayload]()},
-	"PATCH /admin/vip-subscriptions/:id/status":  {body: typeOf[adminservice.VIPSubscriptionStatusPayload]()},
-	"PATCH /admin/vip-subscriptions/:id/display": {body: typeOf[adminservice.VIPSubscriptionDisplayPayload]()},
-	"POST /admin/vip-subscriptions/:id/clone":    {body: typeOf[adminservice.CloneVIPSubscriptionRequest]()},
-	"GET /admin/points-packages":                 {query: typeOf[adminservice.ListPointsPackageRequest]()},
-	"POST /admin/points-packages":                {body: typeOf[adminservice.PointsPackagePayload]()},
-	"PUT /admin/points-packages/:id":             {body: typeOf[adminservice.PointsPackagePayload]()},
-	"PATCH /admin/points-packages/:id/status":    {body: typeOf[adminservice.PointsPackageStatusPayload]()},
-	"GET /admin/user-points-ledgers":             {query: typeOf[adminservice.ListUserPointsLedgerRequest]()},
-	"GET /admin/banners":                         {query: typeOf[adminservice.ListBannerRequest]()},
-	"POST /admin/banners":                        {body: typeOf[adminservice.BannerPayload]()},
-	"PUT /admin/banners/:id":                     {body: typeOf[adminservice.BannerPayload]()},
-	"POST /api/auth/login":                       {body: typeOf[apiservice.LoginRequest]()},
-	"POST /api/auth/re-register":                 {body: typeOf[apiservice.LoginRequest]()},
-	"POST /api/auth/google":                      {body: typeOf[apiservice.ThirdPartyLoginRequest]()},
-	"POST /api/auth/apple":                       {body: typeOf[apiservice.ThirdPartyLoginRequest]()},
-	"PUT /api/users/me/country":                  {body: typeOf[apiservice.UpdateCountryRequest]()},
-	"POST /api/users/me/identities/google":       {body: typeOf[apiservice.BindIdentityRequest]()},
-	"POST /api/users/me/identities/apple":        {body: typeOf[apiservice.BindIdentityRequest]()},
-	"GET /api/banners/list":                      {query: typeOf[apiservice.ClientBannerRequest]()},
+	"POST /api/auth/login":                 {body: typeOf[apiservice.LoginRequest]()},
+	"POST /api/auth/re-register":           {body: typeOf[apiservice.LoginRequest]()},
+	"POST /api/auth/google":                {body: typeOf[apiservice.ThirdPartyLoginRequest]()},
+	"POST /api/auth/apple":                 {body: typeOf[apiservice.ThirdPartyLoginRequest]()},
+	"PUT /api/users/me/country":            {body: typeOf[apiservice.UpdateCountryRequest]()},
+	"POST /api/users/me/identities/google": {body: typeOf[apiservice.BindIdentityRequest]()},
+	"POST /api/users/me/identities/apple":  {body: typeOf[apiservice.BindIdentityRequest]()},
+	"GET /api/banners/list":                {query: typeOf[apiservice.ClientBannerRequest]()},
+	"GET /api/templates/by-position":       {query: typeOf[apiservice.ClientTemplateDisplayRequest]()},
 }
 
 var resourceNames = map[string]string{
 	"health": "健康检查", "configs": "系统配置", "auth": "认证", "users": "用户",
-	"app-users": "客户端用户", "user-attributions": "用户归因", "roles": "角色",
-	"menus": "菜单", "apis": "接口权限", "operation-logs": "操作日志",
-	"delay-configs": "延迟配置", "ob-delay-configs": "OB 延迟配置", "countries": "国家",
-	"channels": "渠道", "template-types": "模板分类", "templates": "视频模板",
-	"display-positions": "展示位置", "packages": "APP 包", "vip-subscriptions": "VIP 订阅",
-	"points-packages": "积分套餐", "user-points-ledgers": "用户积分流水", "banners": "Banner",
-	"uploads": "文件上传", "profile": "个人资料", "permissions": "权限",
+	"banners": "Banner", "templates": "视频模板", "uploads": "文件上传", "profile": "个人资料", "identities": "第三方账号",
 }
 
 var publicRoutes = map[string]bool{
 	"GET /api/health": true, "GET /api/configs/public": true,
 	"POST /api/auth/login": true, "POST /api/auth/re-register": true,
 	"POST /api/auth/google": true, "POST /api/auth/apple": true,
-	"POST /admin/login": true,
 }
 
 var paginatedRoutes = map[string]bool{
-	"/admin/users": true, "/admin/app-users": true, "/admin/user-attributions": true,
-	"/admin/roles": true, "/admin/apis": true, "/admin/operation-logs": true,
-	"/admin/delay-configs": true, "/admin/countries": true, "/admin/channels": true,
-	"/admin/template-types": true, "/admin/templates": true, "/admin/display-positions": true,
-	"/admin/packages": true, "/admin/vip-subscriptions": true, "/admin/points-packages": true,
-	"/admin/user-points-ledgers": true, "/admin/banners": true, "/admin/uploads": true,
 	"/api/uploads": true,
 }
 
@@ -138,7 +68,7 @@ func Build(routes []gin.RouteInfo) Document {
 		OpenAPI: "3.0.3",
 		Info: map[string]any{
 			"title": "AI Video API", "version": "1.0.0",
-			"description": "根据当前 Gin 路由自动生成。接口统一返回 {code, message, data}；后台写操作还会经过 RBAC 校验。",
+			"description": "根据当前 Gin 路由自动生成，仅包含 /api 客户端接口。接口统一返回 {code, message, data}。",
 		},
 		Servers: []map[string]any{{"url": "/", "description": "当前服务"}},
 		Paths:   make(map[string]map[string]any),
@@ -167,7 +97,7 @@ func Build(routes []gin.RouteInfo) Document {
 
 	tags := make(map[string]struct{})
 	for _, route := range routes {
-		if route.Method == http.MethodHead || route.Method == http.MethodOptions || strings.HasPrefix(route.Path, "/docs") {
+		if route.Method == http.MethodHead || route.Method == http.MethodOptions || !strings.HasPrefix(route.Path, "/api/") {
 			continue
 		}
 		path, pathParams := normalizePath(route.Path)

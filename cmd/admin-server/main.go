@@ -60,6 +60,9 @@ func main() {
 	if err := app.SeedDisplayPositionAdmin(); err != nil {
 		app.Log.Warnf("seed display position admin: %v", err)
 	}
+	if err := app.SeedTemplateDisplayConfigAdmin(); err != nil {
+		app.Log.Warnf("seed template display config admin: %v", err)
+	}
 	if err := app.SeedPackageAdmin(); err != nil {
 		app.Log.Warnf("seed package admin: %v", err)
 	}

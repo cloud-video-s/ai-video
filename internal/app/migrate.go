@@ -42,6 +42,7 @@ func AutoMigrate() error {
 		&model.VideoTemplateTypeDisplayPosition{},
 		&model.VideoDisplayPosition{},
 		&model.VideoTemplate{},
+		&model.VideoTemplateDisplayConfig{},
 		&model.VideoPackage{},
 		&model.VideoVIPSubscription{},
 		&model.VideoPointsPackage{},

@@ -43,6 +43,7 @@ var (
 	VideoTemplate                       *videoTemplate
 	VideoTemplateChannel                *videoTemplateChannel
 	VideoTemplateCountry                *videoTemplateCountry
+	VideoTemplateDisplayConfig          *videoTemplateDisplayConfig
 	VideoTemplatePackage                *videoTemplatePackage
 	VideoTemplateType                   *videoTemplateType
 	VideoTemplateTypeChannel            *videoTemplateTypeChannel
@@ -88,6 +89,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoTemplate = &Q.VideoTemplate
 	VideoTemplateChannel = &Q.VideoTemplateChannel
 	VideoTemplateCountry = &Q.VideoTemplateCountry
+	VideoTemplateDisplayConfig = &Q.VideoTemplateDisplayConfig
 	VideoTemplatePackage = &Q.VideoTemplatePackage
 	VideoTemplateType = &Q.VideoTemplateType
 	VideoTemplateTypeChannel = &Q.VideoTemplateTypeChannel
@@ -134,6 +136,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoTemplate:                       newVideoTemplate(db, opts...),
 		VideoTemplateChannel:                newVideoTemplateChannel(db, opts...),
 		VideoTemplateCountry:                newVideoTemplateCountry(db, opts...),
+		VideoTemplateDisplayConfig:          newVideoTemplateDisplayConfig(db, opts...),
 		VideoTemplatePackage:                newVideoTemplatePackage(db, opts...),
 		VideoTemplateType:                   newVideoTemplateType(db, opts...),
 		VideoTemplateTypeChannel:            newVideoTemplateTypeChannel(db, opts...),
@@ -181,6 +184,7 @@ type Query struct {
 	VideoTemplate                       videoTemplate
 	VideoTemplateChannel                videoTemplateChannel
 	VideoTemplateCountry                videoTemplateCountry
+	VideoTemplateDisplayConfig          videoTemplateDisplayConfig
 	VideoTemplatePackage                videoTemplatePackage
 	VideoTemplateType                   videoTemplateType
 	VideoTemplateTypeChannel            videoTemplateTypeChannel
@@ -229,6 +233,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoTemplate:                       q.VideoTemplate.clone(db),
 		VideoTemplateChannel:                q.VideoTemplateChannel.clone(db),
 		VideoTemplateCountry:                q.VideoTemplateCountry.clone(db),
+		VideoTemplateDisplayConfig:          q.VideoTemplateDisplayConfig.clone(db),
 		VideoTemplatePackage:                q.VideoTemplatePackage.clone(db),
 		VideoTemplateType:                   q.VideoTemplateType.clone(db),
 		VideoTemplateTypeChannel:            q.VideoTemplateTypeChannel.clone(db),
@@ -284,6 +289,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoTemplate:                       q.VideoTemplate.replaceDB(db),
 		VideoTemplateChannel:                q.VideoTemplateChannel.replaceDB(db),
 		VideoTemplateCountry:                q.VideoTemplateCountry.replaceDB(db),
+		VideoTemplateDisplayConfig:          q.VideoTemplateDisplayConfig.replaceDB(db),
 		VideoTemplatePackage:                q.VideoTemplatePackage.replaceDB(db),
 		VideoTemplateType:                   q.VideoTemplateType.replaceDB(db),
 		VideoTemplateTypeChannel:            q.VideoTemplateTypeChannel.replaceDB(db),
@@ -329,6 +335,7 @@ type queryCtx struct {
 	VideoTemplate                       IVideoTemplateDo
 	VideoTemplateChannel                IVideoTemplateChannelDo
 	VideoTemplateCountry                IVideoTemplateCountryDo
+	VideoTemplateDisplayConfig          IVideoTemplateDisplayConfigDo
 	VideoTemplatePackage                IVideoTemplatePackageDo
 	VideoTemplateType                   IVideoTemplateTypeDo
 	VideoTemplateTypeChannel            IVideoTemplateTypeChannelDo
@@ -374,6 +381,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoTemplate:                       q.VideoTemplate.WithContext(ctx),
 		VideoTemplateChannel:                q.VideoTemplateChannel.WithContext(ctx),
 		VideoTemplateCountry:                q.VideoTemplateCountry.WithContext(ctx),
+		VideoTemplateDisplayConfig:          q.VideoTemplateDisplayConfig.WithContext(ctx),
 		VideoTemplatePackage:                q.VideoTemplatePackage.WithContext(ctx),
 		VideoTemplateType:                   q.VideoTemplateType.WithContext(ctx),
 		VideoTemplateTypeChannel:            q.VideoTemplateTypeChannel.WithContext(ctx),

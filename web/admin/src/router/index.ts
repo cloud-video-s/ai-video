@@ -104,6 +104,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Banner 管理' },
       },
       {
+        path: 'template/display-configs',
+        name: 'TemplateDisplayConfigList',
+        component: () => import('@/views/template/TemplateDisplayConfigList.vue'),
+        meta: { title: '模板展示配置' },
+      },
+      {
         path: 'user/list',
         name: 'UserList',
         component: () => import('@/views/user/UserList.vue'),

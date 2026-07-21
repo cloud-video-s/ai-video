@@ -63,6 +63,7 @@ type VideoUser struct {
 	AppIDThirdCode           string     `gorm:"column:appid_third_code;type:varchar(50);comment:苹果三方唯一码" json:"appid_third_code,omitempty"`
 	GoogleEmail              string     `gorm:"column:google_email;type:varchar(50);uniqueIndex:idx_video_user_email;comment:谷歌邮箱" json:"google_email,omitempty"`
 	GoogleThirdCode          string     `gorm:"column:google_third_code;type:varchar(50);comment:谷歌唯一编码" json:"google_third_code,omitempty"`
+	PackageCode              string     `gorm:"column:package_code;type:varchar(128);not null;comment:package identifier" json:"package_code,omitempty"`
 	BaseModel
 }
 

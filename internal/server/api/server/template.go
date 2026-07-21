@@ -14,6 +14,7 @@ import (
 type ClientTemplateService struct {
 	typeRepo     *repository.TemplateTypeRepo
 	templateRepo *repository.TemplateRepo
+	displayRepo  *repository.TemplateDisplayConfigRepo
 	userRepo     *repository.AppUserRepo
 	countryRepo  *repository.CountryRepo
 	channelRepo  *repository.ChannelRepo
@@ -23,7 +24,8 @@ type ClientTemplateService struct {
 func NewClientTemplateService() *ClientTemplateService {
 	return &ClientTemplateService{
 		typeRepo: repository.NewTemplateTypeRepo(), templateRepo: repository.NewTemplateRepo(),
-		userRepo: repository.NewAppUserRepo(), countryRepo: repository.NewCountryRepo(),
+		displayRepo: repository.NewTemplateDisplayConfigRepo(),
+		userRepo:    repository.NewAppUserRepo(), countryRepo: repository.NewCountryRepo(),
 		channelRepo: repository.NewChannelRepo(), packageRepo: repository.NewPackageRepo(),
 	}
 }
@@ -43,6 +45,11 @@ type ClientTemplateRequest struct {
 }
 
 type ClientTemplateRecommendRequest struct {
+	PositionKey string `form:"position_key" binding:"required,max=64"`
+	AccountBaseRequest
+}
+
+type ClientTemplateDisplayRequest struct {
 	PositionKey string `form:"position_key" binding:"required,max=64"`
 	AccountBaseRequest
 }
@@ -76,6 +83,69 @@ type ClientTemplate struct {
 	UsageCount           uint64   `json:"usage_count"`
 	FavoriteCount        uint64   `json:"favorite_count"`
 	ViewCount            uint64   `json:"view_count"`
+}
+
+type ClientTemplateDisplayItem struct {
+	ClientTemplate
+	DisplayConfigID uint64 `json:"display_config_id"`
+	PositionKey     string `json:"position_key"`
+	DisplaySort     int    `json:"display_sort"`
+}
+
+// ListByPosition returns templates explicitly curated for a display position.
+// Template, category, position and configuration status must all be enabled;
+// the existing country, package, channel and user audience rules still apply.
+func (s *ClientTemplateService) ListByPosition(ctx *gin.Context, userID uint64, req *ClientTemplateDisplayRequest) ([]ClientTemplateDisplayItem, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
+
+	countryCode := strings.ToUpper(strings.TrimSpace(req.DeviceCountry))
+	if countryCode == "" {
+		countryCode = strings.ToUpper(strings.TrimSpace(user.DeviceCountry))
+	}
+	var countryID uint64
+	if countryCode != "" {
+		if country, lookupErr := s.countryRepo.GetEnabledByCode(ctx, countryCode); lookupErr == nil {
+			countryID = country.ID
+		}
+	}
+
+	channelValue := strings.TrimSpace(req.ChannelID)
+	if channelValue == "" {
+		channelValue = strings.TrimSpace(user.ChannelID)
+	}
+	channels, err := s.channelRepo.ResolveEnabledTargets(ctx, channelValue, strings.TrimSpace(req.ChannelPackage))
+	if err != nil {
+		return nil, err
+	}
+	packages, err := s.packageRepo.ResolveEnabledTargets(ctx, strings.TrimSpace(req.AppPackage), strings.TrimSpace(req.AppVersion))
+	if err != nil {
+		return nil, err
+	}
+
+	subscriptionState := "unsubscribed"
+	if user.SubscriptionStatus == model.AppUserSubscriptionSubscribed {
+		subscriptionState = "subscribed"
+	}
+	rows, err := s.displayRepo.ListForClient(ctx, repository.ClientTemplateDisplayTargets{
+		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
+		ChannelIDs: clientChannelIDs(channels), PackageIDs: clientPackageIDs(packages),
+		UserType: user.UserType, SubscriptionState: subscriptionState,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]ClientTemplateDisplayItem, 0, len(rows))
+	for i := range rows {
+		result = append(result, ClientTemplateDisplayItem{
+			ClientTemplate: mapClientTemplate(&rows[i].Template), DisplayConfigID: rows[i].ID,
+			PositionKey: rows[i].DisplayPositionKey, DisplaySort: rows[i].Sort,
+		})
+	}
+	return result, nil
 }
 
 func (s *ClientTemplateService) List(ctx *gin.Context, userID uint64, req *ClientTemplateRequest) ([]ClientTemplateType, error) {

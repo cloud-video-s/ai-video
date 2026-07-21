@@ -123,6 +123,15 @@ func (h *TemplateHandler) List(c *gin.Context) {
 	response.OK(c, gin.H{"list": list, "total": total, "page": p.Page, "size": p.PageSize})
 }
 
+func (h *TemplateHandler) ListOptions(c *gin.Context) {
+	list, err := h.svc.ListOptions(c.Request.Context())
+	if err != nil {
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, list)
+}
+
 func (h *TemplateHandler) GetByID(c *gin.Context) {
 	id, ok := templateResourceID(c, "模板")
 	if !ok {

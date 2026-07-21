@@ -71,3 +71,17 @@ func (h *TemplateHandler) Recommend(c *gin.Context) {
 	}
 	response.OK(c, list)
 }
+
+func (h *TemplateHandler) ByPosition(c *gin.Context) {
+	var req apiservice.ClientTemplateDisplayRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
+	list, err := h.svc.ListByPosition(c, middleware.GetAPIUserID(c), &req)
+	if err != nil {
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, list)
+}

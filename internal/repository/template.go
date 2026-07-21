@@ -278,6 +278,12 @@ func (r *TemplateRepo) GetWithType(ctx context.Context, id uint64) (*model.Video
 	return &item, nil
 }
 
+func (r *TemplateRepo) ListOptions(ctx context.Context) ([]model.VideoTemplate, error) {
+	var list []model.VideoTemplate
+	err := dbFrom(ctx).Preload("VideoTemplateType").Order("status DESC, sort DESC, id DESC").Find(&list).Error
+	return list, err
+}
+
 type ClientTemplateTargets struct {
 	TemplateTypeIDs    []uint64
 	CountryID          uint64
@@ -399,5 +405,11 @@ func channelsFromIDs(ids []uint64) []model.VideoChannel {
 }
 
 func (r *TemplateRepo) DeleteWithTargets(ctx context.Context, id uint64) error {
-	return dbFrom(ctx).Select("Countries", "Packages", "Channels").Delete(&model.VideoTemplate{ID: id}).Error
+	db := dbFrom(ctx)
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Where("template_id = ?", id).Delete(&model.VideoTemplateDisplayConfig{}).Error; err != nil {
+			return err
+		}
+		return tx.Select("Countries", "Packages", "Channels").Delete(&model.VideoTemplate{ID: id}).Error
+	})
 }

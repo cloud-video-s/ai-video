@@ -13,6 +13,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	routes := []gin.RouteInfo{
 		{Method: http.MethodPost, Path: "/admin/login", Handler: "admin.Login"},
 		{Method: http.MethodPut, Path: "/admin/banners/:id", Handler: "admin.Banner.Update"},
+		{Method: http.MethodPost, Path: "/api/auth/login", Handler: "api.Auth.Login"},
 		{Method: http.MethodGet, Path: "/api/banners/list", Handler: "api.Banner.List"},
 		{Method: http.MethodPut, Path: "/api/uploads/images/:upload_id/chunks/:index", Handler: "upload.PutChunk"},
 	}
@@ -20,20 +21,23 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	if document.OpenAPI != "3.0.3" {
 		t.Fatalf("OpenAPI = %q", document.OpenAPI)
 	}
-	login := document.Paths["/admin/login"]["post"].(map[string]any)
+	if document.Paths["/admin/login"] != nil || document.Paths["/admin/banners/{id}"] != nil {
+		t.Fatal("admin routes must not be included in the client API document")
+	}
+	login := document.Paths["/api/auth/login"]["post"].(map[string]any)
 	if _, secured := login["security"]; secured {
 		t.Fatal("public login route unexpectedly requires bearer auth")
 	}
-	banner := document.Paths["/admin/banners/{id}"]["put"].(map[string]any)
-	if _, secured := banner["security"]; !secured {
-		t.Fatal("admin route is missing bearer auth")
-	}
-	requestBody := banner["requestBody"].(map[string]any)
+	requestBody := login["requestBody"].(map[string]any)
 	content := requestBody["content"].(map[string]any)
 	schema := content["application/json"].(map[string]any)["schema"].(map[string]any)
 	properties := schema["properties"].(map[string]any)
-	if properties["cover_image"] == nil || properties["jump_type"] == nil {
-		t.Fatalf("banner DTO schema is incomplete: %#v", properties)
+	if properties["login_type"] == nil || properties["app_package"] == nil {
+		t.Fatalf("login DTO schema is incomplete: %#v", properties)
+	}
+	banner := document.Paths["/api/banners/list"]["get"].(map[string]any)
+	if _, secured := banner["security"]; !secured {
+		t.Fatal("protected API route is missing bearer auth")
 	}
 	if document.Paths["/api/uploads/images/{upload_id}/chunks/{index}"] == nil {
 		t.Fatal("Gin path parameters were not converted to OpenAPI syntax")
@@ -47,6 +51,7 @@ func TestRegisterServesOpenAPIAndSwaggerUI(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	engine := gin.New()
 	engine.GET("/api/health", func(c *gin.Context) { c.Status(http.StatusOK) })
+	engine.GET("/admin/users", func(c *gin.Context) { c.Status(http.StatusOK) })
 	Register(engine)
 
 	response := httptest.NewRecorder()
@@ -61,6 +66,9 @@ func TestRegisterServesOpenAPIAndSwaggerUI(t *testing.T) {
 	}
 	if document.Paths["/api/health"] == nil {
 		t.Fatal("registered route is missing from served document")
+	}
+	if document.Paths["/admin/users"] != nil {
+		t.Fatal("admin route leaked into served document")
 	}
 
 	response = httptest.NewRecorder()

@@ -167,7 +167,53 @@ func (s *AuthService) prepareLoginSession(ctx context.Context, userID uint64) (*
 
 func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, userAgent string) (*AuthResponse, error) {
 	req.ForceNew = true
-	return s.Login(ctx, req, clientIP, userAgent)
+	req.IMEI = strings.TrimSpace(req.IMEI)
+	if req.IMEI == "" {
+		return nil, errors.New("设备标识不能为空")
+	}
+	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
+	now := time.Now()
+	var user *model.VideoUser
+	err := repository.Transaction(ctx, func(ctx context.Context) error {
+		firstOpenedAt := req.FirstOpenedAt
+		if firstOpenedAt == nil {
+			firstOpenedAt = &now
+		}
+		lastOpenedAt := req.LastOpenedAt
+		if lastOpenedAt == nil {
+			lastOpenedAt = &now
+		}
+
+		user = &model.VideoUser{
+			IMEI:     req.IMEI,
+			Username: newGuestUsername(), LoginType: model.AppUserLoginGuest,
+			UserType: model.AppUserTypeFree, SubscriptionStatus: model.AppUserSubscriptionNotSubscribed,
+			DeviceCountry: req.DeviceCountry, ChannelID: req.ChannelID,
+			AppVersion: req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
+			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
+			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
+			Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
+		}
+		if err := s.userRepo.Create(ctx, user); err != nil {
+			return err
+		}
+		user, err = s.prepareLoginSession(ctx, user.ID)
+
+		return err
+	})
+	if err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			latest, lookupErr := s.userRepo.GetByIMEI(ctx, req.IMEI, false)
+			if lookupErr == nil {
+				latest, lookupErr = s.prepareLoginSession(ctx, latest.ID)
+				if lookupErr == nil {
+					return issueToken(latest, latest.LoginType)
+				}
+			}
+		}
+		return nil, err
+	}
+	return issueToken(user, model.AppUserLoginGuest)
 }
 
 func (s *AuthService) Logout(token string) error {

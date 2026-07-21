@@ -91,3 +91,17 @@ func TestTemplateCategoriesRequireAPIAuthentication(t *testing.T) {
 		t.Fatalf("GET /api/templates/categories status = %d, want %d", resp.Code, http.StatusUnauthorized)
 	}
 }
+
+func TestTemplatesByPositionRequireAPIAuthentication(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	New().RegisterRoutes(router.Group("/api"))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/templates/by-position?position_key=home", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusUnauthorized {
+		t.Fatalf("GET /api/templates/by-position status = %d, want %d", resp.Code, http.StatusUnauthorized)
+	}
+}

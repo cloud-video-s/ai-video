@@ -67,6 +67,13 @@ func (r *DisplayPositionRepo) TemplateTypeCount(ctx context.Context, positionKey
 	return count, err
 }
 
+func (r *DisplayPositionRepo) TemplateDisplayConfigCount(ctx context.Context, positionKey string) (int64, error) {
+	var count int64
+	err := dbFrom(ctx).Model(&model.VideoTemplateDisplayConfig{}).
+		Where("position_key = ?", positionKey).Count(&count).Error
+	return count, err
+}
+
 func (r *DisplayPositionRepo) RenameTemplateTypePositionKey(ctx context.Context, oldKey, newKey string) error {
 	if oldKey == newKey {
 		return nil
@@ -76,6 +83,10 @@ func (r *DisplayPositionRepo) RenameTemplateTypePositionKey(ctx context.Context,
 		Where("position_key = ?", oldKey).Update("position_key", newKey).Error; err != nil {
 		return err
 	}
-	return db.Model(&model.VideoBannerDisplayPosition{}).
+	if err := db.Model(&model.VideoBannerDisplayPosition{}).
+		Where("position_key = ?", oldKey).Update("position_key", newKey).Error; err != nil {
+		return err
+	}
+	return db.Model(&model.VideoTemplateDisplayConfig{}).
 		Where("position_key = ?", oldKey).Update("position_key", newKey).Error
 }

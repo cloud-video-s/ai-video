@@ -303,6 +303,10 @@ func (s *TemplateService) GetByID(ctx context.Context, id uint64) (*model.VideoT
 	return item, nil
 }
 
+func (s *TemplateService) ListOptions(ctx context.Context) ([]model.VideoTemplate, error) {
+	return s.repo.ListOptions(ctx)
+}
+
 func (s *TemplateService) Create(ctx context.Context, req *TemplatePayload) (*model.VideoTemplate, error) {
 	if err := s.ensureTypeExists(ctx, req.VideoTemplateTypeID); err != nil {
 		return nil, err

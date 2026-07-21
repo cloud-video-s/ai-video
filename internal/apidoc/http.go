@@ -46,7 +46,7 @@ const documentHTML = `<!doctype html>
   </style>
 </head>
 <body>
-<header><div class="head"><div><div class="title">AI Video API 文档</div><div class="sub">运行时根据 Gin 路由自动生成 · OpenAPI 3.0.3</div></div><div class="tools"><input id="search" placeholder="搜索路径、功能或分组"><a class="button" href="/docs/openapi.json" target="_blank">OpenAPI JSON</a></div></div></header>
+<header><div class="head"><div><div class="title">AI Video 客户端 API 文档</div><div class="sub">仅展示 /api 接口 · OpenAPI 3.0.3</div></div><div class="tools"><input id="search" placeholder="搜索路径、功能或分组"><a class="button" href="/docs/openapi.json" target="_blank">OpenAPI JSON</a></div></div></header>
 <main><div id="stats" class="stats">正在读取接口…</div><div id="content"></div></main>
 <script>
 const methodOrder={GET:1,POST:2,PUT:3,PATCH:4,DELETE:5};let endpoints=[];

@@ -35,6 +35,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	channelHandler := handler.NewChannelHandler()
 	templateTypeHandler := handler.NewTemplateTypeHandler()
 	templateHandler := handler.NewTemplateHandler()
+	templateDisplayConfigHandler := handler.NewTemplateDisplayConfigHandler()
 	displayPositionHandler := handler.NewDisplayPositionHandler()
 	packageHandler := handler.NewPackageHandler()
 	vipSubscriptionHandler := handler.NewVIPSubscriptionHandler()
@@ -74,6 +75,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		authenticated.GET("/countries/options", countryHandler.ListOptions)
 		authenticated.GET("/channels/options", channelHandler.ListOptions)
 		authenticated.GET("/template-types/options", templateTypeHandler.ListOptions)
+		authenticated.GET("/templates/options", templateHandler.ListOptions)
 		authenticated.GET("/display-positions/options", displayPositionHandler.ListOptions)
 		authenticated.GET("/packages/options", packageHandler.ListOptions)
 		authenticated.GET("/points-packages/options", pointsPackageHandler.ListOptions)
@@ -181,6 +183,13 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.GET("/templates/:id", templateHandler.GetByID)
 		auth.PUT("/templates/:id", templateHandler.Update)
 		auth.DELETE("/templates/:id", templateHandler.Delete)
+
+		// Concrete template display-position configurations
+		auth.GET("/template-display-configs", templateDisplayConfigHandler.List)
+		auth.POST("/template-display-configs", templateDisplayConfigHandler.Create)
+		auth.GET("/template-display-configs/:id", templateDisplayConfigHandler.GetByID)
+		auth.PUT("/template-display-configs/:id", templateDisplayConfigHandler.Update)
+		auth.DELETE("/template-display-configs/:id", templateDisplayConfigHandler.Delete)
 
 		// Display positions
 		auth.GET("/display-positions", displayPositionHandler.List)
