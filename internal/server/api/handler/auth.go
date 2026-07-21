@@ -1,11 +1,11 @@
 package handler
 
 import (
+	"ai-video/internal/config"
 	"errors"
 	"net/http"
 	"strings"
 
-	"ai-video/internal/app"
 	"ai-video/internal/middleware"
 	"ai-video/internal/pkg/errcode"
 	"ai-video/internal/pkg/oidc"
@@ -156,7 +156,7 @@ func bearerToken(c *gin.Context) string {
 }
 
 func requestCountryHeader(c *gin.Context) string {
-	if header := strings.TrimSpace(app.Cfg.GeoIP.CountryHeader); header != "" {
+	if header := strings.TrimSpace(config.Cfg.GeoIP.CountryHeader); header != "" {
 		return c.GetHeader(header)
 	}
 	return ""

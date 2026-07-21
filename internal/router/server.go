@@ -2,7 +2,6 @@ package router
 
 import (
 	"ai-video/internal/apidoc"
-	"ai-video/internal/app"
 	"ai-video/internal/config"
 	"ai-video/internal/middleware"
 	"ai-video/internal/pkg/response"
@@ -22,7 +21,7 @@ type Module interface {
 }
 
 func NewRouter(adminDist embed.FS, modules ...Module) *gin.Engine {
-	gin.SetMode(app.Cfg.Server.Mode)
+	gin.SetMode(config.Cfg.Server.Mode)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -68,7 +67,7 @@ func (f fileOnlyFS) Open(name string) (http.File, error) {
 }
 
 func setupUploadFiles(r *gin.Engine) {
-	root, err := filepath.Abs(app.Cfg.Upload.LocalRootDir)
+	root, err := filepath.Abs(config.Cfg.Upload.LocalRootDir)
 	if err != nil {
 		config.Log.Warnf("resolve upload static directory: %v", err)
 		return

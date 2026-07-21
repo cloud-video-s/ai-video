@@ -1,6 +1,7 @@
 package service
 
 import (
+	"ai-video/internal/config"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"ai-video/internal/app"
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/cache"
@@ -35,7 +35,7 @@ type identityTokenVerifier interface {
 }
 
 func NewAuthService() *AuthService {
-	authConfig := app.Cfg.ThirdPartyAuth
+	authConfig := config.Cfg.ThirdPartyAuth
 	timeout := time.Duration(authConfig.HTTPTimeoutMS) * time.Millisecond
 	if timeout <= 0 {
 		timeout = 5 * time.Second
@@ -93,6 +93,31 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 	now := time.Now()
 	var user *model.VideoUser
 	err := repository.Transaction(ctx, func(ctx context.Context) error {
+		firstOpenedAt := req.FirstOpenedAt
+		if firstOpenedAt == nil {
+			firstOpenedAt = &now
+		}
+		lastOpenedAt := req.LastOpenedAt
+		if lastOpenedAt == nil {
+			lastOpenedAt = &now
+		}
+		if req.ForceNew {
+			user = &model.VideoUser{
+				IMEI:     req.IMEI,
+				Username: newGuestUsername(), LoginType: domain.AppUserLoginGuest,
+				UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
+				DeviceCountry: req.DeviceCountry, ChannelID: req.ChannelID,
+				AppVersion: req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
+				FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
+				AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
+				Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
+			}
+			if err := s.userRepo.Create(ctx, user); err != nil {
+				return err
+			}
+			user, _ = s.prepareLoginSession(ctx, user.ID)
+			return nil
+		}
 		latest, err := s.userRepo.GetByIMEI(ctx, req.IMEI, true)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("账号异常，请稍后重试")
@@ -113,15 +138,6 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 				return err
 			}
 			return nil
-		}
-
-		firstOpenedAt := req.FirstOpenedAt
-		if firstOpenedAt == nil {
-			firstOpenedAt = &now
-		}
-		lastOpenedAt := req.LastOpenedAt
-		if lastOpenedAt == nil {
-			lastOpenedAt = &now
 		}
 
 		user = &model.VideoUser{
@@ -283,7 +299,7 @@ func issueToken(user *model.VideoUser, loginType uint32) (*AuthResponse, error) 
 	if err != nil {
 		return nil, fmt.Errorf("生成客户端 Token 失败: %w", err)
 	}
-	cfg := app.Cfg.JWT
+	cfg := config.Cfg.JWT
 	return &AuthResponse{
 		Token: token, LoginType: loginType, ExpireAt: time.Now().Add(time.Duration(cfg.Expire) * time.Second).Unix(), TokenVersion: user.TokenVersion,
 	}, nil

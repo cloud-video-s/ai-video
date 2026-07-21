@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"ai-video/internal/app"
+	"ai-video/internal/config"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -11,7 +11,7 @@ import (
 func Cors() gin.HandlerFunc {
 
 	// in production; an empty list falls back to "*".
-	origins := app.Cfg.Server.AllowOrigins
+	origins := config.Cfg.Server.AllowOrigins
 	if len(origins) == 0 {
 		origins = []string{"*"}
 	}

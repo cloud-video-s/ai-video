@@ -1,6 +1,7 @@
 package service
 
 import (
+	"ai-video/internal/config"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,15 +12,13 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
-	"ai-video/internal/app"
 )
 
 func ResolveCountry(ctx context.Context, clientIP, countryHeader string) (string, error) {
 	if country := normalizeCountry(countryHeader); country != "" {
 		return country, nil
 	}
-	cfg := app.Cfg.GeoIP
+	cfg := config.Cfg.GeoIP
 	if cfg.LookupURL == "" {
 		return "", nil
 	}

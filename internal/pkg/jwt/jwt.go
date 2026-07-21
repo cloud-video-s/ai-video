@@ -1,7 +1,7 @@
 package jwt
 
 import (
-	"ai-video/internal/app"
+	"ai-video/internal/config"
 	"errors"
 	"fmt"
 	"time"
@@ -19,7 +19,7 @@ type AdminClaims struct {
 }
 
 func GenerateToken(userID uint64, username string, roleCodes []string, tokenVersion int64) (string, error) {
-	cfg := app.Cfg.JWT
+	cfg := config.Cfg.JWT
 	claims := AdminClaims{
 		UserID:       userID,
 		Username:     username,
@@ -42,7 +42,7 @@ func ParseToken(tokenString string) (*AdminClaims, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
-		return []byte(app.Cfg.JWT.Secret), nil
+		return []byte(config.Cfg.JWT.Secret), nil
 	}, jwt.WithValidMethods([]string{"HS256"}))
 	if err != nil {
 		return nil, err

@@ -1,13 +1,13 @@
 package uploadruntime
 
 import (
+	"ai-video/internal/config"
 	"crypto/sha256"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 
-	"ai-video/internal/app"
 	"ai-video/internal/pkg/setting"
 	"ai-video/internal/pkg/upload"
 )
@@ -19,20 +19,20 @@ type storageFactory struct {
 }
 
 func ManagerConfig() (upload.Config, error) {
-	config := app.UploadManagerConfig()
+	UploadConfig := config.UploadManagerConfig()
 	factory := &storageFactory{}
 	dynamic, err := upload.NewDynamicStorage(factory.resolve)
 	if err != nil {
 		return upload.Config{}, err
 	}
-	config.Storage = dynamic
-	config.PolicyResolver = func(kind upload.MediaKind) (upload.Policy, error) {
-		return configuredPolicy(kind, app.Cfg.Upload)
+	UploadConfig.Storage = dynamic
+	UploadConfig.PolicyResolver = func(kind upload.MediaKind) (upload.Policy, error) {
+		return configuredPolicy(kind, config.Cfg.Upload)
 	}
-	return config, nil
+	return UploadConfig, nil
 }
 
-func configuredPolicy(kind upload.MediaKind, cfg app.UploadConfig) (upload.Policy, error) {
+func configuredPolicy(kind upload.MediaKind, cfg config.UploadConfig) (upload.Policy, error) {
 	var sizeKey, extensionsKey string
 	var fallbackSize int64
 	var fallbackExtensions []string
@@ -74,7 +74,7 @@ func splitExtensions(value string) []string {
 }
 
 func (f *storageFactory) resolve() (upload.Storage, error) {
-	cfg := app.Cfg.Upload
+	cfg := config.Cfg.Upload
 	provider := configured("upload.storage_provider", cfg.StorageProvider)
 	if provider == "" {
 		provider = upload.StorageLocal
