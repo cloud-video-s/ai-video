@@ -36,9 +36,9 @@ func newVideoPackage(db *gorm.DB, opts ...gen.DOOption) videoPackage {
 	_videoPackage.DownloadCount = field.NewUint64(tableName, "download_count")
 	_videoPackage.DeviceCount = field.NewUint64(tableName, "device_count")
 	_videoPackage.Description = field.NewString(tableName, "description")
-	_videoPackage.Sort = field.NewInt64(tableName, "sort")
-	_videoPackage.Status = field.NewInt32(tableName, "status")
-	_videoPackage.SystemTypes = field.NewString(tableName, "system_types")
+	_videoPackage.Sort = field.NewInt(tableName, "sort")
+	_videoPackage.Status = field.NewInt8(tableName, "status")
+	_videoPackage.SystemTypes = field.NewField(tableName, "system_types")
 	_videoPackage.Language = field.NewString(tableName, "language")
 	_videoPackage.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoPackage.UpdatedAt = field.NewTime(tableName, "updated_at")
@@ -62,9 +62,9 @@ type videoPackage struct {
 	DownloadCount  field.Uint64 // download count
 	DeviceCount    field.Uint64 // device count
 	Description    field.String // package description
-	Sort           field.Int64  // sort order
-	Status         field.Int32  // status: 0 disabled, 1 enabled
-	SystemTypes    field.String // supported system types
+	Sort           field.Int    // sort order
+	Status         field.Int8   // status: 0 disabled, 1 enabled
+	SystemTypes    field.Field  // supported system types
 	Language       field.String // default API response language
 	CreatedAt      field.Time
 	UpdatedAt      field.Time
@@ -94,9 +94,9 @@ func (v *videoPackage) updateTableName(table string) *videoPackage {
 	v.DownloadCount = field.NewUint64(table, "download_count")
 	v.DeviceCount = field.NewUint64(table, "device_count")
 	v.Description = field.NewString(table, "description")
-	v.Sort = field.NewInt64(table, "sort")
-	v.Status = field.NewInt32(table, "status")
-	v.SystemTypes = field.NewString(table, "system_types")
+	v.Sort = field.NewInt(table, "sort")
+	v.Status = field.NewInt8(table, "status")
+	v.SystemTypes = field.NewField(table, "system_types")
 	v.Language = field.NewString(table, "language")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")

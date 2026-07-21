@@ -1,15 +1,12 @@
 package main
 
 import (
-	"context"
+	"ai-video/internal/config"
 	"flag"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
-
-	"ai-video/internal/app"
-	bizmodel "ai-video/internal/model"
-	"ai-video/internal/repository"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -17,20 +14,20 @@ import (
 	"gorm.io/gen/field"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 func main() {
 	cfgFile := flag.String("config", "", "config file path")
 	outPath := flag.String("out", "internal/gen/query", "generated query package path")
 	modelPath := flag.String("model", "internal/gen/model", "generated model package path")
-	source := flag.String("source", "db", "generate from db tables")
-	migrate := flag.Bool("migrate", false, "run AutoMigrate before generating")
+	source := flag.String("source", "db", "generate model and query code from database tables")
 	flag.Parse()
 
-	if err := app.InitConfig(*cfgFile); err != nil {
+	if err := config.InitConfig(*cfgFile); err != nil {
 		panic(fmt.Sprintf("init config failed: %v", err))
 	}
-	if err := app.InitTimezone(); err != nil {
+	if err := config.InitTimezone(); err != nil {
 		panic(fmt.Sprintf("init timezone failed: %v", err))
 	}
 
@@ -38,118 +35,14 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("connect database failed: %v", err))
 	}
-	app.DB = db
-
-	if *migrate {
-		if err := app.PrepareVideoUserColumns(db); err != nil {
-			panic(fmt.Sprintf("prepare video user columns failed: %v", err))
-		}
-		if err := app.NormalizeUserAttributionColumns(db); err != nil {
-			panic(fmt.Sprintf("normalize attribution columns failed: %v", err))
-		}
-		if err := app.MigrateLegacyUploadOwnerColumns(db); err != nil {
-			panic(fmt.Sprintf("migrate upload owner columns failed: %v", err))
-		}
-		if db.Migrator().HasTable("video_app_user") && !db.Migrator().HasTable(&bizmodel.VideoUser{}) {
-			if err := db.Migrator().RenameTable("video_app_user", bizmodel.VideoUser{}.TableName()); err != nil {
-				panic(fmt.Sprintf("rename client user table failed: %v", err))
-			}
-		}
-		if db.Migrator().HasTable(&bizmodel.VideoUser{}) &&
-			db.Migrator().HasColumn("video_user", "v_ip_expires_at") &&
-			!db.Migrator().HasColumn("video_user", "vip_expires_at") {
-			if err := db.Migrator().RenameColumn("video_user", "v_ip_expires_at", "vip_expires_at"); err != nil {
-				panic(fmt.Sprintf("rename video app user VIP column failed: %v", err))
-			}
-		}
-		if err := app.MigrateTemplateTypeDisplayPositionKeys(db); err != nil {
-			panic(fmt.Sprintf("migrate template type position keys failed: %v", err))
-		}
-		if err := db.AutoMigrate(
-			&bizmodel.VideoDelayConfig{},
-			&bizmodel.VideoTemplateType{},
-			&bizmodel.VideoTemplateTypeDisplayPosition{},
-			&bizmodel.VideoDisplayPosition{},
-			&bizmodel.VideoTemplate{},
-			&bizmodel.VideoPackage{},
-			&bizmodel.VideoVIPSubscription{},
-			&bizmodel.VideoBanner{},
-			&bizmodel.VideoUser{},
-			&bizmodel.VideoUserIdentity{},
-			&bizmodel.VideoConfig{},
-			&bizmodel.VideoUpload{},
-			&bizmodel.VideoUserAttribution{},
-		); err != nil {
-			panic(fmt.Sprintf("migrate generated models failed: %v", err))
-		}
-		if err := app.DropDeprecatedVideoUserColumns(db); err != nil {
-			panic(fmt.Sprintf("drop deprecated video user columns failed: %v", err))
-		}
-		if err := app.MigrateLegacyBannerPositions(db); err != nil {
-			panic(fmt.Sprintf("migrate legacy banner positions failed: %v", err))
-		}
-		if err := app.MigrateLegacyTemplateTypeTargets(db); err != nil {
-			panic(fmt.Sprintf("migrate legacy template type targets failed: %v", err))
-		}
-		if err := app.RemoveLegacyTemplateTypeColumns(db); err != nil {
-			panic(fmt.Sprintf("remove legacy template type columns failed: %v", err))
-		}
-		indexes, err := db.Migrator().GetIndexes(&bizmodel.VideoUser{})
-		if err != nil {
-			panic(fmt.Sprintf("read client user indexes failed: %v", err))
-		}
-		for _, index := range indexes {
-			name := index.Name()
-			if strings.HasPrefix(name, "idx_video_app_user_") ||
-				name == "idx_video_user_v_ip_expires_at" ||
-				name == "idx_video_user_phone_brand" ||
-				name == "idx_video_user_phone_registration" {
-				if err := db.Migrator().DropIndex(&bizmodel.VideoUser{}, name); err != nil {
-					panic(fmt.Sprintf("drop obsolete client user index %s failed: %v", name, err))
-				}
-			}
-		}
-		if err := app.SeedOBDelayConfig(app.DefaultOBDelayConfigPath); err != nil {
-			panic(fmt.Sprintf("seed ob delay config failed: %v", err))
-		}
-		if err := app.SeedDelayConfigAdmin(); err != nil {
-			panic(fmt.Sprintf("seed delay config admin failed: %v", err))
-		}
-		if err := app.SeedAppUserAdmin(); err != nil {
-			panic(fmt.Sprintf("seed app user admin failed: %v", err))
-		}
-		if err := app.SeedUserAttributionAdmin(); err != nil {
-			panic(fmt.Sprintf("seed user attribution admin failed: %v", err))
-		}
-		if _, err := repository.NewUserAttributionRepo().SyncUsers(context.Background()); err != nil {
-			panic(fmt.Sprintf("sync user attributions failed: %v", err))
-		}
-		if err := app.SeedUploadAdmin(); err != nil {
-			panic(fmt.Sprintf("seed upload admin failed: %v", err))
-		}
-		if err := app.SeedTemplateAdmin(); err != nil {
-			panic(fmt.Sprintf("seed template admin failed: %v", err))
-		}
-		if err := app.SeedDisplayPositionAdmin(); err != nil {
-			panic(fmt.Sprintf("seed display position admin failed: %v", err))
-		}
-		if err := app.SeedPackageAdmin(); err != nil {
-			panic(fmt.Sprintf("seed package admin failed: %v", err))
-		}
-		if err := app.SeedVIPSubscriptionAdmin(); err != nil {
-			panic(fmt.Sprintf("seed VIP subscription admin failed: %v", err))
-		}
-		if err := app.SeedBannerAdmin(); err != nil {
-			panic(fmt.Sprintf("seed banner admin failed: %v", err))
-		}
-	}
+	config.DB = db
 
 	g := gen.NewGenerator(gen.Config{
 		OutPath:           filepath.FromSlash(*outPath),
 		ModelPkgPath:      filepath.FromSlash(*modelPath),
 		Mode:              gen.WithDefaultQuery | gen.WithQueryInterface,
-		FieldNullable:     true,
-		FieldCoverable:    true,
+		FieldNullable:     false,
+		FieldCoverable:    false,
 		FieldSignable:     true,
 		FieldWithIndexTag: true,
 		FieldWithTypeTag:  true,
@@ -157,7 +50,11 @@ func main() {
 	g.UseDB(db)
 	switch *source {
 	case "db":
-		g.ApplyBasic(g.GenerateAllTable()...)
+		models, err := generateModelsWithRelations(g, db)
+		if err != nil {
+			panic(fmt.Sprintf("inspect database relationships failed: %v", err))
+		}
+		g.ApplyBasic(models...)
 	default:
 		panic(fmt.Sprintf("unsupported source: %s", *source))
 	}
@@ -165,14 +62,318 @@ func main() {
 	g.Execute()
 }
 
+type tableInfo struct {
+	name    string
+	columns map[string]struct{}
+}
+
+type manyToManyRelation struct {
+	owner, target, joinTable          string
+	ownerColumn, targetColumn         string
+	joinOwnerColumn, joinTargetColumn string
+}
+
+// generateModelsWithRelations discovers conventional join tables from the live
+// schema. A join table named <owner>_<target> is related when it contains a
+// column for both sides (for example banner_id and country_id). This also
+// supports non-ID references such as package_code and position_key.
+func generateModelsWithRelations(g *gen.Generator, db *gorm.DB) ([]interface{}, error) {
+	tables, err := inspectTables(db)
+	if err != nil {
+		return nil, err
+	}
+
+	options := make(map[string][]gen.ModelOpt)
+	for _, table := range tables {
+		options[table.name] = append(options[table.name], businessFieldOptions(table.name)...)
+	}
+	for _, relation := range discoverManyToMany(tables) {
+		// The legacy banner channel column is named channel_code but stores the
+		// numeric video_channel.channel_id value.
+		if relation.owner == "video_banner" && relation.target == "video_channel" {
+			continue
+		}
+		fieldName := pluralFieldName(relation.target)
+		options[relation.owner] = append(options[relation.owner], gen.FieldRelate(
+			field.Many2Many,
+			fieldName,
+			g.GenerateModel(relation.target),
+			&field.RelateConfig{
+				RelateSlice: true,
+				GORMTag: field.GormTag{
+					"many2many":      []string{relation.joinTable},
+					"foreignKey":     []string{schema.NamingStrategy{}.SchemaName(relation.ownerColumn)},
+					"joinForeignKey": []string{schema.NamingStrategy{}.SchemaName(relation.joinOwnerColumn)},
+					"joinReferences": []string{schema.NamingStrategy{}.SchemaName(relation.joinTargetColumn)},
+					"References":     []string{schema.NamingStrategy{}.SchemaName(relation.targetColumn)},
+				},
+			},
+		))
+		fmt.Printf("discovered many2many: %s.%s -> %s via %s\n", relation.owner, fieldName, relation.target, relation.joinTable)
+	}
+	addBusinessRelations(g, options)
+	result := make([]interface{}, 0, len(tables))
+	for _, table := range tables {
+		result = append(result, g.GenerateModel(table.name, options[table.name]...))
+	}
+	return result, nil
+}
+
+func addBusinessRelations(g *gen.Generator, options map[string][]gen.ModelOpt) {
+	addManyToMany := func(owner, name, target, joinTable, joinOwner, joinTarget string) {
+		options[owner] = append(options[owner], gen.FieldRelate(field.Many2Many, name, g.GenerateModel(target), &field.RelateConfig{
+			RelateSlice: true,
+			GORMTag: field.GormTag{
+				"many2many": {joinTable}, "foreignKey": {"ID"}, "joinForeignKey": {joinOwner},
+				"References": {"ID"}, "joinReferences": {joinTarget},
+			},
+		}))
+	}
+	addBelongsTo := func(owner, name, target, foreignKey, reference string, pointer bool) {
+		options[owner] = append(options[owner], gen.FieldRelate(field.BelongsTo, name, g.GenerateModel(target), &field.RelateConfig{
+			RelatePointer: pointer,
+			GORMTag:       field.GormTag{"foreignKey": {foreignKey}, "References": {reference}},
+		}))
+	}
+
+	addManyToMany("video_admin", "Roles", "video_role", "video_admin_role", "VideoAdminID", "VideoRoleID")
+	addManyToMany("video_role", "Menus", "video_menu", "video_role_menu", "VideoRoleID", "VideoMenuID")
+	addManyToMany("video_menu", "APIs", "video_api", "video_menu_api", "VideoMenuID", "VideoAPIID")
+	options["video_banner"] = append(options["video_banner"], gen.FieldRelate(
+		field.Many2Many, "Channels", g.GenerateModel("video_channel"), &field.RelateConfig{
+			RelateSlice: true,
+			GORMTag: field.GormTag{
+				"many2many": {"video_banner_channel"}, "foreignKey": {"ID"},
+				"joinForeignKey": {"BannerID"}, "References": {"ChannelID"}, "joinReferences": {"ChannelCode"},
+			},
+		},
+	))
+	options["video_points_package"] = append(options["video_points_package"], gen.FieldRelate(
+		field.Many2Many, "Channels", g.GenerateModel("video_channel"), &field.RelateConfig{
+			RelateSlice: true,
+			GORMTag: field.GormTag{
+				"many2many": {"video_points_package_channel"}, "foreignKey": {"ProductID"},
+				"joinForeignKey": {"ProductCode"}, "References": {"ChannelCode"}, "joinReferences": {"ChannelCode"},
+			},
+		},
+	))
+	options["video_vip_subscription"] = append(options["video_vip_subscription"],
+		gen.FieldRelate(field.Many2Many, "DisplayPositions", g.GenerateModel("video_display_position"), &field.RelateConfig{
+			RelateSlice: true,
+			GORMTag: field.GormTag{
+				"many2many": {"video_vip_subscription_position"}, "foreignKey": {"ID"},
+				"joinForeignKey": {"SubscriptionID"}, "References": {"PositionKey"}, "joinReferences": {"ProductCode"},
+			},
+		}),
+		gen.FieldRelate(field.Many2Many, "ExcludedChannels", g.GenerateModel("video_channel"), &field.RelateConfig{
+			RelateSlice: true,
+			GORMTag: field.GormTag{
+				"many2many": {"video_vip_subscription_excluded_channel"}, "foreignKey": {"ID"},
+				"joinForeignKey": {"SubscriptionID"}, "References": {"ChannelID"}, "joinReferences": {"ChannelID"},
+			},
+		}),
+	)
+
+	options["video_menu"] = append(options["video_menu"], gen.FieldRelate(field.HasMany, "Children", g.GenerateModel("video_menu"), &field.RelateConfig{
+		RelateSlice: true, GORMTag: field.GormTag{"foreignKey": {"ParentID"}, "References": {"ID"}},
+	}))
+	addBelongsTo("video_banner", "Template", "video_template", "TemplateID", "ID", true)
+	addBelongsTo("video_template", "VideoTemplateType", "video_template_type", "VideoTemplateTypeID", "ID", false)
+	addBelongsTo("video_template_display_config", "Template", "video_template", "TemplateID", "ID", false)
+	addBelongsTo("video_template_display_config", "DisplayPosition", "video_display_position", "DisplayPositionKey", "PositionKey", false)
+	addBelongsTo("video_user_attribution", "User", "video_user", "UserID", "ID", false)
+	addBelongsTo("video_user_attribution", "Channel", "video_channel", "ChannelCode", "ChannelCode", true)
+	addBelongsTo("video_user_identity", "User", "video_user", "UserID", "ID", false)
+	addBelongsTo("video_user_points_ledger", "User", "video_user", "UserID", "ID", false)
+	addBelongsTo("video_user_points_ledger", "PointsPackage", "video_points_package", "PointsPackageID", "ID", true)
+}
+
+func businessFieldOptions(table string) []gen.ModelOpt {
+	jsonSerializer := func(tag field.GormTag) field.GormTag { return tag.Set("serializer", "json") }
+	switch table {
+	case "video_user":
+		return []gen.ModelOpt{
+			gen.FieldRename("imei", "IMEI"), gen.FieldRename("appid_email", "AppIDEmail"),
+			gen.FieldRename("appid_third_code", "AppIDThirdCode"),
+			gen.FieldType("first_opened_at", "*time.Time"), gen.FieldType("last_opened_at", "*time.Time"),
+			gen.FieldType("vip_expires_at", "*time.Time"), gen.FieldType("first_order_created_at", "*time.Time"),
+			gen.FieldType("first_paid_at", "*time.Time"), gen.FieldType("last_paid_at", "*time.Time"),
+			gen.FieldType("attribution_clicked_at", "*time.Time"), gen.FieldType("last_login_at", "*time.Time"),
+		}
+	case "video_user_attribution":
+		return []gen.ModelOpt{
+			gen.FieldRename("oaid", "OAID"), gen.FieldRename("imei", "IMEI"),
+			gen.FieldType("attributed_at", "*time.Time"), gen.FieldType("last_operated_at", "*time.Time"),
+		}
+	case "video_template", "video_template_type":
+		options := []gen.ModelOpt{
+			gen.FieldType("user_types", "[]int"), gen.FieldGORMTag("user_types", jsonSerializer),
+			gen.FieldType("subscription_statuses", "[]string"), gen.FieldGORMTag("subscription_statuses", jsonSerializer),
+		}
+		if table == "video_template" {
+			options = append(options, gen.FieldType("sort", "int"), gen.FieldType("status", "int8"))
+		} else {
+			options = append(options, gen.FieldType("status", "int8"))
+		}
+		return options
+	case "video_upload":
+		return []gen.ModelOpt{
+			gen.FieldType("user_type", "int8"), gen.FieldRename("mime_type", "MIMEType"),
+			gen.FieldRename("sha256", "SHA256"),
+		}
+	case "video_banner":
+		return []gen.ModelOpt{
+			gen.FieldType("template_id", "*uint64"), gen.FieldType("jump_type", "uint8"), gen.FieldType("status", "int8"),
+		}
+	case "video_country", "video_channel":
+		return []gen.ModelOpt{gen.FieldType("status", "int8")}
+	case "video_display_position", "video_template_display_config":
+		options := []gen.ModelOpt{gen.FieldType("sort", "int"), gen.FieldType("status", "int8")}
+		if table == "video_template_display_config" {
+			options = append(options,
+				gen.FieldRename("position_key", "DisplayPositionKey"),
+				gen.FieldRename("description", "Remark"), gen.FieldJSONTag("description", "remark"),
+			)
+		}
+		return options
+	case "video_package":
+		return []gen.ModelOpt{
+			gen.FieldType("system_types", "[]string"), gen.FieldGORMTag("system_types", jsonSerializer),
+			gen.FieldType("sort", "int"), gen.FieldType("status", "int8"),
+		}
+	case "video_points_package":
+		return []gen.ModelOpt{
+			gen.FieldRename("product_code", "ProductID"), gen.FieldJSONTag("product_code", "product_id"),
+			gen.FieldType("systems", "[]string"), gen.FieldGORMTag("systems", jsonSerializer),
+			gen.FieldType("user_types", "[]int"), gen.FieldGORMTag("user_types", jsonSerializer),
+			gen.FieldType("sort", "int"), gen.FieldType("status", "int8"),
+		}
+	case "video_vip_subscription":
+		return []gen.ModelOpt{
+			gen.FieldJSONTag("v_ip_level", "vip_level"), gen.FieldJSONTag("v_ip_duration_days", "vip_duration_days"),
+			gen.FieldType("display_mode", "int8"), gen.FieldType("status", "int8"), gen.FieldType("sort", "int"),
+		}
+	case "video_user_identity":
+		return []gen.ModelOpt{
+			gen.FieldType("last_login_at", "*time.Time"), gen.FieldType("last_token_issued_at", "*time.Time"),
+		}
+	case "video_user_points_ledger":
+		return []gen.ModelOpt{
+			gen.FieldType("points_package_id", "*uint64"), gen.FieldType("operator_admin_id", "*uint64"),
+		}
+	default:
+		return nil
+	}
+}
+
+func inspectTables(db *gorm.DB) ([]tableInfo, error) {
+	names, err := db.Migrator().GetTables()
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(names)
+	tables := make([]tableInfo, 0, len(names))
+	for _, name := range names {
+		columnTypes, err := db.Migrator().ColumnTypes(name)
+		if err != nil {
+			return nil, fmt.Errorf("read columns of %s: %w", name, err)
+		}
+		columns := make(map[string]struct{}, len(columnTypes))
+		for _, column := range columnTypes {
+			columns[strings.ToLower(column.Name())] = struct{}{}
+		}
+		tables = append(tables, tableInfo{name: name, columns: columns})
+	}
+	return tables, nil
+}
+
+func discoverManyToMany(tables []tableInfo) []manyToManyRelation {
+	byName := make(map[string]tableInfo, len(tables))
+	for _, table := range tables {
+		byName[table.name] = table
+	}
+
+	var relations []manyToManyRelation
+	for _, join := range tables {
+		for _, owner := range tables {
+			prefix := owner.name + "_"
+			if !strings.HasPrefix(join.name, prefix) {
+				continue
+			}
+			remainder := strings.TrimPrefix(join.name, prefix)
+			target, ok := byName[remainder]
+			if !ok {
+				target, ok = byName["video_"+remainder]
+			}
+			if !ok || target.name == owner.name {
+				continue
+			}
+			ownerJoin, ownerRef, okOwner := relationColumns(owner, join)
+			targetJoin, targetRef, okTarget := relationColumns(target, join)
+			if !okOwner || !okTarget || ownerJoin == targetJoin {
+				continue
+			}
+			relations = append(relations, manyToManyRelation{
+				owner: owner.name, target: target.name, joinTable: join.name,
+				ownerColumn: ownerRef, targetColumn: targetRef,
+				joinOwnerColumn: ownerJoin, joinTargetColumn: targetJoin,
+			})
+			break // the longest table prefix wins because tables are sorted
+		}
+	}
+	return relations
+}
+
+func relationColumns(base, join tableInfo) (joinColumn, referenceColumn string, ok bool) {
+	short := strings.TrimPrefix(base.name, "video_")
+	candidates := []string{short + "_id", short + "_code", short + "_key"}
+	// display_position commonly uses position_key in association tables.
+	if strings.Contains(short, "_") {
+		last := short[strings.LastIndex(short, "_")+1:]
+		candidates = append(candidates, last+"_id", last+"_code", last+"_key")
+	}
+	for _, candidate := range candidates {
+		if _, exists := join.columns[candidate]; !exists {
+			continue
+		}
+		suffix := candidate[strings.LastIndex(candidate, "_")+1:]
+		ref := suffix
+		if suffix == "id" {
+			ref = "id"
+		} else if _, exists := base.columns[short+"_"+suffix]; exists {
+			ref = short + "_" + suffix
+		} else if _, exists := base.columns[candidate]; exists {
+			ref = candidate
+		} else if _, exists := base.columns[suffix]; !exists {
+			continue
+		}
+		if _, exists := base.columns[ref]; exists {
+			return candidate, ref, true
+		}
+	}
+	return "", "", false
+}
+
+func pluralFieldName(table string) string {
+	name := schema.NamingStrategy{}.SchemaName(table)
+	name = strings.TrimPrefix(name, "Video")
+	if strings.HasSuffix(name, "y") && !strings.HasSuffix(name, "ay") {
+		return strings.TrimSuffix(name, "y") + "ies"
+	}
+	if strings.HasSuffix(name, "s") {
+		return name
+	}
+	return name + "s"
+}
+
 func openDB() (*gorm.DB, error) {
-	cfg := app.Cfg.Database
+	cfg := config.Cfg.Database
 	var dialector gorm.Dialector
 	switch cfg.Driver {
 	case "postgres":
-		dialector = postgres.Open(cfg.DSN(app.Cfg.Timezone))
+		dialector = postgres.Open(cfg.DSN(config.Cfg.Timezone))
 	case "mysql":
-		dialector = mysql.Open(cfg.DSN(app.Cfg.Timezone))
+		dialector = mysql.Open(cfg.DSN(config.Cfg.Timezone))
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Driver)
 	}
@@ -191,73 +392,4 @@ func openDB() (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
 	return db, nil
-}
-
-func dbInit() {
-	g := gen.NewGenerator(gen.Config{
-		OutPath:      "./internal/gen/query", // 生成代码的输出目录
-		ModelPkgPath: "./internal/gen/model",
-		Mode:         gen.WithDefaultQuery | gen.WithQueryInterface, // 关键：生成默认查询和接口
-		// 自定义生成的结构体字段类型
-		FieldNullable:     true, // 字段可为空
-		FieldCoverable:    true, // 字段可覆盖
-		FieldSignable:     true, // 字段符号
-		FieldWithIndexTag: true, // 生成索引标签
-		FieldWithTypeTag:  true, // 生成类型标签
-	})
-
-	g.UseDB(app.DB)
-
-	g.GenerateAllTable()
-
-	casbinRuleModel := g.GenerateModel("casbin_rule")
-
-	roleModel := g.GenerateModel("video_role")
-
-	adminRoleModel := g.GenerateModel("video_admin_role", gen.FieldRelate(
-		field.Many2Many, "Role", roleModel,
-		&field.RelateConfig{
-			RelateSlicePointer: true,
-			GORMTag: field.GormTag{"many2many": []string{"video_admin_role"},
-				"foreignKey":     []string{"ID"},
-				"joinForeignKey": []string{"RoleID"},
-				"joinReferences": []string{"ID"},
-				"References":     []string{"ID"},
-			},
-		},
-	))
-
-	adminModel := g.GenerateModel("video_admin", gen.FieldRelate(
-		field.Many2Many, "Menu", adminRoleModel,
-		&field.RelateConfig{
-			RelateSlicePointer: true,
-			GORMTag: field.GormTag{
-				"many2many":      []string{"video_admin_role"},
-				"foreignKey":     []string{"ID"},
-				"joinForeignKey": []string{"ID"},
-				"joinReferences": []string{"RoleID"},
-				"References":     []string{"ID"},
-			},
-		},
-	))
-
-	//// 生成基础查询代码（关键步骤）
-	//g.ApplyBasic(
-	//	adminModel,
-	//	postModel,
-	//	// 可以添加更多表...
-	//)
-	//
-	//// 生成关联查询代码（如果需要）
-	//g.ApplyInterface(func(Interface) {}, userModel, postModel)
-
-	// 生成关联查询代码
-	g.ApplyBasic(
-		casbinRuleModel,
-		adminRoleModel,
-		adminModel,
-	)
-
-	// 执行生成
-	g.Execute()
 }

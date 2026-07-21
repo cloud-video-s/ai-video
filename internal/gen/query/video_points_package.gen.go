@@ -28,11 +28,10 @@ func newVideoPointsPackage(db *gorm.DB, opts ...gen.DOOption) videoPointsPackage
 	tableName := _videoPointsPackage.videoPointsPackageDo.TableName()
 	_videoPointsPackage.ALL = field.NewAsterisk(tableName)
 	_videoPointsPackage.ID = field.NewUint64(tableName, "id")
-	_videoPointsPackage.ProductID = field.NewString(tableName, "product_id")
+	_videoPointsPackage.ProductID = field.NewString(tableName, "product_code")
 	_videoPointsPackage.Name = field.NewString(tableName, "name")
-	_videoPointsPackage.PackageID = field.NewUint64(tableName, "package_id")
-	_videoPointsPackage.Systems = field.NewString(tableName, "systems")
-	_videoPointsPackage.UserTypes = field.NewString(tableName, "user_types")
+	_videoPointsPackage.Systems = field.NewField(tableName, "systems")
+	_videoPointsPackage.UserTypes = field.NewField(tableName, "user_types")
 	_videoPointsPackage.ResourceType = field.NewString(tableName, "resource_type")
 	_videoPointsPackage.Points = field.NewUint64(tableName, "points")
 	_videoPointsPackage.Currency = field.NewString(tableName, "currency")
@@ -43,11 +42,16 @@ func newVideoPointsPackage(db *gorm.DB, opts ...gen.DOOption) videoPointsPackage
 	_videoPointsPackage.Description = field.NewString(tableName, "description")
 	_videoPointsPackage.ButtonText = field.NewString(tableName, "button_text")
 	_videoPointsPackage.IsDefault = field.NewBool(tableName, "is_default")
-	_videoPointsPackage.Status = field.NewInt32(tableName, "status")
-	_videoPointsPackage.Sort = field.NewInt64(tableName, "sort")
+	_videoPointsPackage.Status = field.NewInt8(tableName, "status")
+	_videoPointsPackage.Sort = field.NewInt(tableName, "sort")
 	_videoPointsPackage.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoPointsPackage.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoPointsPackage.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoPointsPackage.Channels = videoPointsPackageManyToManyChannels{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Channels", "model.VideoChannel"),
+	}
 
 	_videoPointsPackage.fillFieldMap()
 
@@ -61,9 +65,8 @@ type videoPointsPackage struct {
 	ID            field.Uint64
 	ProductID     field.String  // globally unique store product SKU
 	Name          field.String  // points package name
-	PackageID     field.Uint64  // application package ID
-	Systems       field.String  // android, ios, pc, harmony or other systems
-	UserTypes     field.String  // app user types: 1 free, 2 paid
+	Systems       field.Field   // android, ios, pc, harmony or other systems
+	UserTypes     field.Field   // app user types: 1 free, 2 paid
 	ResourceType  field.String  // resource type
 	Points        field.Uint64  // granted points quantity
 	Currency      field.String  // ISO currency code
@@ -74,11 +77,12 @@ type videoPointsPackage struct {
 	Description   field.String  // package description
 	ButtonText    field.String  // purchase button copy
 	IsDefault     field.Bool    // default package for app package and resource type
-	Status        field.Int32   // 0 disabled, 1 enabled
-	Sort          field.Int64   // sort order
+	Status        field.Int8    // 0 disabled, 1 enabled
+	Sort          field.Int     // sort order
 	CreatedAt     field.Time
 	UpdatedAt     field.Time
 	DeletedAt     field.Field
+	Channels      videoPointsPackageManyToManyChannels
 
 	fieldMap map[string]field.Expr
 }
@@ -96,11 +100,10 @@ func (v videoPointsPackage) As(alias string) *videoPointsPackage {
 func (v *videoPointsPackage) updateTableName(table string) *videoPointsPackage {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
-	v.ProductID = field.NewString(table, "product_id")
+	v.ProductID = field.NewString(table, "product_code")
 	v.Name = field.NewString(table, "name")
-	v.PackageID = field.NewUint64(table, "package_id")
-	v.Systems = field.NewString(table, "systems")
-	v.UserTypes = field.NewString(table, "user_types")
+	v.Systems = field.NewField(table, "systems")
+	v.UserTypes = field.NewField(table, "user_types")
 	v.ResourceType = field.NewString(table, "resource_type")
 	v.Points = field.NewUint64(table, "points")
 	v.Currency = field.NewString(table, "currency")
@@ -111,8 +114,8 @@ func (v *videoPointsPackage) updateTableName(table string) *videoPointsPackage {
 	v.Description = field.NewString(table, "description")
 	v.ButtonText = field.NewString(table, "button_text")
 	v.IsDefault = field.NewBool(table, "is_default")
-	v.Status = field.NewInt32(table, "status")
-	v.Sort = field.NewInt64(table, "sort")
+	v.Status = field.NewInt8(table, "status")
+	v.Sort = field.NewInt(table, "sort")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -146,9 +149,8 @@ func (v *videoPointsPackage) GetFieldByName(fieldName string) (field.OrderExpr, 
 func (v *videoPointsPackage) fillFieldMap() {
 	v.fieldMap = make(map[string]field.Expr, 21)
 	v.fieldMap["id"] = v.ID
-	v.fieldMap["product_id"] = v.ProductID
+	v.fieldMap["product_code"] = v.ProductID
 	v.fieldMap["name"] = v.Name
-	v.fieldMap["package_id"] = v.PackageID
 	v.fieldMap["systems"] = v.Systems
 	v.fieldMap["user_types"] = v.UserTypes
 	v.fieldMap["resource_type"] = v.ResourceType
@@ -166,6 +168,7 @@ func (v *videoPointsPackage) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoPointsPackage) clone(db *gorm.DB) videoPointsPackage {
@@ -176,6 +179,77 @@ func (v videoPointsPackage) clone(db *gorm.DB) videoPointsPackage {
 func (v videoPointsPackage) replaceDB(db *gorm.DB) videoPointsPackage {
 	v.videoPointsPackageDo.ReplaceDB(db)
 	return v
+}
+
+type videoPointsPackageManyToManyChannels struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoPointsPackageManyToManyChannels) Where(conds ...field.Expr) *videoPointsPackageManyToManyChannels {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoPointsPackageManyToManyChannels) WithContext(ctx context.Context) *videoPointsPackageManyToManyChannels {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoPointsPackageManyToManyChannels) Session(session *gorm.Session) *videoPointsPackageManyToManyChannels {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoPointsPackageManyToManyChannels) Model(m *model.VideoPointsPackage) *videoPointsPackageManyToManyChannelsTx {
+	return &videoPointsPackageManyToManyChannelsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoPointsPackageManyToManyChannelsTx struct{ tx *gorm.Association }
+
+func (a videoPointsPackageManyToManyChannelsTx) Find() (result []*model.VideoChannel, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoPointsPackageManyToManyChannelsTx) Append(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoPointsPackageManyToManyChannelsTx) Replace(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoPointsPackageManyToManyChannelsTx) Delete(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoPointsPackageManyToManyChannelsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoPointsPackageManyToManyChannelsTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type videoPointsPackageDo struct{ gen.DO }

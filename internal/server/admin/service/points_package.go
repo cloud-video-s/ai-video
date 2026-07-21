@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -19,19 +19,16 @@ var (
 
 type PointsPackageService struct {
 	repo        *repository.PointsPackageRepo
-	packageRepo *repository.PackageRepo
 	channelRepo *repository.ChannelRepo
 }
 
 func NewPointsPackageService() *PointsPackageService {
 	return &PointsPackageService{
-		repo: repository.NewPointsPackageRepo(), packageRepo: repository.NewPackageRepo(),
-		channelRepo: repository.NewChannelRepo(),
+		repo: repository.NewPointsPackageRepo(), channelRepo: repository.NewChannelRepo(),
 	}
 }
 
 type ListPointsPackageRequest struct {
-	PackageID    uint64 `form:"package_id"`
 	ChannelID    uint64 `form:"channel_id"`
 	System       string `form:"system" binding:"max=32"`
 	UserType     int    `form:"user_type" binding:"omitempty,oneof=1 2"`
@@ -43,7 +40,6 @@ type ListPointsPackageRequest struct {
 type PointsPackagePayload struct {
 	ProductID     string   `json:"product_id" binding:"required,max=191"`
 	Name          string   `json:"name" binding:"required,max=128"`
-	PackageID     uint64   `json:"package_id" binding:"required"`
 	Systems       []string `json:"systems" binding:"required,min=1,max=10,dive,required,max=32"`
 	UserTypes     []int    `json:"user_types" binding:"required,min=1,max=2,dive,oneof=1 2"`
 	ChannelIDs    []uint64 `json:"channel_ids" binding:"max=100,dive,gt=0"`
@@ -67,7 +63,7 @@ type PointsPackageStatusPayload struct {
 
 func (s *PointsPackageService) List(ctx context.Context, page, pageSize int, req *ListPointsPackageRequest) ([]model.VideoPointsPackage, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.PointsPackageListFilter{
-		PackageID: req.PackageID, ChannelID: req.ChannelID, System: strings.ToLower(strings.TrimSpace(req.System)),
+		ChannelID: req.ChannelID, System: strings.ToLower(strings.TrimSpace(req.System)),
 		UserType: req.UserType, ResourceType: strings.ToLower(strings.TrimSpace(req.ResourceType)),
 		Status: req.Status, Keyword: strings.TrimSpace(req.Keyword),
 	})
@@ -99,7 +95,7 @@ func (s *PointsPackageService) Create(ctx context.Context, req *PointsPackagePay
 			return err
 		}
 		if item.IsDefault {
-			return s.repo.ClearDefaults(ctx, item.PackageID, item.ResourceType, item.ID)
+			return s.repo.ClearDefaults(ctx, item.ResourceType, item.ID)
 		}
 		return nil
 	})
@@ -129,7 +125,7 @@ func (s *PointsPackageService) Update(ctx context.Context, id uint64, req *Point
 			return err
 		}
 		if item.IsDefault {
-			return s.repo.ClearDefaults(ctx, item.PackageID, item.ResourceType, item.ID)
+			return s.repo.ClearDefaults(ctx, item.ResourceType, item.ID)
 		}
 		return nil
 	})
@@ -191,15 +187,6 @@ func (s *PointsPackageService) prepareAndValidate(ctx context.Context, req *Poin
 	if req.ChannelIDs, err = normalizeTargetIDs(req.ChannelIDs, "渠道"); err != nil {
 		return err
 	}
-	appPackage, err := s.packageRepo.GetByID(ctx, uint(req.PackageID))
-	if err != nil {
-		return notFoundOr(err, "安装包不存在")
-	}
-	for _, system := range req.Systems {
-		if len(appPackage.SystemTypes) > 0 && !containsString(appPackage.SystemTypes, system) {
-			return errors.New("所选安装包不支持系统：" + system)
-		}
-	}
 	for _, id := range req.ChannelIDs {
 		if _, err := s.channelRepo.GetByID(ctx, uint(id)); err != nil {
 			return notFoundOr(err, "渠道不存在")
@@ -236,9 +223,8 @@ func validatePointsPackageMoney(req *PointsPackagePayload) error {
 func applyPointsPackagePayload(item *model.VideoPointsPackage, req *PointsPackagePayload) {
 	item.ProductID = req.ProductID
 	item.Name = req.Name
-	item.PackageID = req.PackageID
-	item.Systems = append([]string(nil), req.Systems...)
-	item.UserTypes = append([]int(nil), req.UserTypes...)
+	item.Systems = req.Systems
+	item.UserTypes = req.UserTypes
 	item.ResourceType = req.ResourceType
 	item.Points = req.Points
 	item.Currency = req.Currency

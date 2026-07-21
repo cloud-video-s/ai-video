@@ -4,12 +4,22 @@
 
 package model
 
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
 const TableNameVideoMenuAPI = "video_menu_api"
 
 // VideoMenuAPI mapped from table <video_menu_api>
 type VideoMenuAPI struct {
-	VideoMenuID uint64 `gorm:"column:video_menu_id;type:bigint unsigned;primaryKey" json:"video_menu_id"`
-	VideoAPIID  uint64 `gorm:"column:video_api_id;type:bigint unsigned;primaryKey;index:fk_video_menu_api_video_api,priority:1" json:"video_api_id"`
+	ID          uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	VideoMenuID uint64         `gorm:"column:video_menu_id;type:bigint unsigned;not null" json:"video_menu_id"`
+	VideoAPIID  uint64         `gorm:"column:video_api_id;type:bigint unsigned;not null" json:"video_api_id"`
+	CreatedAt   time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt   time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 }
 
 // TableName VideoMenuAPI's table name

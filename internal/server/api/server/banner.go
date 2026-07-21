@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -117,14 +118,14 @@ func mapClientBanner(item *model.VideoBanner) ClientBanner {
 	}
 	result := ClientBanner{
 		ID: item.ID, Name: item.Name, PositionKey: positionKey,
-		Status: item.Status, JumpType: item.JumpType,
+		Status: int8(item.Status), JumpType: uint8(item.JumpType),
 		CoverImage: item.CoverImage, Route: clientBannerRoute(item), TemplateID: item.TemplateID, Sort: item.Sort,
 	}
 	if item.Template != nil {
 		result.TargetTemplate = &ClientBannerTemplate{
 			ID: item.Template.ID, Name: item.Template.Name, TemplateType: item.Template.TemplateType,
 			CoverImage: item.Template.CoverImage, TemplateVideo: item.Template.TemplateVideo,
-			ThumbnailVideo: item.Template.ThumbnailVideo, Status: item.Template.Status,
+			ThumbnailVideo: item.Template.ThumbnailVideo, Status: int8(item.Template.Status),
 		}
 	}
 	return result
@@ -145,13 +146,13 @@ func clientBannerRoute(item *model.VideoBanner) string {
 		return item.JumpURL
 	}
 	switch item.JumpType {
-	case model.BannerJumpTypeTemplate:
+	case domain.BannerJumpTypeTemplate:
 		if item.TemplateID != nil {
 			return fmt.Sprintf("/templates/%d", *item.TemplateID)
 		}
-	case model.BannerJumpTypeTextToImage:
+	case domain.BannerJumpTypeTextToImage:
 		return "/text-to-image"
-	case model.BannerJumpTypeTextToVideo:
+	case domain.BannerJumpTypeTextToVideo:
 		return "/text-to-video"
 	}
 	return ""

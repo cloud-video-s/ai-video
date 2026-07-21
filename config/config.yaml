@@ -5,7 +5,7 @@ server:
 
 database:
   driver: mysql
-  host: 127.0.0.1
+  host: localhost
   port: 3306
   username: root
   password: 123456
@@ -16,7 +16,7 @@ database:
   log_level: info # silent | error | warn | info
 
 redis:
-  host: 127.0.0.1
+  host: localhost
   port: 6379
   password: ""
   db: 0

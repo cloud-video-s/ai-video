@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -42,13 +42,13 @@ func (r *TemplateTypeRepo) PageList(ctx context.Context, page, pageSize int, fil
 			)`, filter.PositionKey)
 		}
 		if filter.CountryID != 0 {
-			db = db.Where("EXISTS (SELECT 1 FROM video_template_type_country vttc WHERE vttc.template_type_id = video_template_type.id AND vttc.country_id = ?)", filter.CountryID)
+			db = db.Where("EXISTS (SELECT 1 FROM video_template_type_country vttc JOIN video_country vc ON vc.code = vttc.country_code WHERE vttc.template_type_id = video_template_type.id AND vc.id = ? AND vttc.deleted_at IS NULL)", filter.CountryID)
 		}
 		if filter.ChannelID != 0 {
-			db = db.Where("EXISTS (SELECT 1 FROM video_template_type_channel vttc WHERE vttc.template_type_id = video_template_type.id AND vttc.channel_id = ?)", filter.ChannelID)
+			db = db.Where("EXISTS (SELECT 1 FROM video_template_type_channel vttc JOIN video_channel vc ON vc.channel_code = vttc.channel_code WHERE vttc.template_type_id = video_template_type.id AND vc.channel_id = ? AND vttc.deleted_at IS NULL)", filter.ChannelID)
 		}
 		if filter.PackageID != 0 {
-			db = db.Where("EXISTS (SELECT 1 FROM video_template_type_package vttp WHERE vttp.template_type_id = video_template_type.id AND vttp.package_id = ?)", filter.PackageID)
+			db = db.Where("EXISTS (SELECT 1 FROM video_template_type_package vttp JOIN video_package vp ON vp.package_code = vttp.package_code WHERE vttp.template_type_id = video_template_type.id AND vp.id = ? AND vttp.deleted_at IS NULL)", filter.PackageID)
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
@@ -58,13 +58,13 @@ func (r *TemplateTypeRepo) PageList(ctx context.Context, page, pageSize int, fil
 				WHERE vttdp.template_type_id = video_template_type.id
 				AND (vdp.position_name LIKE ? OR vdp.position_key LIKE ?)
 			) OR EXISTS (
-				SELECT 1 FROM video_template_type_country vttc JOIN video_country vc ON vc.id = vttc.country_id
+				SELECT 1 FROM video_template_type_country vttc JOIN video_country vc ON vc.code = vttc.country_code
 				WHERE vttc.template_type_id = video_template_type.id AND (vc.code LIKE ? OR vc.name_zh LIKE ?)
 			) OR EXISTS (
-				SELECT 1 FROM video_template_type_channel vttc JOIN video_channel vc ON vc.channel_id = vttc.channel_id
+				SELECT 1 FROM video_template_type_channel vttc JOIN video_channel vc ON vc.channel_code = vttc.channel_code
 				WHERE vttc.template_type_id = video_template_type.id AND (vc.channel_code LIKE ? OR vc.channel_name LIKE ?)
 			) OR EXISTS (
-				SELECT 1 FROM video_template_type_package vttp JOIN video_package vp ON vp.id = vttp.package_id
+				SELECT 1 FROM video_template_type_package vttp JOIN video_package vp ON vp.package_code = vttp.package_code
 				WHERE vttp.template_type_id = video_template_type.id AND (vp.package_code LIKE ? OR vp.package_name LIKE ?)
 			)`, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword)
 		}
@@ -97,8 +97,7 @@ func (r *TemplateTypeRepo) GetDetail(ctx context.Context, id uint64) (*model.Vid
 
 func (r *TemplateTypeRepo) UpdateFields(ctx context.Context, item *model.VideoTemplateType) error {
 	return r.BaseRepo.Update(ctx, item,
-		"CategoryName", "Sort", "Status", "Description", "LegacyCountry", "LegacyAppPackage", "LegacyChannelID",
-		"LegacyUserType", "LegacyIsSubscribed", "LegacyPackageID", "UserTypes", "SubscriptionStatuses",
+		"CategoryName", "Sort", "Status", "Description", "IsSubscribed", "UserTypes", "SubscriptionStatuses",
 	)
 }
 
@@ -107,7 +106,12 @@ func preloadTemplateTypeTargets(db *gorm.DB) *gorm.DB {
 }
 
 func (r *TemplateTypeRepo) ReplaceDisplayPositions(ctx context.Context, item *model.VideoTemplateType, keys []string) error {
-	return dbFrom(ctx).Model(item).Association("DisplayPositions").Replace(displayPositionsFromKeys(keys))
+	db := dbFrom(ctx)
+	positions, err := loadDisplayPositionsByKeys(db, keys)
+	if err != nil {
+		return err
+	}
+	return db.Model(item).Association("DisplayPositions").Replace(positions)
 }
 
 type TemplateTypeTargetIDs struct {
@@ -118,17 +122,34 @@ type TemplateTypeTargetIDs struct {
 }
 
 func (r *TemplateTypeRepo) ReplaceTargets(ctx context.Context, item *model.VideoTemplateType, targets TemplateTypeTargetIDs) error {
+	db := dbFrom(ctx)
+	positions, err := loadDisplayPositionsByKeys(db, targets.DisplayPositionKeys)
+	if err != nil {
+		return err
+	}
+	countries, err := loadCountriesByIDs(db, targets.CountryIDs)
+	if err != nil {
+		return err
+	}
+	channels, err := loadChannelsByIDs(db, targets.ChannelIDs)
+	if err != nil {
+		return err
+	}
+	packages, err := loadPackagesByIDs(db, targets.PackageIDs)
+	if err != nil {
+		return err
+	}
 	associations := []struct {
 		name   string
 		values interface{}
 	}{
-		{name: "DisplayPositions", values: displayPositionsFromKeys(targets.DisplayPositionKeys)},
-		{name: "Countries", values: countriesFromIDs(targets.CountryIDs)},
-		{name: "Channels", values: channelsFromIDs(targets.ChannelIDs)},
-		{name: "Packages", values: packagesFromIDs(targets.PackageIDs)},
+		{name: "DisplayPositions", values: positions},
+		{name: "Countries", values: countries},
+		{name: "Channels", values: channels},
+		{name: "Packages", values: packages},
 	}
 	for _, association := range associations {
-		if err := dbFrom(ctx).Model(item).Association(association.name).Replace(association.values); err != nil {
+		if err := db.Model(item).Association(association.name).Replace(association.values); err != nil {
 			return err
 		}
 	}
@@ -166,19 +187,34 @@ func (r *TemplateTypeRepo) ListForClient(ctx context.Context, targets ClientTemp
 				AND vttdp.position_key = ? AND vdp.status = ? AND vdp.deleted_at IS NULL
 		)`, targets.PositionKey, 1)
 	if targets.CountryID != 0 {
-		db = db.Where("(NOT EXISTS (SELECT 1 FROM video_template_type_country vttc WHERE vttc.template_type_id = video_template_type.id) OR EXISTS (SELECT 1 FROM video_template_type_country vttc WHERE vttc.template_type_id = video_template_type.id AND vttc.country_id = ?))", targets.CountryID)
+		db = db.Where(`(NOT EXISTS (
+			SELECT 1 FROM video_template_type_country vttc WHERE vttc.template_type_id = video_template_type.id AND vttc.deleted_at IS NULL
+		) OR EXISTS (
+			SELECT 1 FROM video_template_type_country vttc JOIN video_country vc ON vc.code = vttc.country_code
+			WHERE vttc.template_type_id = video_template_type.id AND vc.id = ? AND vttc.deleted_at IS NULL
+		))`, targets.CountryID)
 	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_type_country vttc WHERE vttc.template_type_id = video_template_type.id)")
+		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_type_country vttc WHERE vttc.template_type_id = video_template_type.id AND vttc.deleted_at IS NULL)")
 	}
 	if len(targets.ChannelIDs) > 0 {
-		db = db.Where("(NOT EXISTS (SELECT 1 FROM video_template_type_channel vttc WHERE vttc.template_type_id = video_template_type.id) OR EXISTS (SELECT 1 FROM video_template_type_channel vttc WHERE vttc.template_type_id = video_template_type.id AND vttc.channel_id IN ?))", targets.ChannelIDs)
+		db = db.Where(`(NOT EXISTS (
+			SELECT 1 FROM video_template_type_channel vttc WHERE vttc.template_type_id = video_template_type.id AND vttc.deleted_at IS NULL
+		) OR EXISTS (
+			SELECT 1 FROM video_template_type_channel vttc JOIN video_channel vc ON vc.channel_code = vttc.channel_code
+			WHERE vttc.template_type_id = video_template_type.id AND vc.channel_id IN ? AND vttc.deleted_at IS NULL
+		))`, targets.ChannelIDs)
 	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_type_channel vttc WHERE vttc.template_type_id = video_template_type.id)")
+		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_type_channel vttc WHERE vttc.template_type_id = video_template_type.id AND vttc.deleted_at IS NULL)")
 	}
 	if len(targets.PackageIDs) > 0 {
-		db = db.Where("(NOT EXISTS (SELECT 1 FROM video_template_type_package vttp WHERE vttp.template_type_id = video_template_type.id) OR EXISTS (SELECT 1 FROM video_template_type_package vttp WHERE vttp.template_type_id = video_template_type.id AND vttp.package_id IN ?))", targets.PackageIDs)
+		db = db.Where(`(NOT EXISTS (
+			SELECT 1 FROM video_template_type_package vttp WHERE vttp.template_type_id = video_template_type.id AND vttp.deleted_at IS NULL
+		) OR EXISTS (
+			SELECT 1 FROM video_template_type_package vttp JOIN video_package vp ON vp.package_code = vttp.package_code
+			WHERE vttp.template_type_id = video_template_type.id AND vp.id IN ? AND vttp.deleted_at IS NULL
+		))`, targets.PackageIDs)
 	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_type_package vttp WHERE vttp.template_type_id = video_template_type.id)")
+		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_type_package vttp WHERE vttp.template_type_id = video_template_type.id AND vttp.deleted_at IS NULL)")
 	}
 	if targets.UserType != 0 {
 		db = db.Where("(COALESCE(user_types, '') IN ('', 'null') OR user_types LIKE ?)", "%"+fmt.Sprint(targets.UserType)+"%")
@@ -230,13 +266,13 @@ func (r *TemplateRepo) PageList(ctx context.Context, page, pageSize int, filter 
 			)`, filter.PositionKey)
 		}
 		if filter.CountryID != 0 {
-			dao = dao.Where("EXISTS (SELECT 1 FROM video_template_country vtc WHERE vtc.template_id = video_template.id AND vtc.country_id = ?)", filter.CountryID)
+			dao = dao.Where("EXISTS (SELECT 1 FROM video_template_country vtc JOIN video_country vc ON vc.code = vtc.country_code WHERE vtc.template_id = video_template.id AND vc.id = ? AND vtc.deleted_at IS NULL)", filter.CountryID)
 		}
 		if filter.PackageID != 0 {
-			dao = dao.Where("EXISTS (SELECT 1 FROM video_template_package vtp WHERE vtp.template_id = video_template.id AND vtp.package_id = ?)", filter.PackageID)
+			dao = dao.Where("EXISTS (SELECT 1 FROM video_template_package vtp JOIN video_package vp ON vp.package_code = vtp.package_code WHERE vtp.template_id = video_template.id AND vp.id = ? AND vtp.deleted_at IS NULL)", filter.PackageID)
 		}
 		if filter.ChannelID != 0 {
-			dao = dao.Where("EXISTS (SELECT 1 FROM video_template_channel vtc WHERE vtc.template_id = video_template.id AND vtc.channel_id = ?)", filter.ChannelID)
+			dao = dao.Where("EXISTS (SELECT 1 FROM video_template_channel vtc JOIN video_channel vc ON vc.channel_code = vtc.channel_code WHERE vtc.template_id = video_template.id AND vc.channel_id = ? AND vtc.deleted_at IS NULL)", filter.ChannelID)
 		}
 		if filter.UserType != 0 {
 			dao = dao.Where("user_types LIKE ?", "%"+fmt.Sprint(filter.UserType)+"%")
@@ -301,19 +337,34 @@ func (r *TemplateRepo) ListForClient(ctx context.Context, targets ClientTemplate
 		Where("video_template.status = ?", 1).
 		Where("video_template.video_template_type_id IN ?", targets.TemplateTypeIDs)
 	if targets.CountryID != 0 {
-		db = db.Where("(NOT EXISTS (SELECT 1 FROM video_template_country vtc WHERE vtc.template_id = video_template.id) OR EXISTS (SELECT 1 FROM video_template_country vtc WHERE vtc.template_id = video_template.id AND vtc.country_id = ?))", targets.CountryID)
+		db = db.Where(`(NOT EXISTS (
+			SELECT 1 FROM video_template_country vtc WHERE vtc.template_id = video_template.id AND vtc.deleted_at IS NULL
+		) OR EXISTS (
+			SELECT 1 FROM video_template_country vtc JOIN video_country vc ON vc.code = vtc.country_code
+			WHERE vtc.template_id = video_template.id AND vc.id = ? AND vtc.deleted_at IS NULL
+		))`, targets.CountryID)
 	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_country vtc WHERE vtc.template_id = video_template.id)")
+		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_country vtc WHERE vtc.template_id = video_template.id AND vtc.deleted_at IS NULL)")
 	}
 	if len(targets.ChannelIDs) > 0 {
-		db = db.Where("(NOT EXISTS (SELECT 1 FROM video_template_channel vtc WHERE vtc.template_id = video_template.id) OR EXISTS (SELECT 1 FROM video_template_channel vtc WHERE vtc.template_id = video_template.id AND vtc.channel_id IN ?))", targets.ChannelIDs)
+		db = db.Where(`(NOT EXISTS (
+			SELECT 1 FROM video_template_channel vtc WHERE vtc.template_id = video_template.id AND vtc.deleted_at IS NULL
+		) OR EXISTS (
+			SELECT 1 FROM video_template_channel vtc JOIN video_channel vc ON vc.channel_code = vtc.channel_code
+			WHERE vtc.template_id = video_template.id AND vc.channel_id IN ? AND vtc.deleted_at IS NULL
+		))`, targets.ChannelIDs)
 	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_channel vtc WHERE vtc.template_id = video_template.id)")
+		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_channel vtc WHERE vtc.template_id = video_template.id AND vtc.deleted_at IS NULL)")
 	}
 	if len(targets.PackageIDs) > 0 {
-		db = db.Where("(NOT EXISTS (SELECT 1 FROM video_template_package vtp WHERE vtp.template_id = video_template.id) OR EXISTS (SELECT 1 FROM video_template_package vtp WHERE vtp.template_id = video_template.id AND vtp.package_id IN ?))", targets.PackageIDs)
+		db = db.Where(`(NOT EXISTS (
+			SELECT 1 FROM video_template_package vtp WHERE vtp.template_id = video_template.id AND vtp.deleted_at IS NULL
+		) OR EXISTS (
+			SELECT 1 FROM video_template_package vtp JOIN video_package vp ON vp.package_code = vtp.package_code
+			WHERE vtp.template_id = video_template.id AND vp.id IN ? AND vtp.deleted_at IS NULL
+		))`, targets.PackageIDs)
 	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_package vtp WHERE vtp.template_id = video_template.id)")
+		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_package vtp WHERE vtp.template_id = video_template.id AND vtp.deleted_at IS NULL)")
 	}
 	if targets.UserType != 0 {
 		db = db.Where("(COALESCE(user_types, '') IN ('', 'null') OR user_types LIKE ?)", "%"+fmt.Sprint(targets.UserType)+"%")
@@ -342,13 +393,25 @@ func (r *TemplateRepo) UpdateFields(ctx context.Context, item *model.VideoTempla
 
 func (r *TemplateRepo) ReplaceTargets(ctx context.Context, item *model.VideoTemplate, req TemplateTargetIDs) error {
 	db := dbFrom(ctx)
+	countries, err := loadCountriesByIDs(db, req.CountryIDs)
+	if err != nil {
+		return err
+	}
+	packages, err := loadPackagesByIDs(db, req.PackageIDs)
+	if err != nil {
+		return err
+	}
+	channels, err := loadChannelsByIDs(db, req.ChannelIDs)
+	if err != nil {
+		return err
+	}
 	associations := []struct {
 		name   string
 		values interface{}
 	}{
-		{name: "Countries", values: countriesFromIDs(req.CountryIDs)},
-		{name: "Packages", values: packagesFromIDs(req.PackageIDs)},
-		{name: "Channels", values: channelsFromIDs(req.ChannelIDs)},
+		{name: "Countries", values: countries},
+		{name: "Packages", values: packages},
+		{name: "Channels", values: channels},
 	}
 	for _, association := range associations {
 		if err := db.Model(item).Association(association.name).Replace(association.values); err != nil {
@@ -364,44 +427,60 @@ type TemplateTargetIDs struct {
 	ChannelIDs []uint64
 }
 
-func displayPositionsFromIDs(ids []uint64) []model.VideoDisplayPosition {
-	items := make([]model.VideoDisplayPosition, 0, len(ids))
-	for _, id := range ids {
-		items = append(items, model.VideoDisplayPosition{ID: id})
-	}
-	return items
-}
-
-func displayPositionsFromKeys(keys []string) []model.VideoDisplayPosition {
+func loadDisplayPositionsByKeys(db *gorm.DB, keys []string) ([]model.VideoDisplayPosition, error) {
 	items := make([]model.VideoDisplayPosition, 0, len(keys))
-	for _, key := range keys {
-		items = append(items, model.VideoDisplayPosition{PositionKey: key})
+	if len(keys) == 0 {
+		return items, nil
 	}
-	return items
+	if err := db.Where("position_key IN ?", keys).Find(&items).Error; err != nil {
+		return nil, err
+	}
+	if len(items) != len(keys) {
+		return nil, fmt.Errorf("one or more display positions do not exist")
+	}
+	return items, nil
 }
 
-func countriesFromIDs(ids []uint64) []model.VideoCountry {
+func loadCountriesByIDs(db *gorm.DB, ids []uint64) ([]model.VideoCountry, error) {
 	items := make([]model.VideoCountry, 0, len(ids))
-	for _, id := range ids {
-		items = append(items, model.VideoCountry{ID: id})
+	if len(ids) == 0 {
+		return items, nil
 	}
-	return items
+	if err := db.Where("id IN ?", ids).Find(&items).Error; err != nil {
+		return nil, err
+	}
+	if len(items) != len(ids) {
+		return nil, fmt.Errorf("one or more countries do not exist")
+	}
+	return items, nil
 }
 
-func packagesFromIDs(ids []uint64) []model.VideoPackage {
+func loadPackagesByIDs(db *gorm.DB, ids []uint64) ([]model.VideoPackage, error) {
 	items := make([]model.VideoPackage, 0, len(ids))
-	for _, id := range ids {
-		items = append(items, model.VideoPackage{ID: id})
+	if len(ids) == 0 {
+		return items, nil
 	}
-	return items
+	if err := db.Where("id IN ?", ids).Find(&items).Error; err != nil {
+		return nil, err
+	}
+	if len(items) != len(ids) {
+		return nil, fmt.Errorf("one or more packages do not exist")
+	}
+	return items, nil
 }
 
-func channelsFromIDs(ids []uint64) []model.VideoChannel {
+func loadChannelsByIDs(db *gorm.DB, ids []uint64) ([]model.VideoChannel, error) {
 	items := make([]model.VideoChannel, 0, len(ids))
-	for _, id := range ids {
-		items = append(items, model.VideoChannel{ChannelID: id})
+	if len(ids) == 0 {
+		return items, nil
 	}
-	return items
+	if err := db.Where("channel_id IN ?", ids).Find(&items).Error; err != nil {
+		return nil, err
+	}
+	if len(items) != len(ids) {
+		return nil, fmt.Errorf("one or more channels do not exist")
+	}
+	return items, nil
 }
 
 func (r *TemplateRepo) DeleteWithTargets(ctx context.Context, id uint64) error {

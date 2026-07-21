@@ -39,6 +39,11 @@ func newVideoAdmin(db *gorm.DB, opts ...gen.DOOption) videoAdmin {
 	_videoAdmin.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoAdmin.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoAdmin.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoAdmin.Roles = videoAdminManyToManyRoles{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Roles", "model.VideoRole"),
+	}
 
 	_videoAdmin.fillFieldMap()
 
@@ -61,6 +66,7 @@ type videoAdmin struct {
 	CreatedAt    field.Time
 	UpdatedAt    field.Time
 	DeletedAt    field.Field
+	Roles        videoAdminManyToManyRoles
 
 	fieldMap map[string]field.Expr
 }
@@ -115,7 +121,7 @@ func (v *videoAdmin) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoAdmin) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 12)
+	v.fieldMap = make(map[string]field.Expr, 13)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["username"] = v.Username
 	v.fieldMap["password"] = v.Password
@@ -128,6 +134,7 @@ func (v *videoAdmin) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoAdmin) clone(db *gorm.DB) videoAdmin {
@@ -138,6 +145,77 @@ func (v videoAdmin) clone(db *gorm.DB) videoAdmin {
 func (v videoAdmin) replaceDB(db *gorm.DB) videoAdmin {
 	v.videoAdminDo.ReplaceDB(db)
 	return v
+}
+
+type videoAdminManyToManyRoles struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoAdminManyToManyRoles) Where(conds ...field.Expr) *videoAdminManyToManyRoles {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoAdminManyToManyRoles) WithContext(ctx context.Context) *videoAdminManyToManyRoles {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoAdminManyToManyRoles) Session(session *gorm.Session) *videoAdminManyToManyRoles {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoAdminManyToManyRoles) Model(m *model.VideoAdmin) *videoAdminManyToManyRolesTx {
+	return &videoAdminManyToManyRolesTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoAdminManyToManyRolesTx struct{ tx *gorm.Association }
+
+func (a videoAdminManyToManyRolesTx) Find() (result []*model.VideoRole, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoAdminManyToManyRolesTx) Append(values ...*model.VideoRole) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoAdminManyToManyRolesTx) Replace(values ...*model.VideoRole) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoAdminManyToManyRolesTx) Delete(values ...*model.VideoRole) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoAdminManyToManyRolesTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoAdminManyToManyRolesTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type videoAdminDo struct{ gen.DO }

@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"ai-video/internal/app"
-	"ai-video/internal/model"
+	"ai-video/internal/config"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 	"bytes"
 	"context"
@@ -88,8 +88,8 @@ func OperationLog() gin.HandlerFunc {
 			TargetID:   c.Param("id"),
 			ReqParams:  reqParams,
 			RespParams: captureResponse(blw.body.Bytes()),
-			Status:     status,
-			BizCode:    bizCode,
+			Status:     int64(status),
+			BizCode:    int64(bizCode),
 			Success:    status == http.StatusOK && bizCode == 0,
 			ClientIP:   c.ClientIP(),
 			UserAgent:  c.Request.UserAgent(),
@@ -104,7 +104,7 @@ func OperationLog() gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(context.Background(), writeLogTimeout)
 		defer cancel()
 		if err := repo.Create(ctx, entry); err != nil {
-			app.Log.Errorw("write operation log failed", "path", entry.Path, "err", err)
+			config.Log.Errorw("write operation log failed", "path", entry.Path, "err", err)
 		}
 	}
 }
@@ -112,7 +112,7 @@ func OperationLog() gin.HandlerFunc {
 // RecordLogin writes an explicit auth event (login/logout). Login lives on a
 // public route with no AdminAuth/OperationLog middleware, and a failed login has
 // no authenticated user — so auth handlers record it directly. Best-effort.
-func RecordLogin(c *gin.Context, action string, userID uint, username string, success bool, errMsg string) {
+func RecordLogin(c *gin.Context, action string, userID uint64, username string, success bool, errMsg string) {
 	entry := &model.VideoOperationLog{
 		TraceID:   c.GetString("trace_id"),
 		UserID:    userID,
@@ -122,7 +122,7 @@ func RecordLogin(c *gin.Context, action string, userID uint, username string, su
 		Method:    c.Request.Method,
 		Route:     c.FullPath(),
 		Path:      c.Request.URL.Path,
-		Status:    c.Writer.Status(),
+		Status:    int64(c.Writer.Status()),
 		Success:   success,
 		ErrorMsg:  errMsg,
 		ClientIP:  c.ClientIP(),
@@ -131,7 +131,7 @@ func RecordLogin(c *gin.Context, action string, userID uint, username string, su
 	ctx, cancel := context.WithTimeout(context.Background(), writeLogTimeout)
 	defer cancel()
 	if err := repository.NewOperationLogRepo().Create(ctx, entry); err != nil {
-		app.Log.Errorw("write login log failed", "username", username, "err", err)
+		config.Log.Errorw("write login log failed", "username", username, "err", err)
 	}
 }
 
@@ -262,7 +262,7 @@ func loadAPIMeta() map[string]apiMeta {
 	m := make(map[string]apiMeta)
 	apis, err := repository.NewApiRepo().ListAll(context.Background())
 	if err != nil {
-		app.Log.Warnw("operation log: load api meta failed", "err", err)
+		config.Log.Warnw("operation log: load api meta failed", "err", err)
 		return m
 	}
 	for _, a := range apis {

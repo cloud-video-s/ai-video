@@ -1,0 +1,27 @@
+FROM docker.io/library/node:22-alpine AS builder
+
+WORKDIR /app
+
+COPY web/admin/package.json web/admin/package-lock.json ./
+RUN npm ci
+
+COPY web/admin/ ./
+
+ARG VITE_API_BASE=""
+ENV VITE_API_BASE=${VITE_API_BASE}
+
+RUN npm run build
+
+FROM docker.io/library/nginx:1.28-alpine
+
+ENV BACKEND_HOST=ai-video-go \
+    BACKEND_PORT=8080 \
+    NGINX_ENVSUBST_FILTER="^(BACKEND_HOST|BACKEND_PORT)$"
+
+COPY deploy/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1

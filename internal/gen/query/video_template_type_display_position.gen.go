@@ -27,8 +27,12 @@ func newVideoTemplateTypeDisplayPosition(db *gorm.DB, opts ...gen.DOOption) vide
 
 	tableName := _videoTemplateTypeDisplayPosition.videoTemplateTypeDisplayPositionDo.TableName()
 	_videoTemplateTypeDisplayPosition.ALL = field.NewAsterisk(tableName)
+	_videoTemplateTypeDisplayPosition.ID = field.NewUint64(tableName, "id")
 	_videoTemplateTypeDisplayPosition.TemplateTypeID = field.NewUint64(tableName, "template_type_id")
 	_videoTemplateTypeDisplayPosition.PositionKey = field.NewString(tableName, "position_key")
+	_videoTemplateTypeDisplayPosition.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoTemplateTypeDisplayPosition.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoTemplateTypeDisplayPosition.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoTemplateTypeDisplayPosition.fillFieldMap()
 
@@ -39,8 +43,12 @@ type videoTemplateTypeDisplayPosition struct {
 	videoTemplateTypeDisplayPositionDo videoTemplateTypeDisplayPositionDo
 
 	ALL            field.Asterisk
+	ID             field.Uint64
 	TemplateTypeID field.Uint64
 	PositionKey    field.String
+	CreatedAt      field.Time
+	UpdatedAt      field.Time
+	DeletedAt      field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoTemplateTypeDisplayPosition) As(alias string) *videoTemplateTypeDis
 
 func (v *videoTemplateTypeDisplayPosition) updateTableName(table string) *videoTemplateTypeDisplayPosition {
 	v.ALL = field.NewAsterisk(table)
+	v.ID = field.NewUint64(table, "id")
 	v.TemplateTypeID = field.NewUint64(table, "template_type_id")
 	v.PositionKey = field.NewString(table, "position_key")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -91,9 +103,13 @@ func (v *videoTemplateTypeDisplayPosition) GetFieldByName(fieldName string) (fie
 }
 
 func (v *videoTemplateTypeDisplayPosition) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["template_type_id"] = v.TemplateTypeID
 	v.fieldMap["position_key"] = v.PositionKey
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoTemplateTypeDisplayPosition) clone(db *gorm.DB) videoTemplateTypeDisplayPosition {

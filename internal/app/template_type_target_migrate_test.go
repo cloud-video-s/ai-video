@@ -3,7 +3,7 @@ package app
 import (
 	"testing"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -20,6 +20,18 @@ func TestMigrateLegacyTemplateTypeTargets(t *testing.T) {
 	if err := db.AutoMigrate(&model.VideoCountry{}, &model.VideoChannel{}, &model.VideoPackage{}, &model.VideoDisplayPosition{}, &model.VideoTemplateType{}); err != nil {
 		t.Fatal(err)
 	}
+	for _, statement := range []string{
+		"ALTER TABLE video_template_type ADD COLUMN country TEXT",
+		"ALTER TABLE video_template_type ADD COLUMN channel_id TEXT",
+		"ALTER TABLE video_template_type ADD COLUMN package_id INTEGER",
+		"ALTER TABLE video_template_type ADD COLUMN app_package TEXT",
+		"ALTER TABLE video_template_type ADD COLUMN user_type INTEGER",
+		"ALTER TABLE video_template_type ADD COLUMN is_subscribed INTEGER",
+	} {
+		if err := db.Exec(statement).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
 	country := model.VideoCountry{Code: "CN", NameZh: "China", Status: 1}
 	channel := model.VideoChannel{ChannelCode: "channel-a", ChannelName: "Channel A", AdPlatform: "direct", DeliveryPackage: "app.a", UploadMethod: "API", Status: 1}
 	appPackage := model.VideoPackage{PackageName: "App A", PackageCode: "app.a", PackageVersion: "1.0.0", DownloadURL: "https://example.com/app", Status: 1}
@@ -28,12 +40,14 @@ func TestMigrateLegacyTemplateTypeTargets(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	item := model.VideoTemplateType{
-		CategoryName: "Legacy", Status: 1, LegacyCountry: country.Code,
-		LegacyChannelID: channel.ChannelCode, LegacyPackageID: &appPackage.ID,
-		LegacyUserType: 2, LegacyIsSubscribed: true,
-	}
+	item := model.VideoTemplateType{CategoryName: "Legacy", Status: 1}
 	if err := db.Create(&item).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Table("video_template_type").Where("id = ?", item.ID).Updates(map[string]interface{}{
+		"country": country.Code, "channel_id": channel.ChannelCode, "package_id": appPackage.ID,
+		"user_type": 2, "is_subscribed": true,
+	}).Error; err != nil {
 		t.Fatal(err)
 	}
 

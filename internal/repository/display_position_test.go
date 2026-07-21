@@ -1,11 +1,11 @@
 package repository
 
 import (
+	"ai-video/internal/config"
 	"context"
 	"testing"
 
-	"ai-video/internal/app"
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -19,7 +19,7 @@ func TestDisplayPositionOptionsOnlyReturnEnabledRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	if err := db.AutoMigrate(&model.VideoDisplayPosition{}); err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestDisplayPositionBannerCountUsesAssociation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	if err := db.AutoMigrate(&model.VideoDisplayPosition{}, &model.VideoBannerDisplayPosition{}); err != nil {
 		t.Fatal(err)
 	}

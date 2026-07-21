@@ -139,7 +139,7 @@ type LogConfig struct {
 
 var Cfg Config
 
-const defaultJWTSecret = "video-jwt-secret-key-change-in-production"
+const defaultJWTSecret = "frame-jwt-secret-key-change-in-production"
 
 func InitConfig(cfgFile string) error {
 	if cfgFile != "" {

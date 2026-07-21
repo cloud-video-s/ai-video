@@ -1,13 +1,14 @@
 package repository
 
 import (
+	"ai-video/internal/config"
 	"context"
 	"reflect"
 	"sort"
 	"testing"
 
-	"ai-video/internal/app"
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -21,7 +22,7 @@ func TestTemplateTypeListForClientUsesPositionKeyAndDeliveryTargets(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	if err := db.AutoMigrate(&model.VideoDisplayPosition{}, &model.VideoCountry{}, &model.VideoChannel{}, &model.VideoPackage{}, &model.VideoTemplateType{}); err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +86,7 @@ func TestTemplatePageListReturnsRowsAndTotal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	if err := db.AutoMigrate(
 		&model.VideoTemplateType{}, &model.VideoDisplayPosition{}, &model.VideoCountry{},
 		&model.VideoPackage{}, &model.VideoChannel{}, &model.VideoTemplate{},
@@ -108,7 +109,7 @@ func TestTemplatePageListReturnsRowsAndTotal(t *testing.T) {
 	template := model.VideoTemplate{
 		VideoTemplateTypeID: typeItem.ID, UserTypes: []int{1, 2},
 		SubscriptionStatuses: []string{"subscribed", "unsubscribed"},
-		Name:                 "测试模板", TemplateType: model.VideoTemplateKindAction,
+		Name:                 "测试模板", TemplateType: domain.VideoTemplateKindAction,
 		CoverImage: "https://example.com/template.jpg", TemplateVideo: "https://example.com/template.mp4", Status: 1,
 	}
 	ctx := context.Background()

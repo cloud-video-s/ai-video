@@ -36,6 +36,11 @@ func newVideoRole(db *gorm.DB, opts ...gen.DOOption) videoRole {
 	_videoRole.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoRole.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoRole.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoRole.Menus = videoRoleManyToManyMenus{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Menus", "model.VideoMenu"),
+	}
 
 	_videoRole.fillFieldMap()
 
@@ -56,6 +61,7 @@ type videoRole struct {
 	CreatedAt field.Time
 	UpdatedAt field.Time
 	DeletedAt field.Field
+	Menus     videoRoleManyToManyMenus
 
 	fieldMap map[string]field.Expr
 }
@@ -107,7 +113,7 @@ func (v *videoRole) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoRole) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 9)
+	v.fieldMap = make(map[string]field.Expr, 10)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["name"] = v.Name
 	v.fieldMap["code"] = v.Code
@@ -117,6 +123,7 @@ func (v *videoRole) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoRole) clone(db *gorm.DB) videoRole {
@@ -127,6 +134,77 @@ func (v videoRole) clone(db *gorm.DB) videoRole {
 func (v videoRole) replaceDB(db *gorm.DB) videoRole {
 	v.videoRoleDo.ReplaceDB(db)
 	return v
+}
+
+type videoRoleManyToManyMenus struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoRoleManyToManyMenus) Where(conds ...field.Expr) *videoRoleManyToManyMenus {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoRoleManyToManyMenus) WithContext(ctx context.Context) *videoRoleManyToManyMenus {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoRoleManyToManyMenus) Session(session *gorm.Session) *videoRoleManyToManyMenus {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoRoleManyToManyMenus) Model(m *model.VideoRole) *videoRoleManyToManyMenusTx {
+	return &videoRoleManyToManyMenusTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoRoleManyToManyMenusTx struct{ tx *gorm.Association }
+
+func (a videoRoleManyToManyMenusTx) Find() (result []*model.VideoMenu, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoRoleManyToManyMenusTx) Append(values ...*model.VideoMenu) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoRoleManyToManyMenusTx) Replace(values ...*model.VideoMenu) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoRoleManyToManyMenusTx) Delete(values ...*model.VideoMenu) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoRoleManyToManyMenusTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoRoleManyToManyMenusTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type videoRoleDo struct{ gen.DO }

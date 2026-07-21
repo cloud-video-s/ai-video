@@ -1,12 +1,13 @@
 package repository
 
 import (
+	"ai-video/internal/config"
 	"context"
 	"testing"
 	"time"
 
-	"ai-video/internal/app"
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -20,7 +21,7 @@ func TestUserPointsLedgerPageListFiltersSummarizesAndPreloads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	statements := []string{
 		`CREATE TABLE video_user (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,9 +85,9 @@ func TestUserPointsLedgerPageListFiltersSummarizesAndPreloads(t *testing.T) {
 	baseTime := time.Date(2026, 7, 17, 9, 0, 0, 0, time.Local)
 	userID, otherUserID, packageID := uint64(1), uint64(2), uint64(1)
 	entries := []model.VideoUserPointsLedger{
-		{UserID: userID, Direction: model.PointsDirectionIncome, PointsChange: 1000, BalanceBefore: 0, BalanceAfter: 1000, SourceType: "purchase", BusinessID: "ORDER-100", PointsPackageID: &packageID, Description: "purchase credits", OccurredAt: baseTime},
-		{UserID: userID, Direction: model.PointsDirectionExpense, PointsChange: -250, BalanceBefore: 1000, BalanceAfter: 750, SourceType: "consume", BusinessID: "TASK-200", Description: "render video", OccurredAt: baseTime.Add(time.Hour)},
-		{UserID: otherUserID, Direction: model.PointsDirectionIncome, PointsChange: 50, BalanceBefore: 0, BalanceAfter: 50, SourceType: "reward", BusinessID: "EVENT-300", Description: "daily reward", OccurredAt: baseTime.Add(2 * time.Hour)},
+		{UserID: userID, Direction: domain.PointsDirectionIncome, PointsChange: 1000, BalanceBefore: 0, BalanceAfter: 1000, SourceType: "purchase", BusinessID: "ORDER-100", PointsPackageID: &packageID, Description: "purchase credits", OccurredAt: baseTime},
+		{UserID: userID, Direction: domain.PointsDirectionExpense, PointsChange: -250, BalanceBefore: 1000, BalanceAfter: 750, SourceType: "consume", BusinessID: "TASK-200", Description: "render video", OccurredAt: baseTime.Add(time.Hour)},
+		{UserID: otherUserID, Direction: domain.PointsDirectionIncome, PointsChange: 50, BalanceBefore: 0, BalanceAfter: 50, SourceType: "reward", BusinessID: "EVENT-300", Description: "daily reward", OccurredAt: baseTime.Add(2 * time.Hour)},
 	}
 	if err := db.Create(&entries).Error; err != nil {
 		t.Fatal(err)

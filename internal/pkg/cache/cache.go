@@ -32,11 +32,11 @@ func IsTokenBlacklisted(token string) bool {
 
 const permCacheTTL = 10 * time.Minute
 
-func permKey(userID uint) string {
+func permKey(userID uint64) string {
 	return fmt.Sprintf("perm:user:%d", userID)
 }
 
-func SetUserPermissions(userID uint, perms []string) error {
+func SetUserPermissions(userID uint64, perms []string) error {
 	data, err := json.Marshal(perms)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func SetUserPermissions(userID uint, perms []string) error {
 	return store.Set(permKey(userID), string(data), permCacheTTL)
 }
 
-func GetUserPermissions(userID uint) ([]string, bool) {
+func GetUserPermissions(userID uint64) ([]string, bool) {
 	val, err := store.Get(permKey(userID))
 	if err != nil {
 		return nil, false
@@ -56,7 +56,7 @@ func GetUserPermissions(userID uint) ([]string, bool) {
 	return perms, true
 }
 
-func ClearUserPermissions(userID uint) {
+func ClearUserPermissions(userID uint64) {
 	store.Del(permKey(userID))
 }
 

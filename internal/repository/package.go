@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )

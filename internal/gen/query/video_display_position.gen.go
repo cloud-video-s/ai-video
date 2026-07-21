@@ -32,8 +32,8 @@ func newVideoDisplayPosition(db *gorm.DB, opts ...gen.DOOption) videoDisplayPosi
 	_videoDisplayPosition.PositionKey = field.NewString(tableName, "position_key")
 	_videoDisplayPosition.Description = field.NewString(tableName, "description")
 	_videoDisplayPosition.CoverImage = field.NewString(tableName, "cover_image")
-	_videoDisplayPosition.Sort = field.NewInt64(tableName, "sort")
-	_videoDisplayPosition.Status = field.NewInt32(tableName, "status")
+	_videoDisplayPosition.Sort = field.NewInt(tableName, "sort")
+	_videoDisplayPosition.Status = field.NewInt8(tableName, "status")
 	_videoDisplayPosition.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoDisplayPosition.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoDisplayPosition.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -52,8 +52,8 @@ type videoDisplayPosition struct {
 	PositionKey  field.String // unique display position identifier
 	Description  field.String // display position description
 	CoverImage   field.String // cover image URL
-	Sort         field.Int64  // sort order
-	Status       field.Int32  // status: 0 disabled, 1 enabled
+	Sort         field.Int    // sort order
+	Status       field.Int8   // status: 0 disabled, 1 enabled
 	CreatedAt    field.Time
 	UpdatedAt    field.Time
 	DeletedAt    field.Field
@@ -78,8 +78,8 @@ func (v *videoDisplayPosition) updateTableName(table string) *videoDisplayPositi
 	v.PositionKey = field.NewString(table, "position_key")
 	v.Description = field.NewString(table, "description")
 	v.CoverImage = field.NewString(table, "cover_image")
-	v.Sort = field.NewInt64(table, "sort")
-	v.Status = field.NewInt32(table, "status")
+	v.Sort = field.NewInt(table, "sort")
+	v.Status = field.NewInt8(table, "status")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")

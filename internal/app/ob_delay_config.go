@@ -1,11 +1,12 @@
 package app
 
 import (
+	"ai-video/internal/config"
 	"fmt"
 	"os"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"github.com/spf13/viper"
 	"gorm.io/gorm/clause"
@@ -49,11 +50,11 @@ func SeedOBDelayConfig(path string) error {
 			Type:    strings.TrimSpace(it.Type),
 			Options: strings.TrimSpace(it.Options),
 			Remark:  strings.TrimSpace(it.Remark),
-			Sort:    it.Sort,
+			Sort:    int64(it.Sort),
 		})
 	}
 
-	return DB.Clauses(clause.OnConflict{
+	return config.DB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "key"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"group", "value", "type", "options", "remark", "sort",

@@ -33,14 +33,25 @@ func newVideoMenu(db *gorm.DB, opts ...gen.DOOption) videoMenu {
 	_videoMenu.Path = field.NewString(tableName, "path")
 	_videoMenu.Component = field.NewString(tableName, "component")
 	_videoMenu.Icon = field.NewString(tableName, "icon")
-	_videoMenu.Sort = field.NewInt64(tableName, "sort")
-	_videoMenu.Type = field.NewInt32(tableName, "type")
+	_videoMenu.Sort = field.NewUint64(tableName, "sort")
+	_videoMenu.Type = field.NewUint32(tableName, "type")
 	_videoMenu.Permission = field.NewString(tableName, "permission")
-	_videoMenu.Visible = field.NewInt32(tableName, "visible")
-	_videoMenu.Status = field.NewInt32(tableName, "status")
+	_videoMenu.Visible = field.NewUint32(tableName, "visible")
+	_videoMenu.Status = field.NewUint32(tableName, "status")
 	_videoMenu.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoMenu.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoMenu.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoMenu.APIs = videoMenuManyToManyAPIs{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("APIs", "model.VideoAPI"),
+	}
+
+	_videoMenu.Children = videoMenuHasManyChildren{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Children", "model.VideoMenu"),
+	}
 
 	_videoMenu.fillFieldMap()
 
@@ -57,14 +68,17 @@ type videoMenu struct {
 	Path       field.String
 	Component  field.String
 	Icon       field.String
-	Sort       field.Int64
-	Type       field.Int32  // 0-目录 1-菜单 2-按钮
+	Sort       field.Uint64
+	Type       field.Uint32 // 0-目录 1-菜单 2-按钮
 	Permission field.String // 权限标识
-	Visible    field.Int32  // 1-显示 0-隐藏
-	Status     field.Int32  // 1-正常 0-禁用
+	Visible    field.Uint32 // 1-显示 0-隐藏
+	Status     field.Uint32 // 1-正常 0-禁用
 	CreatedAt  field.Time
 	UpdatedAt  field.Time
 	DeletedAt  field.Field
+	APIs       videoMenuManyToManyAPIs
+
+	Children videoMenuHasManyChildren
 
 	fieldMap map[string]field.Expr
 }
@@ -87,11 +101,11 @@ func (v *videoMenu) updateTableName(table string) *videoMenu {
 	v.Path = field.NewString(table, "path")
 	v.Component = field.NewString(table, "component")
 	v.Icon = field.NewString(table, "icon")
-	v.Sort = field.NewInt64(table, "sort")
-	v.Type = field.NewInt32(table, "type")
+	v.Sort = field.NewUint64(table, "sort")
+	v.Type = field.NewUint32(table, "type")
 	v.Permission = field.NewString(table, "permission")
-	v.Visible = field.NewInt32(table, "visible")
-	v.Status = field.NewInt32(table, "status")
+	v.Visible = field.NewUint32(table, "visible")
+	v.Status = field.NewUint32(table, "status")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -121,7 +135,7 @@ func (v *videoMenu) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoMenu) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 14)
+	v.fieldMap = make(map[string]field.Expr, 16)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["parent_id"] = v.ParentID
 	v.fieldMap["name"] = v.Name
@@ -136,6 +150,7 @@ func (v *videoMenu) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoMenu) clone(db *gorm.DB) videoMenu {
@@ -146,6 +161,148 @@ func (v videoMenu) clone(db *gorm.DB) videoMenu {
 func (v videoMenu) replaceDB(db *gorm.DB) videoMenu {
 	v.videoMenuDo.ReplaceDB(db)
 	return v
+}
+
+type videoMenuManyToManyAPIs struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoMenuManyToManyAPIs) Where(conds ...field.Expr) *videoMenuManyToManyAPIs {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoMenuManyToManyAPIs) WithContext(ctx context.Context) *videoMenuManyToManyAPIs {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoMenuManyToManyAPIs) Session(session *gorm.Session) *videoMenuManyToManyAPIs {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoMenuManyToManyAPIs) Model(m *model.VideoMenu) *videoMenuManyToManyAPIsTx {
+	return &videoMenuManyToManyAPIsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoMenuManyToManyAPIsTx struct{ tx *gorm.Association }
+
+func (a videoMenuManyToManyAPIsTx) Find() (result []*model.VideoAPI, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoMenuManyToManyAPIsTx) Append(values ...*model.VideoAPI) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoMenuManyToManyAPIsTx) Replace(values ...*model.VideoAPI) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoMenuManyToManyAPIsTx) Delete(values ...*model.VideoAPI) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoMenuManyToManyAPIsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoMenuManyToManyAPIsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type videoMenuHasManyChildren struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoMenuHasManyChildren) Where(conds ...field.Expr) *videoMenuHasManyChildren {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoMenuHasManyChildren) WithContext(ctx context.Context) *videoMenuHasManyChildren {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoMenuHasManyChildren) Session(session *gorm.Session) *videoMenuHasManyChildren {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoMenuHasManyChildren) Model(m *model.VideoMenu) *videoMenuHasManyChildrenTx {
+	return &videoMenuHasManyChildrenTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoMenuHasManyChildrenTx struct{ tx *gorm.Association }
+
+func (a videoMenuHasManyChildrenTx) Find() (result []*model.VideoMenu, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoMenuHasManyChildrenTx) Append(values ...*model.VideoMenu) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoMenuHasManyChildrenTx) Replace(values ...*model.VideoMenu) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoMenuHasManyChildrenTx) Delete(values ...*model.VideoMenu) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoMenuHasManyChildrenTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoMenuHasManyChildrenTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type videoMenuDo struct{ gen.DO }

@@ -3,7 +3,8 @@ package app
 import (
 	"testing"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -26,7 +27,7 @@ func TestRepairTemplateUserTypesConvertsLegacyBase64(t *testing.T) {
 	}
 	item := model.VideoTemplate{
 		VideoTemplateTypeID: typeItem.ID, UserTypes: []int{1, 2}, SubscriptionStatuses: []string{"subscribed", "unsubscribed"},
-		Name: "模板", TemplateType: model.VideoTemplateKindAction, CoverImage: "https://example.com/a.jpg",
+		Name: "模板", TemplateType: domain.VideoTemplateKindAction, CoverImage: "https://example.com/a.jpg",
 		TemplateVideo: "https://example.com/a.mp4", Status: 1,
 	}
 	if err := db.Create(&item).Error; err != nil {

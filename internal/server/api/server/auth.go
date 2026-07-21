@@ -11,7 +11,8 @@ import (
 	"time"
 
 	"ai-video/internal/app"
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/cache"
 	"ai-video/internal/pkg/jwt"
 	"ai-video/internal/pkg/oidc"
@@ -44,8 +45,8 @@ func NewAuthService() *AuthService {
 		userRepo: repository.NewAppUserRepo(), attributionRepo: repository.NewUserAttributionRepo(),
 		identityRepo: repository.NewUserIdentityRepo(),
 		identityVerifiers: map[string]identityTokenVerifier{
-			model.IdentityProviderGoogle: oidc.NewVerifier(oidc.Config{Issuers: authConfig.Google.Issuers, Audiences: authConfig.Google.ClientIDs, JWKSURL: authConfig.Google.JWKSURL, HTTPClient: &http.Client{Timeout: timeout}, CacheTTL: cacheTTL}),
-			model.IdentityProviderApple:  oidc.NewVerifier(oidc.Config{Issuers: authConfig.Apple.Issuers, Audiences: authConfig.Apple.ClientIDs, JWKSURL: authConfig.Apple.JWKSURL, HTTPClient: &http.Client{Timeout: timeout}, CacheTTL: cacheTTL}),
+			domain.IdentityProviderGoogle: oidc.NewVerifier(oidc.Config{Issuers: authConfig.Google.Issuers, Audiences: authConfig.Google.ClientIDs, JWKSURL: authConfig.Google.JWKSURL, HTTPClient: &http.Client{Timeout: timeout}, CacheTTL: cacheTTL}),
+			domain.IdentityProviderApple:  oidc.NewVerifier(oidc.Config{Issuers: authConfig.Apple.Issuers, Audiences: authConfig.Apple.ClientIDs, JWKSURL: authConfig.Apple.JWKSURL, HTTPClient: &http.Client{Timeout: timeout}, CacheTTL: cacheTTL}),
 		},
 	}
 }
@@ -77,8 +78,6 @@ type UserResponse struct {
 	LastLoginAt        int64  `json:"last_login_at"`
 	LastLoginIP        string `json:"last_login_ip"`
 	LoginAccount       string `json:"login_account"`
-	AppIDBinding       uint32 `json:"appid_binding"`
-	GoogleBinding      uint32 `json:"google_binding"`
 }
 
 type UpdateCountryRequest struct {
@@ -127,8 +126,8 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 
 		user = &model.VideoUser{
 			IMEI:     req.IMEI,
-			Username: newGuestUsername(), LoginType: model.AppUserLoginGuest,
-			UserType: model.AppUserTypeFree, SubscriptionStatus: model.AppUserSubscriptionNotSubscribed,
+			Username: newGuestUsername(), LoginType: domain.AppUserLoginGuest,
+			UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
 			DeviceCountry: req.DeviceCountry, ChannelID: req.ChannelID,
 			AppVersion: req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
@@ -153,7 +152,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 		}
 		return nil, err
 	}
-	return issueToken(user, model.AppUserLoginGuest)
+	return issueToken(user, domain.AppUserLoginGuest)
 }
 
 func (s *AuthService) prepareLoginSession(ctx context.Context, userID uint64) (*model.VideoUser, error) {
@@ -186,8 +185,8 @@ func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, 
 
 		user = &model.VideoUser{
 			IMEI:     req.IMEI,
-			Username: newGuestUsername(), LoginType: model.AppUserLoginGuest,
-			UserType: model.AppUserTypeFree, SubscriptionStatus: model.AppUserSubscriptionNotSubscribed,
+			Username: newGuestUsername(), LoginType: domain.AppUserLoginGuest,
+			UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
 			DeviceCountry: req.DeviceCountry, ChannelID: req.ChannelID,
 			AppVersion: req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
@@ -197,9 +196,8 @@ func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, 
 		if err := s.userRepo.Create(ctx, user); err != nil {
 			return err
 		}
-		user, err = s.prepareLoginSession(ctx, user.ID)
-
-		return err
+		user, _ = s.prepareLoginSession(ctx, user.ID)
+		return nil
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
@@ -213,7 +211,7 @@ func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, 
 		}
 		return nil, err
 	}
-	return issueToken(user, model.AppUserLoginGuest)
+	return issueToken(user, domain.AppUserLoginGuest)
 }
 
 func (s *AuthService) Logout(token string) error {
@@ -238,6 +236,7 @@ func (s *AuthService) GetProfile(ctx context.Context, userID uint64) (*UserRespo
 	}
 	data := &UserResponse{
 		ID:                 user.ID,
+		Email:              user.Email,
 		DeviceCountry:      user.DeviceCountry,
 		ChannelID:          user.ChannelID,
 		LoginType:          user.LoginType,
@@ -247,20 +246,12 @@ func (s *AuthService) GetProfile(ctx context.Context, userID uint64) (*UserRespo
 		Status:             user.Status,
 		LastLoginIP:        user.LastLoginIP,
 		LoginAccount:       user.LoginAccount,
-		AppIDBinding:       0,
-		GoogleBinding:      0,
 	}
 	if user.VipExpiresAt != nil {
 		data.VipExpiresAt = user.VipExpiresAt.Unix()
 	}
 	if user.LastLoginAt != nil {
 		data.LastLoginAt = user.LastLoginAt.Unix()
-	}
-	if user.AppIDThirdCode != "" {
-		data.AppIDBinding = 1
-	}
-	if user.GoogleThirdCode != "" {
-		data.GoogleBinding = 1
 	}
 	return data, nil
 }
@@ -345,14 +336,9 @@ func ThirdPartyLoginBinding(provider string, email, subject, clientIP string, no
 		"login_account": email,
 		"registered":    true,
 		"last_login_ip": clientIP,
-		"last_login_at": now}
-	if provider == model.IdentityProviderGoogle {
-		updates["google_third_code"] = subject
-		updates["google_email"] = email
-	}
-	if provider == model.IdentityProviderApple {
-		updates["appid_third_code"] = subject
-		updates["appid_email"] = email
+		"last_login_at": now,
+		"third_code":    subject,
+		"email":         email,
 	}
 	return updates
 }

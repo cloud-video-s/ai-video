@@ -1,9 +1,10 @@
 package app
 
 import (
+	"ai-video/internal/config"
 	"errors"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -18,7 +19,7 @@ type templateAPISeed struct {
 // SeedTemplateAdmin reconciles template-management menus, APIs and the
 // super-admin grants for both fresh and existing installations.
 func SeedTemplateAdmin() error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 		seeds := []templateAPISeed{
 			{Path: "/admin/template-types", Method: "GET", Group: "模板分类管理", Description: "模板分类列表"},
 			{Path: "/admin/template-types/:id", Method: "GET", Group: "模板分类管理", Description: "模板分类详情"},
@@ -102,7 +103,7 @@ func SeedTemplateAdmin() error {
 		}
 
 		var adminRole model.VideoRole
-		if err := tx.Where("code = ?", model.SuperAdminRoleCode).First(&adminRole).Error; err != nil {
+		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
 		return tx.Model(&adminRole).Association("Menus").Append(allMenus)

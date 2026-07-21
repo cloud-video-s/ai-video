@@ -44,6 +44,11 @@ func newVideoUserIdentity(db *gorm.DB, opts ...gen.DOOption) videoUserIdentity {
 	_videoUserIdentity.LastTokenIssuedAt = field.NewTime(tableName, "last_token_issued_at")
 	_videoUserIdentity.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUserIdentity.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoUserIdentity.User = videoUserIdentityBelongsToUser{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("User", "model.VideoUser"),
+	}
 
 	_videoUserIdentity.fillFieldMap()
 
@@ -71,6 +76,7 @@ type videoUserIdentity struct {
 	LastTokenIssuedAt field.Time
 	CreatedAt         field.Time
 	UpdatedAt         field.Time
+	User              videoUserIdentityBelongsToUser
 
 	fieldMap map[string]field.Expr
 }
@@ -132,7 +138,7 @@ func (v *videoUserIdentity) GetFieldByName(fieldName string) (field.OrderExpr, b
 }
 
 func (v *videoUserIdentity) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 17)
+	v.fieldMap = make(map[string]field.Expr, 18)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["provider"] = v.Provider
@@ -150,6 +156,7 @@ func (v *videoUserIdentity) fillFieldMap() {
 	v.fieldMap["last_token_issued_at"] = v.LastTokenIssuedAt
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
+
 }
 
 func (v videoUserIdentity) clone(db *gorm.DB) videoUserIdentity {
@@ -160,6 +167,77 @@ func (v videoUserIdentity) clone(db *gorm.DB) videoUserIdentity {
 func (v videoUserIdentity) replaceDB(db *gorm.DB) videoUserIdentity {
 	v.videoUserIdentityDo.ReplaceDB(db)
 	return v
+}
+
+type videoUserIdentityBelongsToUser struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoUserIdentityBelongsToUser) Where(conds ...field.Expr) *videoUserIdentityBelongsToUser {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoUserIdentityBelongsToUser) WithContext(ctx context.Context) *videoUserIdentityBelongsToUser {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoUserIdentityBelongsToUser) Session(session *gorm.Session) *videoUserIdentityBelongsToUser {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoUserIdentityBelongsToUser) Model(m *model.VideoUserIdentity) *videoUserIdentityBelongsToUserTx {
+	return &videoUserIdentityBelongsToUserTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoUserIdentityBelongsToUserTx struct{ tx *gorm.Association }
+
+func (a videoUserIdentityBelongsToUserTx) Find() (result *model.VideoUser, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoUserIdentityBelongsToUserTx) Append(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoUserIdentityBelongsToUserTx) Replace(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoUserIdentityBelongsToUserTx) Delete(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoUserIdentityBelongsToUserTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoUserIdentityBelongsToUserTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type videoUserIdentityDo struct{ gen.DO }

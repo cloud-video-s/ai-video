@@ -45,7 +45,7 @@ func (h *MenuHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	menu, err := h.svc.GetByID(c.Request.Context(), uint(id))
+	menu, err := h.svc.GetByID(c.Request.Context(), id)
 	if err != nil {
 		response.Fail(c, errcode.ErrMenuNotFound, "菜单不存在")
 		return
@@ -66,7 +66,7 @@ func (h *MenuHandler) Update(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.Update(c.Request.Context(), uint(id), &req); err != nil {
+	if err := h.svc.Update(c.Request.Context(), id, &req); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}
@@ -80,7 +80,7 @@ func (h *MenuHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.Delete(c.Request.Context(), uint(id)); err != nil {
+	if err := h.svc.Delete(c.Request.Context(), id); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}

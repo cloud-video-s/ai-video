@@ -4,12 +4,22 @@
 
 package model
 
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
 const TableNameVideoVipSubscriptionChannel = "video_vip_subscription_channel"
 
 // VideoVipSubscriptionChannel mapped from table <video_vip_subscription_channel>
 type VideoVipSubscriptionChannel struct {
-	SubscriptionID uint64 `gorm:"column:subscription_id;type:bigint unsigned;primaryKey" json:"subscription_id"`
-	ChannelID      uint64 `gorm:"column:channel_id;type:bigint unsigned;primaryKey;index:fk_video_vip_subscription_channel_video_channel,priority:1;comment:channel ID" json:"channel_id"` // channel ID
+	ID             uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:channel ID" json:"id"` // channel ID
+	SubscriptionID uint64         `gorm:"column:subscription_id;type:bigint unsigned;not null" json:"subscription_id"`
+	ChannelCode    string         `gorm:"column:channel_code;type:varchar(255);not null" json:"channel_code"`
+	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 }
 
 // TableName VideoVipSubscriptionChannel's table name

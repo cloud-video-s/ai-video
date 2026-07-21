@@ -2,14 +2,15 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
 
 type VIPSubscriptionRepo struct {
-	BaseRepo[model.VideoVIPSubscription]
+	BaseRepo[model.VideoVipSubscription]
 }
 
 func NewVIPSubscriptionRepo() *VIPSubscriptionRepo { return &VIPSubscriptionRepo{} }
@@ -26,17 +27,32 @@ type VIPSubscriptionListFilter struct {
 	Keyword           string
 }
 
-func (r *VIPSubscriptionRepo) PageList(ctx context.Context, page, pageSize int, filter *VIPSubscriptionListFilter) ([]model.VideoVIPSubscription, int64, error) {
-	db := dbFrom(ctx).Model(&model.VideoVIPSubscription{})
+func (r *VIPSubscriptionRepo) PageList(ctx context.Context, page, pageSize int, filter *VIPSubscriptionListFilter) ([]model.VideoVipSubscription, int64, error) {
+	db := dbFrom(ctx).Model(&model.VideoVipSubscription{})
 	if filter != nil {
 		if filter.PackageID != 0 {
-			db = db.Where("package_id = ?", filter.PackageID)
+			db = db.Where(`EXISTS (
+				SELECT 1
+				FROM video_vip_subscription_package vsp
+				JOIN video_package vp ON vp.package_code = vsp.package_code
+				WHERE vsp.subscription_id = video_vip_subscription.id AND vp.id = ?
+			)`, filter.PackageID)
 		}
 		if filter.DisplayPositionID != 0 {
-			db = db.Where("EXISTS (SELECT 1 FROM video_vip_subscription_position vsp WHERE vsp.subscription_id = video_vip_subscription.id AND vsp.display_position_id = ?)", filter.DisplayPositionID)
+			db = db.Where(`EXISTS (
+				SELECT 1
+				FROM video_vip_subscription_position vsp
+				JOIN video_display_position vdp ON vdp.position_key = vsp.product_code
+				WHERE vsp.subscription_id = video_vip_subscription.id AND vdp.id = ?
+			)`, filter.DisplayPositionID)
 		}
 		if filter.ChannelID != 0 {
-			db = db.Where("EXISTS (SELECT 1 FROM video_vip_subscription_channel vsc WHERE vsc.subscription_id = video_vip_subscription.id AND vsc.channel_id = ?)", filter.ChannelID)
+			db = db.Where(`EXISTS (
+				SELECT 1
+				FROM video_vip_subscription_channel vsc
+				JOIN video_channel vc ON vc.channel_code = vsc.channel_code
+				WHERE vsc.subscription_id = video_vip_subscription.id AND vc.channel_id = ?
+			)`, filter.ChannelID)
 		}
 		if filter.PlanType != "" {
 			db = db.Where("plan_type = ?", filter.PlanType)
@@ -55,20 +71,20 @@ func (r *VIPSubscriptionRepo) PageList(ctx context.Context, page, pageSize int, 
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			db = db.Where("product_id LIKE ? OR name LIKE ? OR vip_level LIKE ? OR description LIKE ?", keyword, keyword, keyword, keyword)
+			db = db.Where("product_id LIKE ? OR name LIKE ? OR v_ip_level LIKE ? OR description LIKE ?", keyword, keyword, keyword, keyword)
 		}
 	}
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	var list []model.VideoVIPSubscription
+	var list []model.VideoVipSubscription
 	err := preloadVIPSubscription(db).Order("sort ASC, id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error
 	return list, total, err
 }
 
-func (r *VIPSubscriptionRepo) GetDetail(ctx context.Context, id uint64) (*model.VideoVIPSubscription, error) {
-	var item model.VideoVIPSubscription
+func (r *VIPSubscriptionRepo) GetDetail(ctx context.Context, id uint64) (*model.VideoVipSubscription, error) {
+	var item model.VideoVipSubscription
 	if err := preloadVIPSubscription(dbFrom(ctx)).First(&item, id).Error; err != nil {
 		return nil, err
 	}
@@ -76,12 +92,12 @@ func (r *VIPSubscriptionRepo) GetDetail(ctx context.Context, id uint64) (*model.
 }
 
 func preloadVIPSubscription(db *gorm.DB) *gorm.DB {
-	return db.Preload("Package").Preload("DisplayPositions").Preload("Channels").Preload("ExcludedChannels")
+	return db.Preload("Packages").Preload("DisplayPositions").Preload("Channels").Preload("ExcludedChannels")
 }
 
-func (r *VIPSubscriptionRepo) UpdateFields(ctx context.Context, item *model.VideoVIPSubscription) error {
+func (r *VIPSubscriptionRepo) UpdateFields(ctx context.Context, item *model.VideoVipSubscription) error {
 	return r.BaseRepo.Update(ctx, item,
-		"PackageID", "Platform", "ProductID", "Name", "VIPLevel", "PlanType", "AppVersion", "Currency",
+		"Platform", "ProductID", "Name", "VIPLevel", "PlanType", "AppVersion", "Currency",
 		"FirstSubscriptionPrice", "FirstSubscriptionRevenue", "FirstBonusPoints", "OriginalPrice",
 		"VIPDurationDays", "TrialDays", "RenewalText", "BadgeText", "AgreementDefaultChecked",
 		"DisplayMode", "Status", "FreeTrial", "IsSubscription", "IsDefault", "SubscriptionDescription",
@@ -91,20 +107,38 @@ func (r *VIPSubscriptionRepo) UpdateFields(ctx context.Context, item *model.Vide
 }
 
 type VIPSubscriptionTargets struct {
+	PackageIDs         []uint64
 	DisplayPositionIDs []uint64
 	ChannelIDs         []uint64
 	ExcludedChannelIDs []uint64
 }
 
-func (r *VIPSubscriptionRepo) ReplaceTargets(ctx context.Context, item *model.VideoVIPSubscription, targets VIPSubscriptionTargets) error {
+func (r *VIPSubscriptionRepo) ReplaceTargets(ctx context.Context, item *model.VideoVipSubscription, targets VIPSubscriptionTargets) error {
 	db := dbFrom(ctx)
+	packages, err := loadVIPPackages(db, targets.PackageIDs)
+	if err != nil {
+		return err
+	}
+	positions, err := loadVIPDisplayPositions(db, targets.DisplayPositionIDs)
+	if err != nil {
+		return err
+	}
+	channels, err := loadVIPChannels(db, targets.ChannelIDs)
+	if err != nil {
+		return err
+	}
+	excludedChannels, err := loadVIPChannels(db, targets.ExcludedChannelIDs)
+	if err != nil {
+		return err
+	}
 	associations := []struct {
 		name   string
 		values interface{}
 	}{
-		{name: "DisplayPositions", values: displayPositionsFromIDs(targets.DisplayPositionIDs)},
-		{name: "Channels", values: channelsFromIDs(targets.ChannelIDs)},
-		{name: "ExcludedChannels", values: channelsFromIDs(targets.ExcludedChannelIDs)},
+		{name: "Packages", values: packages},
+		{name: "DisplayPositions", values: positions},
+		{name: "Channels", values: channels},
+		{name: "ExcludedChannels", values: excludedChannels},
 	}
 	for _, association := range associations {
 		if err := db.Model(item).Association(association.name).Replace(association.values); err != nil {
@@ -114,8 +148,50 @@ func (r *VIPSubscriptionRepo) ReplaceTargets(ctx context.Context, item *model.Vi
 	return nil
 }
 
-func (r *VIPSubscriptionRepo) ClearDefaults(ctx context.Context, packageID uint64, platform string, exceptID uint64) error {
-	db := dbFrom(ctx).Model(&model.VideoVIPSubscription{}).Where("package_id = ? AND platform = ? AND is_default = ?", packageID, platform, true)
+func loadVIPPackages(db *gorm.DB, ids []uint64) ([]model.VideoPackage, error) {
+	items := make([]model.VideoPackage, 0, len(ids))
+	if len(ids) == 0 {
+		return items, nil
+	}
+	if err := db.Where("id IN ?", ids).Find(&items).Error; err != nil {
+		return nil, err
+	}
+	if len(items) != len(ids) {
+		return nil, fmt.Errorf("one or more packages do not exist")
+	}
+	return items, nil
+}
+
+func loadVIPDisplayPositions(db *gorm.DB, ids []uint64) ([]model.VideoDisplayPosition, error) {
+	items := make([]model.VideoDisplayPosition, 0, len(ids))
+	if len(ids) == 0 {
+		return items, nil
+	}
+	if err := db.Where("id IN ?", ids).Find(&items).Error; err != nil {
+		return nil, err
+	}
+	if len(items) != len(ids) {
+		return nil, fmt.Errorf("one or more display positions do not exist")
+	}
+	return items, nil
+}
+
+func loadVIPChannels(db *gorm.DB, ids []uint64) ([]model.VideoChannel, error) {
+	items := make([]model.VideoChannel, 0, len(ids))
+	if len(ids) == 0 {
+		return items, nil
+	}
+	if err := db.Where("channel_id IN ?", ids).Find(&items).Error; err != nil {
+		return nil, err
+	}
+	if len(items) != len(ids) {
+		return nil, fmt.Errorf("one or more channels do not exist")
+	}
+	return items, nil
+}
+
+func (r *VIPSubscriptionRepo) ClearDefaults(ctx context.Context, platform string, exceptID uint64) error {
+	db := dbFrom(ctx).Model(&model.VideoVipSubscription{}).Where("platform = ? AND is_default = ?", platform, true)
 	if exceptID != 0 {
 		db = db.Where("id <> ?", exceptID)
 	}
@@ -123,20 +199,20 @@ func (r *VIPSubscriptionRepo) ClearDefaults(ctx context.Context, packageID uint6
 }
 
 func (r *VIPSubscriptionRepo) UpdateStatus(ctx context.Context, id uint64, status int8) error {
-	return dbFrom(ctx).Model(&model.VideoVIPSubscription{}).Where("id = ?", id).Update("status", status).Error
+	return dbFrom(ctx).Model(&model.VideoVipSubscription{}).Where("id = ?", id).Update("status", status).Error
 }
 
 func (r *VIPSubscriptionRepo) UpdateDisplayMode(ctx context.Context, id uint64, mode int8) error {
-	return dbFrom(ctx).Model(&model.VideoVIPSubscription{}).Where("id = ?", id).Update("display_mode", mode).Error
+	return dbFrom(ctx).Model(&model.VideoVipSubscription{}).Where("id = ?", id).Update("display_mode", mode).Error
 }
 
-func (r *VIPSubscriptionRepo) SetDefault(ctx context.Context, item *model.VideoVIPSubscription) error {
+func (r *VIPSubscriptionRepo) SetDefault(ctx context.Context, item *model.VideoVipSubscription) error {
 	return repositorySetDefault(ctx, r, item)
 }
 
-func repositorySetDefault(ctx context.Context, r *VIPSubscriptionRepo, item *model.VideoVIPSubscription) error {
+func repositorySetDefault(ctx context.Context, r *VIPSubscriptionRepo, item *model.VideoVipSubscription) error {
 	return Transaction(ctx, func(ctx context.Context) error {
-		if err := r.ClearDefaults(ctx, item.PackageID, item.Platform, item.ID); err != nil {
+		if err := r.ClearDefaults(ctx, item.Platform, item.ID); err != nil {
 			return err
 		}
 		item.IsDefault = true
@@ -145,5 +221,5 @@ func repositorySetDefault(ctx context.Context, r *VIPSubscriptionRepo, item *mod
 }
 
 func (r *VIPSubscriptionRepo) DeleteWithTargets(ctx context.Context, id uint64) error {
-	return dbFrom(ctx).Select("DisplayPositions", "Channels", "ExcludedChannels").Delete(&model.VideoVIPSubscription{ID: id}).Error
+	return dbFrom(ctx).Select("Packages", "DisplayPositions", "Channels", "ExcludedChannels").Delete(&model.VideoVipSubscription{ID: id}).Error
 }

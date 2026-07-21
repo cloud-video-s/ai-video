@@ -29,17 +29,17 @@ func newVideoUpload(db *gorm.DB, opts ...gen.DOOption) videoUpload {
 	_videoUpload.ALL = field.NewAsterisk(tableName)
 	_videoUpload.ID = field.NewUint64(tableName, "id")
 	_videoUpload.UploadID = field.NewString(tableName, "upload_id")
-	_videoUpload.UserType = field.NewInt32(tableName, "user_type")
+	_videoUpload.UserType = field.NewInt8(tableName, "user_type")
 	_videoUpload.UserID = field.NewUint64(tableName, "user_id")
 	_videoUpload.MediaType = field.NewString(tableName, "media_type")
 	_videoUpload.FileType = field.NewString(tableName, "file_type")
-	_videoUpload.MimeType = field.NewString(tableName, "mime_type")
+	_videoUpload.MIMEType = field.NewString(tableName, "mime_type")
 	_videoUpload.OriginalName = field.NewString(tableName, "original_name")
 	_videoUpload.FileSize = field.NewUint64(tableName, "file_size")
 	_videoUpload.StorageProvider = field.NewString(tableName, "storage_provider")
 	_videoUpload.FilePath = field.NewString(tableName, "file_path")
 	_videoUpload.FileURL = field.NewString(tableName, "file_url")
-	_videoUpload.Sha256 = field.NewString(tableName, "sha256")
+	_videoUpload.SHA256 = field.NewString(tableName, "sha256")
 	_videoUpload.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUpload.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUpload.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -55,17 +55,17 @@ type videoUpload struct {
 	ALL             field.Asterisk
 	ID              field.Uint64
 	UploadID        field.String
-	UserType        field.Int32  // 用户类型 1=admin 2=客户端
+	UserType        field.Int8   // 用户类型 1=admin 2=客户端
 	UserID          field.Uint64 // 用户ID
 	MediaType       field.String
 	FileType        field.String
-	MimeType        field.String
+	MIMEType        field.String
 	OriginalName    field.String
 	FileSize        field.Uint64
 	StorageProvider field.String
 	FilePath        field.String
 	FileURL         field.String
-	Sha256          field.String
+	SHA256          field.String
 	CreatedAt       field.Time
 	UpdatedAt       field.Time
 	DeletedAt       field.Field
@@ -87,17 +87,17 @@ func (v *videoUpload) updateTableName(table string) *videoUpload {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
 	v.UploadID = field.NewString(table, "upload_id")
-	v.UserType = field.NewInt32(table, "user_type")
+	v.UserType = field.NewInt8(table, "user_type")
 	v.UserID = field.NewUint64(table, "user_id")
 	v.MediaType = field.NewString(table, "media_type")
 	v.FileType = field.NewString(table, "file_type")
-	v.MimeType = field.NewString(table, "mime_type")
+	v.MIMEType = field.NewString(table, "mime_type")
 	v.OriginalName = field.NewString(table, "original_name")
 	v.FileSize = field.NewUint64(table, "file_size")
 	v.StorageProvider = field.NewString(table, "storage_provider")
 	v.FilePath = field.NewString(table, "file_path")
 	v.FileURL = field.NewString(table, "file_url")
-	v.Sha256 = field.NewString(table, "sha256")
+	v.SHA256 = field.NewString(table, "sha256")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -134,13 +134,13 @@ func (v *videoUpload) fillFieldMap() {
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["media_type"] = v.MediaType
 	v.fieldMap["file_type"] = v.FileType
-	v.fieldMap["mime_type"] = v.MimeType
+	v.fieldMap["mime_type"] = v.MIMEType
 	v.fieldMap["original_name"] = v.OriginalName
 	v.fieldMap["file_size"] = v.FileSize
 	v.fieldMap["storage_provider"] = v.StorageProvider
 	v.fieldMap["file_path"] = v.FilePath
 	v.fieldMap["file_url"] = v.FileURL
-	v.fieldMap["sha256"] = v.Sha256
+	v.fieldMap["sha256"] = v.SHA256
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

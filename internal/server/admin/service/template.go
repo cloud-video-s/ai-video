@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -131,14 +131,14 @@ func applyTemplateTypePayload(item *model.VideoTemplateType, req *TemplateTypePa
 	item.Sort = req.Sort
 	item.Status = req.Status
 	item.Description = strings.TrimSpace(req.Description)
-	item.LegacyCountry = req.legacyCountry
-	item.LegacyAppPackage = req.legacyAppPackage
-	item.LegacyChannelID = req.legacyChannelID
-	item.LegacyPackageID = req.legacyPackageID
+	//item.LegacyCountry = req.legacyCountry
+	//item.LegacyAppPackage = req.legacyAppPackage
+	//item.LegacyChannelID = req.legacyChannelID
+	//item.LegacyPackageID = req.legacyPackageID
 	item.UserTypes = append([]int(nil), req.UserTypes...)
 	item.SubscriptionStatuses = append([]string(nil), req.SubscriptionStatuses...)
-	item.LegacyUserType = uint32(req.UserTypes[0])
-	item.LegacyIsSubscribed = req.SubscriptionStatuses[0] == "subscribed"
+	//item.LegacyUserType = uint32(req.UserTypes[0])
+	//item.LegacyIsSubscribed = req.SubscriptionStatuses[0] == "subscribed"
 }
 
 func (s *TemplateTypeService) preparePositionIDs(ctx context.Context, req *TemplateTypePayload) error {

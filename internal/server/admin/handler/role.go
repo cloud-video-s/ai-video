@@ -37,7 +37,7 @@ func (h *RoleHandler) GetByID(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误")
 		return
 	}
-	role, err := h.svc.GetByID(c.Request.Context(), uint(id))
+	role, err := h.svc.GetByID(c.Request.Context(), id)
 	if err != nil {
 		response.Fail(c, errcode.ErrRoleNotFound, "角色不存在")
 		return
@@ -56,7 +56,7 @@ func (h *RoleHandler) Update(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	if err := h.svc.Update(c.Request.Context(), uint(id), &req); err != nil {
+	if err := h.svc.Update(c.Request.Context(), id, &req); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}
@@ -69,7 +69,7 @@ func (h *RoleHandler) Delete(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误")
 		return
 	}
-	if err := h.svc.Delete(c.Request.Context(), uint(id)); err != nil {
+	if err := h.svc.Delete(c.Request.Context(), id); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}
@@ -111,7 +111,7 @@ func (h *RoleHandler) SetMenus(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	if err := h.svc.SetMenus(c.Request.Context(), uint(id), req.MenuIDs); err != nil {
+	if err := h.svc.SetMenus(c.Request.Context(), id, req.MenuIDs); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}
@@ -129,7 +129,7 @@ func (h *RoleHandler) SetAPIs(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	if err := h.svc.SetAPIs(c.Request.Context(), uint(id), req.APIs); err != nil {
+	if err := h.svc.SetAPIs(c.Request.Context(), id, req.APIs); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}
@@ -142,7 +142,7 @@ func (h *RoleHandler) GetAPIs(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误")
 		return
 	}
-	apis, err := h.svc.GetAPIs(c.Request.Context(), uint(id))
+	apis, err := h.svc.GetAPIs(c.Request.Context(), id)
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return

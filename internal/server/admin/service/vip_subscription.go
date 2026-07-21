@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -84,7 +84,7 @@ type CloneVIPSubscriptionRequest struct {
 	Name      string `json:"name" binding:"omitempty,max=128"`
 }
 
-func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]model.VideoVIPSubscription, int64, error) {
+func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]model.VideoVipSubscription, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.VIPSubscriptionListFilter{
 		PackageID: req.PackageID, DisplayPositionID: req.DisplayPositionID, ChannelID: req.ChannelID,
 		PlanType: strings.TrimSpace(req.PlanType), Platform: strings.TrimSpace(req.Platform), DisplayMode: req.DisplayMode,
@@ -92,7 +92,7 @@ func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, r
 	})
 }
 
-func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*model.VideoVIPSubscription, error) {
+func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*model.VideoVipSubscription, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -100,11 +100,11 @@ func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*model
 	return item, nil
 }
 
-func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptionPayload) (*model.VideoVIPSubscription, error) {
+func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptionPayload) (*model.VideoVipSubscription, error) {
 	if err := s.prepareAndValidate(ctx, req); err != nil {
 		return nil, err
 	}
-	item := &model.VideoVIPSubscription{}
+	item := &model.VideoVipSubscription{}
 	applyVIPSubscriptionPayload(item, req)
 	err := repository.Transaction(ctx, func(ctx context.Context) error {
 		if err := s.repo.Create(ctx, item); err != nil {
@@ -114,7 +114,7 @@ func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptio
 			return err
 		}
 		if item.IsDefault {
-			return s.repo.ClearDefaults(ctx, item.PackageID, item.Platform, item.ID)
+			return s.repo.ClearDefaults(ctx, item.Platform, item.ID)
 		}
 		return nil
 	})
@@ -127,7 +127,7 @@ func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptio
 	return s.repo.GetDetail(ctx, item.ID)
 }
 
-func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIPSubscriptionPayload) (*model.VideoVIPSubscription, error) {
+func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIPSubscriptionPayload) (*model.VideoVipSubscription, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -144,7 +144,7 @@ func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIP
 			return err
 		}
 		if item.IsDefault {
-			return s.repo.ClearDefaults(ctx, item.PackageID, item.Platform, item.ID)
+			return s.repo.ClearDefaults(ctx, item.Platform, item.ID)
 		}
 		return nil
 	})
@@ -186,7 +186,7 @@ func (s *VIPSubscriptionService) SetDefault(ctx context.Context, id uint64) erro
 	return s.repo.SetDefault(ctx, item)
 }
 
-func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *CloneVIPSubscriptionRequest) (*model.VideoVIPSubscription, error) {
+func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *CloneVIPSubscriptionRequest) (*model.VideoVipSubscription, error) {
 	source, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -259,8 +259,7 @@ func (s *VIPSubscriptionService) prepareAndValidate(ctx context.Context, req *VI
 	return nil
 }
 
-func applyVIPSubscriptionPayload(item *model.VideoVIPSubscription, req *VIPSubscriptionPayload) {
-	item.PackageID = req.PackageID
+func applyVIPSubscriptionPayload(item *model.VideoVipSubscription, req *VIPSubscriptionPayload) {
 	item.Platform = req.Platform
 	item.ProductID = req.ProductID
 	item.Name = req.Name
@@ -293,12 +292,15 @@ func applyVIPSubscriptionPayload(item *model.VideoVIPSubscription, req *VIPSubsc
 }
 
 func vipSubscriptionTargets(req *VIPSubscriptionPayload) repository.VIPSubscriptionTargets {
-	return repository.VIPSubscriptionTargets{DisplayPositionIDs: req.DisplayPositionIDs, ChannelIDs: req.ChannelIDs, ExcludedChannelIDs: req.ExcludedChannelIDs}
+	return repository.VIPSubscriptionTargets{
+		PackageIDs: []uint64{req.PackageID}, DisplayPositionIDs: req.DisplayPositionIDs,
+		ChannelIDs: req.ChannelIDs, ExcludedChannelIDs: req.ExcludedChannelIDs,
+	}
 }
 
-func vipSubscriptionPayloadFromModel(item *model.VideoVIPSubscription) *VIPSubscriptionPayload {
-	return &VIPSubscriptionPayload{
-		PackageID: item.PackageID, Platform: item.Platform, ProductID: item.ProductID, Name: item.Name,
+func vipSubscriptionPayloadFromModel(item *model.VideoVipSubscription) *VIPSubscriptionPayload {
+	payload := &VIPSubscriptionPayload{
+		Platform: item.Platform, ProductID: item.ProductID, Name: item.Name,
 		VIPLevel: item.VIPLevel, PlanType: item.PlanType, DisplayPositionIDs: positionIDs(item.DisplayPositions),
 		ChannelIDs: channelIDs(item.Channels), ExcludedChannelIDs: channelIDs(item.ExcludedChannels),
 		AppVersion: item.AppVersion, Currency: item.Currency, FirstSubscriptionPrice: item.FirstSubscriptionPrice,
@@ -311,6 +313,10 @@ func vipSubscriptionPayloadFromModel(item *model.VideoVIPSubscription) *VIPSubsc
 		SubscriptionPoints: item.SubscriptionPoints, SubscriptionPeriod: item.SubscriptionPeriod,
 		Sort: item.Sort, Description: item.Description, Remark: item.Remark,
 	}
+	if len(item.Packages) > 0 {
+		payload.PackageID = item.Packages[0].ID
+	}
+	return payload
 }
 
 func positionIDs(items []model.VideoDisplayPosition) []uint64 {

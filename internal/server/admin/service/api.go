@@ -1,7 +1,7 @@
 package service
 
 import (
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 	"context"
 )

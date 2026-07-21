@@ -4,12 +4,22 @@
 
 package model
 
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
 const TableNameVideoBannerDisplayPosition = "video_banner_display_position"
 
 // VideoBannerDisplayPosition mapped from table <video_banner_display_position>
 type VideoBannerDisplayPosition struct {
-	BannerID    uint64 `gorm:"column:banner_id;type:bigint unsigned;primaryKey" json:"banner_id"`
-	PositionKey string `gorm:"column:position_key;type:varchar(64);primaryKey;index:idx_video_banner_display_position_position_key,priority:1" json:"position_key"`
+	ID          uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	BannerID    uint64         `gorm:"column:banner_id;type:bigint unsigned;not null" json:"banner_id"`
+	PositionKey string         `gorm:"column:position_key;type:varchar(64);not null" json:"position_key"`
+	CreatedAt   time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt   time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 }
 
 // TableName VideoBannerDisplayPosition's table name

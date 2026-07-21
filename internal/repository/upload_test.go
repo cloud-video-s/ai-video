@@ -3,7 +3,7 @@ package repository
 import (
 	"testing"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
 	"ai-video/internal/pkg/upload"
 )
 
@@ -12,8 +12,8 @@ func TestUploadOwnerUserType(t *testing.T) {
 		owner upload.UploaderType
 		want  int8
 	}{
-		{owner: upload.UploaderAdmin, want: model.UploadUserAdmin},
-		{owner: upload.UploaderAPIUser, want: model.UploadUserClient},
+		{owner: upload.UploaderAdmin, want: domain.UploadUserAdmin},
+		{owner: upload.UploaderAPIUser, want: domain.UploadUserClient},
 	}
 	for _, tt := range tests {
 		got, err := uploadOwnerUserType(tt.owner)

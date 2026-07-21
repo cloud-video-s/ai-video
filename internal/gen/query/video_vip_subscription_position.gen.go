@@ -27,8 +27,12 @@ func newVideoVipSubscriptionPosition(db *gorm.DB, opts ...gen.DOOption) videoVip
 
 	tableName := _videoVipSubscriptionPosition.videoVipSubscriptionPositionDo.TableName()
 	_videoVipSubscriptionPosition.ALL = field.NewAsterisk(tableName)
+	_videoVipSubscriptionPosition.ID = field.NewUint64(tableName, "id")
 	_videoVipSubscriptionPosition.SubscriptionID = field.NewUint64(tableName, "subscription_id")
-	_videoVipSubscriptionPosition.DisplayPositionID = field.NewUint64(tableName, "display_position_id")
+	_videoVipSubscriptionPosition.ProductCode = field.NewString(tableName, "product_code")
+	_videoVipSubscriptionPosition.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoVipSubscriptionPosition.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoVipSubscriptionPosition.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoVipSubscriptionPosition.fillFieldMap()
 
@@ -38,9 +42,13 @@ func newVideoVipSubscriptionPosition(db *gorm.DB, opts ...gen.DOOption) videoVip
 type videoVipSubscriptionPosition struct {
 	videoVipSubscriptionPositionDo videoVipSubscriptionPositionDo
 
-	ALL               field.Asterisk
-	SubscriptionID    field.Uint64
-	DisplayPositionID field.Uint64
+	ALL            field.Asterisk
+	ID             field.Uint64
+	SubscriptionID field.Uint64
+	ProductCode    field.String
+	CreatedAt      field.Time
+	UpdatedAt      field.Time
+	DeletedAt      field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoVipSubscriptionPosition) As(alias string) *videoVipSubscriptionPosi
 
 func (v *videoVipSubscriptionPosition) updateTableName(table string) *videoVipSubscriptionPosition {
 	v.ALL = field.NewAsterisk(table)
+	v.ID = field.NewUint64(table, "id")
 	v.SubscriptionID = field.NewUint64(table, "subscription_id")
-	v.DisplayPositionID = field.NewUint64(table, "display_position_id")
+	v.ProductCode = field.NewString(table, "product_code")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -89,9 +101,13 @@ func (v *videoVipSubscriptionPosition) GetFieldByName(fieldName string) (field.O
 }
 
 func (v *videoVipSubscriptionPosition) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["subscription_id"] = v.SubscriptionID
-	v.fieldMap["display_position_id"] = v.DisplayPositionID
+	v.fieldMap["product_code"] = v.ProductCode
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoVipSubscriptionPosition) clone(db *gorm.DB) videoVipSubscriptionPosition {

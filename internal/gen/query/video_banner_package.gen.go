@@ -27,8 +27,12 @@ func newVideoBannerPackage(db *gorm.DB, opts ...gen.DOOption) videoBannerPackage
 
 	tableName := _videoBannerPackage.videoBannerPackageDo.TableName()
 	_videoBannerPackage.ALL = field.NewAsterisk(tableName)
+	_videoBannerPackage.ID = field.NewUint64(tableName, "id")
 	_videoBannerPackage.BannerID = field.NewUint64(tableName, "banner_id")
-	_videoBannerPackage.PackageCode = field.NewUint64(tableName, "package_code")
+	_videoBannerPackage.PackageCode = field.NewString(tableName, "package_code")
+	_videoBannerPackage.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoBannerPackage.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoBannerPackage.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoBannerPackage.fillFieldMap()
 
@@ -39,8 +43,12 @@ type videoBannerPackage struct {
 	videoBannerPackageDo videoBannerPackageDo
 
 	ALL         field.Asterisk
+	ID          field.Uint64
 	BannerID    field.Uint64
-	PackageCode field.Uint64
+	PackageCode field.String
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoBannerPackage) As(alias string) *videoBannerPackage {
 
 func (v *videoBannerPackage) updateTableName(table string) *videoBannerPackage {
 	v.ALL = field.NewAsterisk(table)
+	v.ID = field.NewUint64(table, "id")
 	v.BannerID = field.NewUint64(table, "banner_id")
-	v.PackageCode = field.NewUint64(table, "package_code")
+	v.PackageCode = field.NewString(table, "package_code")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -87,9 +99,13 @@ func (v *videoBannerPackage) GetFieldByName(fieldName string) (field.OrderExpr, 
 }
 
 func (v *videoBannerPackage) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["banner_id"] = v.BannerID
 	v.fieldMap["package_code"] = v.PackageCode
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoBannerPackage) clone(db *gorm.DB) videoBannerPackage {

@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -127,10 +128,10 @@ func (s *UserAttributionService) RecordEvent(
 		if err != nil {
 			return err
 		}
-		if req.Action == model.AttributionActionCallback && !reached {
+		if req.Action == domain.AttributionActionCallback && !reached {
 			return errors.New("当前用户尚未达到该事件，不能记录回传")
 		}
-		if req.Action == model.AttributionActionDeduct && deductCount >= callbackCount {
+		if req.Action == domain.AttributionActionDeduct && deductCount >= callbackCount {
 			return errors.New("扣除次数不能超过已回传次数")
 		}
 		column, err := attributionEventColumn(req.Event, req.Action)
@@ -179,15 +180,15 @@ func parseAttributionDate(value string, endOfDay bool) (*time.Time, error) {
 
 func attributionEventState(item *model.VideoUserAttribution, event string) (uint64, uint64, bool, error) {
 	switch event {
-	case model.AttributionEventActivation:
+	case domain.AttributionEventActivation:
 		return item.ActivationCallbackCount, item.ActivationDeductCount, item.User.Activated != 0, nil
-	case model.AttributionEventKeyBehavior:
+	case domain.AttributionEventKeyBehavior:
 		return item.KeyBehaviorCallbackCount, item.KeyBehaviorDeductCount, item.User.KeyBehaviorMet != 0, nil
-	case model.AttributionEventPayment:
+	case domain.AttributionEventPayment:
 		return item.PaymentCallbackCount, item.PaymentDeductCount, item.User.PaymentMet, nil
-	case model.AttributionEventFirstPayment:
+	case domain.AttributionEventFirstPayment:
 		return item.FirstPaymentCallbackCount, item.FirstPaymentDeductCount, item.User.FirstPaymentMet, nil
-	case model.AttributionEventRegistration:
+	case domain.AttributionEventRegistration:
 		return item.RegistrationCallbackCount, item.RegistrationDeductCount, item.User.Registered, nil
 	default:
 		return 0, 0, false, errors.New("不支持的归因事件")
@@ -196,20 +197,20 @@ func attributionEventState(item *model.VideoUserAttribution, event string) (uint
 
 func attributionEventColumn(event, action string) (string, error) {
 	columns := map[string][2]string{
-		model.AttributionEventActivation:   {"activation_callback_count", "activation_deduct_count"},
-		model.AttributionEventKeyBehavior:  {"key_behavior_callback_count", "key_behavior_deduct_count"},
-		model.AttributionEventPayment:      {"payment_callback_count", "payment_deduct_count"},
-		model.AttributionEventFirstPayment: {"first_payment_callback_count", "first_payment_deduct_count"},
-		model.AttributionEventRegistration: {"registration_callback_count", "registration_deduct_count"},
+		domain.AttributionEventActivation:   {"activation_callback_count", "activation_deduct_count"},
+		domain.AttributionEventKeyBehavior:  {"key_behavior_callback_count", "key_behavior_deduct_count"},
+		domain.AttributionEventPayment:      {"payment_callback_count", "payment_deduct_count"},
+		domain.AttributionEventFirstPayment: {"first_payment_callback_count", "first_payment_deduct_count"},
+		domain.AttributionEventRegistration: {"registration_callback_count", "registration_deduct_count"},
 	}
 	pair, ok := columns[event]
 	if !ok {
 		return "", errors.New("不支持的归因事件")
 	}
-	if action == model.AttributionActionCallback {
+	if action == domain.AttributionActionCallback {
 		return pair[0], nil
 	}
-	if action == model.AttributionActionDeduct {
+	if action == domain.AttributionActionDeduct {
 		return pair[1], nil
 	}
 	return "", errors.New("不支持的归因操作")

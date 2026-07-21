@@ -27,8 +27,12 @@ func newVideoMenuAPI(db *gorm.DB, opts ...gen.DOOption) videoMenuAPI {
 
 	tableName := _videoMenuAPI.videoMenuAPIDo.TableName()
 	_videoMenuAPI.ALL = field.NewAsterisk(tableName)
+	_videoMenuAPI.ID = field.NewUint64(tableName, "id")
 	_videoMenuAPI.VideoMenuID = field.NewUint64(tableName, "video_menu_id")
 	_videoMenuAPI.VideoAPIID = field.NewUint64(tableName, "video_api_id")
+	_videoMenuAPI.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoMenuAPI.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoMenuAPI.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoMenuAPI.fillFieldMap()
 
@@ -39,8 +43,12 @@ type videoMenuAPI struct {
 	videoMenuAPIDo videoMenuAPIDo
 
 	ALL         field.Asterisk
+	ID          field.Uint64
 	VideoMenuID field.Uint64
 	VideoAPIID  field.Uint64
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoMenuAPI) As(alias string) *videoMenuAPI {
 
 func (v *videoMenuAPI) updateTableName(table string) *videoMenuAPI {
 	v.ALL = field.NewAsterisk(table)
+	v.ID = field.NewUint64(table, "id")
 	v.VideoMenuID = field.NewUint64(table, "video_menu_id")
 	v.VideoAPIID = field.NewUint64(table, "video_api_id")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -87,9 +99,13 @@ func (v *videoMenuAPI) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (v *videoMenuAPI) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["video_menu_id"] = v.VideoMenuID
 	v.fieldMap["video_api_id"] = v.VideoAPIID
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoMenuAPI) clone(db *gorm.DB) videoMenuAPI {

@@ -1,10 +1,10 @@
 package service
 
 import (
+	"ai-video/internal/config"
 	"context"
 	"testing"
 
-	"ai-video/internal/app"
 	"ai-video/internal/pkg/cache"
 	"ai-video/internal/pkg/setting"
 	"ai-video/internal/repository"
@@ -21,7 +21,7 @@ func TestPrepareLoginSessionHonorsSingleDeviceConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	previousStore := cache.GetStore()
 	cache.InitStore(nil)
 	t.Cleanup(func() { cache.InitStore(previousStore) })

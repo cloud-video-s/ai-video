@@ -1,7 +1,8 @@
 package service
 
 import (
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 	"context"
 	"errors"
@@ -20,31 +21,31 @@ func NewMenuService() *MenuService {
 }
 
 type CreateMenuRequest struct {
-	ParentID   uint   `json:"parent_id"`
-	Name       string `json:"name" binding:"required"`
-	Path       string `json:"path"`
-	Component  string `json:"component"`
-	Icon       string `json:"icon"`
-	Sort       int    `json:"sort"`
-	Type       int8   `json:"type"`
-	Permission string `json:"permission"`
-	Visible    int8   `json:"visible"`
-	Status     int8   `json:"status"`
-	APIIDs     []uint `json:"api_ids"`
+	ParentID   uint64   `json:"parent_id"`
+	Name       string   `json:"name" binding:"required"`
+	Path       string   `json:"path"`
+	Component  string   `json:"component"`
+	Icon       string   `json:"icon"`
+	Sort       uint64   `json:"sort"`
+	Type       uint32   `json:"type"`
+	Permission string   `json:"permission"`
+	Visible    uint32   `json:"visible"`
+	Status     uint32   `json:"status"`
+	APIIDs     []uint64 `json:"api_ids"`
 }
 
 type UpdateMenuRequest struct {
-	ParentID   *uint   `json:"parent_id"`
-	Name       string  `json:"name"`
-	Path       string  `json:"path"`
-	Component  string  `json:"component"`
-	Icon       string  `json:"icon"`
-	Sort       int     `json:"sort"`
-	Type       int8    `json:"type"`
-	Permission string  `json:"permission"`
-	Visible    int8    `json:"visible"`
-	Status     int8    `json:"status"`
-	APIIDs     *[]uint `json:"api_ids"`
+	ParentID   *uint64   `json:"parent_id"`
+	Name       string    `json:"name"`
+	Path       string    `json:"path"`
+	Component  string    `json:"component"`
+	Icon       string    `json:"icon"`
+	Sort       uint64    `json:"sort"`
+	Type       uint32    `json:"type"`
+	Permission string    `json:"permission"`
+	Visible    uint32    `json:"visible"`
+	Status     uint32    `json:"status"`
+	APIIDs     *[]uint64 `json:"api_ids"`
 }
 
 func (s *MenuService) Create(ctx context.Context, req *CreateMenuRequest) error {
@@ -71,11 +72,11 @@ func (s *MenuService) Create(ctx context.Context, req *CreateMenuRequest) error 
 	})
 }
 
-func (s *MenuService) GetByID(ctx context.Context, id uint) (*model.VideoMenu, error) {
+func (s *MenuService) GetByID(ctx context.Context, id uint64) (*model.VideoMenu, error) {
 	return s.menuRepo.GetByID(ctx, id)
 }
 
-func (s *MenuService) Update(ctx context.Context, id uint, req *UpdateMenuRequest) error {
+func (s *MenuService) Update(ctx context.Context, id uint64, req *UpdateMenuRequest) error {
 	menu, err := s.menuRepo.GetByID(ctx, id)
 	if err != nil {
 		return notFoundOr(err, "菜单不存在")
@@ -115,7 +116,7 @@ func (s *MenuService) Update(ctx context.Context, id uint, req *UpdateMenuReques
 	})
 }
 
-func (s *MenuService) Delete(ctx context.Context, id uint) error {
+func (s *MenuService) Delete(ctx context.Context, id uint64) error {
 	has, err := s.menuRepo.HasChildren(ctx, id)
 	if err != nil {
 		return err
@@ -134,14 +135,14 @@ func (s *MenuService) GetTree(ctx context.Context) ([]*model.VideoMenu, error) {
 	return repository.BuildMenuTree(menus, 0), nil
 }
 
-func (s *MenuService) GetUserMenuTree(ctx context.Context, userID uint) ([]*model.VideoMenu, error) {
+func (s *MenuService) GetUserMenuTree(ctx context.Context, userID uint64) ([]*model.VideoMenu, error) {
 	userDAO := repository.NewAdminRepo()
 	user, err := userDAO.GetByID(ctx, userID)
 	if err != nil {
 		return nil, notFoundOr(err, "用户不存在")
 	}
 
-	menuIDSet := make(map[uint]bool)
+	menuIDSet := make(map[uint64]bool)
 	for _, role := range user.Roles {
 		menus, err := s.roleRepo.GetMenusByRoleID(ctx, role.ID)
 		if err != nil {
@@ -156,7 +157,7 @@ func (s *MenuService) GetUserMenuTree(ctx context.Context, userID uint) ([]*mode
 		return []*model.VideoMenu{}, nil
 	}
 
-	ids := make([]uint, 0, len(menuIDSet))
+	ids := make([]uint64, 0, len(menuIDSet))
 	for id := range menuIDSet {
 		ids = append(ids, id)
 	}
@@ -178,7 +179,7 @@ func (s *MenuService) GetUserMenuTree(ctx context.Context, userID uint) ([]*mode
 }
 
 // GetUserPermissions returns all permission identifiers (including buttons) for a user.
-func (s *MenuService) GetUserPermissions(ctx context.Context, userID uint) ([]string, error) {
+func (s *MenuService) GetUserPermissions(ctx context.Context, userID uint64) ([]string, error) {
 	userDAO := repository.NewAdminRepo()
 	user, err := userDAO.GetByID(ctx, userID)
 	if err != nil {
@@ -187,12 +188,12 @@ func (s *MenuService) GetUserPermissions(ctx context.Context, userID uint) ([]st
 
 	// Super admin has all permissions
 	for _, role := range user.Roles {
-		if role.Code == model.SuperAdminRoleCode {
+		if role.Code == domain.SuperAdminRoleCode {
 			return []string{"*"}, nil
 		}
 	}
 
-	menuIDSet := make(map[uint]bool)
+	menuIDSet := make(map[uint64]bool)
 	for _, role := range user.Roles {
 		menus, err := s.roleRepo.GetMenusByRoleID(ctx, role.ID)
 		if err != nil {
@@ -207,7 +208,7 @@ func (s *MenuService) GetUserPermissions(ctx context.Context, userID uint) ([]st
 		return []string{}, nil
 	}
 
-	ids := make([]uint, 0, len(menuIDSet))
+	ids := make([]uint64, 0, len(menuIDSet))
 	for id := range menuIDSet {
 		ids = append(ids, id)
 	}

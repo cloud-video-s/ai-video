@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/utils"
 	"ai-video/internal/repository"
 
@@ -64,7 +65,7 @@ func (s *UserService) Create(ctx context.Context, req *CreateUserRequest) error 
 		Nickname: req.Nickname,
 		Email:    req.Email,
 		Phone:    req.Phone,
-		Status:   status,
+		Status:   int32(status),
 	}
 
 	// 创建用户 + 分配角色 在同一事务内（中途失败整体回滚）
@@ -82,11 +83,11 @@ func (s *UserService) Create(ctx context.Context, req *CreateUserRequest) error 
 	})
 }
 
-func (s *UserService) GetByID(ctx context.Context, id uint) (*model.VideoAdmin, error) {
+func (s *UserService) GetByID(ctx context.Context, id uint64) (*model.VideoAdmin, error) {
 	return s.userRepo.GetByID(ctx, id)
 }
 
-func (s *UserService) Update(ctx context.Context, id uint, req *UpdateUserRequest) error {
+func (s *UserService) Update(ctx context.Context, id uint64, req *UpdateUserRequest) error {
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		return notFoundOr(err, "用户不存在")
@@ -105,7 +106,7 @@ func (s *UserService) Update(ctx context.Context, id uint, req *UpdateUserReques
 		user.Avatar = req.Avatar
 	}
 	if req.Status != nil {
-		user.Status = *req.Status
+		user.Status = int32(*req.Status)
 	}
 	if req.Password != "" {
 		hashed, err := utils.HashPassword(req.Password)
@@ -130,7 +131,7 @@ func (s *UserService) Update(ctx context.Context, id uint, req *UpdateUserReques
 	})
 }
 
-func (s *UserService) Delete(ctx context.Context, id, currentUserID uint) error {
+func (s *UserService) Delete(ctx context.Context, id, currentUserID uint64) error {
 	if id == currentUserID {
 		return errors.New("不能删除当前登录用户")
 	}
@@ -139,7 +140,7 @@ func (s *UserService) Delete(ctx context.Context, id, currentUserID uint) error 
 		return notFoundOr(err, "用户不存在")
 	}
 	for _, r := range user.Roles {
-		if r.Code == model.SuperAdminRoleCode {
+		if r.Code == domain.SuperAdminRoleCode {
 			return errors.New("不能删除超级管理员")
 		}
 	}
@@ -153,7 +154,7 @@ func (s *UserService) List(ctx context.Context, page, pageSize int) ([]model.Vid
 	})
 }
 
-func (s *UserService) GetProfile(ctx context.Context, id uint) (*model.VideoAdmin, error) {
+func (s *UserService) GetProfile(ctx context.Context, id uint64) (*model.VideoAdmin, error) {
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "用户不存在")

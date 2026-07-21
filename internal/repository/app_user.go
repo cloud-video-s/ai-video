@@ -3,7 +3,8 @@ package repository
 import (
 	"context"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -61,12 +62,12 @@ func (d *AppUserRepo) GetByIMEI(ctx context.Context, imei string, lock bool) (*m
 }
 
 func (d *AppUserRepo) GetByProviderSubject(ctx context.Context, provider, subject string, lock bool) (*model.VideoUser, error) {
-	column := "google_third_code"
-	if provider == model.IdentityProviderApple {
-		column = "appid_third_code"
+	loginType := domain.AppUserLoginGoogle
+	if provider == domain.IdentityProviderApple {
+		loginType = domain.AppUserLoginAppID
 	}
 	var user model.VideoUser
-	db := dbFrom(ctx).Where(column+" = ?", subject)
+	db := dbFrom(ctx).Where("third_code = ? AND login_type = ?", subject, loginType)
 	if lock {
 		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
@@ -148,10 +149,8 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			db = db.Where(
-				"username LIKE ? OR login_account LIKE ? OR imei LIKE ? OR google_email LIKE ? OR appid_email LIKE ? OR google_third_code LIKE ? OR appid_third_code LIKE ? OR app_name LIKE ?",
-				keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword,
-			)
+			db = db.Where("username LIKE ? OR login_account LIKE ? OR imei LIKE ? OR email LIKE ? OR third_code LIKE ? OR app_name LIKE ?",
+				keyword, keyword, keyword, keyword, keyword, keyword)
 		}
 	}
 

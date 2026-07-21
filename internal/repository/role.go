@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -18,10 +18,10 @@ func (d *RoleRepo) Create(ctx context.Context, role *model.VideoRole) error {
 	return qFrom(ctx).VideoRole.WithContext(ctx).UnderlyingDB().Create(role).Error
 }
 
-func (d *RoleRepo) GetByID(ctx context.Context, id uint) (*model.VideoRole, error) {
+func (d *RoleRepo) GetByID(ctx context.Context, id uint64) (*model.VideoRole, error) {
 	var role model.VideoRole
 	q := qFrom(ctx).VideoRole
-	err := q.WithContext(ctx).Where(q.ID.Eq(uint64(id))).UnderlyingDB().Preload("Menus").First(&role).Error
+	err := q.WithContext(ctx).Where(q.ID.Eq(id)).UnderlyingDB().Preload("Menus").First(&role).Error
 	if err != nil {
 		return nil, err
 	}
@@ -41,17 +41,17 @@ func (d *RoleRepo) GetByCode(ctx context.Context, code string) (*model.VideoRole
 // Update writes only base columns; Menus is managed by SetMenus.
 func (d *RoleRepo) Update(ctx context.Context, role *model.VideoRole) error {
 	q := qFrom(ctx).VideoRole
-	return q.WithContext(ctx).Where(q.ID.Eq(uint64(role.ID))).UnderlyingDB().
+	return q.WithContext(ctx).Where(q.ID.Eq(role.ID)).UnderlyingDB().
 		Model(&model.VideoRole{}).
 		Select("Name", "Sort", "Status", "Remark").
 		Updates(role).Error
 }
 
 // Delete soft-deletes the role, clears menu associations, and mangles code.
-func (d *RoleRepo) Delete(ctx context.Context, id uint) error {
+func (d *RoleRepo) Delete(ctx context.Context, id uint64) error {
 	return Transaction(ctx, func(ctx context.Context) error {
 		q := qFrom(ctx).VideoRole
-		if _, err := q.WithContext(ctx).Where(q.ID.Eq(uint64(id))).
+		if _, err := q.WithContext(ctx).Where(q.ID.Eq(id)).
 			Update(q.Code, gorm.Expr("CONCAT('del#', id, '#', LEFT(code, 40))")); err != nil {
 			return err
 		}
@@ -82,7 +82,7 @@ func (d *RoleRepo) ListAll(ctx context.Context) ([]model.VideoRole, error) {
 	return roles, nil
 }
 
-func (d *RoleRepo) SetMenus(ctx context.Context, roleID uint, menuIDs []uint) error {
+func (d *RoleRepo) SetMenus(ctx context.Context, roleID uint64, menuIDs []uint64) error {
 	role := &model.VideoRole{ID: roleID}
 	var menus []model.VideoMenu
 	for _, id := range menuIDs {
@@ -91,7 +91,7 @@ func (d *RoleRepo) SetMenus(ctx context.Context, roleID uint, menuIDs []uint) er
 	return dbFrom(ctx).Model(role).Association("Menus").Replace(menus)
 }
 
-func (d *RoleRepo) GetMenusByRoleID(ctx context.Context, roleID uint) ([]model.VideoMenu, error) {
+func (d *RoleRepo) GetMenusByRoleID(ctx context.Context, roleID uint64) ([]model.VideoMenu, error) {
 	role := &model.VideoRole{ID: roleID}
 	var menus []model.VideoMenu
 	if err := dbFrom(ctx).Model(role).Association("Menus").Find(&menus); err != nil {

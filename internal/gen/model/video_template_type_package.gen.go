@@ -4,12 +4,22 @@
 
 package model
 
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
 const TableNameVideoTemplateTypePackage = "video_template_type_package"
 
 // VideoTemplateTypePackage mapped from table <video_template_type_package>
 type VideoTemplateTypePackage struct {
-	TemplateTypeID uint64 `gorm:"column:template_type_id;type:bigint unsigned;primaryKey" json:"template_type_id"`
-	PackageID      uint64 `gorm:"column:package_id;type:bigint unsigned;primaryKey;index:fk_video_template_type_package_video_package,priority:1" json:"package_id"`
+	ID             uint64         `gorm:"column:id;type:bigint unsigned;primaryKey" json:"id"`
+	TemplateTypeID uint64         `gorm:"column:template_type_id;type:bigint unsigned;not null" json:"template_type_id"`
+	PackageCode    string         `gorm:"column:package_code;type:varchar(255);not null" json:"package_code"`
+	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 }
 
 // TableName VideoTemplateTypePackage's table name

@@ -32,13 +32,42 @@ func newVideoBanner(db *gorm.DB, opts ...gen.DOOption) videoBanner {
 	_videoBanner.CoverImage = field.NewString(tableName, "cover_image")
 	_videoBanner.Remark = field.NewString(tableName, "remark")
 	_videoBanner.Sort = field.NewUint64(tableName, "sort")
-	_videoBanner.JumpType = field.NewUint32(tableName, "jump_type")
+	_videoBanner.JumpType = field.NewUint8(tableName, "jump_type")
 	_videoBanner.JumpURL = field.NewString(tableName, "jump_url")
 	_videoBanner.TemplateID = field.NewUint64(tableName, "template_id")
-	_videoBanner.Status = field.NewInt32(tableName, "status")
+	_videoBanner.Status = field.NewInt8(tableName, "status")
 	_videoBanner.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoBanner.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoBanner.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoBanner.Channels = videoBannerManyToManyChannels{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Channels", "model.VideoChannel"),
+	}
+
+	_videoBanner.Countries = videoBannerManyToManyCountries{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Countries", "model.VideoCountry"),
+	}
+
+	_videoBanner.DisplayPositions = videoBannerManyToManyDisplayPositions{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("DisplayPositions", "model.VideoDisplayPosition"),
+	}
+
+	_videoBanner.Packages = videoBannerManyToManyPackages{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Packages", "model.VideoPackage"),
+	}
+
+	_videoBanner.Template = videoBannerBelongsToTemplate{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Template", "model.VideoTemplate"),
+	}
 
 	_videoBanner.fillFieldMap()
 
@@ -54,13 +83,22 @@ type videoBanner struct {
 	CoverImage field.String // cover image URL
 	Remark     field.String // remark
 	Sort       field.Uint64 // sort order
-	JumpType   field.Uint32 // 跳转类型 1=链接 2=模板 3=文生图 4=文生视频
+	JumpType   field.Uint8  // 跳转类型 1=链接 2=模板 3=文生图 4=文生视频
 	JumpURL    field.String // link target URL
 	TemplateID field.Uint64 // target template ID
-	Status     field.Int32  // status: 0 disabled, 1 enabled
+	Status     field.Int8   // status: 0 disabled, 1 enabled
 	CreatedAt  field.Time
 	UpdatedAt  field.Time
 	DeletedAt  field.Field
+	Channels   videoBannerManyToManyChannels
+
+	Countries videoBannerManyToManyCountries
+
+	DisplayPositions videoBannerManyToManyDisplayPositions
+
+	Packages videoBannerManyToManyPackages
+
+	Template videoBannerBelongsToTemplate
 
 	fieldMap map[string]field.Expr
 }
@@ -82,10 +120,10 @@ func (v *videoBanner) updateTableName(table string) *videoBanner {
 	v.CoverImage = field.NewString(table, "cover_image")
 	v.Remark = field.NewString(table, "remark")
 	v.Sort = field.NewUint64(table, "sort")
-	v.JumpType = field.NewUint32(table, "jump_type")
+	v.JumpType = field.NewUint8(table, "jump_type")
 	v.JumpURL = field.NewString(table, "jump_url")
 	v.TemplateID = field.NewUint64(table, "template_id")
-	v.Status = field.NewInt32(table, "status")
+	v.Status = field.NewInt8(table, "status")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -115,7 +153,7 @@ func (v *videoBanner) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoBanner) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 12)
+	v.fieldMap = make(map[string]field.Expr, 17)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["name"] = v.Name
 	v.fieldMap["cover_image"] = v.CoverImage
@@ -128,6 +166,7 @@ func (v *videoBanner) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoBanner) clone(db *gorm.DB) videoBanner {
@@ -138,6 +177,361 @@ func (v videoBanner) clone(db *gorm.DB) videoBanner {
 func (v videoBanner) replaceDB(db *gorm.DB) videoBanner {
 	v.videoBannerDo.ReplaceDB(db)
 	return v
+}
+
+type videoBannerManyToManyChannels struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoBannerManyToManyChannels) Where(conds ...field.Expr) *videoBannerManyToManyChannels {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoBannerManyToManyChannels) WithContext(ctx context.Context) *videoBannerManyToManyChannels {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoBannerManyToManyChannels) Session(session *gorm.Session) *videoBannerManyToManyChannels {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoBannerManyToManyChannels) Model(m *model.VideoBanner) *videoBannerManyToManyChannelsTx {
+	return &videoBannerManyToManyChannelsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoBannerManyToManyChannelsTx struct{ tx *gorm.Association }
+
+func (a videoBannerManyToManyChannelsTx) Find() (result []*model.VideoChannel, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoBannerManyToManyChannelsTx) Append(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoBannerManyToManyChannelsTx) Replace(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoBannerManyToManyChannelsTx) Delete(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoBannerManyToManyChannelsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoBannerManyToManyChannelsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type videoBannerManyToManyCountries struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoBannerManyToManyCountries) Where(conds ...field.Expr) *videoBannerManyToManyCountries {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoBannerManyToManyCountries) WithContext(ctx context.Context) *videoBannerManyToManyCountries {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoBannerManyToManyCountries) Session(session *gorm.Session) *videoBannerManyToManyCountries {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoBannerManyToManyCountries) Model(m *model.VideoBanner) *videoBannerManyToManyCountriesTx {
+	return &videoBannerManyToManyCountriesTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoBannerManyToManyCountriesTx struct{ tx *gorm.Association }
+
+func (a videoBannerManyToManyCountriesTx) Find() (result []*model.VideoCountry, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoBannerManyToManyCountriesTx) Append(values ...*model.VideoCountry) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoBannerManyToManyCountriesTx) Replace(values ...*model.VideoCountry) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoBannerManyToManyCountriesTx) Delete(values ...*model.VideoCountry) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoBannerManyToManyCountriesTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoBannerManyToManyCountriesTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type videoBannerManyToManyDisplayPositions struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoBannerManyToManyDisplayPositions) Where(conds ...field.Expr) *videoBannerManyToManyDisplayPositions {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoBannerManyToManyDisplayPositions) WithContext(ctx context.Context) *videoBannerManyToManyDisplayPositions {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoBannerManyToManyDisplayPositions) Session(session *gorm.Session) *videoBannerManyToManyDisplayPositions {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoBannerManyToManyDisplayPositions) Model(m *model.VideoBanner) *videoBannerManyToManyDisplayPositionsTx {
+	return &videoBannerManyToManyDisplayPositionsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoBannerManyToManyDisplayPositionsTx struct{ tx *gorm.Association }
+
+func (a videoBannerManyToManyDisplayPositionsTx) Find() (result []*model.VideoDisplayPosition, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoBannerManyToManyDisplayPositionsTx) Append(values ...*model.VideoDisplayPosition) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoBannerManyToManyDisplayPositionsTx) Replace(values ...*model.VideoDisplayPosition) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoBannerManyToManyDisplayPositionsTx) Delete(values ...*model.VideoDisplayPosition) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoBannerManyToManyDisplayPositionsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoBannerManyToManyDisplayPositionsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type videoBannerManyToManyPackages struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoBannerManyToManyPackages) Where(conds ...field.Expr) *videoBannerManyToManyPackages {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoBannerManyToManyPackages) WithContext(ctx context.Context) *videoBannerManyToManyPackages {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoBannerManyToManyPackages) Session(session *gorm.Session) *videoBannerManyToManyPackages {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoBannerManyToManyPackages) Model(m *model.VideoBanner) *videoBannerManyToManyPackagesTx {
+	return &videoBannerManyToManyPackagesTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoBannerManyToManyPackagesTx struct{ tx *gorm.Association }
+
+func (a videoBannerManyToManyPackagesTx) Find() (result []*model.VideoPackage, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoBannerManyToManyPackagesTx) Append(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoBannerManyToManyPackagesTx) Replace(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoBannerManyToManyPackagesTx) Delete(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoBannerManyToManyPackagesTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoBannerManyToManyPackagesTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type videoBannerBelongsToTemplate struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoBannerBelongsToTemplate) Where(conds ...field.Expr) *videoBannerBelongsToTemplate {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoBannerBelongsToTemplate) WithContext(ctx context.Context) *videoBannerBelongsToTemplate {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoBannerBelongsToTemplate) Session(session *gorm.Session) *videoBannerBelongsToTemplate {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoBannerBelongsToTemplate) Model(m *model.VideoBanner) *videoBannerBelongsToTemplateTx {
+	return &videoBannerBelongsToTemplateTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoBannerBelongsToTemplateTx struct{ tx *gorm.Association }
+
+func (a videoBannerBelongsToTemplateTx) Find() (result *model.VideoTemplate, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoBannerBelongsToTemplateTx) Append(values ...*model.VideoTemplate) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoBannerBelongsToTemplateTx) Replace(values ...*model.VideoTemplate) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoBannerBelongsToTemplateTx) Delete(values ...*model.VideoTemplate) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoBannerBelongsToTemplateTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoBannerBelongsToTemplateTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type videoBannerDo struct{ gen.DO }

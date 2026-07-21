@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -47,9 +47,9 @@ func MigrateLegacyUploadOwnerColumns(db *gorm.DB) error {
 			var conflicts int64
 			if err := db.Table("video_upload").Where(
 				"(uploader_type = '' AND user_type NOT IN ?) OR (uploader_type IN ? AND user_type NOT IN ?) OR (uploader_type IN ? AND user_type NOT IN ?)",
-				[]int8{model.UploadUserAdmin, model.UploadUserClient},
-				[]string{"admin", "1"}, []int8{model.UploadUserUnknown, model.UploadUserAdmin},
-				[]string{"api_user", "2"}, []int8{model.UploadUserUnknown, model.UploadUserClient},
+				//[]int8{domain.UploadUserAdmin, domain.UploadUserClient},
+				//[]string{"admin", "1"}, []int8{domain.UploadUserUnknown, domain.UploadUserAdmin},
+				//[]string{"api_user", "2"}, []int8{domain.UploadUserUnknown, domain.UploadUserClient},
 			).Count(&conflicts).Error; err != nil {
 				return err
 			}
@@ -86,8 +86,8 @@ func MigrateLegacyUploadOwnerColumns(db *gorm.DB) error {
 			}
 			if err := tx.Table("video_upload").Where("user_type = 0").Update("user_type",
 				gorm.Expr("CASE WHEN uploader_type IN ? THEN ? WHEN uploader_type IN ? THEN ? ELSE user_type END",
-					[]string{"admin", "1"}, model.UploadUserAdmin,
-					[]string{"api_user", "2"}, model.UploadUserClient),
+					[]string{"admin", "1"}, 1,
+					[]string{"api_user", "2"}, 2),
 			).Error; err != nil {
 				return err
 			}

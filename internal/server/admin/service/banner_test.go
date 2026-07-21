@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
 )
 
 func TestValidBannerLink(t *testing.T) {
@@ -34,7 +34,7 @@ func TestValidateBannerJumpNormalizesTargets(t *testing.T) {
 	templateID := uint64(9)
 
 	link := &BannerPayload{
-		JumpType: model.BannerJumpTypeLink, JumpURL: " https://example.com/activity ", TemplateID: &templateID,
+		JumpType: domain.BannerJumpTypeLink, JumpURL: " https://example.com/activity ", TemplateID: &templateID,
 	}
 	if err := service.validateJump(context.Background(), link); err != nil {
 		t.Fatal(err)
@@ -44,7 +44,7 @@ func TestValidateBannerJumpNormalizesTargets(t *testing.T) {
 	}
 
 	feature := &BannerPayload{
-		JumpType: model.BannerJumpTypeTextToVideo, JumpURL: "https://example.com", TemplateID: &templateID,
+		JumpType: domain.BannerJumpTypeTextToVideo, JumpURL: "https://example.com", TemplateID: &templateID,
 	}
 	if err := service.validateJump(context.Background(), feature); err != nil {
 		t.Fatal(err)

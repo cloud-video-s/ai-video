@@ -27,8 +27,12 @@ func newVideoTemplateCountry(db *gorm.DB, opts ...gen.DOOption) videoTemplateCou
 
 	tableName := _videoTemplateCountry.videoTemplateCountryDo.TableName()
 	_videoTemplateCountry.ALL = field.NewAsterisk(tableName)
+	_videoTemplateCountry.ID = field.NewUint64(tableName, "id")
 	_videoTemplateCountry.TemplateID = field.NewUint64(tableName, "template_id")
-	_videoTemplateCountry.CountryID = field.NewUint64(tableName, "country_id")
+	_videoTemplateCountry.CountryCode = field.NewString(tableName, "country_code")
+	_videoTemplateCountry.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoTemplateCountry.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoTemplateCountry.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoTemplateCountry.fillFieldMap()
 
@@ -38,9 +42,13 @@ func newVideoTemplateCountry(db *gorm.DB, opts ...gen.DOOption) videoTemplateCou
 type videoTemplateCountry struct {
 	videoTemplateCountryDo videoTemplateCountryDo
 
-	ALL        field.Asterisk
-	TemplateID field.Uint64
-	CountryID  field.Uint64
+	ALL         field.Asterisk
+	ID          field.Uint64
+	TemplateID  field.Uint64
+	CountryCode field.String
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoTemplateCountry) As(alias string) *videoTemplateCountry {
 
 func (v *videoTemplateCountry) updateTableName(table string) *videoTemplateCountry {
 	v.ALL = field.NewAsterisk(table)
+	v.ID = field.NewUint64(table, "id")
 	v.TemplateID = field.NewUint64(table, "template_id")
-	v.CountryID = field.NewUint64(table, "country_id")
+	v.CountryCode = field.NewString(table, "country_code")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -87,9 +99,13 @@ func (v *videoTemplateCountry) GetFieldByName(fieldName string) (field.OrderExpr
 }
 
 func (v *videoTemplateCountry) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["template_id"] = v.TemplateID
-	v.fieldMap["country_id"] = v.CountryID
+	v.fieldMap["country_code"] = v.CountryCode
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoTemplateCountry) clone(db *gorm.DB) videoTemplateCountry {

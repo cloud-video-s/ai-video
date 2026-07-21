@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/i18n"
 	"ai-video/internal/repository"
 

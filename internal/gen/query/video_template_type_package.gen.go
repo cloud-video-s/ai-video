@@ -27,8 +27,12 @@ func newVideoTemplateTypePackage(db *gorm.DB, opts ...gen.DOOption) videoTemplat
 
 	tableName := _videoTemplateTypePackage.videoTemplateTypePackageDo.TableName()
 	_videoTemplateTypePackage.ALL = field.NewAsterisk(tableName)
+	_videoTemplateTypePackage.ID = field.NewUint64(tableName, "id")
 	_videoTemplateTypePackage.TemplateTypeID = field.NewUint64(tableName, "template_type_id")
-	_videoTemplateTypePackage.PackageID = field.NewUint64(tableName, "package_id")
+	_videoTemplateTypePackage.PackageCode = field.NewString(tableName, "package_code")
+	_videoTemplateTypePackage.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoTemplateTypePackage.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoTemplateTypePackage.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoTemplateTypePackage.fillFieldMap()
 
@@ -39,8 +43,12 @@ type videoTemplateTypePackage struct {
 	videoTemplateTypePackageDo videoTemplateTypePackageDo
 
 	ALL            field.Asterisk
+	ID             field.Uint64
 	TemplateTypeID field.Uint64
-	PackageID      field.Uint64
+	PackageCode    field.String
+	CreatedAt      field.Time
+	UpdatedAt      field.Time
+	DeletedAt      field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoTemplateTypePackage) As(alias string) *videoTemplateTypePackage {
 
 func (v *videoTemplateTypePackage) updateTableName(table string) *videoTemplateTypePackage {
 	v.ALL = field.NewAsterisk(table)
+	v.ID = field.NewUint64(table, "id")
 	v.TemplateTypeID = field.NewUint64(table, "template_type_id")
-	v.PackageID = field.NewUint64(table, "package_id")
+	v.PackageCode = field.NewString(table, "package_code")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -87,9 +99,13 @@ func (v *videoTemplateTypePackage) GetFieldByName(fieldName string) (field.Order
 }
 
 func (v *videoTemplateTypePackage) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["template_type_id"] = v.TemplateTypeID
-	v.fieldMap["package_id"] = v.PackageID
+	v.fieldMap["package_code"] = v.PackageCode
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoTemplateTypePackage) clone(db *gorm.DB) videoTemplateTypePackage {

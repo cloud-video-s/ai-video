@@ -27,8 +27,12 @@ func newVideoBannerChannel(db *gorm.DB, opts ...gen.DOOption) videoBannerChannel
 
 	tableName := _videoBannerChannel.videoBannerChannelDo.TableName()
 	_videoBannerChannel.ALL = field.NewAsterisk(tableName)
-	_videoBannerChannel.BannerID = field.NewUint64(tableName, "banner_id")
-	_videoBannerChannel.ChannelID = field.NewUint64(tableName, "channel_id")
+	_videoBannerChannel.ID = field.NewUint64(tableName, "id")
+	_videoBannerChannel.BannerID = field.NewInt64(tableName, "banner_id")
+	_videoBannerChannel.ChannelCode = field.NewUint64(tableName, "channel_code")
+	_videoBannerChannel.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoBannerChannel.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoBannerChannel.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoBannerChannel.fillFieldMap()
 
@@ -38,9 +42,13 @@ func newVideoBannerChannel(db *gorm.DB, opts ...gen.DOOption) videoBannerChannel
 type videoBannerChannel struct {
 	videoBannerChannelDo videoBannerChannelDo
 
-	ALL       field.Asterisk
-	BannerID  field.Uint64
-	ChannelID field.Uint64 // channel ID
+	ALL         field.Asterisk
+	ID          field.Uint64
+	BannerID    field.Int64
+	ChannelCode field.Uint64 // channel ID
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoBannerChannel) As(alias string) *videoBannerChannel {
 
 func (v *videoBannerChannel) updateTableName(table string) *videoBannerChannel {
 	v.ALL = field.NewAsterisk(table)
-	v.BannerID = field.NewUint64(table, "banner_id")
-	v.ChannelID = field.NewUint64(table, "channel_id")
+	v.ID = field.NewUint64(table, "id")
+	v.BannerID = field.NewInt64(table, "banner_id")
+	v.ChannelCode = field.NewUint64(table, "channel_code")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -87,9 +99,13 @@ func (v *videoBannerChannel) GetFieldByName(fieldName string) (field.OrderExpr, 
 }
 
 func (v *videoBannerChannel) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["banner_id"] = v.BannerID
-	v.fieldMap["channel_id"] = v.ChannelID
+	v.fieldMap["channel_code"] = v.ChannelCode
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoBannerChannel) clone(db *gorm.DB) videoBannerChannel {

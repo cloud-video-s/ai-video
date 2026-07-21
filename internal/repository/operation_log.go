@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 )
 
 type OperationLogRepo struct{}

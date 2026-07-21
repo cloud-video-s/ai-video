@@ -14,18 +14,23 @@ const TableNameVideoBanner = "video_banner"
 
 // VideoBanner mapped from table <video_banner>
 type VideoBanner struct {
-	ID         uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	Name       string         `gorm:"column:name;type:varchar(128);not null;index:idx_video_banner_name,priority:1;comment:banner name" json:"name"`                                              // banner name
-	CoverImage string         `gorm:"column:cover_image;type:varchar(1024);not null;comment:cover image URL" json:"cover_image"`                                                                  // cover image URL
-	Remark     *string        `gorm:"column:remark;type:varchar(500);comment:remark" json:"remark"`                                                                                               // remark
-	Sort       uint64         `gorm:"column:sort;type:bigint unsigned;not null;index:idx_video_banner_sort,priority:1;comment:sort order" json:"sort"`                                            // sort order
-	JumpType   *uint32        `gorm:"column:jump_type;type:tinyint unsigned;not null;index:idx_video_banner_jump_type,priority:1;default:1;comment:跳转类型 1=链接 2=模板 3=文生图 4=文生视频" json:"jump_type"` // 跳转类型 1=链接 2=模板 3=文生图 4=文生视频
-	JumpURL    *string        `gorm:"column:jump_url;type:varchar(1024);comment:link target URL" json:"jump_url"`                                                                                 // link target URL
-	TemplateID *uint64        `gorm:"column:template_id;type:bigint unsigned;index:idx_video_banner_template_id,priority:1;comment:target template ID" json:"template_id"`                        // target template ID
-	Status     *int32         `gorm:"column:status;type:tinyint;not null;index:idx_video_banner_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                 // status: 0 disabled, 1 enabled
-	CreatedAt  *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_video_banner_created_at,priority:1" json:"created_at"`
-	UpdatedAt  *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt  gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_banner_deleted_at,priority:1" json:"deleted_at"`
+	ID               uint64                 `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	Name             string                 `gorm:"column:name;type:varchar(128);not null;index:idx_video_banner_name,priority:1;comment:banner name" json:"name"`                                              // banner name
+	CoverImage       string                 `gorm:"column:cover_image;type:varchar(1024);not null;comment:cover image URL" json:"cover_image"`                                                                  // cover image URL
+	Remark           string                 `gorm:"column:remark;type:varchar(500);comment:remark" json:"remark"`                                                                                               // remark
+	Sort             uint64                 `gorm:"column:sort;type:bigint unsigned;not null;index:idx_video_banner_sort,priority:1;comment:sort order" json:"sort"`                                            // sort order
+	JumpType         uint8                  `gorm:"column:jump_type;type:tinyint unsigned;not null;index:idx_video_banner_jump_type,priority:1;default:1;comment:跳转类型 1=链接 2=模板 3=文生图 4=文生视频" json:"jump_type"` // 跳转类型 1=链接 2=模板 3=文生图 4=文生视频
+	JumpURL          string                 `gorm:"column:jump_url;type:varchar(1024);comment:link target URL" json:"jump_url"`                                                                                 // link target URL
+	TemplateID       *uint64                `gorm:"column:template_id;type:bigint unsigned;index:idx_video_banner_template_id,priority:1;comment:target template ID" json:"template_id"`                        // target template ID
+	Status           int8                   `gorm:"column:status;type:tinyint;not null;index:idx_video_banner_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                 // status: 0 disabled, 1 enabled
+	CreatedAt        time.Time              `gorm:"column:created_at;type:datetime(3);index:idx_video_banner_created_at,priority:1" json:"created_at"`
+	UpdatedAt        time.Time              `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt        gorm.DeletedAt         `gorm:"column:deleted_at;type:datetime(3);index:idx_video_banner_deleted_at,priority:1" json:"deleted_at"`
+	Channels         []VideoChannel         `gorm:"References:ChannelCode;foreignKey:ID;joinForeignKey:BannerID;joinReferences:ChannelCode;many2many:video_banner_channel" json:"channels"`
+	Countries        []VideoCountry         `gorm:"References:Code;foreignKey:ID;joinForeignKey:BannerID;joinReferences:CountryCode;many2many:video_banner_country" json:"countries"`
+	DisplayPositions []VideoDisplayPosition `gorm:"References:PositionKey;foreignKey:ID;joinForeignKey:BannerID;joinReferences:PositionKey;many2many:video_banner_display_position" json:"display_positions"`
+	Packages         []VideoPackage         `gorm:"References:PackageCode;foreignKey:ID;joinForeignKey:BannerID;joinReferences:PackageCode;many2many:video_banner_package" json:"packages"`
+	Template         *VideoTemplate         `gorm:"References:ID;foreignKey:TemplateID" json:"template"`
 }
 
 // TableName VideoBanner's table name

@@ -17,8 +17,8 @@ type VideoUserAttribution struct {
 	ID                        uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:attribution ID" json:"id"`                                                            // attribution ID
 	UserID                    uint64         `gorm:"column:user_id;type:bigint unsigned;not null;uniqueIndex:idx_video_user_attribution_user_id,priority:1;comment:client user ID" json:"user_id"`             // client user ID
 	ChannelCode               string         `gorm:"column:channel_code;type:varchar(64);not null;index:idx_video_user_attribution_channel_code,priority:1;comment:channel code snapshot" json:"channel_code"` // channel code snapshot
-	Oaid                      string         `gorm:"column:oaid;type:varchar(128);not null;index:idx_video_user_attribution_oa_id,priority:1;comment:OAID" json:"oaid"`                                        // OAID
-	Imei                      string         `gorm:"column:imei;type:varchar(128);not null;index:idx_video_user_attribution_imei,priority:1;comment:IMEI" json:"imei"`                                         // IMEI
+	OAID                      string         `gorm:"column:oaid;type:varchar(128);not null;index:idx_video_user_attribution_oa_id,priority:1;comment:OAID" json:"oaid"`                                        // OAID
+	IMEI                      string         `gorm:"column:imei;type:varchar(128);not null;index:idx_video_user_attribution_imei,priority:1;comment:IMEI" json:"imei"`                                         // IMEI
 	AndroidID                 string         `gorm:"column:android_id;type:varchar(128);not null;index:idx_video_user_attribution_android_id,priority:1;comment:Android ID" json:"android_id"`                 // Android ID
 	IP                        string         `gorm:"column:ip;type:varchar(64);not null;index:idx_video_user_attribution_ip,priority:1;comment:attribution IP" json:"ip"`                                      // attribution IP
 	UserAgent                 string         `gorm:"column:user_agent;type:varchar(1024);not null;comment:user agent" json:"user_agent"`                                                                       // user agent
@@ -35,9 +35,11 @@ type VideoUserAttribution struct {
 	AttributedAt              *time.Time     `gorm:"column:attributed_at;type:datetime(3);index:idx_video_user_attribution_attributed_at,priority:1;comment:attribution time" json:"attributed_at"`                      // attribution time
 	LastOperatedAt            *time.Time     `gorm:"column:last_operated_at;type:datetime(3);index:idx_video_user_attribution_last_operated_at,priority:1;comment:last callback or deduct time" json:"last_operated_at"` // last callback or deduct time
 	Remark                    string         `gorm:"column:remark;type:varchar(255);not null" json:"remark"`
-	CreatedAt                 *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_video_user_attribution_created_at,priority:1" json:"created_at"`
-	UpdatedAt                 *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	CreatedAt                 time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_video_user_attribution_created_at,priority:1" json:"created_at"`
+	UpdatedAt                 time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt                 gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_user_attribution_deleted_at,priority:1" json:"deleted_at"`
+	User                      VideoUser      `gorm:"References:ID;foreignKey:UserID" json:"user"`
+	Channel                   *VideoChannel  `gorm:"References:ChannelCode;foreignKey:ChannelCode" json:"channel"`
 }
 
 // TableName VideoUserAttribution's table name

@@ -5,7 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 )
 
@@ -24,10 +25,8 @@ type CreateAppUserRequest struct {
 	LastOpenedAt             *time.Time `json:"last_opened_at"`
 	LoginType                uint32     `json:"login_type" binding:"omitempty,oneof=1 2 3"`
 	LoginAccount             string     `json:"login_account" binding:"max=255"`
-	AppIDEmail               string     `json:"appid_email" binding:"omitempty,email,max=50"`
-	AppIDThirdCode           string     `json:"appid_third_code" binding:"max=50"`
-	GoogleEmail              string     `json:"google_email" binding:"omitempty,email,max=50"`
-	GoogleThirdCode          string     `json:"google_third_code" binding:"max=50"`
+	Email                    string     `json:"email" binding:"omitempty,email,max=50"`
+	ThirdCode                string     `json:"third_code" binding:"max=50"`
 	UserType                 uint32     `json:"user_type" binding:"omitempty,oneof=1 2"`
 	ActiveDays               uint32     `json:"active_days"`
 	AvgDailyUsageSeconds     uint64     `json:"avg_daily_usage_seconds"`
@@ -123,15 +122,15 @@ type ListAppUserRequest struct {
 func (s *AppUserService) Create(ctx context.Context, req *CreateAppUserRequest) (*model.VideoUser, error) {
 	loginType := req.LoginType
 	if loginType == 0 {
-		loginType = model.AppUserLoginGuest
+		loginType = domain.AppUserLoginGuest
 	}
 	userType := req.UserType
 	if userType == 0 {
-		userType = model.AppUserTypeFree
+		userType = domain.AppUserTypeFree
 	}
 	subscriptionStatus := req.SubscriptionStatus
 	if subscriptionStatus == 0 {
-		subscriptionStatus = model.AppUserSubscriptionNotSubscribed
+		subscriptionStatus = domain.AppUserSubscriptionNotSubscribed
 	}
 	status := int32(1)
 	if req.Status != nil {
@@ -161,10 +160,8 @@ func (s *AppUserService) Create(ctx context.Context, req *CreateAppUserRequest) 
 		ReRegisteredFromID: uint64Value(req.ReRegisteredFromID), Status: status,
 		LastLoginAt: req.LastLoginAt, LastLoginIP: strings.TrimSpace(req.LastLoginIP),
 	}
-	user.AppIDEmail = nullableString(req.AppIDEmail)
-	user.AppIDThirdCode = nullableString(req.AppIDThirdCode)
-	user.GoogleEmail = nullableString(req.GoogleEmail)
-	user.GoogleThirdCode = nullableString(req.GoogleThirdCode)
+	user.Email = nullableString(req.Email)
+	user.ThirdCode = nullableString(req.ThirdCode)
 	if err := s.repo.Create(ctx, user); err != nil {
 		return nil, err
 	}
@@ -194,10 +191,8 @@ func (s *AppUserService) Update(ctx context.Context, id uint64, req *UpdateAppUs
 	setAppUserUpdate(updates, "last_opened_at", req.LastOpenedAt)
 	setAppUserUpdate(updates, "login_type", req.LoginType)
 	setTrimmedAppUserUpdate(updates, "login_account", req.LoginAccount)
-	setNullableAppUserUpdate(updates, "appid_email", req.AppIDEmail)
-	setNullableAppUserUpdate(updates, "appid_third_code", req.AppIDThirdCode)
-	setNullableAppUserUpdate(updates, "google_email", req.GoogleEmail)
-	setNullableAppUserUpdate(updates, "google_third_code", req.GoogleThirdCode)
+	setNullableAppUserUpdate(updates, "email", req.AppIDEmail)
+	setNullableAppUserUpdate(updates, "third_code", req.AppIDThirdCode)
 	setAppUserUpdate(updates, "user_type", req.UserType)
 	setAppUserUpdate(updates, "active_days", req.ActiveDays)
 	setAppUserUpdate(updates, "avg_daily_usage_seconds", req.AvgDailyUsageSeconds)

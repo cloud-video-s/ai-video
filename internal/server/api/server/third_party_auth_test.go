@@ -1,14 +1,16 @@
 package service
 
 import (
+	"ai-video/internal/config"
 	"context"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"ai-video/internal/app"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/middleware"
-	"ai-video/internal/model"
 	apiJWT "ai-video/internal/pkg/jwt"
 	"ai-video/internal/pkg/oidc"
 	"ai-video/internal/repository"
@@ -33,7 +35,7 @@ func TestThirdPartyLoginUpgradesGuestAndReusesIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	app.Cfg.JWT = app.JWTConfig{Secret: "test-third-party-jwt-secret", Expire: 3600, Issuer: "test"}
 	createThirdPartyTestSchema(t, db)
 	if err := db.Exec("INSERT INTO video_user (imei, username, login_type, user_type, subscription_status, status, registered, token_version, created_at, updated_at) VALUES (?, ?, 1, 1, 1, 1, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", "device-1", "guest_initial").Error; err != nil {
@@ -51,11 +53,11 @@ func TestThirdPartyLoginUpgradesGuestAndReusesIdentity(t *testing.T) {
 	svc := &AuthService{
 		userRepo: repository.NewAppUserRepo(), attributionRepo: repository.NewUserAttributionRepo(),
 		identityRepo: repository.NewUserIdentityRepo(), identityVerifiers: map[string]identityTokenVerifier{
-			model.IdentityProviderGoogle: fakeIdentityVerifier{identity: identity},
+			domain.IdentityProviderGoogle: fakeIdentityVerifier{identity: identity},
 		},
 	}
 
-	response, err := svc.ThirdPartyLogin(thirdPartyTestContext(guest.ID), model.IdentityProviderGoogle, &ThirdPartyLoginRequest{
+	response, err := svc.ThirdPartyLogin(thirdPartyTestContext(guest.ID), domain.IdentityProviderGoogle, &ThirdPartyLoginRequest{
 		IDToken: "signed-token", IMEI: "device-1",
 	}, "127.0.0.1", "test-agent")
 	if err != nil {
@@ -72,10 +74,10 @@ func TestThirdPartyLoginUpgradesGuestAndReusesIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.LoginType != model.AppUserLoginGoogle || !updated.Registered || updated.GoogleEmail != identity.Email || updated.GoogleThirdCode != identity.Subject {
+	if updated.LoginType != domain.AppUserLoginGoogle || !updated.Registered || updated.Email != identity.Email || updated.ThirdCode != identity.Subject {
 		t.Fatalf("guest was not upgraded correctly: %+v", updated)
 	}
-	linked, err := repository.NewUserIdentityRepo().GetByProviderSubject(context.Background(), model.IdentityProviderGoogle, identity.Subject, false)
+	linked, err := repository.NewUserIdentityRepo().GetByProviderSubject(context.Background(), domain.IdentityProviderGoogle, identity.Subject, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +85,7 @@ func TestThirdPartyLoginUpgradesGuestAndReusesIdentity(t *testing.T) {
 		t.Fatalf("identity user ID = %d, want %d", linked.UserID, guest.ID)
 	}
 
-	second, err := svc.ThirdPartyLogin(thirdPartyTestContext(guest.ID), model.IdentityProviderGoogle, &ThirdPartyLoginRequest{
+	second, err := svc.ThirdPartyLogin(thirdPartyTestContext(guest.ID), domain.IdentityProviderGoogle, &ThirdPartyLoginRequest{
 		IDToken: "signed-token", IMEI: "another-device",
 	}, "127.0.0.2", "test-agent-2")
 	if err != nil {
@@ -116,7 +118,7 @@ func TestUnbindIdentityRequiresAnotherLoginMethod(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	createThirdPartyTestSchema(t, db)
 	if err := db.Exec("INSERT INTO video_user (imei, username, login_type, user_type, subscription_status, status, registered, token_version, created_at, updated_at) VALUES (?, ?, 2, 1, 1, 1, 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", "device", "user").Error; err != nil {
 		t.Fatal(err)
@@ -125,12 +127,12 @@ func TestUnbindIdentityRequiresAnotherLoginMethod(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	identity := model.VideoUserIdentity{UserID: user.ID, Provider: model.IdentityProviderGoogle, ProviderSubject: "sub", Issuer: "issuer", Audience: "audience"}
+	identity := model.VideoUserIdentity{UserID: user.ID, Provider: domain.IdentityProviderGoogle, ProviderSubject: "sub", Issuer: "issuer", Audience: "audience"}
 	if err := db.Create(&identity).Error; err != nil {
 		t.Fatal(err)
 	}
 	svc := &AuthService{userRepo: repository.NewAppUserRepo(), identityRepo: repository.NewUserIdentityRepo()}
-	if err := svc.UnbindIdentity(context.Background(), user.ID, model.IdentityProviderGoogle); err == nil {
+	if err := svc.UnbindIdentity(context.Background(), user.ID, domain.IdentityProviderGoogle); err == nil {
 		t.Fatal("expected the last login method to be protected")
 	}
 }
@@ -144,7 +146,7 @@ func createThirdPartyTestSchema(t *testing.T, db *gorm.DB) {
 			first_opened_at DATETIME, last_opened_at DATETIME, attribution_clicked_at DATETIME,
 			login_type INTEGER NOT NULL DEFAULT 1, user_type INTEGER NOT NULL DEFAULT 1, subscription_status INTEGER NOT NULL DEFAULT 1,
 			active_days INTEGER NOT NULL DEFAULT 0, avg_daily_usage_seconds INTEGER NOT NULL DEFAULT 0, vip_expires_at DATETIME, points_balance INTEGER NOT NULL DEFAULT 0,
-			re_registered_from_id INTEGER, appid_email TEXT, appid_third_code TEXT, google_email TEXT UNIQUE, google_third_code TEXT,
+			re_registered_from_id INTEGER, email TEXT DEFAULT '', third_code TEXT DEFAULT '', package_code TEXT NOT NULL DEFAULT '',
 			token_version INTEGER NOT NULL DEFAULT 0,
 			status INTEGER NOT NULL DEFAULT 1, registered INTEGER NOT NULL DEFAULT 0, activated INTEGER NOT NULL DEFAULT 0,
 			last_login_at DATETIME, last_login_ip TEXT DEFAULT '', login_account TEXT DEFAULT '', created_at DATETIME, updated_at DATETIME, deleted_at DATETIME,

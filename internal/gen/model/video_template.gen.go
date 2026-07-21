@@ -14,26 +14,30 @@ const TableNameVideoTemplate = "video_template"
 
 // VideoTemplate mapped from table <video_template>
 type VideoTemplate struct {
-	ID                   uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	VideoTemplateTypeID  uint64         `gorm:"column:video_template_type_id;type:bigint unsigned;not null;index:idx_video_template_video_template_type_id,priority:1;comment:video template type ID" json:"video_template_type_id"` // video template type ID
-	Name                 string         `gorm:"column:name;type:varchar(128);not null;index:idx_video_template_name,priority:1;comment:template name" json:"name"`                                                                   // template name
-	TemplateType         string         `gorm:"column:template_type;type:varchar(32);not null;index:idx_video_template_template_type,priority:1;comment:template kind, such as action or face_swap" json:"template_type"`            // template kind, such as action or face_swap
-	Sort                 int64          `gorm:"column:sort;type:bigint;not null;index:idx_video_template_sort,priority:1;comment:sort order" json:"sort"`                                                                            // sort order
-	CoverImage           string         `gorm:"column:cover_image;type:varchar(1024);not null;comment:cover image URL" json:"cover_image"`                                                                                           // cover image URL
-	TemplateVideo        string         `gorm:"column:template_video;type:varchar(1024);not null;comment:template video URL" json:"template_video"`                                                                                  // template video URL
-	ThumbnailVideo       *string        `gorm:"column:thumbnail_video;type:varchar(1024);comment:thumbnail video URL" json:"thumbnail_video"`                                                                                        // thumbnail video URL
-	Prompt               *string        `gorm:"column:prompt;type:text;comment:template prompt" json:"prompt"`                                                                                                                       // template prompt
-	Status               *int32         `gorm:"column:status;type:tinyint;not null;index:idx_video_template_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                                        // status: 0 disabled, 1 enabled
-	Description          *string        `gorm:"column:description;type:varchar(500);comment:description" json:"description"`                                                                                                         // description
-	UsageCount           uint64         `gorm:"column:usage_count;type:bigint unsigned;not null;index:idx_video_template_usage_count,priority:1;comment:template usage count" json:"usage_count"`                                    // template usage count
-	LikeCount            uint64         `gorm:"column:like_count;type:bigint unsigned;not null;comment:点赞次数" json:"like_count"`                                                                                                      // 点赞次数
-	ViewCount            uint64         `gorm:"column:view_count;type:bigint unsigned;not null;index:idx_video_template_view_count,priority:1;comment:template view count" json:"view_count"`                                        // template view count
-	CreatedAt            *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_video_template_created_at,priority:1" json:"created_at"`
-	UpdatedAt            *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt            gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_template_deleted_at,priority:1" json:"deleted_at"`
-	UserTypes            *string        `gorm:"column:user_types;type:text;comment:target user types: 1 free, 2 paid" json:"user_types"`                                                                      // target user types: 1 free, 2 paid
-	SubscriptionStatuses *string        `gorm:"column:subscription_statuses;type:text;comment:subscribed and/or unsubscribed" json:"subscription_statuses"`                                                   // subscribed and/or unsubscribed
-	FavoriteCount        uint64         `gorm:"column:favorite_count;type:bigint unsigned;not null;index:idx_video_template_favorite_count,priority:1;comment:template favorite count" json:"favorite_count"` // template favorite count
+	ID                   uint64            `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	VideoTemplateTypeID  uint64            `gorm:"column:video_template_type_id;type:bigint unsigned;not null;index:idx_video_template_video_template_type_id,priority:1;comment:video template type ID" json:"video_template_type_id"` // video template type ID
+	Name                 string            `gorm:"column:name;type:varchar(128);not null;index:idx_video_template_name,priority:1;comment:template name" json:"name"`                                                                   // template name
+	TemplateType         string            `gorm:"column:template_type;type:varchar(32);not null;index:idx_video_template_template_type,priority:1;comment:template kind, such as action or face_swap" json:"template_type"`            // template kind, such as action or face_swap
+	Sort                 int               `gorm:"column:sort;type:bigint;not null;index:idx_video_template_sort,priority:1;comment:sort order" json:"sort"`                                                                            // sort order
+	CoverImage           string            `gorm:"column:cover_image;type:varchar(1024);not null;comment:cover image URL" json:"cover_image"`                                                                                           // cover image URL
+	TemplateVideo        string            `gorm:"column:template_video;type:varchar(1024);not null;comment:template video URL" json:"template_video"`                                                                                  // template video URL
+	ThumbnailVideo       string            `gorm:"column:thumbnail_video;type:varchar(1024);comment:thumbnail video URL" json:"thumbnail_video"`                                                                                        // thumbnail video URL
+	Prompt               string            `gorm:"column:prompt;type:text;comment:template prompt" json:"prompt"`                                                                                                                       // template prompt
+	Status               int8              `gorm:"column:status;type:tinyint;not null;index:idx_video_template_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                                        // status: 0 disabled, 1 enabled
+	Description          string            `gorm:"column:description;type:varchar(500);comment:description" json:"description"`                                                                                                         // description
+	UsageCount           uint64            `gorm:"column:usage_count;type:bigint unsigned;not null;index:idx_video_template_usage_count,priority:1;comment:template usage count" json:"usage_count"`                                    // template usage count
+	LikeCount            uint64            `gorm:"column:like_count;type:bigint unsigned;not null;comment:点赞次数" json:"like_count"`                                                                                                      // 点赞次数
+	ViewCount            uint64            `gorm:"column:view_count;type:bigint unsigned;not null;index:idx_video_template_view_count,priority:1;comment:template view count" json:"view_count"`                                        // template view count
+	CreatedAt            time.Time         `gorm:"column:created_at;type:datetime(3);index:idx_video_template_created_at,priority:1" json:"created_at"`
+	UpdatedAt            time.Time         `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt            gorm.DeletedAt    `gorm:"column:deleted_at;type:datetime(3);index:idx_video_template_deleted_at,priority:1" json:"deleted_at"`
+	UserTypes            []int             `gorm:"column:user_types;type:text;comment:target user types: 1 free, 2 paid;serializer:json" json:"user_types"`                                                      // target user types: 1 free, 2 paid
+	SubscriptionStatuses []string          `gorm:"column:subscription_statuses;type:text;comment:subscribed and/or unsubscribed;serializer:json" json:"subscription_statuses"`                                   // subscribed and/or unsubscribed
+	FavoriteCount        uint64            `gorm:"column:favorite_count;type:bigint unsigned;not null;index:idx_video_template_favorite_count,priority:1;comment:template favorite count" json:"favorite_count"` // template favorite count
+	Channels             []VideoChannel    `gorm:"References:ChannelCode;foreignKey:ID;joinForeignKey:TemplateID;joinReferences:ChannelCode;many2many:video_template_channel" json:"channels"`
+	Countries            []VideoCountry    `gorm:"References:Code;foreignKey:ID;joinForeignKey:TemplateID;joinReferences:CountryCode;many2many:video_template_country" json:"countries"`
+	Packages             []VideoPackage    `gorm:"References:PackageCode;foreignKey:ID;joinForeignKey:TemplateID;joinReferences:PackageCode;many2many:video_template_package" json:"packages"`
+	VideoTemplateType    VideoTemplateType `gorm:"References:ID;foreignKey:VideoTemplateTypeID" json:"video_template_type"`
 }
 
 // TableName VideoTemplate's table name

@@ -45,7 +45,6 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	))
 
 	rg.GET("/health", healthHandler.Health)
-	rg.GET("/configs/public", configHandler.Public)
 
 	rg.POST("/auth/login", authHandler.Login)
 	rg.POST("/auth/re-register", authHandler.ReRegister)
@@ -53,8 +52,6 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/auth/apple", authHandler.AppleLogin)
 	authenticated := rg.Group("", middleware.ApiAuth(repository.NewAppUserRepo()))
 	{
-		authenticated.GET("/delay-configs", delayConfigHandler.All)
-		authenticated.GET("/ob-delay-configs", delayConfigHandler.All)
 		authenticated.GET("/ob_delay", delayConfigHandler.All)
 
 		uploadHandler.RegisterRoutes(authenticated.Group("/uploads"))

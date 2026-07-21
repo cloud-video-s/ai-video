@@ -12,14 +12,19 @@ import (
 
 const TableNameVideoTemplateDisplayConfig = "video_template_display_config"
 
-// VideoTemplateDisplayConfig mapped from table <video_template_display_config>
+// VideoTemplateDisplayConfig 模板单独位置表
 type VideoTemplateDisplayConfig struct {
-	ID          uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	TemplateID  uint64         `gorm:"column:template_id;type:bigint unsigned;not null;uniqueIndex:idx_template_id_position_key,priority:1" json:"template_id"`
-	PositionKey string         `gorm:"column:position_key;type:varchar(255);not null;uniqueIndex:idx_template_id_position_key,priority:2" json:"position_key"`
-	CreatedAt   *time.Time     `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
-	UpdatedAt   *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
+	ID                 uint64               `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	TemplateID         uint64               `gorm:"column:template_id;type:bigint unsigned;not null;index:idx_position_key,priority:1" json:"template_id"`
+	DisplayPositionKey string               `gorm:"column:position_key;type:varchar(64);not null;index:idx_position_key,priority:2" json:"position_key"`
+	Sort               int                  `gorm:"column:sort;type:int unsigned" json:"sort"`
+	Status             int8                 `gorm:"column:status;type:tinyint;not null;default:1;comment:status: 0 disabled, 1 enabled" json:"status"` // status: 0 disabled, 1 enabled
+	Remark             string               `gorm:"column:description;type:varchar(500);comment:description" json:"remark"`                            // description
+	CreatedAt          time.Time            `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt          time.Time            `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt          gorm.DeletedAt       `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
+	Template           VideoTemplate        `gorm:"References:ID;foreignKey:TemplateID" json:"template"`
+	DisplayPosition    VideoDisplayPosition `gorm:"References:PositionKey;foreignKey:DisplayPositionKey" json:"display_position"`
 }
 
 // TableName VideoTemplateDisplayConfig's table name

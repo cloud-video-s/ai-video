@@ -5,7 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -127,7 +128,7 @@ func (s *ClientTemplateService) ListByPosition(ctx *gin.Context, userID uint64, 
 	}
 
 	subscriptionState := "unsubscribed"
-	if user.SubscriptionStatus == model.AppUserSubscriptionSubscribed {
+	if user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed {
 		subscriptionState = "subscribed"
 	}
 	rows, err := s.displayRepo.ListForClient(ctx, repository.ClientTemplateDisplayTargets{
@@ -142,7 +143,7 @@ func (s *ClientTemplateService) ListByPosition(ctx *gin.Context, userID uint64, 
 	for i := range rows {
 		result = append(result, ClientTemplateDisplayItem{
 			ClientTemplate: mapClientTemplate(&rows[i].Template), DisplayConfigID: rows[i].ID,
-			PositionKey: rows[i].DisplayPositionKey, DisplaySort: rows[i].Sort,
+			PositionKey: rows[i].DisplayPositionKey, DisplaySort: int(rows[i].Sort),
 		})
 	}
 	return result, nil
@@ -184,7 +185,7 @@ func (s *ClientTemplateService) List(ctx *gin.Context, userID uint64, req *Clien
 	}
 
 	subscriptionState := "unsubscribed"
-	if user.SubscriptionStatus == model.AppUserSubscriptionSubscribed {
+	if user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed {
 		subscriptionState = "subscribed"
 	}
 	types, err := s.typeRepo.ListForClient(ctx, repository.ClientTemplateTypeTargets{
@@ -258,7 +259,7 @@ func mapClientTemplate(item *model.VideoTemplate) ClientTemplate {
 		TemplateVideo: item.TemplateVideo, ThumbnailVideo: item.ThumbnailVideo,
 		Prompt: item.Prompt, Description: item.Description,
 		UserTypes: item.UserTypes, SubscriptionStatuses: item.SubscriptionStatuses,
-		Sort: item.Sort, UsageCount: item.UsageCount,
+		Sort: int(item.Sort), UsageCount: item.UsageCount,
 		FavoriteCount: item.FavoriteCount, ViewCount: item.ViewCount,
 	}
 }
@@ -312,7 +313,7 @@ func (s *ClientTemplateService) Recommend(ctx *gin.Context, userID uint64, req *
 	}
 
 	subscriptionState := "unsubscribed"
-	if user.SubscriptionStatus == model.AppUserSubscriptionSubscribed {
+	if user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed {
 		subscriptionState = "subscribed"
 	}
 	rows, err := s.templateRepo.ListForClient(ctx, repository.ClientTemplateTargets{

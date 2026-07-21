@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -37,7 +37,7 @@ type TemplateDisplayConfigPayload struct {
 	PositionKey string `json:"position_key" binding:"required,max=64"`
 	Sort        int    `json:"sort"`
 	Status      int8   `json:"status" binding:"oneof=0 1"`
-	Remark      string `json:"remark" binding:"max=500"`
+	Description string `json:"description" binding:"max=500"`
 }
 
 func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize int, req *ListTemplateDisplayConfigRequest) ([]model.VideoTemplateDisplayConfig, int64, error) {
@@ -101,7 +101,7 @@ func (s *TemplateDisplayConfigService) Delete(ctx context.Context, id uint64) er
 
 func (s *TemplateDisplayConfigService) prepare(ctx context.Context, req *TemplateDisplayConfigPayload, currentID uint64) error {
 	req.PositionKey = strings.TrimSpace(req.PositionKey)
-	req.Remark = strings.TrimSpace(req.Remark)
+	req.Description = strings.TrimSpace(req.Description)
 	if _, err := s.templateRepo.GetWithType(ctx, req.TemplateID); err != nil {
 		return notFoundOr(err, "模板不存在")
 	}
@@ -127,5 +127,5 @@ func applyTemplateDisplayConfigPayload(item *model.VideoTemplateDisplayConfig, r
 	item.DisplayPositionKey = req.PositionKey
 	item.Sort = req.Sort
 	item.Status = req.Status
-	item.Remark = req.Remark
+	item.Remark = req.Description
 }

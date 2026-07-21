@@ -15,19 +15,21 @@ const TableNameVideoMenu = "video_menu"
 // VideoMenu mapped from table <video_menu>
 type VideoMenu struct {
 	ID         uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	ParentID   *uint64        `gorm:"column:parent_id;type:bigint unsigned;comment:父菜单ID" json:"parent_id"` // 父菜单ID
+	ParentID   uint64         `gorm:"column:parent_id;type:bigint unsigned;not null;comment:父菜单ID" json:"parent_id"` // 父菜单ID
 	Name       string         `gorm:"column:name;type:varchar(64);not null" json:"name"`
-	Path       *string        `gorm:"column:path;type:varchar(255)" json:"path"`
-	Component  *string        `gorm:"column:component;type:varchar(255)" json:"component"`
-	Icon       *string        `gorm:"column:icon;type:varchar(64)" json:"icon"`
-	Sort       *int64         `gorm:"column:sort;type:bigint" json:"sort"`
-	Type       *int32         `gorm:"column:type;type:tinyint;comment:0-目录 1-菜单 2-按钮" json:"type"`            // 0-目录 1-菜单 2-按钮
-	Permission *string        `gorm:"column:permission;type:varchar(128);comment:权限标识" json:"permission"`     // 权限标识
-	Visible    *int32         `gorm:"column:visible;type:tinyint;default:1;comment:1-显示 0-隐藏" json:"visible"` // 1-显示 0-隐藏
-	Status     *int32         `gorm:"column:status;type:tinyint;default:1;comment:1-正常 0-禁用" json:"status"`   // 1-正常 0-禁用
-	CreatedAt  *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_sys_menu_created_at,priority:1;index:idx_video_menu_created_at,priority:1" json:"created_at"`
-	UpdatedAt  *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	Path       string         `gorm:"column:path;type:varchar(255);not null" json:"path"`
+	Component  string         `gorm:"column:component;type:varchar(255);not null" json:"component"`
+	Icon       string         `gorm:"column:icon;type:varchar(64);not null" json:"icon"`
+	Sort       uint64         `gorm:"column:sort;type:bigint unsigned;not null" json:"sort"`
+	Type       uint32         `gorm:"column:type;type:tinyint unsigned;not null;default:1;comment:0-目录 1-菜单 2-按钮" json:"type"`  // 0-目录 1-菜单 2-按钮
+	Permission string         `gorm:"column:permission;type:varchar(128);not null;comment:权限标识" json:"permission"`              // 权限标识
+	Visible    uint32         `gorm:"column:visible;type:tinyint unsigned;not null;default:1;comment:1-显示 0-隐藏" json:"visible"` // 1-显示 0-隐藏
+	Status     uint32         `gorm:"column:status;type:tinyint unsigned;not null;default:1;comment:1-正常 0-禁用" json:"status"`   // 1-正常 0-禁用
+	CreatedAt  time.Time      `gorm:"column:created_at;type:datetime(3);not null;index:idx_sys_menu_created_at,priority:1;index:idx_video_menu_created_at,priority:1" json:"created_at"`
+	UpdatedAt  time.Time      `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt  gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_sys_menu_deleted_at,priority:1;index:idx_video_menu_deleted_at,priority:1" json:"deleted_at"`
+	APIs       []VideoAPI     `gorm:"References:ID;foreignKey:ID;joinForeignKey:VideoMenuID;joinReferences:VideoAPIID;many2many:video_menu_api" json:"apis"`
+	Children   []VideoMenu    `gorm:"References:ID;foreignKey:ParentID" json:"children"`
 }
 
 // TableName VideoMenu's table name

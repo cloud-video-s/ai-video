@@ -18,12 +18,12 @@ type VideoDelayConfig struct {
 	Group     string         `gorm:"column:group;type:varchar(64);not null;index:idx_video_delay_config_group,priority:1;comment:config group" json:"group"` // config group
 	Key       string         `gorm:"column:key;type:varchar(128);not null;uniqueIndex:idx_video_delay_config_key,priority:1;comment:config key" json:"key"`  // config key
 	Value     string         `gorm:"column:value;type:varchar(64);not null;comment:config value" json:"value"`                                               // config value
-	Type      *string        `gorm:"column:type;type:varchar(16);not null;default:string;comment:string/int/bool" json:"type"`                               // string/int/bool
-	Options   *string        `gorm:"column:options;type:varchar(255);comment:allowed values" json:"options"`                                                 // allowed values
-	Remark    *string        `gorm:"column:remark;type:varchar(255);comment:description" json:"remark"`                                                      // description
-	Sort      *int64         `gorm:"column:sort;type:bigint" json:"sort"`
-	CreatedAt *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_video_delay_config_created_at,priority:1" json:"created_at"`
-	UpdatedAt *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	Type      string         `gorm:"column:type;type:varchar(16);not null;default:string;comment:string/int/bool" json:"type"`                               // string/int/bool
+	Options   string         `gorm:"column:options;type:varchar(255);comment:allowed values" json:"options"`                                                 // allowed values
+	Remark    string         `gorm:"column:remark;type:varchar(255);comment:description" json:"remark"`                                                      // description
+	Sort      int64          `gorm:"column:sort;type:bigint" json:"sort"`
+	CreatedAt time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_video_delay_config_created_at,priority:1" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_delay_config_deleted_at,priority:1" json:"deleted_at"`
 }
 

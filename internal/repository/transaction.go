@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"ai-video/internal/app"
+	"ai-video/internal/config"
 	"ai-video/internal/gen/query"
 	"context"
 
@@ -21,7 +21,7 @@ func Transaction(ctx context.Context, fn func(ctx context.Context) error) error 
 	if _, ok := ctx.Value(txKey{}).(*gorm.DB); ok {
 		return fn(ctx)
 	}
-	return app.DB.Transaction(func(tx *gorm.DB) error {
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 		return fn(context.WithValue(ctx, txKey{}, tx))
 	})
 }
@@ -32,7 +32,7 @@ func dbFrom(ctx context.Context) *gorm.DB {
 	if tx, ok := ctx.Value(txKey{}).(*gorm.DB); ok && tx != nil {
 		return tx.WithContext(ctx)
 	}
-	return app.DB.WithContext(ctx)
+	return config.DB.WithContext(ctx)
 }
 
 func qFrom(ctx context.Context) *query.Query {

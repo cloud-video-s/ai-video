@@ -18,17 +18,18 @@ type VideoUserIdentity struct {
 	ProviderSubject   string     `gorm:"column:provider_subject;type:varchar(191);not null;uniqueIndex:uk_user_identity_subject,priority:2" json:"provider_subject"`
 	Issuer            string     `gorm:"column:issuer;type:varchar(255);not null" json:"issuer"`
 	Audience          string     `gorm:"column:audience;type:varchar(255);not null" json:"audience"`
-	Email             *string    `gorm:"column:email;type:varchar(255);index:idx_video_user_identity_email,priority:1" json:"email"`
+	Email             string     `gorm:"column:email;type:varchar(255);index:idx_video_user_identity_email,priority:1" json:"email"`
 	EmailVerified     bool       `gorm:"column:email_verified;type:tinyint(1);not null" json:"email_verified"`
 	IsPrivateEmail    bool       `gorm:"column:is_private_email;type:tinyint(1);not null" json:"is_private_email"`
-	DisplayName       *string    `gorm:"column:display_name;type:varchar(128)" json:"display_name"`
-	GivenName         *string    `gorm:"column:given_name;type:varchar(128)" json:"given_name"`
-	FamilyName        *string    `gorm:"column:family_name;type:varchar(128)" json:"family_name"`
-	AvatarURL         *string    `gorm:"column:avatar_url;type:varchar(1024)" json:"avatar_url"`
+	DisplayName       string     `gorm:"column:display_name;type:varchar(128)" json:"display_name"`
+	GivenName         string     `gorm:"column:given_name;type:varchar(128)" json:"given_name"`
+	FamilyName        string     `gorm:"column:family_name;type:varchar(128)" json:"family_name"`
+	AvatarURL         string     `gorm:"column:avatar_url;type:varchar(1024)" json:"avatar_url"`
 	LastLoginAt       *time.Time `gorm:"column:last_login_at;type:datetime(3);index:idx_video_user_identity_last_login_at,priority:1" json:"last_login_at"`
 	LastTokenIssuedAt *time.Time `gorm:"column:last_token_issued_at;type:datetime(3)" json:"last_token_issued_at"`
-	CreatedAt         *time.Time `gorm:"column:created_at;type:datetime(3);index:idx_video_user_identity_created_at,priority:1" json:"created_at"`
-	UpdatedAt         *time.Time `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	CreatedAt         time.Time  `gorm:"column:created_at;type:datetime(3);index:idx_video_user_identity_created_at,priority:1" json:"created_at"`
+	UpdatedAt         time.Time  `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	User              VideoUser  `gorm:"References:ID;foreignKey:UserID" json:"user"`
 }
 
 // TableName VideoUserIdentity's table name

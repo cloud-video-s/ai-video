@@ -40,6 +40,17 @@ func newVideoUserPointsLedger(db *gorm.DB, opts ...gen.DOOption) videoUserPoints
 	_videoUserPointsLedger.Description = field.NewString(tableName, "description")
 	_videoUserPointsLedger.OccurredAt = field.NewTime(tableName, "occurred_at")
 	_videoUserPointsLedger.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoUserPointsLedger.User = videoUserPointsLedgerBelongsToUser{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("User", "model.VideoUser"),
+	}
+
+	_videoUserPointsLedger.PointsPackage = videoUserPointsLedgerBelongsToPointsPackage{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("PointsPackage", "model.VideoPointsPackage"),
+	}
 
 	_videoUserPointsLedger.fillFieldMap()
 
@@ -63,6 +74,9 @@ type videoUserPointsLedger struct {
 	Description     field.String // change description
 	OccurredAt      field.Time   // business occurrence time
 	CreatedAt       field.Time
+	User            videoUserPointsLedgerBelongsToUser
+
+	PointsPackage videoUserPointsLedgerBelongsToPointsPackage
 
 	fieldMap map[string]field.Expr
 }
@@ -120,7 +134,7 @@ func (v *videoUserPointsLedger) GetFieldByName(fieldName string) (field.OrderExp
 }
 
 func (v *videoUserPointsLedger) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 13)
+	v.fieldMap = make(map[string]field.Expr, 15)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["direction"] = v.Direction
@@ -134,6 +148,7 @@ func (v *videoUserPointsLedger) fillFieldMap() {
 	v.fieldMap["description"] = v.Description
 	v.fieldMap["occurred_at"] = v.OccurredAt
 	v.fieldMap["created_at"] = v.CreatedAt
+
 }
 
 func (v videoUserPointsLedger) clone(db *gorm.DB) videoUserPointsLedger {
@@ -144,6 +159,148 @@ func (v videoUserPointsLedger) clone(db *gorm.DB) videoUserPointsLedger {
 func (v videoUserPointsLedger) replaceDB(db *gorm.DB) videoUserPointsLedger {
 	v.videoUserPointsLedgerDo.ReplaceDB(db)
 	return v
+}
+
+type videoUserPointsLedgerBelongsToUser struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoUserPointsLedgerBelongsToUser) Where(conds ...field.Expr) *videoUserPointsLedgerBelongsToUser {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoUserPointsLedgerBelongsToUser) WithContext(ctx context.Context) *videoUserPointsLedgerBelongsToUser {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoUserPointsLedgerBelongsToUser) Session(session *gorm.Session) *videoUserPointsLedgerBelongsToUser {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoUserPointsLedgerBelongsToUser) Model(m *model.VideoUserPointsLedger) *videoUserPointsLedgerBelongsToUserTx {
+	return &videoUserPointsLedgerBelongsToUserTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoUserPointsLedgerBelongsToUserTx struct{ tx *gorm.Association }
+
+func (a videoUserPointsLedgerBelongsToUserTx) Find() (result *model.VideoUser, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoUserPointsLedgerBelongsToUserTx) Append(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoUserPointsLedgerBelongsToUserTx) Replace(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoUserPointsLedgerBelongsToUserTx) Delete(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoUserPointsLedgerBelongsToUserTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoUserPointsLedgerBelongsToUserTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type videoUserPointsLedgerBelongsToPointsPackage struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoUserPointsLedgerBelongsToPointsPackage) Where(conds ...field.Expr) *videoUserPointsLedgerBelongsToPointsPackage {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoUserPointsLedgerBelongsToPointsPackage) WithContext(ctx context.Context) *videoUserPointsLedgerBelongsToPointsPackage {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoUserPointsLedgerBelongsToPointsPackage) Session(session *gorm.Session) *videoUserPointsLedgerBelongsToPointsPackage {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoUserPointsLedgerBelongsToPointsPackage) Model(m *model.VideoUserPointsLedger) *videoUserPointsLedgerBelongsToPointsPackageTx {
+	return &videoUserPointsLedgerBelongsToPointsPackageTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoUserPointsLedgerBelongsToPointsPackageTx struct{ tx *gorm.Association }
+
+func (a videoUserPointsLedgerBelongsToPointsPackageTx) Find() (result *model.VideoPointsPackage, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoUserPointsLedgerBelongsToPointsPackageTx) Append(values ...*model.VideoPointsPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoUserPointsLedgerBelongsToPointsPackageTx) Replace(values ...*model.VideoPointsPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoUserPointsLedgerBelongsToPointsPackageTx) Delete(values ...*model.VideoPointsPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoUserPointsLedgerBelongsToPointsPackageTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoUserPointsLedgerBelongsToPointsPackageTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type videoUserPointsLedgerDo struct{ gen.DO }

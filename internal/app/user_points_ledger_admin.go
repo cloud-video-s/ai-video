@@ -1,14 +1,15 @@
 package app
 
 import (
-	"ai-video/internal/model"
+	"ai-video/internal/config"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
 
 // SeedUserPointsLedgerAdmin adds the read-only points-ledger query page and permissions.
 func SeedUserPointsLedgerAdmin() error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 		seeds := []templateAPISeed{
 			{Path: "/admin/user-points-ledgers", Method: "GET", Group: "用户积分明细", Description: "积分明细列表与汇总"},
 			{Path: "/admin/user-points-ledgers/:id", Method: "GET", Group: "用户积分明细", Description: "积分明细详情"},
@@ -41,7 +42,7 @@ func SeedUserPointsLedgerAdmin() error {
 		}
 
 		var adminRole model.VideoRole
-		if err := tx.Where("code = ?", model.SuperAdminRoleCode).First(&adminRole).Error; err != nil {
+		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
 		return tx.Model(&adminRole).Association("Menus").Append(root, page)

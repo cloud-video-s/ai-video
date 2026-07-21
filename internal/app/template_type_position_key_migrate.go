@@ -1,7 +1,7 @@
 package app
 
 import (
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -13,7 +13,7 @@ func MigrateTemplateTypeDisplayPositionKeys(db *gorm.DB) error {
 	if db == nil {
 		return nil
 	}
-	table := model.VideoTemplateTypeDisplayPosition{}.TableName()
+	table := new(model.VideoTemplateTypeDisplayPosition).TableName()
 	if !db.Migrator().HasTable(table) {
 		return db.AutoMigrate(&model.VideoTemplateTypeDisplayPosition{})
 	}

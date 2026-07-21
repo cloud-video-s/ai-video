@@ -1,9 +1,8 @@
 package middleware
 
 import (
+	"ai-video/internal/config"
 	"time"
-
-	"ai-video/internal/app"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,7 +20,7 @@ func Logger() gin.HandlerFunc {
 		clientIP := c.ClientIP()
 		method := c.Request.Method
 
-		app.Log.Infow("request",
+		config.Log.Infow("request",
 			"status", status,
 			"method", method,
 			"path", path,

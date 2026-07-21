@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/oidc"
 	"ai-video/internal/repository"
 
@@ -90,13 +91,8 @@ func (s *AuthService) loginVerifiedIdentity(
 			if lastOpenedAt == nil {
 				lastOpenedAt = &now
 			}
-			if provider == model.IdentityProviderApple {
-				user.AppIDEmail = identity.Email
-				user.AppIDThirdCode = identity.Subject
-			} else {
-				user.GoogleEmail = identity.Email
-				user.GoogleThirdCode = identity.Subject
-			}
+			user.Email = identity.Email
+			user.ThirdCode = identity.Subject
 			user.LoginType = providerLoginType(provider)
 			user.LastLoginIP = clientIP
 			user.LastLoginAt = &now
@@ -246,12 +242,14 @@ func (s *AuthService) UnbindIdentity(ctx context.Context, userID uint64, provide
 		if err := s.identityRepo.DeleteByUserProvider(ctx, userID, provider); err != nil {
 			return err
 		}
-		updates := clearIdentityUserColumns(provider)
+		updates := make(map[string]interface{})
 		if user.LoginType == providerLoginType(provider) {
 			for _, item := range identities {
 				if item.Provider != provider {
 					updates["login_type"] = providerLoginType(item.Provider)
 					updates["login_account"] = identityRecordLoginAccount(&item)
+					updates["third_code"] = item.ProviderSubject
+					updates["email"] = item.Email
 					break
 				}
 			}
@@ -280,7 +278,7 @@ func (s *AuthService) verifyIdentity(ctx context.Context, provider, rawToken, no
 
 func normalizeIdentityProvider(provider string) (string, error) {
 	provider = strings.ToLower(strings.TrimSpace(provider))
-	if provider != model.IdentityProviderGoogle && provider != model.IdentityProviderApple {
+	if provider != domain.IdentityProviderGoogle && provider != domain.IdentityProviderApple {
 		return "", errors.New("不支持的第三方登录类型")
 	}
 	return provider, nil
@@ -296,10 +294,10 @@ func firstToken(values ...string) string {
 }
 
 func providerLoginType(provider string) uint32 {
-	if provider == model.IdentityProviderGoogle {
-		return model.AppUserLoginGoogle
+	if provider == domain.IdentityProviderGoogle {
+		return domain.AppUserLoginGoogle
 	}
-	return model.AppUserLoginAppID
+	return domain.AppUserLoginAppID
 }
 
 func mergeIdentityNames(identity *oidc.Identity, displayName, givenName, familyName string) {
@@ -364,55 +362,19 @@ func applyIdentityUserProfile(updates map[string]interface{}, provider string, i
 	}
 }
 
-func applyIdentityUserModel(user *model.VideoUser, provider string, identity *oidc.Identity) {
-	subject := strings.TrimSpace(identity.Subject)
-	if provider == model.IdentityProviderGoogle {
-		user.GoogleThirdCode = subject
-		if identity.EmailVerified {
-			user.GoogleEmail = strings.ToLower(strings.TrimSpace(identity.Email))
-		}
-		return
-	}
-	user.AppIDThirdCode = subject
-	if identity.EmailVerified {
-		user.AppIDEmail = strings.ToLower(strings.TrimSpace(identity.Email))
-	}
-}
-
 func identityUserColumns(provider string, identity *oidc.Identity) map[string]interface{} {
-	updates := make(map[string]interface{}, 2)
-	if provider == model.IdentityProviderGoogle {
-		updates["google_third_code"] = strings.TrimSpace(identity.Subject)
-		if identity.EmailVerified && strings.TrimSpace(identity.Email) != "" {
-			updates["google_email"] = strings.ToLower(strings.TrimSpace(identity.Email))
-		}
-		return updates
-	}
-	updates["appid_third_code"] = strings.TrimSpace(identity.Subject)
+	updates := map[string]interface{}{"third_code": strings.TrimSpace(identity.Subject)}
 	if identity.EmailVerified && strings.TrimSpace(identity.Email) != "" {
-		updates["appid_email"] = strings.ToLower(strings.TrimSpace(identity.Email))
+		updates["email"] = strings.ToLower(strings.TrimSpace(identity.Email))
 	}
 	return updates
 }
 
 func directProviderSubject(user *model.VideoUser, provider string) string {
-	if user == nil {
+	if user == nil || user.LoginType != providerLoginType(provider) {
 		return ""
 	}
-	if provider == model.IdentityProviderGoogle {
-		return user.GoogleThirdCode
-	}
-	if provider == model.IdentityProviderApple {
-		return user.AppIDThirdCode
-	}
-	return ""
-}
-
-func clearIdentityUserColumns(provider string) map[string]interface{} {
-	if provider == model.IdentityProviderGoogle {
-		return map[string]interface{}{"google_email": nil, "google_third_code": nil}
-	}
-	return map[string]interface{}{"appid_email": nil, "appid_third_code": nil}
+	return user.ThirdCode
 }
 
 func validateIdentityUserColumns(identity *oidc.Identity) error {

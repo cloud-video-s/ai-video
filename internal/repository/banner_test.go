@@ -1,13 +1,14 @@
 package repository
 
 import (
+	"ai-video/internal/config"
 	"context"
 	"net/http/httptest"
 	"reflect"
 	"testing"
 
-	"ai-video/internal/app"
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
@@ -22,7 +23,7 @@ func TestBannerListForClientAppliesDeliveryTargets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	if err := db.AutoMigrate(
 		&model.VideoTemplateType{}, &model.VideoCountry{}, &model.VideoPackage{},
 		&model.VideoChannel{}, &model.VideoDisplayPosition{}, &model.VideoTemplate{}, &model.VideoBanner{},
@@ -50,11 +51,11 @@ func TestBannerListForClientAppliesDeliveryTargets(t *testing.T) {
 	}
 
 	activeTemplate := model.VideoTemplate{
-		VideoTemplateTypeID: templateType.ID, Name: "Active template", TemplateType: model.VideoTemplateKindAction,
+		VideoTemplateTypeID: templateType.ID, Name: "Active template", TemplateType: domain.VideoTemplateKindAction,
 		CoverImage: "https://example.com/template.jpg", TemplateVideo: "https://example.com/template.mp4", Status: 1,
 	}
 	disabledTemplate := model.VideoTemplate{
-		VideoTemplateTypeID: templateType.ID, Name: "Disabled template", TemplateType: model.VideoTemplateKindAction,
+		VideoTemplateTypeID: templateType.ID, Name: "Disabled template", TemplateType: domain.VideoTemplateKindAction,
 		CoverImage: "https://example.com/disabled.jpg", TemplateVideo: "https://example.com/disabled.mp4", Status: 0,
 	}
 	if err := db.Create(&activeTemplate).Error; err != nil {
@@ -92,22 +93,22 @@ func TestBannerListForClientAppliesDeliveryTargets(t *testing.T) {
 		}
 	}
 
-	createBanner("global", "home", 1, 0, model.BannerJumpTypeLink, nil, BannerTargetIDs{
+	createBanner("global", "home", 1, 0, domain.BannerJumpTypeLink, nil, BannerTargetIDs{
 		DisplayPositionKeys: []string{homePosition.PositionKey, secondaryPosition.PositionKey},
 	})
-	createBanner("matched", "home", 1, 1, model.BannerJumpTypeLink, nil, BannerTargetIDs{
+	createBanner("matched", "home", 1, 1, domain.BannerJumpTypeLink, nil, BannerTargetIDs{
 		CountryIDs: []uint64{cn.ID}, ChannelIDs: []uint64{channelA.ChannelID}, PackageIDs: []uint64{packageA.ID},
 	})
-	createBanner("wrong-country", "home", 1, 2, model.BannerJumpTypeLink, nil, BannerTargetIDs{CountryIDs: []uint64{us.ID}})
-	createBanner("wrong-channel", "home", 1, 3, model.BannerJumpTypeLink, nil, BannerTargetIDs{ChannelIDs: []uint64{channelB.ChannelID}})
-	createBanner("wrong-package", "home", 1, 4, model.BannerJumpTypeLink, nil, BannerTargetIDs{PackageIDs: []uint64{packageB.ID}})
-	createBanner("disabled", "home", 0, 5, model.BannerJumpTypeLink, nil, BannerTargetIDs{})
-	createBanner("active-template", "home", 1, 6, model.BannerJumpTypeTemplate, &activeTemplate.ID, BannerTargetIDs{
+	createBanner("wrong-country", "home", 1, 2, domain.BannerJumpTypeLink, nil, BannerTargetIDs{CountryIDs: []uint64{us.ID}})
+	createBanner("wrong-channel", "home", 1, 3, domain.BannerJumpTypeLink, nil, BannerTargetIDs{ChannelIDs: []uint64{channelB.ChannelID}})
+	createBanner("wrong-package", "home", 1, 4, domain.BannerJumpTypeLink, nil, BannerTargetIDs{PackageIDs: []uint64{packageB.ID}})
+	createBanner("disabled", "home", 0, 5, domain.BannerJumpTypeLink, nil, BannerTargetIDs{})
+	createBanner("active-template", "home", 1, 6, domain.BannerJumpTypeTemplate, &activeTemplate.ID, BannerTargetIDs{
 		CountryIDs: []uint64{cn.ID}, ChannelIDs: []uint64{channelA.ChannelID}, PackageIDs: []uint64{packageA.ID},
 	})
-	createBanner("disabled-template", "home", 1, 7, model.BannerJumpTypeTemplate, &disabledTemplate.ID, BannerTargetIDs{})
-	createBanner("other-position", "secondary", 1, 8, model.BannerJumpTypeLink, nil, BannerTargetIDs{})
-	createBanner("disabled-position", "disabled", 1, 9, model.BannerJumpTypeLink, nil, BannerTargetIDs{})
+	createBanner("disabled-template", "home", 1, 7, domain.BannerJumpTypeTemplate, &disabledTemplate.ID, BannerTargetIDs{})
+	createBanner("other-position", "secondary", 1, 8, domain.BannerJumpTypeLink, nil, BannerTargetIDs{})
+	createBanner("disabled-position", "disabled", 1, 9, domain.BannerJumpTypeLink, nil, BannerTargetIDs{})
 	if err := db.Model(&model.VideoBanner{}).Where("name = ?", "disabled").Update("status", 0).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +158,7 @@ func TestChannelResolveEnabledTargetsUsesAllProvidedValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	if err := db.AutoMigrate(&model.VideoChannel{}); err != nil {
 		t.Fatal(err)
 	}

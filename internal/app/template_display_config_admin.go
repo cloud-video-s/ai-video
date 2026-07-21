@@ -1,7 +1,8 @@
 package app
 
 import (
-	"ai-video/internal/model"
+	"ai-video/internal/config"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -9,7 +10,7 @@ import (
 // SeedTemplateDisplayConfigAdmin installs the RBAC resources for curating
 // concrete templates at client display positions.
 func SeedTemplateDisplayConfigAdmin() error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 		seeds := []templateAPISeed{
 			{Path: "/admin/template-display-configs", Method: "GET", Group: "模板展示配置", Description: "模板展示配置列表"},
 			{Path: "/admin/template-display-configs/:id", Method: "GET", Group: "模板展示配置", Description: "模板展示配置详情"},
@@ -63,7 +64,7 @@ func SeedTemplateDisplayConfigAdmin() error {
 		}
 
 		var adminRole model.VideoRole
-		if err := tx.Where("code = ?", model.SuperAdminRoleCode).First(&adminRole).Error; err != nil {
+		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
 		return tx.Model(&adminRole).Association("Menus").Append(menus)

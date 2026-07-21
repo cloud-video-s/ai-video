@@ -58,12 +58,12 @@ func AdminAuth() gin.HandlerFunc {
 	}
 }
 
-func GetAdminID(c *gin.Context) uint {
+func GetAdminID(c *gin.Context) uint64 {
 	val, exists := c.Get(CtxAdminIDKey)
 	if !exists {
 		return 0
 	}
-	id, _ := val.(uint)
+	id, _ := val.(uint64)
 	return id
 }
 

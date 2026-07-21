@@ -3,7 +3,7 @@ package app
 import (
 	"testing"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"

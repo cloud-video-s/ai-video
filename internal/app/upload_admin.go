@@ -1,9 +1,10 @@
 package app
 
 import (
+	"ai-video/internal/config"
 	"errors"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -15,7 +16,7 @@ type uploadAPISeed struct {
 }
 
 func SeedUploadAdmin() error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 		seeds := []uploadAPISeed{
 			{Path: "/admin/uploads", Method: "GET", Description: "查询上传记录"},
 			{Path: "/admin/uploads/images/batches", Method: "POST", Description: "批量初始化图片上传"},
@@ -79,7 +80,7 @@ func SeedUploadAdmin() error {
 		}
 
 		var adminRole model.VideoRole
-		if err := tx.Where("code = ?", model.SuperAdminRoleCode).First(&adminRole).Error; err != nil {
+		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
 		return tx.Model(&adminRole).Association("Menus").Append(&permission)

@@ -3,7 +3,8 @@ package repository
 import (
 	"context"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -33,13 +34,21 @@ func (r *BannerRepo) PageList(ctx context.Context, page, pageSize int, filter *B
 			dao = dao.Where("EXISTS (SELECT 1 FROM video_banner_display_position vbdp JOIN video_display_position vdp ON vdp.position_key = vbdp.position_key WHERE vbdp.banner_id = video_banner.id AND vbdp.position_key = ? AND vdp.deleted_at IS NULL)", filter.PositionKey)
 		}
 		if filter.CountryID != 0 {
-			dao = dao.Where("EXISTS (SELECT 1 FROM video_banner_country vbc WHERE vbc.banner_id = video_banner.id AND vbc.country_id = ?)", filter.CountryID)
+			dao = dao.Where(`EXISTS (
+				SELECT 1 FROM video_banner_country vbc
+				JOIN video_country vc ON vc.code = vbc.country_code
+				WHERE vbc.banner_id = video_banner.id AND vc.id = ? AND vbc.deleted_at IS NULL
+			)`, filter.CountryID)
 		}
 		if filter.ChannelID != 0 {
-			dao = dao.Where("EXISTS (SELECT 1 FROM video_banner_channel vbc WHERE vbc.banner_id = video_banner.id AND vbc.channel_id = ?)", filter.ChannelID)
+			dao = dao.Where("EXISTS (SELECT 1 FROM video_banner_channel vbc WHERE vbc.banner_id = video_banner.id AND vbc.channel_code = ? AND vbc.deleted_at IS NULL)", filter.ChannelID)
 		}
 		if filter.PackageID != 0 {
-			dao = dao.Where("EXISTS (SELECT 1 FROM video_banner_package vbp WHERE vbp.banner_id = video_banner.id AND vbp.package_code = ?)", filter.PackageID)
+			dao = dao.Where(`EXISTS (
+				SELECT 1 FROM video_banner_package vbp
+				JOIN video_package vp ON vp.package_code = vbp.package_code
+				WHERE vbp.banner_id = video_banner.id AND vp.id = ? AND vbp.deleted_at IS NULL
+			)`, filter.PackageID)
 		}
 		if filter.JumpType != 0 {
 			dao = dao.Where("jump_type = ?", filter.JumpType)
@@ -101,21 +110,36 @@ func (r *BannerRepo) ListForClient(ctx context.Context, targets ClientBannerTarg
 		Where("video_banner.status = ?", 1).
 		Where("EXISTS (SELECT 1 FROM video_banner_display_position vbdp JOIN video_display_position vdp ON vdp.position_key = vbdp.position_key WHERE vbdp.banner_id = video_banner.id AND vbdp.position_key = ? AND vdp.status = ? AND vdp.deleted_at IS NULL)", targets.PositionKey, 1)
 	if targets.CountryID != 0 {
-		db = db.Where("(NOT EXISTS (SELECT 1 FROM video_banner_country vbc WHERE vbc.banner_id = video_banner.id) OR EXISTS (SELECT 1 FROM video_banner_country vbc WHERE vbc.banner_id = video_banner.id AND vbc.country_id = ?))", targets.CountryID)
+		db = db.Where(`(NOT EXISTS (
+			SELECT 1 FROM video_banner_country vbc WHERE vbc.banner_id = video_banner.id AND vbc.deleted_at IS NULL
+		) OR EXISTS (
+			SELECT 1 FROM video_banner_country vbc JOIN video_country vc ON vc.code = vbc.country_code
+			WHERE vbc.banner_id = video_banner.id AND vc.id = ? AND vbc.deleted_at IS NULL
+		))`, targets.CountryID)
 	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_banner_country vbc WHERE vbc.banner_id = video_banner.id)")
+		db = db.Where("NOT EXISTS (SELECT 1 FROM video_banner_country vbc WHERE vbc.banner_id = video_banner.id AND vbc.deleted_at IS NULL)")
 	}
 	if len(targets.ChannelIDs) > 0 {
-		db = db.Where("(NOT EXISTS (SELECT 1 FROM video_banner_channel vbc WHERE vbc.banner_id = video_banner.id) OR EXISTS (SELECT 1 FROM video_banner_channel vbc WHERE vbc.banner_id = video_banner.id AND vbc.channel_id IN ?))", targets.ChannelIDs)
+		db = db.Where(`(NOT EXISTS (
+			SELECT 1 FROM video_banner_channel vbc WHERE vbc.banner_id = video_banner.id AND vbc.deleted_at IS NULL
+		) OR EXISTS (
+			SELECT 1 FROM video_banner_channel vbc
+			WHERE vbc.banner_id = video_banner.id AND vbc.channel_code IN ? AND vbc.deleted_at IS NULL
+		))`, targets.ChannelIDs)
 	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_banner_channel vbc WHERE vbc.banner_id = video_banner.id)")
+		db = db.Where("NOT EXISTS (SELECT 1 FROM video_banner_channel vbc WHERE vbc.banner_id = video_banner.id AND vbc.deleted_at IS NULL)")
 	}
 	if len(targets.PackageIDs) > 0 {
-		db = db.Where("(NOT EXISTS (SELECT 1 FROM video_banner_package vbp WHERE vbp.banner_id = video_banner.id) OR EXISTS (SELECT 1 FROM video_banner_package vbp WHERE vbp.banner_id = video_banner.id AND vbp.package_code IN ?))", targets.PackageIDs)
+		db = db.Where(`(NOT EXISTS (
+			SELECT 1 FROM video_banner_package vbp WHERE vbp.banner_id = video_banner.id AND vbp.deleted_at IS NULL
+		) OR EXISTS (
+			SELECT 1 FROM video_banner_package vbp JOIN video_package vp ON vp.package_code = vbp.package_code
+			WHERE vbp.banner_id = video_banner.id AND vp.id IN ? AND vbp.deleted_at IS NULL
+		))`, targets.PackageIDs)
 	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_banner_package vbp WHERE vbp.banner_id = video_banner.id)")
+		db = db.Where("NOT EXISTS (SELECT 1 FROM video_banner_package vbp WHERE vbp.banner_id = video_banner.id AND vbp.deleted_at IS NULL)")
 	}
-	db = db.Where("(video_banner.jump_type <> ? OR EXISTS (SELECT 1 FROM video_template vt WHERE vt.id = video_banner.template_id AND vt.status = ? AND vt.deleted_at IS NULL))", model.BannerJumpTypeTemplate, 1)
+	db = db.Where("(video_banner.jump_type <> ? OR EXISTS (SELECT 1 FROM video_template vt WHERE vt.id = video_banner.template_id AND vt.status = ? AND vt.deleted_at IS NULL))", domain.BannerJumpTypeTemplate, 1)
 	var list []model.VideoBanner
 	err := db.Preload("Template").Preload("DisplayPositions", "status = ?", 1).
 		Order("video_banner.sort ASC, video_banner.id DESC").Find(&list).Error
@@ -124,6 +148,18 @@ func (r *BannerRepo) ListForClient(ctx context.Context, targets ClientBannerTarg
 
 func (r *BannerRepo) ReplaceTargets(ctx context.Context, item *model.VideoBanner, targets BannerTargetIDs) error {
 	db := dbFrom(ctx)
+	countries, err := loadCountriesByIDs(db, targets.CountryIDs)
+	if err != nil {
+		return err
+	}
+	channels, err := loadChannelsByIDs(db, targets.ChannelIDs)
+	if err != nil {
+		return err
+	}
+	packages, err := loadPackagesByIDs(db, targets.PackageIDs)
+	if err != nil {
+		return err
+	}
 	positionKeys := targets.DisplayPositionKeys
 	if err := db.Where("banner_id = ?", item.ID).Delete(&model.VideoBannerDisplayPosition{}).Error; err != nil {
 		return err
@@ -141,9 +177,9 @@ func (r *BannerRepo) ReplaceTargets(ctx context.Context, item *model.VideoBanner
 		name   string
 		values interface{}
 	}{
-		{name: "Countries", values: countriesFromIDs(targets.CountryIDs)},
-		{name: "Channels", values: channelsFromIDs(targets.ChannelIDs)},
-		{name: "Packages", values: packagesFromIDs(targets.PackageIDs)},
+		{name: "Countries", values: countries},
+		{name: "Channels", values: channels},
+		{name: "Packages", values: packages},
 	}
 	for _, association := range associations {
 		if err := db.Model(item).Association(association.name).Replace(association.values); err != nil {

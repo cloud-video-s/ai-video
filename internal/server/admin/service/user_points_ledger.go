@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 )
 

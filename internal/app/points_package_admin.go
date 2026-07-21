@@ -1,14 +1,15 @@
 package app
 
 import (
-	"ai-video/internal/model"
+	"ai-video/internal/config"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
 
 // SeedPointsPackageAdmin reconciles points-package APIs, menus and grants.
 func SeedPointsPackageAdmin() error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 		seeds := []vipSubscriptionAPISeed{
 			{Path: "/admin/points-packages", Method: "GET", Description: "积分套餐列表"},
 			{Path: "/admin/points-packages/:id", Method: "GET", Description: "积分套餐详情"},
@@ -64,7 +65,7 @@ func SeedPointsPackageAdmin() error {
 			menus = append(menus, *button)
 		}
 		var adminRole model.VideoRole
-		if err := tx.Where("code = ?", model.SuperAdminRoleCode).First(&adminRole).Error; err != nil {
+		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
 		return tx.Model(&adminRole).Association("Menus").Append(menus)

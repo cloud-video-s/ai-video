@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -16,7 +16,6 @@ type PointsPackageRepo struct {
 func NewPointsPackageRepo() *PointsPackageRepo { return &PointsPackageRepo{} }
 
 type PointsPackageListFilter struct {
-	PackageID    uint64
 	ChannelID    uint64
 	System       string
 	UserType     int
@@ -31,11 +30,8 @@ func (r *PointsPackageRepo) PageList(ctx context.Context, page, pageSize int, fi
 		if filter == nil {
 			return db
 		}
-		if filter.PackageID != 0 {
-			db = db.Where("package_id = ?", filter.PackageID)
-		}
 		if filter.ChannelID != 0 {
-			db = db.Where("EXISTS (SELECT 1 FROM video_points_package_channel vpc WHERE vpc.points_package_id = video_points_package.id AND vpc.channel_id = ?)", filter.ChannelID)
+			db = db.Where("EXISTS (SELECT 1 FROM video_points_package_channel vpc JOIN video_channel vc ON vc.channel_code = vpc.channel_code WHERE vpc.product_code = video_points_package.product_code AND vc.channel_id = ?)", filter.ChannelID)
 		}
 		if filter.System != "" {
 			db = db.Where("systems LIKE ?", "%\""+filter.System+"\"%")
@@ -51,7 +47,7 @@ func (r *PointsPackageRepo) PageList(ctx context.Context, page, pageSize int, fi
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			db = db.Where("product_id LIKE ? OR name LIKE ? OR badge_text LIKE ? OR description LIKE ?", keyword, keyword, keyword, keyword)
+			db = db.Where("product_code LIKE ? OR name LIKE ? OR badge_text LIKE ? OR description LIKE ?", keyword, keyword, keyword, keyword)
 		}
 		return db
 	}
@@ -61,21 +57,21 @@ func (r *PointsPackageRepo) PageList(ctx context.Context, page, pageSize int, fi
 		return nil, 0, err
 	}
 	var list []model.VideoPointsPackage
-	err := buildQuery().Preload("Package").Preload("Channels").Order("sort ASC, id DESC").
+	err := buildQuery().Preload("Channels").Order("sort ASC, id DESC").
 		Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error
 	return list, total, err
 }
 
 func (r *PointsPackageRepo) GetDetail(ctx context.Context, id uint64) (*model.VideoPointsPackage, error) {
 	var item model.VideoPointsPackage
-	if err := dbFrom(ctx).Preload("Package").Preload("Channels").First(&item, id).Error; err != nil {
+	if err := dbFrom(ctx).Preload("Channels").First(&item, id).Error; err != nil {
 		return nil, err
 	}
 	return &item, nil
 }
 
 func (r *PointsPackageRepo) GetByProductID(ctx context.Context, productID string) (*model.VideoPointsPackage, error) {
-	return r.BaseRepo.GetOne(ctx, &QueryOptions{Where: map[string]interface{}{"product_id": productID}})
+	return r.BaseRepo.GetOne(ctx, &QueryOptions{Where: map[string]interface{}{"product_code": productID}})
 }
 
 func (r *PointsPackageRepo) ListOptions(ctx context.Context) ([]model.VideoPointsPackage, error) {
@@ -84,19 +80,28 @@ func (r *PointsPackageRepo) ListOptions(ctx context.Context) ([]model.VideoPoint
 
 func (r *PointsPackageRepo) UpdateFields(ctx context.Context, item *model.VideoPointsPackage) error {
 	return r.BaseRepo.Update(ctx, item,
-		"ProductID", "Name", "PackageID", "Systems", "UserTypes", "ResourceType", "Points",
+		"ProductID", "Name", "Systems", "UserTypes", "ResourceType", "Points",
 		"Currency", "SalePrice", "ActualRevenue", "OriginalPrice", "BadgeText", "Description",
 		"ButtonText", "IsDefault", "Status", "Sort",
 	)
 }
 
 func (r *PointsPackageRepo) ReplaceChannels(ctx context.Context, item *model.VideoPointsPackage, channelIDs []uint64) error {
-	return dbFrom(ctx).Model(item).Association("Channels").Replace(channelsFromIDs(channelIDs))
+	channels := make([]model.VideoChannel, 0, len(channelIDs))
+	if len(channelIDs) > 0 {
+		if err := dbFrom(ctx).Where("channel_id IN ?", channelIDs).Find(&channels).Error; err != nil {
+			return err
+		}
+		if len(channels) != len(channelIDs) {
+			return fmt.Errorf("one or more channels do not exist")
+		}
+	}
+	return dbFrom(ctx).Model(item).Association("Channels").Replace(channels)
 }
 
-func (r *PointsPackageRepo) ClearDefaults(ctx context.Context, packageID uint64, resourceType string, exceptID uint64) error {
+func (r *PointsPackageRepo) ClearDefaults(ctx context.Context, resourceType string, exceptID uint64) error {
 	db := dbFrom(ctx).Model(&model.VideoPointsPackage{}).
-		Where("package_id = ? AND resource_type = ? AND is_default = ?", packageID, resourceType, true)
+		Where("resource_type = ? AND is_default = ?", resourceType, true)
 	if exceptID != 0 {
 		db = db.Where("id <> ?", exceptID)
 	}
@@ -105,7 +110,7 @@ func (r *PointsPackageRepo) ClearDefaults(ctx context.Context, packageID uint64,
 
 func (r *PointsPackageRepo) SetDefault(ctx context.Context, item *model.VideoPointsPackage) error {
 	return Transaction(ctx, func(ctx context.Context) error {
-		if err := r.ClearDefaults(ctx, item.PackageID, item.ResourceType, item.ID); err != nil {
+		if err := r.ClearDefaults(ctx, item.ResourceType, item.ID); err != nil {
 			return err
 		}
 		item.IsDefault = true

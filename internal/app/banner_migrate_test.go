@@ -3,7 +3,8 @@ package app
 import (
 	"testing"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -31,7 +32,7 @@ func TestMigrateLegacyBannerPositionsBackfillsAssociation(t *testing.T) {
 	}
 	banner := model.VideoBanner{
 		Name: "Legacy", CoverImage: "https://example.com/banner.jpg",
-		JumpType: model.BannerJumpTypeLink, JumpURL: "/home", Status: 1,
+		JumpType: domain.BannerJumpTypeLink, JumpURL: "/home", Status: 1,
 	}
 	if err := db.Create(&banner).Error; err != nil {
 		t.Fatal(err)

@@ -28,7 +28,6 @@ func newVideoVipSubscription(db *gorm.DB, opts ...gen.DOOption) videoVipSubscrip
 	tableName := _videoVipSubscription.videoVipSubscriptionDo.TableName()
 	_videoVipSubscription.ALL = field.NewAsterisk(tableName)
 	_videoVipSubscription.ID = field.NewUint64(tableName, "id")
-	_videoVipSubscription.PackageID = field.NewUint64(tableName, "package_id")
 	_videoVipSubscription.Platform = field.NewString(tableName, "platform")
 	_videoVipSubscription.ProductID = field.NewString(tableName, "product_id")
 	_videoVipSubscription.Name = field.NewString(tableName, "name")
@@ -45,8 +44,8 @@ func newVideoVipSubscription(db *gorm.DB, opts ...gen.DOOption) videoVipSubscrip
 	_videoVipSubscription.RenewalText = field.NewString(tableName, "renewal_text")
 	_videoVipSubscription.BadgeText = field.NewString(tableName, "badge_text")
 	_videoVipSubscription.AgreementDefaultChecked = field.NewBool(tableName, "agreement_default_checked")
-	_videoVipSubscription.DisplayMode = field.NewInt32(tableName, "display_mode")
-	_videoVipSubscription.Status = field.NewInt32(tableName, "status")
+	_videoVipSubscription.DisplayMode = field.NewInt8(tableName, "display_mode")
+	_videoVipSubscription.Status = field.NewInt8(tableName, "status")
 	_videoVipSubscription.FreeTrial = field.NewBool(tableName, "free_trial")
 	_videoVipSubscription.IsSubscription = field.NewBool(tableName, "is_subscription")
 	_videoVipSubscription.IsDefault = field.NewBool(tableName, "is_default")
@@ -55,12 +54,35 @@ func newVideoVipSubscription(db *gorm.DB, opts ...gen.DOOption) videoVipSubscrip
 	_videoVipSubscription.SubscriptionRevenue = field.NewFloat64(tableName, "subscription_revenue")
 	_videoVipSubscription.SubscriptionPoints = field.NewUint64(tableName, "subscription_points")
 	_videoVipSubscription.SubscriptionPeriod = field.NewString(tableName, "subscription_period")
-	_videoVipSubscription.Sort = field.NewInt64(tableName, "sort")
+	_videoVipSubscription.Sort = field.NewInt(tableName, "sort")
 	_videoVipSubscription.Description = field.NewString(tableName, "description")
 	_videoVipSubscription.Remark = field.NewString(tableName, "remark")
 	_videoVipSubscription.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoVipSubscription.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoVipSubscription.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoVipSubscription.Channels = videoVipSubscriptionManyToManyChannels{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Channels", "model.VideoChannel"),
+	}
+
+	_videoVipSubscription.Packages = videoVipSubscriptionManyToManyPackages{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Packages", "model.VideoPackage"),
+	}
+
+	_videoVipSubscription.DisplayPositions = videoVipSubscriptionManyToManyDisplayPositions{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("DisplayPositions", "model.VideoDisplayPosition"),
+	}
+
+	_videoVipSubscription.ExcludedChannels = videoVipSubscriptionManyToManyExcludedChannels{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("ExcludedChannels", "model.VideoChannel"),
+	}
 
 	_videoVipSubscription.fillFieldMap()
 
@@ -72,7 +94,6 @@ type videoVipSubscription struct {
 
 	ALL                      field.Asterisk
 	ID                       field.Uint64
-	PackageID                field.Uint64  // application package ID
 	Platform                 field.String  // android, ios, pc or web
 	ProductID                field.String  // store product SKU
 	Name                     field.String  // VIP plan name
@@ -89,8 +110,8 @@ type videoVipSubscription struct {
 	RenewalText              field.String  // renewal copy
 	BadgeText                field.String  // badge copy
 	AgreementDefaultChecked  field.Bool    // subscription agreement checked by default
-	DisplayMode              field.Int32   // 0 hidden, 1 normal
-	Status                   field.Int32   // 0 disabled, 1 enabled
+	DisplayMode              field.Int8    // 0 hidden, 1 normal
+	Status                   field.Int8    // 0 disabled, 1 enabled
 	FreeTrial                field.Bool    // free trial enabled
 	IsSubscription           field.Bool    // recurring subscription
 	IsDefault                field.Bool    // default plan for package and platform
@@ -99,12 +120,19 @@ type videoVipSubscription struct {
 	SubscriptionRevenue      field.Float64 // renewal net revenue
 	SubscriptionPoints       field.Uint64  // subscription points
 	SubscriptionPeriod       field.String  // subscription period, such as P1M or P1Y
-	Sort                     field.Int64   // sort order
+	Sort                     field.Int     // sort order
 	Description              field.String  // plan description
 	Remark                   field.String  // internal remark
 	CreatedAt                field.Time
 	UpdatedAt                field.Time
 	DeletedAt                field.Field
+	Channels                 videoVipSubscriptionManyToManyChannels
+
+	Packages videoVipSubscriptionManyToManyPackages
+
+	DisplayPositions videoVipSubscriptionManyToManyDisplayPositions
+
+	ExcludedChannels videoVipSubscriptionManyToManyExcludedChannels
 
 	fieldMap map[string]field.Expr
 }
@@ -122,7 +150,6 @@ func (v videoVipSubscription) As(alias string) *videoVipSubscription {
 func (v *videoVipSubscription) updateTableName(table string) *videoVipSubscription {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
-	v.PackageID = field.NewUint64(table, "package_id")
 	v.Platform = field.NewString(table, "platform")
 	v.ProductID = field.NewString(table, "product_id")
 	v.Name = field.NewString(table, "name")
@@ -139,8 +166,8 @@ func (v *videoVipSubscription) updateTableName(table string) *videoVipSubscripti
 	v.RenewalText = field.NewString(table, "renewal_text")
 	v.BadgeText = field.NewString(table, "badge_text")
 	v.AgreementDefaultChecked = field.NewBool(table, "agreement_default_checked")
-	v.DisplayMode = field.NewInt32(table, "display_mode")
-	v.Status = field.NewInt32(table, "status")
+	v.DisplayMode = field.NewInt8(table, "display_mode")
+	v.Status = field.NewInt8(table, "status")
 	v.FreeTrial = field.NewBool(table, "free_trial")
 	v.IsSubscription = field.NewBool(table, "is_subscription")
 	v.IsDefault = field.NewBool(table, "is_default")
@@ -149,7 +176,7 @@ func (v *videoVipSubscription) updateTableName(table string) *videoVipSubscripti
 	v.SubscriptionRevenue = field.NewFloat64(table, "subscription_revenue")
 	v.SubscriptionPoints = field.NewUint64(table, "subscription_points")
 	v.SubscriptionPeriod = field.NewString(table, "subscription_period")
-	v.Sort = field.NewInt64(table, "sort")
+	v.Sort = field.NewInt(table, "sort")
 	v.Description = field.NewString(table, "description")
 	v.Remark = field.NewString(table, "remark")
 	v.CreatedAt = field.NewTime(table, "created_at")
@@ -183,9 +210,8 @@ func (v *videoVipSubscription) GetFieldByName(fieldName string) (field.OrderExpr
 }
 
 func (v *videoVipSubscription) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 34)
+	v.fieldMap = make(map[string]field.Expr, 37)
 	v.fieldMap["id"] = v.ID
-	v.fieldMap["package_id"] = v.PackageID
 	v.fieldMap["platform"] = v.Platform
 	v.fieldMap["product_id"] = v.ProductID
 	v.fieldMap["name"] = v.Name
@@ -218,6 +244,7 @@ func (v *videoVipSubscription) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoVipSubscription) clone(db *gorm.DB) videoVipSubscription {
@@ -228,6 +255,290 @@ func (v videoVipSubscription) clone(db *gorm.DB) videoVipSubscription {
 func (v videoVipSubscription) replaceDB(db *gorm.DB) videoVipSubscription {
 	v.videoVipSubscriptionDo.ReplaceDB(db)
 	return v
+}
+
+type videoVipSubscriptionManyToManyChannels struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoVipSubscriptionManyToManyChannels) Where(conds ...field.Expr) *videoVipSubscriptionManyToManyChannels {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyChannels) WithContext(ctx context.Context) *videoVipSubscriptionManyToManyChannels {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyChannels) Session(session *gorm.Session) *videoVipSubscriptionManyToManyChannels {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyChannels) Model(m *model.VideoVipSubscription) *videoVipSubscriptionManyToManyChannelsTx {
+	return &videoVipSubscriptionManyToManyChannelsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoVipSubscriptionManyToManyChannelsTx struct{ tx *gorm.Association }
+
+func (a videoVipSubscriptionManyToManyChannelsTx) Find() (result []*model.VideoChannel, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoVipSubscriptionManyToManyChannelsTx) Append(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyChannelsTx) Replace(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyChannelsTx) Delete(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyChannelsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoVipSubscriptionManyToManyChannelsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type videoVipSubscriptionManyToManyPackages struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoVipSubscriptionManyToManyPackages) Where(conds ...field.Expr) *videoVipSubscriptionManyToManyPackages {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyPackages) WithContext(ctx context.Context) *videoVipSubscriptionManyToManyPackages {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyPackages) Session(session *gorm.Session) *videoVipSubscriptionManyToManyPackages {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyPackages) Model(m *model.VideoVipSubscription) *videoVipSubscriptionManyToManyPackagesTx {
+	return &videoVipSubscriptionManyToManyPackagesTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoVipSubscriptionManyToManyPackagesTx struct{ tx *gorm.Association }
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Find() (result []*model.VideoPackage, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Append(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Replace(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Delete(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type videoVipSubscriptionManyToManyDisplayPositions struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoVipSubscriptionManyToManyDisplayPositions) Where(conds ...field.Expr) *videoVipSubscriptionManyToManyDisplayPositions {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyDisplayPositions) WithContext(ctx context.Context) *videoVipSubscriptionManyToManyDisplayPositions {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyDisplayPositions) Session(session *gorm.Session) *videoVipSubscriptionManyToManyDisplayPositions {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyDisplayPositions) Model(m *model.VideoVipSubscription) *videoVipSubscriptionManyToManyDisplayPositionsTx {
+	return &videoVipSubscriptionManyToManyDisplayPositionsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoVipSubscriptionManyToManyDisplayPositionsTx struct{ tx *gorm.Association }
+
+func (a videoVipSubscriptionManyToManyDisplayPositionsTx) Find() (result []*model.VideoDisplayPosition, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoVipSubscriptionManyToManyDisplayPositionsTx) Append(values ...*model.VideoDisplayPosition) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyDisplayPositionsTx) Replace(values ...*model.VideoDisplayPosition) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyDisplayPositionsTx) Delete(values ...*model.VideoDisplayPosition) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyDisplayPositionsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoVipSubscriptionManyToManyDisplayPositionsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type videoVipSubscriptionManyToManyExcludedChannels struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoVipSubscriptionManyToManyExcludedChannels) Where(conds ...field.Expr) *videoVipSubscriptionManyToManyExcludedChannels {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyExcludedChannels) WithContext(ctx context.Context) *videoVipSubscriptionManyToManyExcludedChannels {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyExcludedChannels) Session(session *gorm.Session) *videoVipSubscriptionManyToManyExcludedChannels {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyExcludedChannels) Model(m *model.VideoVipSubscription) *videoVipSubscriptionManyToManyExcludedChannelsTx {
+	return &videoVipSubscriptionManyToManyExcludedChannelsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoVipSubscriptionManyToManyExcludedChannelsTx struct{ tx *gorm.Association }
+
+func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Find() (result []*model.VideoChannel, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Append(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Replace(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Delete(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type videoVipSubscriptionDo struct{ gen.DO }

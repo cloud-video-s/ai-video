@@ -4,12 +4,22 @@
 
 package model
 
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
 const TableNameVideoPointsPackageChannel = "video_points_package_channel"
 
 // VideoPointsPackageChannel mapped from table <video_points_package_channel>
 type VideoPointsPackageChannel struct {
-	PointsPackageID uint64 `gorm:"column:points_package_id;type:bigint unsigned;primaryKey" json:"points_package_id"`
-	ChannelID       uint64 `gorm:"column:channel_id;type:bigint unsigned;primaryKey;index:fk_video_points_package_channel_video_channel,priority:1;comment:channel ID" json:"channel_id"` // channel ID
+	ID          uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	ProductCode string         `gorm:"column:product_code;type:varchar(50);not null" json:"product_code"`
+	ChannelCode string         `gorm:"column:channel_code;type:varchar(50);not null;comment:channel ID" json:"channel_code"` // channel ID
+	CreatedAt   time.Time      `gorm:"column:created_at;type:datetime(3);not null" json:"created_at"`
+	UpdatedAt   time.Time      `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 }
 
 // TableName VideoPointsPackageChannel's table name

@@ -3,6 +3,7 @@ package router
 import (
 	"ai-video/internal/apidoc"
 	"ai-video/internal/app"
+	"ai-video/internal/config"
 	"ai-video/internal/middleware"
 	"ai-video/internal/pkg/response"
 	"embed"
@@ -33,7 +34,7 @@ func NewRouter(adminDist embed.FS, modules ...Module) *gin.Engine {
 		group := r.Group("/" + m.Name())
 		m.RegisterRoutes(group)
 		apiPrefixes = append(apiPrefixes, "/"+m.Name()+"/")
-		app.Log.Infof("module [%s] registered at /%s", m.Name(), m.Name())
+		config.Log.Infof("module [%s] registered at /%s", m.Name(), m.Name())
 	}
 	apidoc.Register(r)
 
@@ -69,17 +70,17 @@ func (f fileOnlyFS) Open(name string) (http.File, error) {
 func setupUploadFiles(r *gin.Engine) {
 	root, err := filepath.Abs(app.Cfg.Upload.LocalRootDir)
 	if err != nil {
-		app.Log.Warnf("resolve upload static directory: %v", err)
+		config.Log.Warnf("resolve upload static directory: %v", err)
 		return
 	}
 	r.StaticFS("/uploads", fileOnlyFS{FileSystem: http.Dir(root)})
-	app.Log.Infof("uploaded media static files registered from %s", root)
+	config.Log.Infof("uploaded media static files registered from %s", root)
 }
 
 func setupStaticFiles(r *gin.Engine, adminDist embed.FS, apiPrefixes []string) {
 	subFS, err := fs.Sub(adminDist, "web/admin/dist")
 	if err != nil {
-		app.Log.Warnf("embed admin dist not found: %v", err)
+		config.Log.Warnf("embed admin dist not found: %v", err)
 		return
 	}
 
@@ -112,5 +113,5 @@ func setupStaticFiles(r *gin.Engine, adminDist embed.FS, apiPrefixes []string) {
 		staticHandler.ServeHTTP(c.Writer, c.Request)
 	})
 
-	app.Log.Info("admin panel static files registered")
+	config.Log.Info("admin panel static files registered")
 }

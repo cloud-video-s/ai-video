@@ -4,12 +4,22 @@
 
 package model
 
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
 const TableNameVideoBannerPackage = "video_banner_package"
 
 // VideoBannerPackage mapped from table <video_banner_package>
 type VideoBannerPackage struct {
-	BannerID    uint64 `gorm:"column:banner_id;type:bigint unsigned;primaryKey" json:"banner_id"`
-	PackageCode uint64 `gorm:"column:package_code;type:bigint unsigned;primaryKey;index:fk_video_banner_package_video_package,priority:1" json:"package_code"`
+	ID          uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	BannerID    uint64         `gorm:"column:banner_id;type:bigint unsigned;not null" json:"banner_id"`
+	PackageCode string         `gorm:"column:package_code;type:varchar(255);not null" json:"package_code"`
+	CreatedAt   time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt   time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 }
 
 // TableName VideoBannerPackage's table name

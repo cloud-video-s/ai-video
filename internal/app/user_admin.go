@@ -1,9 +1,10 @@
 package app
 
 import (
+	"ai-video/internal/config"
 	"errors"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -16,7 +17,7 @@ type appUserAPISeed struct {
 
 // SeedAppUserAdmin reconciles client-user management permissions and menus.
 func SeedAppUserAdmin() error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 		seeds := []appUserAPISeed{
 			{Path: "/admin/app-users", Method: "GET", Description: "客户端用户列表"},
 			{Path: "/admin/app-users/:id", Method: "GET", Description: "客户端用户详情"},
@@ -70,7 +71,7 @@ func SeedAppUserAdmin() error {
 		}
 
 		var adminRole model.VideoRole
-		if err := tx.Where("code = ?", model.SuperAdminRoleCode).First(&adminRole).Error; err != nil {
+		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
 		return tx.Model(&adminRole).Association("Menus").Append(menus)

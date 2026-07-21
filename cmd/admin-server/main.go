@@ -1,7 +1,7 @@
 package main
 
 import (
-	"ai-video/internal/app"
+	"ai-video/internal/config"
 	"ai-video/internal/pkg/setting"
 	"ai-video/internal/repository"
 	"ai-video/internal/router"
@@ -24,76 +24,17 @@ func main() {
 	cfgFile := flag.String("config", "", "config file path")
 	flag.Parse()
 
-	if err := app.Init(*cfgFile); err != nil {
+	if err := config.Init(*cfgFile); err != nil {
 		panic(fmt.Sprintf("init app failed: %v", err))
 	}
-
-	if err := app.AutoMigrate(); err != nil {
-		panic(fmt.Sprintf("auto migrate failed: %v", err))
-	}
-	app.Log.Info("database migrated")
-
-	if err := app.SeedData(); err != nil {
-		app.Log.Warnf("seed data: %v", err)
-	}
-	if err := app.SeedAppUserAdmin(); err != nil {
-		app.Log.Warnf("seed app user admin: %v", err)
-	}
-	if err := app.SeedUserAttributionAdmin(); err != nil {
-		app.Log.Warnf("seed user attribution admin: %v", err)
-	}
-	if err := app.SeedDelayConfigAdmin(); err != nil {
-		app.Log.Warnf("seed delay config admin: %v", err)
-	}
-	if err := app.SeedUploadAdmin(); err != nil {
-		app.Log.Warnf("seed upload admin: %v", err)
-	}
-	if err := app.SeedTemplateAdmin(); err != nil {
-		app.Log.Warnf("seed template admin: %v", err)
-	}
-	if err := app.SeedCountryAdmin(); err != nil {
-		app.Log.Warnf("seed country admin: %v", err)
-	}
-	if err := app.SeedChannelAdmin(); err != nil {
-		app.Log.Warnf("seed channel admin: %v", err)
-	}
-	if err := app.SeedDisplayPositionAdmin(); err != nil {
-		app.Log.Warnf("seed display position admin: %v", err)
-	}
-	if err := app.SeedTemplateDisplayConfigAdmin(); err != nil {
-		app.Log.Warnf("seed template display config admin: %v", err)
-	}
-	if err := app.SeedPackageAdmin(); err != nil {
-		app.Log.Warnf("seed package admin: %v", err)
-	}
-	if err := app.SeedVIPSubscriptionAdmin(); err != nil {
-		app.Log.Warnf("seed VIP subscription admin: %v", err)
-	}
-	if err := app.SeedPointsPackageAdmin(); err != nil {
-		app.Log.Warnf("seed points package admin: %v", err)
-	}
-	if err := app.SeedUserPointsLedgerAdmin(); err != nil {
-		app.Log.Warnf("seed user points ledger admin: %v", err)
-	}
-	if err := app.SeedBannerAdmin(); err != nil {
-		app.Log.Warnf("seed banner admin: %v", err)
-	}
-	if err := app.MigrateLegacyTemplateTargets(); err != nil {
-		app.Log.Warnf("migrate legacy template targets: %v", err)
-	}
-
-	if err := app.SeedOBDelayConfig(app.DefaultOBDelayConfigPath); err != nil {
-		app.Log.Warnf("seed ob delay config: %v", err)
-	}
-
 	// Seed default config values into DB and warm the Redis cache.
 	if err := setting.Init(context.Background()); err != nil {
-		app.Log.Warnf("init settings: %v", err)
+		config.Log.Warnf("init settings: %v", err)
 	}
 	if count, err := repository.NewUserAttributionRepo().SyncUsers(context.Background()); err != nil {
-		app.Log.Warnf("sync user attributions: %v", err)
+		config.Log.Warnf("sync user attributions: %v", err)
 	} else if count > 0 {
-		app.Log.Infof("created %d missing user attribution records", count)
+		config.Log.Infof("created %d missing user attribution records", count)
 	}
 
 	engine := router.NewRouter(
@@ -102,13 +43,13 @@ func main() {
 		api.New(),
 	)
 
-	addr := fmt.Sprintf(":%d", app.Cfg.Server.Port)
+	addr := fmt.Sprintf(":%d", config.Cfg.Server.Port)
 	srv := &http.Server{Addr: addr, Handler: engine}
 
 	go func() {
-		app.Log.Infof("server starting at %s", addr)
+		config.Log.Infof("server starting at %s", addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			app.Log.Fatalf("server run failed: %v", err)
+			config.Log.Fatalf("server run failed: %v", err)
 		}
 	}()
 
@@ -117,12 +58,12 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	app.Log.Info("shutting down server...")
+	config.Log.Info("shutting down server...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		app.Log.Errorf("server forced to shutdown: %v", err)
+		config.Log.Errorf("server forced to shutdown: %v", err)
 	}
-	app.Close()
-	app.Log.Info("server stopped")
+	config.Close()
+	config.Log.Info("server stopped")
 }

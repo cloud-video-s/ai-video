@@ -21,6 +21,15 @@ func PrepareVideoUserColumns(db *gorm.DB) error {
 	if db == nil || !db.Migrator().HasTable("video_user") {
 		return nil
 	}
+	// An earlier AutoMigrate may have added package_code as nullable before a
+	// later deployment made the field required. MySQL refuses ALTER ... NOT
+	// NULL while any legacy row still contains NULL, so normalize those rows
+	// before GORM reconciles the column definition.
+	if db.Migrator().HasColumn("video_user", "package_code") {
+		if err := db.Exec(`UPDATE video_user SET package_code = '' WHERE package_code IS NULL`).Error; err != nil {
+			return fmt.Errorf("backfill video_user.package_code: %w", err)
+		}
+	}
 	hasPhoneCode := db.Migrator().HasColumn("video_user", "phone_code")
 	hasIMEI := db.Migrator().HasColumn("video_user", "imei")
 	if hasPhoneCode && !hasIMEI {

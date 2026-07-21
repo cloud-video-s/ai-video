@@ -27,8 +27,12 @@ func newVideoBannerCountry(db *gorm.DB, opts ...gen.DOOption) videoBannerCountry
 
 	tableName := _videoBannerCountry.videoBannerCountryDo.TableName()
 	_videoBannerCountry.ALL = field.NewAsterisk(tableName)
+	_videoBannerCountry.ID = field.NewUint64(tableName, "id")
 	_videoBannerCountry.BannerID = field.NewUint64(tableName, "banner_id")
-	_videoBannerCountry.CountryID = field.NewUint64(tableName, "country_id")
+	_videoBannerCountry.CountryCode = field.NewString(tableName, "country_code")
+	_videoBannerCountry.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoBannerCountry.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoBannerCountry.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoBannerCountry.fillFieldMap()
 
@@ -38,9 +42,13 @@ func newVideoBannerCountry(db *gorm.DB, opts ...gen.DOOption) videoBannerCountry
 type videoBannerCountry struct {
 	videoBannerCountryDo videoBannerCountryDo
 
-	ALL       field.Asterisk
-	BannerID  field.Uint64
-	CountryID field.Uint64
+	ALL         field.Asterisk
+	ID          field.Uint64
+	BannerID    field.Uint64
+	CountryCode field.String
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoBannerCountry) As(alias string) *videoBannerCountry {
 
 func (v *videoBannerCountry) updateTableName(table string) *videoBannerCountry {
 	v.ALL = field.NewAsterisk(table)
+	v.ID = field.NewUint64(table, "id")
 	v.BannerID = field.NewUint64(table, "banner_id")
-	v.CountryID = field.NewUint64(table, "country_id")
+	v.CountryCode = field.NewString(table, "country_code")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -87,9 +99,13 @@ func (v *videoBannerCountry) GetFieldByName(fieldName string) (field.OrderExpr, 
 }
 
 func (v *videoBannerCountry) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["banner_id"] = v.BannerID
-	v.fieldMap["country_id"] = v.CountryID
+	v.fieldMap["country_code"] = v.CountryCode
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoBannerCountry) clone(db *gorm.DB) videoBannerCountry {

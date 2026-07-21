@@ -1,9 +1,10 @@
 package app
 
 import (
+	"ai-video/internal/config"
 	"errors"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -12,7 +13,7 @@ type vipSubscriptionAPISeed struct{ Path, Method, Description string }
 
 // SeedVIPSubscriptionAdmin reconciles VIP subscription APIs, menus and grants.
 func SeedVIPSubscriptionAdmin() error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 		seeds := []vipSubscriptionAPISeed{
 			{Path: "/admin/vip-subscriptions", Method: "GET", Description: "VIP 订阅套餐列表"},
 			{Path: "/admin/vip-subscriptions/:id", Method: "GET", Description: "VIP 订阅套餐详情"},
@@ -68,7 +69,7 @@ func SeedVIPSubscriptionAdmin() error {
 			menus = append(menus, *button)
 		}
 		var adminRole model.VideoRole
-		if err := tx.Where("code = ?", model.SuperAdminRoleCode).First(&adminRole).Error; err != nil {
+		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
 		return tx.Model(&adminRole).Association("Menus").Append(menus)

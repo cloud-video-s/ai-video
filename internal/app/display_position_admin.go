@@ -1,7 +1,8 @@
 package app
 
 import (
-	"ai-video/internal/model"
+	"ai-video/internal/config"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -9,7 +10,7 @@ import (
 // SeedDisplayPositionAdmin reconciles display-position permissions and adds
 // the management page beneath the existing template-management directory.
 func SeedDisplayPositionAdmin() error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 		seeds := []templateAPISeed{
 			{Path: "/admin/display-positions", Method: "GET", Group: "展示位置管理", Description: "展示位置列表"},
 			{Path: "/admin/display-positions/:id", Method: "GET", Group: "展示位置管理", Description: "展示位置详情"},
@@ -70,7 +71,7 @@ func SeedDisplayPositionAdmin() error {
 		}
 
 		var adminRole model.VideoRole
-		if err := tx.Where("code = ?", model.SuperAdminRoleCode).First(&adminRole).Error; err != nil {
+		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
 		return tx.Model(&adminRole).Association("Menus").Append(menus)

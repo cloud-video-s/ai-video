@@ -22,13 +22,13 @@ type VideoPackage struct {
 	InstallCount   uint64         `gorm:"column:install_count;type:bigint unsigned;not null;comment:installation count" json:"install_count"`                                                                                                      // installation count
 	DownloadCount  uint64         `gorm:"column:download_count;type:bigint unsigned;not null;comment:download count" json:"download_count"`                                                                                                        // download count
 	DeviceCount    uint64         `gorm:"column:device_count;type:bigint unsigned;not null;comment:device count" json:"device_count"`                                                                                                              // device count
-	Description    *string        `gorm:"column:description;type:text;comment:package description" json:"description"`                                                                                                                             // package description
-	Sort           int64          `gorm:"column:sort;type:bigint;not null;index:idx_video_package_sort,priority:1;comment:sort order" json:"sort"`                                                                                                 // sort order
-	Status         *int32         `gorm:"column:status;type:tinyint;not null;index:idx_video_package_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                                                             // status: 0 disabled, 1 enabled
-	SystemTypes    *string        `gorm:"column:system_types;type:text;comment:supported system types" json:"system_types"`                                                                                                                        // supported system types
-	Language       *string        `gorm:"column:language;type:varchar(16);not null;index:idx_video_package_language,priority:1;default:zh-CN;comment:default API response language" json:"language"`                                               // default API response language
-	CreatedAt      *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_video_package_created_at,priority:1" json:"created_at"`
-	UpdatedAt      *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	Description    string         `gorm:"column:description;type:text;comment:package description" json:"description"`                                                                                                                             // package description
+	Sort           int            `gorm:"column:sort;type:bigint;not null;index:idx_video_package_sort,priority:1;comment:sort order" json:"sort"`                                                                                                 // sort order
+	Status         int8           `gorm:"column:status;type:tinyint;not null;index:idx_video_package_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                                                             // status: 0 disabled, 1 enabled
+	SystemTypes    []string       `gorm:"column:system_types;type:text;comment:supported system types;serializer:json" json:"system_types"`                                                                                                        // supported system types
+	Language       string         `gorm:"column:language;type:varchar(16);not null;index:idx_video_package_language,priority:1;default:zh-CN;comment:default API response language" json:"language"`                                               // default API response language
+	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_video_package_created_at,priority:1" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_package_deleted_at,priority:1" json:"deleted_at"`
 }
 

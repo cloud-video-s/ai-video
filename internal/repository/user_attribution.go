@@ -5,7 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -54,7 +55,7 @@ func (r *UserAttributionRepo) PageList(
 		if filter.Reached != nil {
 			if column := reachedColumn(filter.Event); column != "" {
 				value := interface{}(*filter.Reached)
-				if filter.Event == model.AttributionEventActivation || filter.Event == model.AttributionEventKeyBehavior {
+				if filter.Event == domain.AttributionEventActivation || filter.Event == domain.AttributionEventKeyBehavior {
 					value = uint32(0)
 					if *filter.Reached {
 						value = uint32(1)
@@ -146,7 +147,7 @@ func (r *UserAttributionRepo) SyncUsers(ctx context.Context) (int64, error) {
 		rows := make([]model.VideoUserAttribution, 0, len(users))
 		for i := range users {
 			attributedAt := users[i].AttributionClickedAt
-			if attributedAt == nil {
+			if !attributedAt.IsZero() {
 				attributedAt = users[i].FirstOpenedAt
 			}
 			rows = append(rows, model.VideoUserAttribution{
@@ -168,15 +169,15 @@ func (r *UserAttributionRepo) SyncUsers(ctx context.Context) (int64, error) {
 
 func reachedColumn(event string) string {
 	switch strings.TrimSpace(event) {
-	case model.AttributionEventActivation:
+	case domain.AttributionEventActivation:
 		return "activated"
-	case model.AttributionEventKeyBehavior:
+	case domain.AttributionEventKeyBehavior:
 		return "key_behavior_met"
-	case model.AttributionEventPayment:
+	case domain.AttributionEventPayment:
 		return "payment_met"
-	case model.AttributionEventFirstPayment:
+	case domain.AttributionEventFirstPayment:
 		return "first_payment_met"
-	case model.AttributionEventRegistration:
+	case domain.AttributionEventRegistration:
 		return "registered"
 	default:
 		return ""

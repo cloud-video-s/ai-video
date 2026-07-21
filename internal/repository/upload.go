@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/upload"
 
 	"gorm.io/gorm/clause"
@@ -34,10 +35,12 @@ func (r *UploadRepo) RecordCompleted(ctx context.Context, completed upload.Compl
 		return fmt.Errorf("upload session owner does not match completed owner")
 	}
 	row := model.VideoUpload{
-		UploadID: session.UploadID, UserType: userType, UserID: completed.Owner.ID,
+		UploadID: session.UploadID, UserType: int8(userType), UserID: completed.Owner.ID,
 		MediaType: string(session.Kind), FileType: strings.TrimPrefix(strings.ToLower(session.Extension), "."),
-		MIMEType: session.ContentType, OriginalName: session.OriginalName, FileSize: uint64(session.TotalSize),
-		StorageProvider: session.StorageProvider, FilePath: session.FilePath, FileURL: session.FileURL, SHA256: session.SHA256,
+		//MIMEType: session.ContentType,
+		OriginalName: session.OriginalName, FileSize: uint64(session.TotalSize),
+		StorageProvider: session.StorageProvider, FilePath: session.FilePath, FileURL: session.FileURL,
+		//SHA256: session.SHA256,
 	}
 	result := dbFrom(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "upload_id"}},
@@ -96,9 +99,9 @@ func (r *UploadRepo) PageList(ctx context.Context, page, pageSize int, filter *U
 func uploadOwnerUserType(ownerType upload.UploaderType) (int8, error) {
 	switch ownerType {
 	case upload.UploaderAdmin:
-		return model.UploadUserAdmin, nil
+		return domain.UploadUserAdmin, nil
 	case upload.UploaderAPIUser:
-		return model.UploadUserClient, nil
+		return domain.UploadUserClient, nil
 	default:
 		return 0, fmt.Errorf("unsupported upload owner type %q", ownerType)
 	}

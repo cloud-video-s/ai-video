@@ -30,8 +30,8 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 	_videoUserAttribution.ID = field.NewUint64(tableName, "id")
 	_videoUserAttribution.UserID = field.NewUint64(tableName, "user_id")
 	_videoUserAttribution.ChannelCode = field.NewString(tableName, "channel_code")
-	_videoUserAttribution.Oaid = field.NewString(tableName, "oaid")
-	_videoUserAttribution.Imei = field.NewString(tableName, "imei")
+	_videoUserAttribution.OAID = field.NewString(tableName, "oaid")
+	_videoUserAttribution.IMEI = field.NewString(tableName, "imei")
 	_videoUserAttribution.AndroidID = field.NewString(tableName, "android_id")
 	_videoUserAttribution.IP = field.NewString(tableName, "ip")
 	_videoUserAttribution.UserAgent = field.NewString(tableName, "user_agent")
@@ -51,6 +51,17 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 	_videoUserAttribution.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUserAttribution.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUserAttribution.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoUserAttribution.User = videoUserAttributionBelongsToUser{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("User", "model.VideoUser"),
+	}
+
+	_videoUserAttribution.Channel = videoUserAttributionBelongsToChannel{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Channel", "model.VideoChannel"),
+	}
 
 	_videoUserAttribution.fillFieldMap()
 
@@ -64,8 +75,8 @@ type videoUserAttribution struct {
 	ID                        field.Uint64 // attribution ID
 	UserID                    field.Uint64 // client user ID
 	ChannelCode               field.String // channel code snapshot
-	Oaid                      field.String // OAID
-	Imei                      field.String // IMEI
+	OAID                      field.String // OAID
+	IMEI                      field.String // IMEI
 	AndroidID                 field.String // Android ID
 	IP                        field.String // attribution IP
 	UserAgent                 field.String // user agent
@@ -85,6 +96,9 @@ type videoUserAttribution struct {
 	CreatedAt                 field.Time
 	UpdatedAt                 field.Time
 	DeletedAt                 field.Field
+	User                      videoUserAttributionBelongsToUser
+
+	Channel videoUserAttributionBelongsToChannel
 
 	fieldMap map[string]field.Expr
 }
@@ -104,8 +118,8 @@ func (v *videoUserAttribution) updateTableName(table string) *videoUserAttributi
 	v.ID = field.NewUint64(table, "id")
 	v.UserID = field.NewUint64(table, "user_id")
 	v.ChannelCode = field.NewString(table, "channel_code")
-	v.Oaid = field.NewString(table, "oaid")
-	v.Imei = field.NewString(table, "imei")
+	v.OAID = field.NewString(table, "oaid")
+	v.IMEI = field.NewString(table, "imei")
 	v.AndroidID = field.NewString(table, "android_id")
 	v.IP = field.NewString(table, "ip")
 	v.UserAgent = field.NewString(table, "user_agent")
@@ -153,12 +167,12 @@ func (v *videoUserAttribution) GetFieldByName(fieldName string) (field.OrderExpr
 }
 
 func (v *videoUserAttribution) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 24)
+	v.fieldMap = make(map[string]field.Expr, 26)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["channel_code"] = v.ChannelCode
-	v.fieldMap["oaid"] = v.Oaid
-	v.fieldMap["imei"] = v.Imei
+	v.fieldMap["oaid"] = v.OAID
+	v.fieldMap["imei"] = v.IMEI
 	v.fieldMap["android_id"] = v.AndroidID
 	v.fieldMap["ip"] = v.IP
 	v.fieldMap["user_agent"] = v.UserAgent
@@ -178,6 +192,7 @@ func (v *videoUserAttribution) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoUserAttribution) clone(db *gorm.DB) videoUserAttribution {
@@ -188,6 +203,148 @@ func (v videoUserAttribution) clone(db *gorm.DB) videoUserAttribution {
 func (v videoUserAttribution) replaceDB(db *gorm.DB) videoUserAttribution {
 	v.videoUserAttributionDo.ReplaceDB(db)
 	return v
+}
+
+type videoUserAttributionBelongsToUser struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoUserAttributionBelongsToUser) Where(conds ...field.Expr) *videoUserAttributionBelongsToUser {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoUserAttributionBelongsToUser) WithContext(ctx context.Context) *videoUserAttributionBelongsToUser {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoUserAttributionBelongsToUser) Session(session *gorm.Session) *videoUserAttributionBelongsToUser {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoUserAttributionBelongsToUser) Model(m *model.VideoUserAttribution) *videoUserAttributionBelongsToUserTx {
+	return &videoUserAttributionBelongsToUserTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoUserAttributionBelongsToUserTx struct{ tx *gorm.Association }
+
+func (a videoUserAttributionBelongsToUserTx) Find() (result *model.VideoUser, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoUserAttributionBelongsToUserTx) Append(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoUserAttributionBelongsToUserTx) Replace(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoUserAttributionBelongsToUserTx) Delete(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoUserAttributionBelongsToUserTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoUserAttributionBelongsToUserTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type videoUserAttributionBelongsToChannel struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoUserAttributionBelongsToChannel) Where(conds ...field.Expr) *videoUserAttributionBelongsToChannel {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoUserAttributionBelongsToChannel) WithContext(ctx context.Context) *videoUserAttributionBelongsToChannel {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoUserAttributionBelongsToChannel) Session(session *gorm.Session) *videoUserAttributionBelongsToChannel {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoUserAttributionBelongsToChannel) Model(m *model.VideoUserAttribution) *videoUserAttributionBelongsToChannelTx {
+	return &videoUserAttributionBelongsToChannelTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoUserAttributionBelongsToChannelTx struct{ tx *gorm.Association }
+
+func (a videoUserAttributionBelongsToChannelTx) Find() (result *model.VideoChannel, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoUserAttributionBelongsToChannelTx) Append(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoUserAttributionBelongsToChannelTx) Replace(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoUserAttributionBelongsToChannelTx) Delete(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoUserAttributionBelongsToChannelTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoUserAttributionBelongsToChannelTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type videoUserAttributionDo struct{ gen.DO }

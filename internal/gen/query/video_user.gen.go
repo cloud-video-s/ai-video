@@ -28,7 +28,7 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	tableName := _videoUser.videoUserDo.TableName()
 	_videoUser.ALL = field.NewAsterisk(tableName)
 	_videoUser.ID = field.NewUint64(tableName, "id")
-	_videoUser.Imei = field.NewString(tableName, "imei")
+	_videoUser.IMEI = field.NewString(tableName, "imei")
 	_videoUser.Username = field.NewString(tableName, "username")
 	_videoUser.DeviceCountry = field.NewString(tableName, "device_country")
 	_videoUser.ChannelID = field.NewString(tableName, "channel_id")
@@ -68,10 +68,9 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.LastLoginAt = field.NewTime(tableName, "last_login_at")
 	_videoUser.LastLoginIP = field.NewString(tableName, "last_login_ip")
 	_videoUser.LoginAccount = field.NewString(tableName, "login_account")
-	_videoUser.AppidEmail = field.NewString(tableName, "appid_email")
-	_videoUser.AppidThirdCode = field.NewString(tableName, "appid_third_code")
-	_videoUser.GoogleEmail = field.NewString(tableName, "google_email")
-	_videoUser.GoogleThirdCode = field.NewString(tableName, "google_third_code")
+	_videoUser.Email = field.NewString(tableName, "email")
+	_videoUser.ThirdCode = field.NewString(tableName, "third_code")
+	_videoUser.PackageCode = field.NewString(tableName, "package_code")
 	_videoUser.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUser.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUser.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -86,7 +85,7 @@ type videoUser struct {
 
 	ALL                      field.Asterisk
 	ID                       field.Uint64
-	Imei                     field.String  // 设备编号
+	IMEI                     field.String  // 设备编号
 	Username                 field.String  // 昵称
 	DeviceCountry            field.String  // 国家
 	ChannelID                field.String  // 渠道id
@@ -126,10 +125,9 @@ type videoUser struct {
 	LastLoginAt              field.Time    // 上次登录时间
 	LastLoginIP              field.String  // 上次登录IP
 	LoginAccount             field.String
-	AppidEmail               field.String // 苹果邮箱
-	AppidThirdCode           field.String // 苹果三方唯一码
-	GoogleEmail              field.String // 谷歌邮箱
-	GoogleThirdCode          field.String // 谷歌唯一编码
+	Email                    field.String // 邮箱
+	ThirdCode                field.String // 三方唯一码
+	PackageCode              field.String // package identifier
 	CreatedAt                field.Time
 	UpdatedAt                field.Time
 	DeletedAt                field.Field
@@ -150,7 +148,7 @@ func (v videoUser) As(alias string) *videoUser {
 func (v *videoUser) updateTableName(table string) *videoUser {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
-	v.Imei = field.NewString(table, "imei")
+	v.IMEI = field.NewString(table, "imei")
 	v.Username = field.NewString(table, "username")
 	v.DeviceCountry = field.NewString(table, "device_country")
 	v.ChannelID = field.NewString(table, "channel_id")
@@ -190,10 +188,9 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.LastLoginAt = field.NewTime(table, "last_login_at")
 	v.LastLoginIP = field.NewString(table, "last_login_ip")
 	v.LoginAccount = field.NewString(table, "login_account")
-	v.AppidEmail = field.NewString(table, "appid_email")
-	v.AppidThirdCode = field.NewString(table, "appid_third_code")
-	v.GoogleEmail = field.NewString(table, "google_email")
-	v.GoogleThirdCode = field.NewString(table, "google_third_code")
+	v.Email = field.NewString(table, "email")
+	v.ThirdCode = field.NewString(table, "third_code")
+	v.PackageCode = field.NewString(table, "package_code")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -223,9 +220,9 @@ func (v *videoUser) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoUser) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 48)
+	v.fieldMap = make(map[string]field.Expr, 47)
 	v.fieldMap["id"] = v.ID
-	v.fieldMap["imei"] = v.Imei
+	v.fieldMap["imei"] = v.IMEI
 	v.fieldMap["username"] = v.Username
 	v.fieldMap["device_country"] = v.DeviceCountry
 	v.fieldMap["channel_id"] = v.ChannelID
@@ -265,10 +262,9 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["last_login_at"] = v.LastLoginAt
 	v.fieldMap["last_login_ip"] = v.LastLoginIP
 	v.fieldMap["login_account"] = v.LoginAccount
-	v.fieldMap["appid_email"] = v.AppidEmail
-	v.fieldMap["appid_third_code"] = v.AppidThirdCode
-	v.fieldMap["google_email"] = v.GoogleEmail
-	v.fieldMap["google_third_code"] = v.GoogleThirdCode
+	v.fieldMap["email"] = v.Email
+	v.fieldMap["third_code"] = v.ThirdCode
+	v.fieldMap["package_code"] = v.PackageCode
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

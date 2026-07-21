@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"github.com/gin-gonic/gin"
 )

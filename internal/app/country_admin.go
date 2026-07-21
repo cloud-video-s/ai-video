@@ -1,10 +1,11 @@
 package app
 
 import (
+	"ai-video/internal/config"
 	"errors"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -18,7 +19,7 @@ type countryAPISeed struct {
 // SeedCountryAdmin creates the country reference data once and reconciles its
 // admin menus/API metadata for both fresh and existing installations.
 func SeedCountryAdmin() error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 		if err := seedDefaultCountries(tx); err != nil {
 			return err
 		}
@@ -45,9 +46,15 @@ func SeedCountryAdmin() error {
 			return err
 		}
 		page, err := upsertCountryMenu(tx, model.VideoMenu{
-			ParentID: root.ID, Name: "国家管理", Path: "/system/country",
-			Component: "system/country/index", Icon: "Location", Sort: 7, Type: 1,
-			Permission: "system:country:list", Visible: 1, Status: 1,
+			ParentID: root.ID, Name: "国家管理",
+			Path:       "/system/country",
+			Component:  "system/country/index",
+			Icon:       "Location",
+			Sort:       7,
+			Type:       1,
+			Permission: "system:country:list",
+			Visible:    1,
+			Status:     1,
 		})
 		if err != nil {
 			return err
@@ -55,7 +62,7 @@ func SeedCountryAdmin() error {
 		if err := tx.Model(page).Association("APIs").Replace(apis[0], apis[1]); err != nil {
 			return err
 		}
-
+		//
 		buttonSeeds := []struct {
 			menu model.VideoMenu
 			apis []model.VideoAPI
@@ -77,10 +84,11 @@ func SeedCountryAdmin() error {
 		}
 
 		var adminRole model.VideoRole
-		if err := tx.Where("code = ?", model.SuperAdminRoleCode).First(&adminRole).Error; err != nil {
+		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
 		return tx.Model(&adminRole).Association("Menus").Append(allMenus)
+		return err
 	})
 }
 
@@ -99,7 +107,7 @@ func seedDefaultCountries(tx *gorm.DB) error {
 		if len(parts) != 2 {
 			continue
 		}
-		countries = append(countries, model.VideoCountry{Code: parts[0], NameZh: parts[1], Status: 1})
+		countries = append(countries, model.VideoCountry{Code: parts[0], NameZh: parts[1]})
 	}
 	return tx.CreateInBatches(countries, 100).Error
 }
@@ -108,11 +116,11 @@ func upsertCountryAPI(tx *gorm.DB, seed countryAPISeed) (*model.VideoAPI, error)
 	var api model.VideoAPI
 	err := tx.Where("path = ? AND method = ?", seed.Path, seed.Method).First(&api).Error
 	switch {
-	case errors.Is(err, gorm.ErrRecordNotFound):
-		api = model.VideoAPI{Path: seed.Path, Method: seed.Method, Group: "国家管理", Description: seed.Description}
-		if err := tx.Create(&api).Error; err != nil {
-			return nil, err
-		}
+	//case errors.Is(err, gorm.ErrRecordNotFound):
+	//	api = model.VideoAPI{Path: seed.Path, Method: seed.Method, Group: "国家管理", Description: seed.Description}
+	//	if err := tx.Create(&api).Error; err != nil {
+	//		return nil, err
+	//	}
 	case err != nil:
 		return nil, err
 	default:

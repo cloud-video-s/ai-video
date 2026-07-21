@@ -38,6 +38,7 @@ var (
 	VideoPackage                        *videoPackage
 	VideoPointsPackage                  *videoPointsPackage
 	VideoPointsPackageChannel           *videoPointsPackageChannel
+	VideoPointsPackagePackage           *videoPointsPackagePackage
 	VideoRole                           *videoRole
 	VideoRoleMenu                       *videoRoleMenu
 	VideoTemplate                       *videoTemplate
@@ -58,6 +59,7 @@ var (
 	VideoVipSubscription                *videoVipSubscription
 	VideoVipSubscriptionChannel         *videoVipSubscriptionChannel
 	VideoVipSubscriptionExcludedChannel *videoVipSubscriptionExcludedChannel
+	VideoVipSubscriptionPackage         *videoVipSubscriptionPackage
 	VideoVipSubscriptionPosition        *videoVipSubscriptionPosition
 )
 
@@ -84,6 +86,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoPackage = &Q.VideoPackage
 	VideoPointsPackage = &Q.VideoPointsPackage
 	VideoPointsPackageChannel = &Q.VideoPointsPackageChannel
+	VideoPointsPackagePackage = &Q.VideoPointsPackagePackage
 	VideoRole = &Q.VideoRole
 	VideoRoleMenu = &Q.VideoRoleMenu
 	VideoTemplate = &Q.VideoTemplate
@@ -104,6 +107,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoVipSubscription = &Q.VideoVipSubscription
 	VideoVipSubscriptionChannel = &Q.VideoVipSubscriptionChannel
 	VideoVipSubscriptionExcludedChannel = &Q.VideoVipSubscriptionExcludedChannel
+	VideoVipSubscriptionPackage = &Q.VideoVipSubscriptionPackage
 	VideoVipSubscriptionPosition = &Q.VideoVipSubscriptionPosition
 }
 
@@ -131,6 +135,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoPackage:                        newVideoPackage(db, opts...),
 		VideoPointsPackage:                  newVideoPointsPackage(db, opts...),
 		VideoPointsPackageChannel:           newVideoPointsPackageChannel(db, opts...),
+		VideoPointsPackagePackage:           newVideoPointsPackagePackage(db, opts...),
 		VideoRole:                           newVideoRole(db, opts...),
 		VideoRoleMenu:                       newVideoRoleMenu(db, opts...),
 		VideoTemplate:                       newVideoTemplate(db, opts...),
@@ -151,6 +156,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoVipSubscription:                newVideoVipSubscription(db, opts...),
 		VideoVipSubscriptionChannel:         newVideoVipSubscriptionChannel(db, opts...),
 		VideoVipSubscriptionExcludedChannel: newVideoVipSubscriptionExcludedChannel(db, opts...),
+		VideoVipSubscriptionPackage:         newVideoVipSubscriptionPackage(db, opts...),
 		VideoVipSubscriptionPosition:        newVideoVipSubscriptionPosition(db, opts...),
 	}
 }
@@ -179,6 +185,7 @@ type Query struct {
 	VideoPackage                        videoPackage
 	VideoPointsPackage                  videoPointsPackage
 	VideoPointsPackageChannel           videoPointsPackageChannel
+	VideoPointsPackagePackage           videoPointsPackagePackage
 	VideoRole                           videoRole
 	VideoRoleMenu                       videoRoleMenu
 	VideoTemplate                       videoTemplate
@@ -199,6 +206,7 @@ type Query struct {
 	VideoVipSubscription                videoVipSubscription
 	VideoVipSubscriptionChannel         videoVipSubscriptionChannel
 	VideoVipSubscriptionExcludedChannel videoVipSubscriptionExcludedChannel
+	VideoVipSubscriptionPackage         videoVipSubscriptionPackage
 	VideoVipSubscriptionPosition        videoVipSubscriptionPosition
 }
 
@@ -228,6 +236,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoPackage:                        q.VideoPackage.clone(db),
 		VideoPointsPackage:                  q.VideoPointsPackage.clone(db),
 		VideoPointsPackageChannel:           q.VideoPointsPackageChannel.clone(db),
+		VideoPointsPackagePackage:           q.VideoPointsPackagePackage.clone(db),
 		VideoRole:                           q.VideoRole.clone(db),
 		VideoRoleMenu:                       q.VideoRoleMenu.clone(db),
 		VideoTemplate:                       q.VideoTemplate.clone(db),
@@ -248,6 +257,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoVipSubscription:                q.VideoVipSubscription.clone(db),
 		VideoVipSubscriptionChannel:         q.VideoVipSubscriptionChannel.clone(db),
 		VideoVipSubscriptionExcludedChannel: q.VideoVipSubscriptionExcludedChannel.clone(db),
+		VideoVipSubscriptionPackage:         q.VideoVipSubscriptionPackage.clone(db),
 		VideoVipSubscriptionPosition:        q.VideoVipSubscriptionPosition.clone(db),
 	}
 }
@@ -284,6 +294,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoPackage:                        q.VideoPackage.replaceDB(db),
 		VideoPointsPackage:                  q.VideoPointsPackage.replaceDB(db),
 		VideoPointsPackageChannel:           q.VideoPointsPackageChannel.replaceDB(db),
+		VideoPointsPackagePackage:           q.VideoPointsPackagePackage.replaceDB(db),
 		VideoRole:                           q.VideoRole.replaceDB(db),
 		VideoRoleMenu:                       q.VideoRoleMenu.replaceDB(db),
 		VideoTemplate:                       q.VideoTemplate.replaceDB(db),
@@ -304,6 +315,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoVipSubscription:                q.VideoVipSubscription.replaceDB(db),
 		VideoVipSubscriptionChannel:         q.VideoVipSubscriptionChannel.replaceDB(db),
 		VideoVipSubscriptionExcludedChannel: q.VideoVipSubscriptionExcludedChannel.replaceDB(db),
+		VideoVipSubscriptionPackage:         q.VideoVipSubscriptionPackage.replaceDB(db),
 		VideoVipSubscriptionPosition:        q.VideoVipSubscriptionPosition.replaceDB(db),
 	}
 }
@@ -330,6 +342,7 @@ type queryCtx struct {
 	VideoPackage                        IVideoPackageDo
 	VideoPointsPackage                  IVideoPointsPackageDo
 	VideoPointsPackageChannel           IVideoPointsPackageChannelDo
+	VideoPointsPackagePackage           IVideoPointsPackagePackageDo
 	VideoRole                           IVideoRoleDo
 	VideoRoleMenu                       IVideoRoleMenuDo
 	VideoTemplate                       IVideoTemplateDo
@@ -350,6 +363,7 @@ type queryCtx struct {
 	VideoVipSubscription                IVideoVipSubscriptionDo
 	VideoVipSubscriptionChannel         IVideoVipSubscriptionChannelDo
 	VideoVipSubscriptionExcludedChannel IVideoVipSubscriptionExcludedChannelDo
+	VideoVipSubscriptionPackage         IVideoVipSubscriptionPackageDo
 	VideoVipSubscriptionPosition        IVideoVipSubscriptionPositionDo
 }
 
@@ -376,6 +390,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoPackage:                        q.VideoPackage.WithContext(ctx),
 		VideoPointsPackage:                  q.VideoPointsPackage.WithContext(ctx),
 		VideoPointsPackageChannel:           q.VideoPointsPackageChannel.WithContext(ctx),
+		VideoPointsPackagePackage:           q.VideoPointsPackagePackage.WithContext(ctx),
 		VideoRole:                           q.VideoRole.WithContext(ctx),
 		VideoRoleMenu:                       q.VideoRoleMenu.WithContext(ctx),
 		VideoTemplate:                       q.VideoTemplate.WithContext(ctx),
@@ -396,6 +411,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoVipSubscription:                q.VideoVipSubscription.WithContext(ctx),
 		VideoVipSubscriptionChannel:         q.VideoVipSubscriptionChannel.WithContext(ctx),
 		VideoVipSubscriptionExcludedChannel: q.VideoVipSubscriptionExcludedChannel.WithContext(ctx),
+		VideoVipSubscriptionPackage:         q.VideoVipSubscriptionPackage.WithContext(ctx),
 		VideoVipSubscriptionPosition:        q.VideoVipSubscriptionPosition.WithContext(ctx),
 	}
 }

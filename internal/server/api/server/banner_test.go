@@ -3,19 +3,20 @@ package service
 import (
 	"testing"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 )
 
 func TestMapClientBannerIncludesNavigationTarget(t *testing.T) {
 	templateID := uint64(42)
 	item := model.VideoBanner{
-		ID: 7, Name: "Featured", Status: 1, JumpType: model.BannerJumpTypeTemplate,
+		ID: 7, Name: "Featured", Status: 1, JumpType: domain.BannerJumpTypeTemplate,
 		CoverImage: "https://example.com/banner.jpg", TemplateID: &templateID,
 		DisplayPositions: []model.VideoDisplayPosition{
 			{ID: 1, PositionKey: "home"}, {ID: 2, PositionKey: "profile"},
 		},
 		Template: &model.VideoTemplate{
-			ID: templateID, Name: "Target", TemplateType: model.VideoTemplateKindAction,
+			ID: templateID, Name: "Target", TemplateType: domain.VideoTemplateKindAction,
 			CoverImage: "https://example.com/template.jpg", Status: 1,
 		},
 	}
@@ -36,7 +37,7 @@ func TestMapClientBannerIncludesNavigationTarget(t *testing.T) {
 }
 
 func TestClientBannerRoutePrefersConfiguredRoute(t *testing.T) {
-	item := model.VideoBanner{JumpType: model.BannerJumpTypeTextToVideo, JumpURL: "/campaign/summer"}
+	item := model.VideoBanner{JumpType: domain.BannerJumpTypeTextToVideo, JumpURL: "/campaign/summer"}
 	if got := clientBannerRoute(&item); got != "/campaign/summer" {
 		t.Fatalf("route = %q, want configured route", got)
 	}

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"ai-video/internal/app"
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -44,7 +44,7 @@ type UpdateDelayConfigRequest struct {
 	Type    string `json:"type" binding:"required,oneof=string int bool"`
 	Options string `json:"options" binding:"max=255"`
 	Remark  string `json:"remark" binding:"max=255"`
-	Sort    int    `json:"sort"`
+	Sort    int64  `json:"sort"`
 }
 
 type DelayConfigValueItem struct {
@@ -84,7 +84,7 @@ func (s *DelayConfigService) Create(ctx context.Context, req *CreateDelayConfigR
 	}
 	config := &model.VideoDelayConfig{
 		Group: strings.TrimSpace(req.Group), Key: key, Value: strings.TrimSpace(req.Value),
-		Type: req.Type, Options: strings.TrimSpace(req.Options), Remark: strings.TrimSpace(req.Remark), Sort: req.Sort,
+		Type: req.Type, Options: strings.TrimSpace(req.Options), Remark: strings.TrimSpace(req.Remark), Sort: int64(req.Sort),
 	}
 	if err := s.repo.Create(ctx, config); err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {

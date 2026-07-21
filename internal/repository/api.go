@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 )
 
 type ApiRepo struct{}

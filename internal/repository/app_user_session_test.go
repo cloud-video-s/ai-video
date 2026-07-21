@@ -1,10 +1,9 @@
 package repository
 
 import (
+	"ai-video/internal/config"
 	"context"
 	"testing"
-
-	"ai-video/internal/app"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -18,7 +17,7 @@ func TestIncrementTokenVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	if err := db.Exec(`CREATE TABLE video_user (id INTEGER PRIMARY KEY, token_version INTEGER NOT NULL DEFAULT 0, deleted_at DATETIME)`).Error; err != nil {
 		t.Fatal(err)
 	}

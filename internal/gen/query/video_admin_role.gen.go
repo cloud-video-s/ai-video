@@ -27,8 +27,12 @@ func newVideoAdminRole(db *gorm.DB, opts ...gen.DOOption) videoAdminRole {
 
 	tableName := _videoAdminRole.videoAdminRoleDo.TableName()
 	_videoAdminRole.ALL = field.NewAsterisk(tableName)
+	_videoAdminRole.ID = field.NewUint64(tableName, "id")
 	_videoAdminRole.VideoAdminID = field.NewUint64(tableName, "video_admin_id")
 	_videoAdminRole.VideoRoleID = field.NewUint64(tableName, "video_role_id")
+	_videoAdminRole.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoAdminRole.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoAdminRole.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoAdminRole.fillFieldMap()
 
@@ -39,8 +43,12 @@ type videoAdminRole struct {
 	videoAdminRoleDo videoAdminRoleDo
 
 	ALL          field.Asterisk
+	ID           field.Uint64
 	VideoAdminID field.Uint64
 	VideoRoleID  field.Uint64
+	CreatedAt    field.Time
+	UpdatedAt    field.Time
+	DeletedAt    field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoAdminRole) As(alias string) *videoAdminRole {
 
 func (v *videoAdminRole) updateTableName(table string) *videoAdminRole {
 	v.ALL = field.NewAsterisk(table)
+	v.ID = field.NewUint64(table, "id")
 	v.VideoAdminID = field.NewUint64(table, "video_admin_id")
 	v.VideoRoleID = field.NewUint64(table, "video_role_id")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -87,9 +99,13 @@ func (v *videoAdminRole) GetFieldByName(fieldName string) (field.OrderExpr, bool
 }
 
 func (v *videoAdminRole) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["video_admin_id"] = v.VideoAdminID
 	v.fieldMap["video_role_id"] = v.VideoRoleID
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoAdminRole) clone(db *gorm.DB) videoAdminRole {

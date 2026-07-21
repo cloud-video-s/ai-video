@@ -4,7 +4,7 @@ import "testing"
 
 func validPointsPackagePayload() PointsPackagePayload {
 	return PointsPackagePayload{
-		ProductID: "premium_credits_plan", Name: "Premium Credits Plan", PackageID: 1,
+		ProductID: "premium_credits_plan", Name: "Premium Credits Plan",
 		Systems: []string{"android"}, UserTypes: []int{1, 2}, ResourceType: "credits",
 		Points: 2900000, Currency: "USD", SalePrice: 39.99, ActualRevenue: 27.99,
 		OriginalPrice: 299, ButtonText: "Get More Credits", Status: 1,

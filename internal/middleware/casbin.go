@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"ai-video/internal/app"
-	"ai-video/internal/model"
+	"ai-video/internal/config"
+	"ai-video/internal/domain"
 	"ai-video/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -21,13 +21,13 @@ func CasbinRBAC() gin.HandlerFunc {
 
 		// 多角色：任一角色是超管或拥有该权限即放行
 		for _, rc := range roleCodes {
-			if rc == model.SuperAdminRoleCode {
+			if rc == domain.SuperAdminRoleCode {
 				c.Next()
 				return
 			}
-			ok, err := app.Enforcer.Enforce(rc, obj, act)
+			ok, err := config.Enforcer.Enforce(rc, obj, act)
 			if err != nil {
-				app.Log.Errorw("casbin enforce error", "error", err)
+				config.Log.Errorw("casbin enforce error", "error", err)
 				response.Forbidden(c, "权限校验异常")
 				return
 			}

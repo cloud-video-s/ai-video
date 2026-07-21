@@ -1,7 +1,7 @@
 package service
 
 import (
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/setting"
 	"ai-video/internal/pkg/upload"
 	"ai-video/internal/repository"
@@ -222,7 +222,7 @@ func (s *ConfigService) Create(ctx context.Context, req *CreateConfigRequest) er
 	c := &model.VideoConfig{
 		Group: req.Group, Key: req.Key, Name: req.Name, Value: req.Value,
 		Type: typ, Options: req.Options, IsPublic: req.IsPublic,
-		Sensitive: typ == "password", Remark: req.Remark, Sort: req.Sort, Editable: true, Builtin: false,
+		Sensitive: typ == "password", Remark: req.Remark, Sort: int64(req.Sort), Editable: true, Builtin: false,
 	}
 	if err := s.repo.Create(ctx, c); err != nil {
 		return err
@@ -269,7 +269,7 @@ func (s *ConfigService) Update(ctx context.Context, id uint, req *UpdateConfigRe
 	c.Options = req.Options
 	c.IsPublic = req.IsPublic
 	c.Remark = req.Remark
-	c.Sort = req.Sort
+	c.Sort = int64(req.Sort)
 	if err := s.repo.Update(ctx, c, "Group", "Name", "Value", "Type", "Options", "IsPublic", "Remark", "Sort"); err != nil {
 		return err
 	}

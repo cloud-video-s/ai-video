@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 )
 
 func TestBuildClientTemplateGroupsSortsAndDropsEmptyCategories(t *testing.T) {

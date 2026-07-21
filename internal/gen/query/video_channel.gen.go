@@ -37,7 +37,7 @@ func newVideoChannel(db *gorm.DB, opts ...gen.DOOption) videoChannel {
 	_videoChannel.PortRebate = field.NewFloat64(tableName, "port_rebate")
 	_videoChannel.ServiceOrderFee = field.NewFloat64(tableName, "service_order_fee")
 	_videoChannel.UploadMethod = field.NewString(tableName, "upload_method")
-	_videoChannel.Status = field.NewInt32(tableName, "status")
+	_videoChannel.Status = field.NewInt8(tableName, "status")
 	_videoChannel.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoChannel.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoChannel.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -61,7 +61,7 @@ type videoChannel struct {
 	PortRebate      field.Float64 // port rebate percentage
 	ServiceOrderFee field.Float64 // service fee per order
 	UploadMethod    field.String  // data upload method
-	Status          field.Int32   // status: 0 disabled, 1 enabled
+	Status          field.Int8    // status: 0 disabled, 1 enabled
 	CreatedAt       field.Time
 	UpdatedAt       field.Time
 	DeletedAt       field.Field
@@ -91,7 +91,7 @@ func (v *videoChannel) updateTableName(table string) *videoChannel {
 	v.PortRebate = field.NewFloat64(table, "port_rebate")
 	v.ServiceOrderFee = field.NewFloat64(table, "service_order_fee")
 	v.UploadMethod = field.NewString(table, "upload_method")
-	v.Status = field.NewInt32(table, "status")
+	v.Status = field.NewInt8(table, "status")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")

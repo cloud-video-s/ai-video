@@ -1,12 +1,13 @@
 package app
 
 import (
+	"ai-video/internal/config"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )
@@ -15,7 +16,7 @@ import (
 // into the new many-to-many relations and multi-value JSON fields. It is
 // idempotent and intentionally keeps the legacy columns for rollback safety.
 func MigrateLegacyTemplateTargets() error {
-	return DB.Transaction(func(tx *gorm.DB) error {
+	return config.DB.Transaction(func(tx *gorm.DB) error {
 		if err := migrateLegacyTemplatePositionsToTypes(tx); err != nil {
 			return err
 		}

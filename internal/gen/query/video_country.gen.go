@@ -30,7 +30,7 @@ func newVideoCountry(db *gorm.DB, opts ...gen.DOOption) videoCountry {
 	_videoCountry.ID = field.NewUint64(tableName, "id")
 	_videoCountry.Code = field.NewString(tableName, "code")
 	_videoCountry.NameZh = field.NewString(tableName, "name_zh")
-	_videoCountry.Status = field.NewInt32(tableName, "status")
+	_videoCountry.Status = field.NewInt8(tableName, "status")
 	_videoCountry.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoCountry.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoCountry.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -47,7 +47,7 @@ type videoCountry struct {
 	ID        field.Uint64
 	Code      field.String // ISO 3166-1 alpha-2 code
 	NameZh    field.String // Chinese name
-	Status    field.Int32  // status: 0 disabled, 1 enabled
+	Status    field.Int8   // status: 0 disabled, 1 enabled
 	CreatedAt field.Time
 	UpdatedAt field.Time
 	DeletedAt field.Field
@@ -70,7 +70,7 @@ func (v *videoCountry) updateTableName(table string) *videoCountry {
 	v.ID = field.NewUint64(table, "id")
 	v.Code = field.NewString(table, "code")
 	v.NameZh = field.NewString(table, "name_zh")
-	v.Status = field.NewInt32(table, "status")
+	v.Status = field.NewInt8(table, "status")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")

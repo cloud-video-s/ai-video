@@ -27,8 +27,12 @@ func newVideoBannerDisplayPosition(db *gorm.DB, opts ...gen.DOOption) videoBanne
 
 	tableName := _videoBannerDisplayPosition.videoBannerDisplayPositionDo.TableName()
 	_videoBannerDisplayPosition.ALL = field.NewAsterisk(tableName)
+	_videoBannerDisplayPosition.ID = field.NewUint64(tableName, "id")
 	_videoBannerDisplayPosition.BannerID = field.NewUint64(tableName, "banner_id")
 	_videoBannerDisplayPosition.PositionKey = field.NewString(tableName, "position_key")
+	_videoBannerDisplayPosition.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoBannerDisplayPosition.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoBannerDisplayPosition.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoBannerDisplayPosition.fillFieldMap()
 
@@ -39,8 +43,12 @@ type videoBannerDisplayPosition struct {
 	videoBannerDisplayPositionDo videoBannerDisplayPositionDo
 
 	ALL         field.Asterisk
+	ID          field.Uint64
 	BannerID    field.Uint64
 	PositionKey field.String
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoBannerDisplayPosition) As(alias string) *videoBannerDisplayPosition
 
 func (v *videoBannerDisplayPosition) updateTableName(table string) *videoBannerDisplayPosition {
 	v.ALL = field.NewAsterisk(table)
+	v.ID = field.NewUint64(table, "id")
 	v.BannerID = field.NewUint64(table, "banner_id")
 	v.PositionKey = field.NewString(table, "position_key")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -89,9 +101,13 @@ func (v *videoBannerDisplayPosition) GetFieldByName(fieldName string) (field.Ord
 }
 
 func (v *videoBannerDisplayPosition) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["banner_id"] = v.BannerID
 	v.fieldMap["position_key"] = v.PositionKey
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoBannerDisplayPosition) clone(db *gorm.DB) videoBannerDisplayPosition {

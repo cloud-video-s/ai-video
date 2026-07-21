@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 )
 
 type MenuRepo struct{}
@@ -16,10 +16,10 @@ func (d *MenuRepo) Create(ctx context.Context, menu *model.VideoMenu) error {
 	return qFrom(ctx).VideoMenu.WithContext(ctx).UnderlyingDB().Create(menu).Error
 }
 
-func (d *MenuRepo) GetByID(ctx context.Context, id uint) (*model.VideoMenu, error) {
+func (d *MenuRepo) GetByID(ctx context.Context, id uint64) (*model.VideoMenu, error) {
 	var menu model.VideoMenu
 	q := qFrom(ctx).VideoMenu
-	err := q.WithContext(ctx).Where(q.ID.Eq(uint64(id))).UnderlyingDB().Preload("APIs").First(&menu).Error
+	err := q.WithContext(ctx).Where(q.ID.Eq(id)).UnderlyingDB().Preload("APIs").First(&menu).Error
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (d *MenuRepo) Update(ctx context.Context, menu *model.VideoMenu) error {
 }
 
 // Delete removes the menu and its API associations.
-func (d *MenuRepo) Delete(ctx context.Context, id uint) error {
+func (d *MenuRepo) Delete(ctx context.Context, id uint64) error {
 	return dbFrom(ctx).Select("APIs").Delete(&model.VideoMenu{ID: id}).Error
 }
 
@@ -49,14 +49,14 @@ func (d *MenuRepo) ListAll(ctx context.Context) ([]model.VideoMenu, error) {
 	return menus, nil
 }
 
-func (d *MenuRepo) GetByIDs(ctx context.Context, ids []uint) ([]model.VideoMenu, error) {
+func (d *MenuRepo) GetByIDs(ctx context.Context, ids []uint64) ([]model.VideoMenu, error) {
 	var menus []model.VideoMenu
 	if len(ids) == 0 {
 		return menus, nil
 	}
 	converted := make([]uint64, 0, len(ids))
 	for _, id := range ids {
-		converted = append(converted, uint64(id))
+		converted = append(converted, id)
 	}
 	q := qFrom(ctx).VideoMenu
 	err := q.WithContext(ctx).Where(q.ID.In(converted...)).UnderlyingDB().
@@ -69,7 +69,7 @@ func (d *MenuRepo) GetByIDs(ctx context.Context, ids []uint) ([]model.VideoMenu,
 	return menus, nil
 }
 
-func (d *MenuRepo) SetAPIs(ctx context.Context, menuID uint, apiIDs []uint) error {
+func (d *MenuRepo) SetAPIs(ctx context.Context, menuID uint64, apiIDs []uint64) error {
 	menu := &model.VideoMenu{ID: menuID}
 	var apis []model.VideoAPI
 	for _, id := range apiIDs {
@@ -78,21 +78,21 @@ func (d *MenuRepo) SetAPIs(ctx context.Context, menuID uint, apiIDs []uint) erro
 	return dbFrom(ctx).Model(menu).Association("APIs").Replace(apis)
 }
 
-func (d *MenuRepo) HasChildren(ctx context.Context, id uint) (bool, error) {
+func (d *MenuRepo) HasChildren(ctx context.Context, id uint64) (bool, error) {
 	q := qFrom(ctx).VideoMenu
-	total, err := q.WithContext(ctx).Where(q.ParentID.Eq(uint64(id))).Count()
+	total, err := q.WithContext(ctx).Where(q.ParentID.Eq(id)).Count()
 	if err != nil {
 		return false, err
 	}
 	return total > 0, nil
 }
 
-func BuildMenuTree(menus []model.VideoMenu, parentID uint) []*model.VideoMenu {
+func BuildMenuTree(menus []model.VideoMenu, parentID uint64) []*model.VideoMenu {
 	tree := make([]*model.VideoMenu, 0)
 	for i := range menus {
 		if menus[i].ParentID == parentID {
 			node := &menus[i]
-			node.Children = BuildMenuTree(menus, node.ID)
+			//node.Children = BuildMenuTree(menus, node.ID)
 			tree = append(tree, node)
 		}
 	}

@@ -1,11 +1,11 @@
 package repository
 
 import (
+	"ai-video/internal/config"
 	"context"
 	"testing"
 
-	"ai-video/internal/app"
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -19,7 +19,7 @@ func TestTemplateDisplayConfigListForClientFiltersAndSorts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	if err := db.AutoMigrate(
 		&model.VideoCountry{}, &model.VideoChannel{}, &model.VideoPackage{},
 		&model.VideoDisplayPosition{}, &model.VideoTemplateType{}, &model.VideoTemplate{},
@@ -80,7 +80,7 @@ func TestTemplateDisplayConfigPairExists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.DB = db
+	config.DB = db
 	if err := db.AutoMigrate(&model.VideoTemplateDisplayConfig{}); err != nil {
 		t.Fatal(err)
 	}

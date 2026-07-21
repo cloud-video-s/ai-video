@@ -4,12 +4,22 @@
 
 package model
 
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
 const TableNameVideoAdminRole = "video_admin_role"
 
 // VideoAdminRole mapped from table <video_admin_role>
 type VideoAdminRole struct {
-	VideoAdminID uint64 `gorm:"column:video_admin_id;type:bigint unsigned;primaryKey" json:"video_admin_id"`
-	VideoRoleID  uint64 `gorm:"column:video_role_id;type:bigint unsigned;primaryKey;index:fk_video_admin_role,priority:1" json:"video_role_id"`
+	ID           uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	VideoAdminID uint64         `gorm:"column:video_admin_id;type:bigint unsigned;not null" json:"video_admin_id"`
+	VideoRoleID  uint64         `gorm:"column:video_role_id;type:bigint unsigned;not null" json:"video_role_id"`
+	CreatedAt    time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt    time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 }
 
 // TableName VideoAdminRole's table name

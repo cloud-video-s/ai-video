@@ -10,15 +10,15 @@ import (
 )
 
 type AdminClaims struct {
-	UserID       uint     `json:"user_id"`
+	UserID       uint64   `json:"user_id"`
 	Username     string   `json:"username"`
 	RoleCodes    []string `json:"role_codes"`
-	TokenVersion int      `json:"token_version"`
+	TokenVersion int64    `json:"token_version"`
 	TokenType    string   `json:"token_type"`
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID uint, username string, roleCodes []string, tokenVersion int) (string, error) {
+func GenerateToken(userID uint64, username string, roleCodes []string, tokenVersion int64) (string, error) {
 	cfg := app.Cfg.JWT
 	claims := AdminClaims{
 		UserID:       userID,

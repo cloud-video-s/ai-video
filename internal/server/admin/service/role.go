@@ -1,8 +1,9 @@
 package service
 
 import (
-	"ai-video/internal/app"
-	"ai-video/internal/model"
+	"ai-video/internal/config"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/cache"
 	"ai-video/internal/repository"
 	"context"
@@ -23,20 +24,20 @@ func NewRoleService() *RoleService {
 type CreateRoleRequest struct {
 	Name   string `json:"name" binding:"required"`
 	Code   string `json:"code" binding:"required"`
-	Sort   int    `json:"sort"`
-	Status *int8  `json:"status"`
+	Sort   int64  `json:"sort"`
+	Status int8   `json:"status"`
 	Remark string `json:"remark"`
 }
 
 type UpdateRoleRequest struct {
 	Name   string `json:"name"`
-	Sort   int    `json:"sort"`
+	Sort   int64  `json:"sort"`
 	Status *int8  `json:"status"`
 	Remark string `json:"remark"`
 }
 
 type SetRoleMenusRequest struct {
-	MenuIDs []uint `json:"menu_ids" binding:"required"`
+	MenuIDs []uint64 `json:"menu_ids" binding:"required"`
 }
 
 type SetRoleAPIsRequest struct {
@@ -49,7 +50,7 @@ type RoleAPIItem struct {
 }
 
 func (s *RoleService) Create(ctx context.Context, req *CreateRoleRequest) error {
-	if req.Code == model.SuperAdminRoleCode {
+	if req.Code == domain.SuperAdminRoleCode {
 		return errors.New("该角色编码为系统保留，不可使用")
 	}
 	_, err := s.roleRepo.GetByCode(ctx, req.Code)
@@ -61,15 +62,15 @@ func (s *RoleService) Create(ctx context.Context, req *CreateRoleRequest) error 
 	}
 
 	status := int8(1)
-	if req.Status != nil {
-		status = *req.Status
+	if req.Status > 0 {
+		status = req.Status
 	}
 
 	role := &model.VideoRole{
 		Name:   req.Name,
 		Code:   req.Code,
 		Sort:   req.Sort,
-		Status: status,
+		Status: uint32(status),
 		Remark: req.Remark,
 	}
 	if err := s.roleRepo.Create(ctx, role); err != nil {
@@ -81,11 +82,11 @@ func (s *RoleService) Create(ctx context.Context, req *CreateRoleRequest) error 
 	return nil
 }
 
-func (s *RoleService) GetByID(ctx context.Context, id uint) (*model.VideoRole, error) {
+func (s *RoleService) GetByID(ctx context.Context, id uint64) (*model.VideoRole, error) {
 	return s.roleRepo.GetByID(ctx, id)
 }
 
-func (s *RoleService) Update(ctx context.Context, id uint, req *UpdateRoleRequest) error {
+func (s *RoleService) Update(ctx context.Context, id uint64, req *UpdateRoleRequest) error {
 	role, err := s.roleRepo.GetByID(ctx, id)
 	if err != nil {
 		return notFoundOr(err, "角色不存在")
@@ -96,7 +97,7 @@ func (s *RoleService) Update(ctx context.Context, id uint, req *UpdateRoleReques
 	}
 	role.Sort = req.Sort
 	if req.Status != nil {
-		role.Status = *req.Status
+		role.Status = uint32(*req.Status)
 	}
 	if req.Remark != "" {
 		role.Remark = req.Remark
@@ -104,20 +105,20 @@ func (s *RoleService) Update(ctx context.Context, id uint, req *UpdateRoleReques
 	return s.roleRepo.Update(ctx, role)
 }
 
-func (s *RoleService) Delete(ctx context.Context, id uint) error {
+func (s *RoleService) Delete(ctx context.Context, id uint64) error {
 	role, err := s.roleRepo.GetByID(ctx, id)
 	if err != nil {
 		return notFoundOr(err, "角色不存在")
 	}
-	if role.Code == model.SuperAdminRoleCode {
+	if role.Code == domain.SuperAdminRoleCode {
 		return errors.New("系统内置超级管理员角色不可删除")
 	}
 
 	if err := s.roleRepo.Delete(ctx, id); err != nil {
 		return err
 	}
-	if _, err := app.Enforcer.RemoveFilteredPolicy(0, role.Code); err != nil {
-		app.Enforcer.LoadPolicy() // 回滚内存策略到 DB 状态
+	if _, err := config.Enforcer.RemoveFilteredPolicy(0, role.Code); err != nil {
+		config.Enforcer.LoadPolicy() // 回滚内存策略到 DB 状态
 		return fmt.Errorf("清除角色权限策略失败: %w", err)
 	}
 	cache.ClearAllPermissionCache()
@@ -138,7 +139,7 @@ func (s *RoleService) ListAll(ctx context.Context) ([]model.VideoRole, error) {
 // the menus' associated APIs. Casbin cannot share the DB transaction, so its
 // operations are error-checked and, on failure, the in-memory policy is reloaded
 // from DB to stay consistent.
-func (s *RoleService) SetMenus(ctx context.Context, roleID uint, menuIDs []uint) error {
+func (s *RoleService) SetMenus(ctx context.Context, roleID uint64, menuIDs []uint64) error {
 	if err := s.roleRepo.SetMenus(ctx, roleID, menuIDs); err != nil {
 		return err
 	}
@@ -147,14 +148,14 @@ func (s *RoleService) SetMenus(ctx context.Context, roleID uint, menuIDs []uint)
 		return err
 	}
 
-	if _, err := app.Enforcer.RemoveFilteredPolicy(0, role.Code); err != nil {
-		app.Enforcer.LoadPolicy()
+	if _, err := config.Enforcer.RemoveFilteredPolicy(0, role.Code); err != nil {
+		config.Enforcer.LoadPolicy()
 		return fmt.Errorf("清除旧权限策略失败: %w", err)
 	}
 	if len(menuIDs) > 0 {
 		menus, err := repository.NewMenuRepo().GetByIDs(ctx, menuIDs)
 		if err != nil {
-			app.Enforcer.LoadPolicy()
+			config.Enforcer.LoadPolicy()
 			return err
 		}
 		var policies [][]string
@@ -164,28 +165,28 @@ func (s *RoleService) SetMenus(ctx context.Context, roleID uint, menuIDs []uint)
 			}
 		}
 		if len(policies) > 0 {
-			if _, err := app.Enforcer.AddPolicies(policies); err != nil {
-				app.Enforcer.LoadPolicy()
+			if _, err := config.Enforcer.AddPolicies(policies); err != nil {
+				config.Enforcer.LoadPolicy()
 				return fmt.Errorf("写入权限策略失败: %w", err)
 			}
 		}
 	}
-	if err := app.Enforcer.SavePolicy(); err != nil {
-		app.Enforcer.LoadPolicy()
+	if err := config.Enforcer.SavePolicy(); err != nil {
+		config.Enforcer.LoadPolicy()
 		return fmt.Errorf("保存权限策略失败: %w", err)
 	}
 	cache.ClearAllPermissionCache()
 	return nil
 }
 
-func (s *RoleService) SetAPIs(ctx context.Context, roleID uint, apis []RoleAPIItem) error {
+func (s *RoleService) SetAPIs(ctx context.Context, roleID uint64, apis []RoleAPIItem) error {
 	role, err := s.roleRepo.GetByID(ctx, roleID)
 	if err != nil {
 		return notFoundOr(err, "角色不存在")
 	}
 
-	if _, err := app.Enforcer.RemoveFilteredPolicy(0, role.Code); err != nil {
-		app.Enforcer.LoadPolicy()
+	if _, err := config.Enforcer.RemoveFilteredPolicy(0, role.Code); err != nil {
+		config.Enforcer.LoadPolicy()
 		return fmt.Errorf("清除旧权限策略失败: %w", err)
 	}
 	var policies [][]string
@@ -193,26 +194,26 @@ func (s *RoleService) SetAPIs(ctx context.Context, roleID uint, apis []RoleAPIIt
 		policies = append(policies, []string{role.Code, api.Path, api.Method})
 	}
 	if len(policies) > 0 {
-		if _, err := app.Enforcer.AddPolicies(policies); err != nil {
-			app.Enforcer.LoadPolicy()
+		if _, err := config.Enforcer.AddPolicies(policies); err != nil {
+			config.Enforcer.LoadPolicy()
 			return fmt.Errorf("写入权限策略失败: %w", err)
 		}
 	}
-	if err := app.Enforcer.SavePolicy(); err != nil {
-		app.Enforcer.LoadPolicy()
+	if err := config.Enforcer.SavePolicy(); err != nil {
+		config.Enforcer.LoadPolicy()
 		return fmt.Errorf("保存权限策略失败: %w", err)
 	}
 	cache.ClearAllPermissionCache()
 	return nil
 }
 
-func (s *RoleService) GetAPIs(ctx context.Context, roleID uint) ([]RoleAPIItem, error) {
+func (s *RoleService) GetAPIs(ctx context.Context, roleID uint64) ([]RoleAPIItem, error) {
 	role, err := s.roleRepo.GetByID(ctx, roleID)
 	if err != nil {
 		return nil, notFoundOr(err, "角色不存在")
 	}
 
-	policies := app.Enforcer.GetFilteredPolicy(0, role.Code)
+	policies := config.Enforcer.GetFilteredPolicy(0, role.Code)
 	items := make([]RoleAPIItem, 0, len(policies))
 	for _, p := range policies {
 		if len(p) >= 3 {

@@ -1,8 +1,8 @@
 package handler
 
 import (
+	"ai-video/internal/domain"
 	"ai-video/internal/middleware"
-	"ai-video/internal/model"
 	"ai-video/internal/pkg/errcode"
 	"ai-video/internal/pkg/response"
 	"ai-video/internal/pkg/utils"
@@ -30,7 +30,7 @@ func (h *UploadHandler) ListMine(c *gin.Context) {
 	}
 	pagination := utils.GetPagination(c)
 	list, total, err := h.repo.PageList(c.Request.Context(), pagination.Page, pagination.PageSize, &repository.UploadListFilter{
-		UserType: model.UploadUserClient, UserID: middleware.GetAPIUserID(c), MediaType: req.MediaType,
+		UserType: int8(domain.UploadUserClient), UserID: middleware.GetAPIUserID(c), MediaType: req.MediaType,
 		FileType: req.FileType, StorageProvider: req.StorageProvider, Keyword: req.Keyword,
 	})
 	if err != nil {

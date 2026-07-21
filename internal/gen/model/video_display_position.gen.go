@@ -17,12 +17,12 @@ type VideoDisplayPosition struct {
 	ID           uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
 	PositionName string         `gorm:"column:position_name;type:varchar(128);not null;index:idx_video_display_position_position_name,priority:1;comment:display position name" json:"position_name"`                // display position name
 	PositionKey  string         `gorm:"column:position_key;type:varchar(64);not null;uniqueIndex:idx_video_display_position_position_key,priority:1;comment:unique display position identifier" json:"position_key"` // unique display position identifier
-	Description  *string        `gorm:"column:description;type:varchar(500);comment:display position description" json:"description"`                                                                                // display position description
+	Description  string         `gorm:"column:description;type:varchar(500);comment:display position description" json:"description"`                                                                                // display position description
 	CoverImage   string         `gorm:"column:cover_image;type:varchar(1024);not null;comment:cover image URL" json:"cover_image"`                                                                                   // cover image URL
-	Sort         int64          `gorm:"column:sort;type:bigint;not null;index:idx_video_display_position_sort,priority:1;comment:sort order" json:"sort"`                                                            // sort order
-	Status       *int32         `gorm:"column:status;type:tinyint;not null;index:idx_video_display_position_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                        // status: 0 disabled, 1 enabled
-	CreatedAt    *time.Time     `gorm:"column:created_at;type:datetime(3);index:idx_video_display_position_created_at,priority:1" json:"created_at"`
-	UpdatedAt    *time.Time     `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	Sort         int            `gorm:"column:sort;type:bigint;not null;index:idx_video_display_position_sort,priority:1;comment:sort order" json:"sort"`                                                            // sort order
+	Status       int8           `gorm:"column:status;type:tinyint;not null;index:idx_video_display_position_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                        // status: 0 disabled, 1 enabled
+	CreatedAt    time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_video_display_position_created_at,priority:1" json:"created_at"`
+	UpdatedAt    time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_display_position_deleted_at,priority:1" json:"deleted_at"`
 }
 

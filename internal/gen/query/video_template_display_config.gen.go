@@ -29,26 +29,47 @@ func newVideoTemplateDisplayConfig(db *gorm.DB, opts ...gen.DOOption) videoTempl
 	_videoTemplateDisplayConfig.ALL = field.NewAsterisk(tableName)
 	_videoTemplateDisplayConfig.ID = field.NewUint64(tableName, "id")
 	_videoTemplateDisplayConfig.TemplateID = field.NewUint64(tableName, "template_id")
-	_videoTemplateDisplayConfig.PositionKey = field.NewString(tableName, "position_key")
+	_videoTemplateDisplayConfig.DisplayPositionKey = field.NewString(tableName, "position_key")
+	_videoTemplateDisplayConfig.Sort = field.NewInt(tableName, "sort")
+	_videoTemplateDisplayConfig.Status = field.NewInt8(tableName, "status")
+	_videoTemplateDisplayConfig.Remark = field.NewString(tableName, "description")
 	_videoTemplateDisplayConfig.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoTemplateDisplayConfig.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoTemplateDisplayConfig.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoTemplateDisplayConfig.Template = videoTemplateDisplayConfigBelongsToTemplate{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Template", "model.VideoTemplate"),
+	}
+
+	_videoTemplateDisplayConfig.DisplayPosition = videoTemplateDisplayConfigBelongsToDisplayPosition{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("DisplayPosition", "model.VideoDisplayPosition"),
+	}
 
 	_videoTemplateDisplayConfig.fillFieldMap()
 
 	return _videoTemplateDisplayConfig
 }
 
+// videoTemplateDisplayConfig 模板单独位置表
 type videoTemplateDisplayConfig struct {
 	videoTemplateDisplayConfigDo videoTemplateDisplayConfigDo
 
-	ALL         field.Asterisk
-	ID          field.Uint64
-	TemplateID  field.Uint64
-	PositionKey field.String
-	CreatedAt   field.Time
-	UpdatedAt   field.Time
-	DeletedAt   field.Field
+	ALL                field.Asterisk
+	ID                 field.Uint64
+	TemplateID         field.Uint64
+	DisplayPositionKey field.String
+	Sort               field.Int
+	Status             field.Int8   // status: 0 disabled, 1 enabled
+	Remark             field.String // description
+	CreatedAt          field.Time
+	UpdatedAt          field.Time
+	DeletedAt          field.Field
+	Template           videoTemplateDisplayConfigBelongsToTemplate
+
+	DisplayPosition videoTemplateDisplayConfigBelongsToDisplayPosition
 
 	fieldMap map[string]field.Expr
 }
@@ -67,7 +88,10 @@ func (v *videoTemplateDisplayConfig) updateTableName(table string) *videoTemplat
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
 	v.TemplateID = field.NewUint64(table, "template_id")
-	v.PositionKey = field.NewString(table, "position_key")
+	v.DisplayPositionKey = field.NewString(table, "position_key")
+	v.Sort = field.NewInt(table, "sort")
+	v.Status = field.NewInt8(table, "status")
+	v.Remark = field.NewString(table, "description")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -101,13 +125,17 @@ func (v *videoTemplateDisplayConfig) GetFieldByName(fieldName string) (field.Ord
 }
 
 func (v *videoTemplateDisplayConfig) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap = make(map[string]field.Expr, 11)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["template_id"] = v.TemplateID
-	v.fieldMap["position_key"] = v.PositionKey
+	v.fieldMap["position_key"] = v.DisplayPositionKey
+	v.fieldMap["sort"] = v.Sort
+	v.fieldMap["status"] = v.Status
+	v.fieldMap["description"] = v.Remark
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoTemplateDisplayConfig) clone(db *gorm.DB) videoTemplateDisplayConfig {
@@ -118,6 +146,148 @@ func (v videoTemplateDisplayConfig) clone(db *gorm.DB) videoTemplateDisplayConfi
 func (v videoTemplateDisplayConfig) replaceDB(db *gorm.DB) videoTemplateDisplayConfig {
 	v.videoTemplateDisplayConfigDo.ReplaceDB(db)
 	return v
+}
+
+type videoTemplateDisplayConfigBelongsToTemplate struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoTemplateDisplayConfigBelongsToTemplate) Where(conds ...field.Expr) *videoTemplateDisplayConfigBelongsToTemplate {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoTemplateDisplayConfigBelongsToTemplate) WithContext(ctx context.Context) *videoTemplateDisplayConfigBelongsToTemplate {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoTemplateDisplayConfigBelongsToTemplate) Session(session *gorm.Session) *videoTemplateDisplayConfigBelongsToTemplate {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoTemplateDisplayConfigBelongsToTemplate) Model(m *model.VideoTemplateDisplayConfig) *videoTemplateDisplayConfigBelongsToTemplateTx {
+	return &videoTemplateDisplayConfigBelongsToTemplateTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoTemplateDisplayConfigBelongsToTemplateTx struct{ tx *gorm.Association }
+
+func (a videoTemplateDisplayConfigBelongsToTemplateTx) Find() (result *model.VideoTemplate, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoTemplateDisplayConfigBelongsToTemplateTx) Append(values ...*model.VideoTemplate) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoTemplateDisplayConfigBelongsToTemplateTx) Replace(values ...*model.VideoTemplate) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoTemplateDisplayConfigBelongsToTemplateTx) Delete(values ...*model.VideoTemplate) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoTemplateDisplayConfigBelongsToTemplateTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoTemplateDisplayConfigBelongsToTemplateTx) Count() int64 {
+	return a.tx.Count()
+}
+
+type videoTemplateDisplayConfigBelongsToDisplayPosition struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoTemplateDisplayConfigBelongsToDisplayPosition) Where(conds ...field.Expr) *videoTemplateDisplayConfigBelongsToDisplayPosition {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoTemplateDisplayConfigBelongsToDisplayPosition) WithContext(ctx context.Context) *videoTemplateDisplayConfigBelongsToDisplayPosition {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoTemplateDisplayConfigBelongsToDisplayPosition) Session(session *gorm.Session) *videoTemplateDisplayConfigBelongsToDisplayPosition {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoTemplateDisplayConfigBelongsToDisplayPosition) Model(m *model.VideoTemplateDisplayConfig) *videoTemplateDisplayConfigBelongsToDisplayPositionTx {
+	return &videoTemplateDisplayConfigBelongsToDisplayPositionTx{a.db.Model(m).Association(a.Name())}
+}
+
+type videoTemplateDisplayConfigBelongsToDisplayPositionTx struct{ tx *gorm.Association }
+
+func (a videoTemplateDisplayConfigBelongsToDisplayPositionTx) Find() (result *model.VideoDisplayPosition, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoTemplateDisplayConfigBelongsToDisplayPositionTx) Append(values ...*model.VideoDisplayPosition) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoTemplateDisplayConfigBelongsToDisplayPositionTx) Replace(values ...*model.VideoDisplayPosition) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoTemplateDisplayConfigBelongsToDisplayPositionTx) Delete(values ...*model.VideoDisplayPosition) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoTemplateDisplayConfigBelongsToDisplayPositionTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoTemplateDisplayConfigBelongsToDisplayPositionTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type videoTemplateDisplayConfigDo struct{ gen.DO }

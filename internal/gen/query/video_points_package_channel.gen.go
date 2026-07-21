@@ -27,8 +27,12 @@ func newVideoPointsPackageChannel(db *gorm.DB, opts ...gen.DOOption) videoPoints
 
 	tableName := _videoPointsPackageChannel.videoPointsPackageChannelDo.TableName()
 	_videoPointsPackageChannel.ALL = field.NewAsterisk(tableName)
-	_videoPointsPackageChannel.PointsPackageID = field.NewUint64(tableName, "points_package_id")
-	_videoPointsPackageChannel.ChannelID = field.NewUint64(tableName, "channel_id")
+	_videoPointsPackageChannel.ID = field.NewUint64(tableName, "id")
+	_videoPointsPackageChannel.ProductCode = field.NewString(tableName, "product_code")
+	_videoPointsPackageChannel.ChannelCode = field.NewString(tableName, "channel_code")
+	_videoPointsPackageChannel.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoPointsPackageChannel.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoPointsPackageChannel.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoPointsPackageChannel.fillFieldMap()
 
@@ -38,9 +42,13 @@ func newVideoPointsPackageChannel(db *gorm.DB, opts ...gen.DOOption) videoPoints
 type videoPointsPackageChannel struct {
 	videoPointsPackageChannelDo videoPointsPackageChannelDo
 
-	ALL             field.Asterisk
-	PointsPackageID field.Uint64
-	ChannelID       field.Uint64 // channel ID
+	ALL         field.Asterisk
+	ID          field.Uint64
+	ProductCode field.String
+	ChannelCode field.String // channel ID
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoPointsPackageChannel) As(alias string) *videoPointsPackageChannel {
 
 func (v *videoPointsPackageChannel) updateTableName(table string) *videoPointsPackageChannel {
 	v.ALL = field.NewAsterisk(table)
-	v.PointsPackageID = field.NewUint64(table, "points_package_id")
-	v.ChannelID = field.NewUint64(table, "channel_id")
+	v.ID = field.NewUint64(table, "id")
+	v.ProductCode = field.NewString(table, "product_code")
+	v.ChannelCode = field.NewString(table, "channel_code")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -89,9 +101,13 @@ func (v *videoPointsPackageChannel) GetFieldByName(fieldName string) (field.Orde
 }
 
 func (v *videoPointsPackageChannel) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
-	v.fieldMap["points_package_id"] = v.PointsPackageID
-	v.fieldMap["channel_id"] = v.ChannelID
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
+	v.fieldMap["product_code"] = v.ProductCode
+	v.fieldMap["channel_code"] = v.ChannelCode
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoPointsPackageChannel) clone(db *gorm.DB) videoPointsPackageChannel {

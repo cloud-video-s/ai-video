@@ -27,8 +27,12 @@ func newVideoVipSubscriptionChannel(db *gorm.DB, opts ...gen.DOOption) videoVipS
 
 	tableName := _videoVipSubscriptionChannel.videoVipSubscriptionChannelDo.TableName()
 	_videoVipSubscriptionChannel.ALL = field.NewAsterisk(tableName)
+	_videoVipSubscriptionChannel.ID = field.NewUint64(tableName, "id")
 	_videoVipSubscriptionChannel.SubscriptionID = field.NewUint64(tableName, "subscription_id")
-	_videoVipSubscriptionChannel.ChannelID = field.NewUint64(tableName, "channel_id")
+	_videoVipSubscriptionChannel.ChannelCode = field.NewString(tableName, "channel_code")
+	_videoVipSubscriptionChannel.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoVipSubscriptionChannel.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoVipSubscriptionChannel.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoVipSubscriptionChannel.fillFieldMap()
 
@@ -39,8 +43,12 @@ type videoVipSubscriptionChannel struct {
 	videoVipSubscriptionChannelDo videoVipSubscriptionChannelDo
 
 	ALL            field.Asterisk
+	ID             field.Uint64 // channel ID
 	SubscriptionID field.Uint64
-	ChannelID      field.Uint64 // channel ID
+	ChannelCode    field.String
+	CreatedAt      field.Time
+	UpdatedAt      field.Time
+	DeletedAt      field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -57,8 +65,12 @@ func (v videoVipSubscriptionChannel) As(alias string) *videoVipSubscriptionChann
 
 func (v *videoVipSubscriptionChannel) updateTableName(table string) *videoVipSubscriptionChannel {
 	v.ALL = field.NewAsterisk(table)
+	v.ID = field.NewUint64(table, "id")
 	v.SubscriptionID = field.NewUint64(table, "subscription_id")
-	v.ChannelID = field.NewUint64(table, "channel_id")
+	v.ChannelCode = field.NewString(table, "channel_code")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -89,9 +101,13 @@ func (v *videoVipSubscriptionChannel) GetFieldByName(fieldName string) (field.Or
 }
 
 func (v *videoVipSubscriptionChannel) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["subscription_id"] = v.SubscriptionID
-	v.fieldMap["channel_id"] = v.ChannelID
+	v.fieldMap["channel_code"] = v.ChannelCode
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoVipSubscriptionChannel) clone(db *gorm.DB) videoVipSubscriptionChannel {

@@ -1,7 +1,7 @@
 package setting
 
 import (
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 	"context"
 )
@@ -100,7 +100,7 @@ func seedDefaults(ctx context.Context) error {
 		if err := repo.Create(ctx, &model.VideoConfig{
 			Group: d.Group, Key: d.Key, Name: d.Name, Type: d.Type, Value: d.Value,
 			Options: d.Options, Remark: d.Remark, IsPublic: d.IsPublic,
-			Sensitive: d.Sensitive, Sort: d.Sort, Editable: true, Builtin: true,
+			Sensitive: d.Sensitive, Sort: int64(d.Sort), Editable: true, Builtin: true,
 		}); err != nil {
 			return err
 		}

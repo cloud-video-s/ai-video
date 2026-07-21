@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"ai-video/internal/model"
+	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
 )

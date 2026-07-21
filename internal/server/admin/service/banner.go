@@ -6,7 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"ai-video/internal/model"
+	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -182,12 +183,12 @@ func normalizeBannerPositionKeys(values []string) ([]string, error) {
 func (s *BannerService) validateJump(ctx context.Context, req *BannerPayload) error {
 	req.JumpURL = strings.TrimSpace(req.JumpURL)
 	switch req.JumpType {
-	case model.BannerJumpTypeLink:
+	case domain.BannerJumpTypeLink:
 		if !validBannerLink(req.JumpURL) {
 			return errors.New("链接跳转必须提供有效的绝对链接、深链或站内路径")
 		}
 		req.TemplateID = nil
-	case model.BannerJumpTypeTemplate:
+	case domain.BannerJumpTypeTemplate:
 		if req.TemplateID == nil || *req.TemplateID == 0 {
 			return errors.New("模板跳转必须选择目标模板")
 		}
@@ -198,7 +199,7 @@ func (s *BannerService) validateJump(ctx context.Context, req *BannerPayload) er
 			return err
 		}
 		req.JumpURL = ""
-	case model.BannerJumpTypeTextToImage, model.BannerJumpTypeTextToVideo:
+	case domain.BannerJumpTypeTextToImage, domain.BannerJumpTypeTextToVideo:
 		req.JumpURL = ""
 		req.TemplateID = nil
 	default:

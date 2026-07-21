@@ -53,7 +53,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	user, err := h.svc.GetByID(c.Request.Context(), uint(id))
+	user, err := h.svc.GetByID(c.Request.Context(), id)
 	if err != nil {
 		response.Fail(c, errcode.ErrUserNotFound, "用户不存在")
 		return
@@ -74,7 +74,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.Update(c.Request.Context(), uint(id), &req); err != nil {
+	if err := h.svc.Update(c.Request.Context(), id, &req); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}
@@ -88,7 +88,7 @@ func (h *UserHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.Delete(c.Request.Context(), uint(id), middleware.GetAdminID(c)); err != nil {
+	if err := h.svc.Delete(c.Request.Context(), id, middleware.GetAdminID(c)); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}
