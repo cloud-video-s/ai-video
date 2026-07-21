@@ -13,6 +13,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/components/Layout.vue'),
     redirect: '/dashboard',
     children: [
+	  // Backend directory menu paths redirect to concrete pages. This also
+	  // prevents a blank router-view when a directory URL is opened directly.
+	  { path: 'system', redirect: '/system/admin' },
+	  { path: 'system/app-user', redirect: '/user/list' },
+	  { path: 'system/user', redirect: '/system/admin' },
+	  { path: 'template', redirect: '/template/list' },
+	  { path: 'package', redirect: '/package/list' },
+	  { path: 'channel', redirect: '/channel/list' },
+	  { path: 'subscription', redirect: '/subscription/vip' },
+	  { path: 'user', redirect: '/user/list' },
+	  { path: 'attribution', redirect: '/attribution/list' },
       {
         path: 'dashboard',
         name: 'Dashboard',
@@ -133,6 +144,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/subscription/UserPointsLedgerList.vue'),
         meta: { title: '积分明细' },
       },
+	  {
+		path: ':pathMatch(.*)*',
+		name: 'NotFound',
+		component: () => import('@/views/NotFound.vue'),
+		meta: { title: '页面不存在' },
+	  },
     ],
   },
 ]

@@ -1,6 +1,7 @@
 package apidoc
 
 import (
+	"ai-video/internal/repository"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodPut, Path: "/admin/banners/:id", Handler: "admin.Banner.Update"},
 		{Method: http.MethodPost, Path: "/api/auth/login", Handler: "api.Auth.Login"},
 		{Method: http.MethodPost, Path: "/api/auth/logout", Handler: "api.Auth.Logout"},
+		{Method: http.MethodGet, Path: "/api/ob_delay", Handler: "api.DelayConfig.All"},
 		{Method: http.MethodGet, Path: "/api/banners/list", Handler: "api.Banner.List"},
 		{Method: http.MethodPost, Path: "/api/uploads/images/batches", Handler: "upload.CreateBatch"},
 		{Method: http.MethodPut, Path: "/api/uploads/images/:upload_id/chunks/:index", Handler: "upload.PutChunk"},
@@ -90,9 +92,36 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	assertParameter(t, batch, "files", "json", true)
 	assertParameter(t, batch, "files[].file_name", "json", true)
 	assertParameter(t, batch, "files[].content_type", "json", false)
+	delay := document.Paths["/api/ob_delay"]["get"].(map[string]any)
+	assertResponseParameter(t, delay, "code", true)
+	assertResponseParameter(t, delay, "message", true)
+	assertResponseParameter(t, delay, "data", true)
+	assertResponseParameter(t, delay, "data[].key", true)
+	assertResponseParameter(t, delay, "data[].value", true)
+	delayExample := delay["x-response-example"].(responseExampleEnvelope)
+	delayData := delayExample.Data.([]repository.DelayConfigValue)
+	if len(delayData) != 12 || delayData[0].Key != "OBPaymentCloseDely" || delayData[0].Value != "5" {
+		t.Fatalf("delay response example is incomplete: %#v", delayExample)
+	}
 	if _, err := json.Marshal(document); err != nil {
 		t.Fatalf("marshal document: %v", err)
 	}
+}
+
+func assertResponseParameter(t *testing.T, operation map[string]any, name string, required bool) {
+	t.Helper()
+	parameters, _ := operation["x-response-parameters"].([]any)
+	for _, raw := range parameters {
+		parameter := raw.(map[string]any)
+		if parameter["name"] != name {
+			continue
+		}
+		if parameter["required"] != required || parameter["schema"] == nil || parameter["description"] == "" {
+			t.Fatalf("invalid response parameter %q: %#v", name, parameter)
+		}
+		return
+	}
+	t.Fatalf("response parameter %q is missing: %#v", name, parameters)
 }
 
 func assertParameter(t *testing.T, operation map[string]any, name, location string, required bool) {
@@ -204,5 +233,8 @@ func TestRegisterServesOpenAPIAndSwaggerUI(t *testing.T) {
 	}
 	if !strings.Contains(response.Body.String(), "API 公共请求信息") || !strings.Contains(response.Body.String(), "公共请求参数") {
 		t.Fatal("API document is missing the standalone common request documentation")
+	}
+	if !strings.Contains(response.Body.String(), "响应参数") || !strings.Contains(response.Body.String(), "响应示例") {
+		t.Fatal("API document is missing response parameter documentation or examples")
 	}
 }

@@ -58,14 +58,11 @@ type ClientTemplateDisplayRequest struct {
 var ErrClientTemplateAudienceMismatch = errors.New("模板受众条件与当前登录用户不一致")
 
 type ClientTemplateType struct {
-	ID                   uint64           `json:"id"`
-	CategoryName         string           `json:"category_name"`
-	Description          string           `json:"description"`
-	PositionKeys         []string         `json:"position_keys"`
-	UserTypes            []int            `json:"user_types"`
-	SubscriptionStatuses []string         `json:"subscription_statuses"`
-	Sort                 int64            `json:"sort"`
-	Templates            []ClientTemplate `json:"templates"`
+	ID           uint64           `json:"id"`
+	CategoryName string           `json:"category_name"`
+	Description  string           `json:"description"`
+	Sort         int64            `json:"sort"`
+	Templates    []ClientTemplate `json:"templates"`
 }
 
 type ClientTemplate struct {
@@ -207,6 +204,64 @@ func (s *ClientTemplateService) List(ctx *gin.Context, userID uint64, req *Clien
 	return buildClientTemplateGroups(types, rows), nil
 }
 
+func (s *ClientTemplateService) Categories(ctx *gin.Context, userID uint64, req *ClientTemplateRequest) ([]ClientTemplateType, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
+	countryCode := strings.ToUpper(strings.TrimSpace(req.Country))
+	if countryCode == "" {
+		countryCode = strings.ToUpper(strings.TrimSpace(req.DeviceCountry))
+	}
+	var countryID uint64
+	if countryCode != "" {
+		if country, lookupErr := s.countryRepo.GetEnabledByCode(ctx, countryCode); lookupErr == nil {
+			countryID = country.ID
+		}
+	}
+
+	channelValue := strings.TrimSpace(req.ChannelID)
+	if channelValue == "" {
+		channelValue = strings.TrimSpace(user.ChannelID)
+	}
+	channels, err := s.channelRepo.ResolveEnabledTargets(ctx, channelValue, strings.TrimSpace(req.ChannelPackage))
+	if err != nil {
+		return nil, err
+	}
+
+	packageCode := strings.TrimSpace(req.AppPackage)
+
+	packageVersion := strings.TrimSpace(req.AppVersion)
+	packages, err := s.packageRepo.ResolveEnabledTargets(ctx, packageCode, packageVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	subscriptionState := "unsubscribed"
+	if user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed {
+		subscriptionState = "subscribed"
+	}
+	types, err := s.typeRepo.ListForClient(ctx, repository.ClientTemplateTypeTargets{
+		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
+		ChannelIDs: clientChannelIDs(channels), PackageIDs: clientPackageIDs(packages),
+		UserType: user.UserType, SubscriptionState: subscriptionState,
+	})
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.templateRepo.ListForClient(ctx, repository.ClientTemplateTargets{
+		TemplateTypeIDs: templateTypeIDs(types), CountryID: countryID,
+		ChannelIDs: clientChannelIDs(channels), PackageIDs: clientPackageIDs(packages),
+		UserType: user.UserType, SubscriptionStatus: subscriptionState,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return buildClientTemplateGroups(types, rows), nil
+}
+
 func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.VideoTemplate) []ClientTemplateType {
 	types = append([]model.VideoTemplateType(nil), types...)
 	rows = append([]model.VideoTemplate(nil), rows...)
@@ -245,8 +300,8 @@ func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.Vid
 		}
 		result = append(result, ClientTemplateType{
 			ID: item.ID, CategoryName: item.CategoryName, Description: item.Description,
-			PositionKeys: templatePositionKeys(item.DisplayPositions), UserTypes: item.UserTypes,
-			SubscriptionStatuses: item.SubscriptionStatuses, Sort: item.Sort, Templates: templates,
+			Sort:      item.Sort,
+			Templates: templates,
 		})
 	}
 	return result
@@ -254,13 +309,21 @@ func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.Vid
 
 func mapClientTemplate(item *model.VideoTemplate) ClientTemplate {
 	return ClientTemplate{
-		ID: item.ID, VideoTemplateTypeID: item.VideoTemplateTypeID,
-		Name: item.Name, TemplateType: item.TemplateType, CoverImage: item.CoverImage,
-		TemplateVideo: item.TemplateVideo, ThumbnailVideo: item.ThumbnailVideo,
-		Prompt: item.Prompt, Description: item.Description,
-		UserTypes: item.UserTypes, SubscriptionStatuses: item.SubscriptionStatuses,
-		Sort: int(item.Sort), UsageCount: item.UsageCount,
-		FavoriteCount: item.FavoriteCount, ViewCount: item.ViewCount,
+		ID:                   item.ID,
+		VideoTemplateTypeID:  item.VideoTemplateTypeID,
+		Name:                 item.Name,
+		TemplateType:         item.TemplateType,
+		CoverImage:           item.CoverImage,
+		TemplateVideo:        item.TemplateVideo,
+		ThumbnailVideo:       item.ThumbnailVideo,
+		Prompt:               item.Prompt,
+		Description:          item.Description,
+		UserTypes:            item.UserTypes,
+		SubscriptionStatuses: item.SubscriptionStatuses,
+		Sort:                 item.Sort,
+		UsageCount:           item.UsageCount,
+		FavoriteCount:        item.FavoriteCount,
+		ViewCount:            item.ViewCount,
 	}
 }
 

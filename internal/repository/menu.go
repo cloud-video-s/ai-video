@@ -92,9 +92,19 @@ func BuildMenuTree(menus []model.VideoMenu, parentID uint64) []*model.VideoMenu 
 	for i := range menus {
 		if menus[i].ParentID == parentID {
 			node := &menus[i]
-			//node.Children = BuildMenuTree(menus, node.ID)
+			node.Children = menuTreeValues(BuildMenuTree(menus, node.ID))
 			tree = append(tree, node)
 		}
 	}
 	return tree
+}
+
+func menuTreeValues(nodes []*model.VideoMenu) []model.VideoMenu {
+	children := make([]model.VideoMenu, 0, len(nodes))
+	for _, node := range nodes {
+		if node != nil {
+			children = append(children, *node)
+		}
+	}
+	return children
 }

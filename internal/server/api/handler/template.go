@@ -46,7 +46,7 @@ func (h *TemplateHandler) Categories(c *gin.Context) {
 		return
 	}
 	req.PositionKey = "homeCategory"
-	list, err := h.svc.List(c, middleware.GetAPIUserID(c), &req)
+	list, err := h.svc.Categories(c, middleware.GetAPIUserID(c), &req)
 	if err != nil {
 		if errors.Is(err, apiservice.ErrClientTemplateAudienceMismatch) {
 			response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, err.Error())

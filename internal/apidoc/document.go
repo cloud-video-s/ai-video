@@ -41,6 +41,33 @@ type uploadBatchRequest struct {
 	Files []upload.FileSpec `json:"files" binding:"required,min=1"`
 }
 
+type responseExampleEnvelope struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
+}
+
+var delayConfigResponseExample = []repository.DelayConfigValue{
+	{Key: "OBPaymentCloseDely", Value: "5"},
+	{Key: "OBPaymentRetain", Value: "0"},
+	{Key: "HomePaymentBannerShow", Value: "0"},
+	{Key: "LaunchPaymentCloseDelay", Value: "5"},
+	{Key: "LaunchPaymentRetain", Value: "0"},
+	{Key: "BannerPaumentCloseDelay", Value: "5"},
+	{Key: "BannerPaymentCloseRetain", Value: "0"},
+	{Key: "PaymenCloseDelay", Value: "5"},
+	{Key: "PaymenCloseRetain", Value: "0"},
+	{Key: "FunctionPaymentCloseDelay", Value: "5"},
+	{Key: "FunctionPaymentCloseRetain", Value: "0"},
+	{Key: "FunctionUseLoging", Value: "0"},
+}
+
+var responseDataExamples = map[string]any{
+	"GET /api/delay-configs":    delayConfigResponseExample,
+	"GET /api/ob-delay-configs": delayConfigResponseExample,
+	"GET /api/ob_delay":         delayConfigResponseExample,
+}
+
 var endpointTypes = map[string]endpointType{
 	"GET /api/health":                                  {response: typeOf[map[string]string]()},
 	"GET /api/configs/public":                          {response: typeOf[map[string]string]()},
@@ -232,6 +259,9 @@ func buildOperation(route gin.RouteInfo, pathParams []string, tag, resource stri
 		},
 	}
 	operation["responses"].(map[string]any)["200"] = successResponse(metadata.response)
+	responseSchema := successResponseSchema(metadata.response)
+	operation["x-response-parameters"] = flattenResponseSchema(responseSchema, "", true)
+	operation["x-response-example"] = buildResponseExample(key, responseSchema)
 	if !publicRoutes[key] {
 		operation["security"] = []map[string][]string{{"bearerAuth": {}}}
 	}
@@ -745,21 +775,205 @@ func errorResponse(description string) map[string]any {
 }
 
 func successResponse(responseType reflect.Type) map[string]any {
-	dataSchema := map[string]any{"nullable": true}
-	if responseType != nil {
-		dataSchema = schemaForType(responseType)
-	}
 	return map[string]any{
 		"description": "请求成功",
-		"content": jsonContent(map[string]any{
-			"type": "object", "required": []string{"code", "message", "data"},
-			"properties": map[string]any{
-				"code":    map[string]any{"type": "integer", "description": "业务状态码，0 表示成功", "example": 0},
-				"message": map[string]any{"type": "string", "description": "结果说明", "example": "success"},
-				"data":    dataSchema,
-			},
-		}),
+		"content":     jsonContent(successResponseSchema(responseType)),
 	}
+}
+
+func successResponseSchema(responseType reflect.Type) map[string]any {
+	dataSchema := map[string]any{"nullable": true, "description": "响应数据"}
+	if responseType != nil {
+		dataSchema = responseSchemaForType(responseType)
+		dataSchema["description"] = "响应数据"
+	}
+	return map[string]any{
+		"type": "object", "required": []string{"code", "message", "data"},
+		"properties": map[string]any{
+			"code":    map[string]any{"type": "integer", "description": "业务状态码，0 表示成功", "example": 0},
+			"message": map[string]any{"type": "string", "description": "结果说明", "example": "success"},
+			"data":    dataSchema,
+		},
+	}
+}
+
+func responseSchemaForType(valueType reflect.Type) map[string]any {
+	nullable := false
+	for valueType.Kind() == reflect.Pointer {
+		nullable = true
+		valueType = valueType.Elem()
+	}
+	if valueType == reflect.TypeOf(time.Time{}) {
+		return map[string]any{"type": "string", "format": "date-time", "nullable": nullable}
+	}
+	var schema map[string]any
+	switch valueType.Kind() {
+	case reflect.Struct:
+		properties := make(map[string]any)
+		required := make([]string, 0, valueType.NumField())
+		for i := 0; i < valueType.NumField(); i++ {
+			field := valueType.Field(i)
+			if field.PkgPath != "" {
+				continue
+			}
+			name, tagged := fieldName(field)
+			if name == "-" {
+				continue
+			}
+			fieldSchema := responseSchemaForType(field.Type)
+			applyBindingConstraints(fieldSchema, field.Tag.Get("binding"))
+			applyFieldDescription(fieldSchema, name)
+			if field.Anonymous && !tagged {
+				if nested, ok := fieldSchema["properties"].(map[string]any); ok {
+					for nestedName, nestedSchema := range nested {
+						properties[nestedName] = nestedSchema
+					}
+				}
+				if nestedRequired, ok := fieldSchema["required"].([]string); ok {
+					required = append(required, nestedRequired...)
+				}
+				continue
+			}
+			properties[name] = fieldSchema
+			if !jsonFieldOmitEmpty(field) {
+				required = append(required, name)
+			}
+		}
+		schema = map[string]any{"type": "object", "properties": properties}
+		if len(required) > 0 {
+			schema["required"] = uniqueStrings(required)
+		}
+	case reflect.Slice, reflect.Array:
+		schema = map[string]any{"type": "array", "items": responseSchemaForType(valueType.Elem())}
+	default:
+		schema = schemaForType(valueType)
+	}
+	if nullable {
+		schema["nullable"] = true
+	}
+	return schema
+}
+
+func jsonFieldOmitEmpty(field reflect.StructField) bool {
+	tag, ok := field.Tag.Lookup("json")
+	if !ok {
+		return false
+	}
+	for _, option := range strings.Split(tag, ",")[1:] {
+		if option == "omitempty" {
+			return true
+		}
+	}
+	return false
+}
+
+func flattenResponseSchema(schema map[string]any, prefix string, parentRequired bool) []any {
+	properties, ok := schema["properties"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	requiredNames := make(map[string]bool)
+	if required, ok := schema["required"].([]string); ok {
+		for _, name := range required {
+			requiredNames[name] = true
+		}
+	}
+	names := make([]string, 0, len(properties))
+	for name := range properties {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	parameters := make([]any, 0, len(names))
+	for _, name := range names {
+		fieldSchema, ok := properties[name].(map[string]any)
+		if !ok {
+			continue
+		}
+		fullName := name
+		if prefix != "" {
+			fullName = prefix + "." + name
+		}
+		required := parentRequired && requiredNames[name]
+		parameters = append(parameters, map[string]any{
+			"name": fullName, "required": required,
+			"description": fieldSchema["description"], "schema": fieldSchema,
+		})
+		nestedSchema := fieldSchema
+		nestedPrefix := fullName
+		if fieldSchema["type"] == "array" {
+			if items, ok := fieldSchema["items"].(map[string]any); ok {
+				nestedSchema = items
+				nestedPrefix += "[]"
+			}
+		}
+		parameters = append(parameters, flattenResponseSchema(nestedSchema, nestedPrefix, required)...)
+	}
+	return parameters
+}
+
+func buildResponseExample(key string, schema map[string]any) responseExampleEnvelope {
+	data := responseDataExamples[key]
+	if data == nil {
+		properties := schema["properties"].(map[string]any)
+		data = exampleForSchema(properties["data"].(map[string]any), "data")
+	}
+	return responseExampleEnvelope{Code: 0, Message: "success", Data: data}
+}
+
+func exampleForSchema(schema map[string]any, name string) any {
+	if example, exists := schema["example"]; exists {
+		return example
+	}
+	if enum, ok := schema["enum"].([]any); ok && len(enum) > 0 {
+		return enum[0]
+	}
+	switch schema["type"] {
+	case "object":
+		properties, ok := schema["properties"].(map[string]any)
+		if !ok {
+			return map[string]any{"key": "value"}
+		}
+		names := make([]string, 0, len(properties))
+		for propertyName := range properties {
+			names = append(names, propertyName)
+		}
+		sort.Strings(names)
+		value := make(map[string]any, len(names))
+		for _, propertyName := range names {
+			if propertySchema, ok := properties[propertyName].(map[string]any); ok {
+				value[propertyName] = exampleForSchema(propertySchema, propertyName)
+			}
+		}
+		return value
+	case "array":
+		if items, ok := schema["items"].(map[string]any); ok {
+			return []any{exampleForSchema(items, name+"[]")}
+		}
+		return []any{}
+	case "integer", "number":
+		if name == "id" || strings.HasSuffix(name, "_id") {
+			return 1
+		}
+		return 0
+	case "boolean":
+		return false
+	case "string":
+		if schema["format"] == "date-time" {
+			return "2026-07-21T12:00:00+08:00"
+		}
+		if example := stringFieldExamples[name]; example != "" {
+			return example
+		}
+		return "string"
+	default:
+		return nil
+	}
+}
+
+var stringFieldExamples = map[string]string{
+	"key": "OBPaymentCloseDely", "value": "5", "token": "eyJhbGciOi...",
+	"country": "CN", "position_key": "home", "file_url": "/uploads/example.jpg",
+	"name": "示例名称", "description": "示例说明", "status": "success",
 }
 
 func operationDescription(key, handler string) string {
