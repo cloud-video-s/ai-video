@@ -1,458 +1,262 @@
 <template>
-  <div class="page-wrap">
+  <div class="user-center">
     <el-card shadow="never">
       <template #header>
-        <div class="page-header">
+        <div class="header">
           <div>
-            <div class="page-title">客户端用户</div>
-            <div class="page-subtitle">管理客户端用户资料、应用设备、订阅资产、付费及行为指标</div>
+            <div class="title">用户管理中心</div>
+            <div class="subtitle">集中查询用户账户、会员、身份、归因、积分及设备信息</div>
           </div>
-          <el-button v-if="canAdd" type="primary" @click="openCreate">
-            <el-icon><Plus /></el-icon>新增用户
-          </el-button>
         </div>
       </template>
 
-      <div class="filters">
-        <el-input v-model="query.keyword" clearable placeholder="昵称、账号、设备号、邮箱或应用" @keyup.enter="handleSearch">
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
-        <el-input v-model="query.app_name" clearable placeholder="应用名称" @keyup.enter="handleSearch" />
-        <el-input v-model="query.device_country" clearable placeholder="设备国家" @keyup.enter="handleSearch" />
-        <el-input v-model="query.channel_id" clearable placeholder="渠道 ID" @keyup.enter="handleSearch" />
-        <el-select v-model="query.login_type" clearable placeholder="登录方式">
-          <el-option v-for="item in loginTypeOptions" :key="item.value" :label="item.label" :value="String(item.value)" />
-        </el-select>
-        <el-select v-model="query.user_type" clearable placeholder="用户类型">
-          <el-option v-for="item in userTypeOptions" :key="item.value" :label="item.label" :value="String(item.value)" />
-        </el-select>
-        <el-select v-model="query.subscription_status" clearable placeholder="订阅状态">
-          <el-option v-for="item in subscriptionOptions" :key="item.value" :label="item.label" :value="String(item.value)" />
-        </el-select>
-        <el-select v-model="query.status" clearable placeholder="账号状态">
-          <el-option label="正常" value="1" />
-          <el-option label="禁用" value="0" />
-        </el-select>
-        <el-button type="primary" plain @click="handleSearch">查询</el-button>
-        <el-button @click="handleReset">重置</el-button>
-      </div>
+      <el-form class="search-form" inline @submit.prevent="handleSearch">
+        <el-form-item label="用户 ID / 邮箱">
+          <el-input v-model="searchValue" clearable placeholder="输入用户 ID、登录邮箱或第三方邮箱" @keyup.enter="handleSearch" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :loading="searching" @click="handleSearch">查询</el-button>
+        </el-form-item>
+      </el-form>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="72" />
-        <el-table-column label="用户" min-width="220">
-          <template #default="{ row }">
-            <div class="primary-text">{{ row.username }}</div>
-            <div class="secondary-text mono">{{ row.login_account || row.google_email || row.appid_email || row.imei }}</div>
-            <div class="secondary-text">设备号：{{ row.imei }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column label="应用与设备" min-width="220">
-          <template #default="{ row }">
-            <div>{{ row.app_name || '未记录应用' }} <span class="secondary-text">{{ row.app_version }}</span></div>
-            <div class="secondary-text">{{ row.device_country || '-' }} · {{ row.phone_model || '未知设备' }}</div>
-            <div class="secondary-text">渠道：{{ row.channel_id || '-' }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column label="账号属性" width="160">
-          <template #default="{ row }">
-            <div class="tag-row">
-              <el-tag size="small" effect="plain">{{ optionLabel(loginTypeOptions, row.login_type) }}</el-tag>
-              <el-tag size="small" :type="row.user_type === 2 ? 'warning' : 'info'">{{ optionLabel(userTypeOptions, row.user_type) }}</el-tag>
-            </div>
-            <el-tag class="subscription-tag" size="small" :type="subscriptionTagType(row.subscription_status)">
-              {{ optionLabel(subscriptionOptions, row.subscription_status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="活跃与资产" width="170">
-          <template #default="{ row }">
-            <div class="metric-line"><span>活跃天数</span><strong>{{ row.active_days }}</strong></div>
-            <div class="metric-line"><span>日均使用</span><strong>{{ formatDuration(row.avg_daily_usage_seconds) }}</strong></div>
-            <div class="metric-line"><span>积分</span><strong>{{ formatNumber(row.points_balance) }}</strong></div>
-          </template>
-        </el-table-column>
-        <el-table-column label="付费" width="180">
-          <template #default="{ row }">
-            <div class="metric-line"><span>实付金额</span><strong>¥{{ formatMoney(row.actual_amount_money) }}</strong></div>
-            <div class="metric-line"><span>付费次数</span><strong>{{ formatNumber(row.payment_count) }}</strong></div>
-            <div class="metric-line"><span>订单数</span><strong>{{ formatNumber(row.order_count) }}</strong></div>
-          </template>
-        </el-table-column>
-        <el-table-column label="行为指标" width="190">
-          <template #default="{ row }">
-            <div class="behavior-tags">
-              <el-tag size="small" :type="row.activated ? 'success' : 'info'">激活{{ row.activated ? '达标' : '未达标' }}</el-tag>
-              <el-tag size="small" :type="row.registered ? 'success' : 'info'">注册{{ row.registered ? '达标' : '未达标' }}</el-tag>
-              <el-tag size="small" :type="row.payment_met ? 'success' : 'info'">付费{{ row.payment_met ? '达标' : '未达标' }}</el-tag>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="118" align="center">
-          <template #default="{ row }">
-            <el-switch
-              v-if="canEdit"
-              v-model="row.status"
-              :active-value="1"
-              :inactive-value="0"
-              inline-prompt
-              active-text="正常"
-              inactive-text="禁用"
-              :loading="updatingIds.includes(row.id)"
-              @change="handleStatusChange(row)"
-            />
-            <el-tag v-else :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '正常' : '禁用' }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="最近活动" width="180">
-          <template #default="{ row }">
-            <div>{{ formatDate(row.last_opened_at || row.last_login_at) }}</div>
-            <div class="secondary-text">{{ row.last_login_ip || '-' }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="170" fixed="right" align="center">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openDetail(row.id)">详情</el-button>
-            <el-button v-if="canEdit" link type="primary" @click="openEdit(row)">编辑</el-button>
-            <el-popconfirm v-if="canDelete" title="确认删除该客户端用户？" @confirm="handleDelete(row.id)">
-              <template #reference><el-button link type="danger">删除</el-button></template>
-            </el-popconfirm>
-          </template>
-        </el-table-column>
-      </el-table>
+      <el-empty v-if="!detail && !searching" description="请输入用户 ID 或邮箱查询" />
 
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="pageSize"
-          :total="total"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next"
-          @size-change="handlePageSizeChange"
-          @current-change="fetchData"
-        />
+      <div v-if="detail" v-loading="loadingDetail">
+        <el-descriptions :column="2" border class="summary">
+          <el-descriptions-item label="用户 ID">{{ user.id }}</el-descriptions-item>
+          <el-descriptions-item label="昵称">{{ user.username || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="是否会员">
+            <el-tag :type="detail.is_member ? 'success' : 'info'">{{ detail.is_member ? '是' : '否' }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="VIP 等级">{{ user.vip_level || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="VIP 开始时间">{{ formatDate(user.vip_started_at) }}</el-descriptions-item>
+          <el-descriptions-item label="VIP 结束时间">{{ formatDate(user.vip_expires_at) }}</el-descriptions-item>
+          <el-descriptions-item label="手机号">{{ user.phone || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="用户类型">{{ user.user_type === 2 ? '付费用户' : '免费用户' }}</el-descriptions-item>
+          <el-descriptions-item label="是否冻结">
+            <el-tag :type="user.is_frozen ? 'danger' : 'success'">{{ user.is_frozen ? '是' : '否' }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="是否黑名单">
+            <el-tag :type="user.is_blacklisted ? 'danger' : 'success'">{{ user.is_blacklisted ? '是' : '否' }}</el-tag>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <div v-if="canManage" class="actions">
+          <el-button type="primary" plain @click="openVIPDialog">添加 VIP</el-button>
+          <el-button :type="user.is_frozen ? 'success' : 'warning'" plain @click="toggleFrozen">
+            {{ user.is_frozen ? '解除冻结' : '冻结用户' }}
+          </el-button>
+          <el-button :type="user.is_blacklisted ? 'success' : 'danger'" plain @click="toggleBlacklisted">
+            {{ user.is_blacklisted ? '移出黑名单' : '拉黑用户' }}
+          </el-button>
+          <el-button plain @click="bindPhone">绑定手机号</el-button>
+          <el-button plain @click="transferVIP">转移会员</el-button>
+          <el-button type="danger" plain @click="terminateVIP">终止会员</el-button>
+          <el-button plain @click="extendVIP">延长会员</el-button>
+          <el-button type="warning" plain @click="clearDevice">清除设备信息</el-button>
+        </div>
+
+        <el-tabs v-model="activeTab" class="detail-tabs">
+          <el-tab-pane label="账户与设备" name="account">
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="登录账号">{{ user.login_account || user.email || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="登录方式">{{ loginTypeLabel(user.login_type) }}</el-descriptions-item>
+              <el-descriptions-item label="设备编号">{{ user.device_code || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="IMEI">{{ user.imei || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="设备型号">{{ user.phone_model || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="设备国家">{{ user.device_country || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="最近登录 IP">{{ user.last_login_ip || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="最近登录时间">{{ formatDate(user.last_login_at) }}</el-descriptions-item>
+              <el-descriptions-item label="积分余额">{{ formatNumber(user.points_balance) }}</el-descriptions-item>
+              <el-descriptions-item label="创建时间">{{ formatDate(user.created_at) }}</el-descriptions-item>
+            </el-descriptions>
+          </el-tab-pane>
+
+          <el-tab-pane :label="`第三方身份 (${detail.identities.length})`" name="identities">
+            <el-table :data="detail.identities" border empty-text="暂无第三方身份">
+              <el-table-column prop="provider" label="平台" width="120" />
+              <el-table-column prop="email" label="邮箱" min-width="220" />
+              <el-table-column prop="display_name" label="显示名称" min-width="150" />
+              <el-table-column label="最后登录" min-width="180"><template #default="{ row }">{{ formatDate(row.last_login_at) }}</template></el-table-column>
+            </el-table>
+          </el-tab-pane>
+
+          <el-tab-pane label="用户归因" name="attribution">
+            <el-descriptions v-if="detail.attribution" :column="2" border>
+              <el-descriptions-item label="渠道">{{ detail.attribution.channel_code || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="归因时间">{{ formatDate(detail.attribution.attributed_at) }}</el-descriptions-item>
+              <el-descriptions-item label="OAID">{{ detail.attribution.oaid || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="Android ID">{{ detail.attribution.android_id || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="归因 IMEI">{{ detail.attribution.imei || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="归因 IP">{{ detail.attribution.ip || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="备注" :span="2">{{ detail.attribution.remark || '-' }}</el-descriptions-item>
+            </el-descriptions>
+            <el-empty v-else description="暂无归因记录" />
+          </el-tab-pane>
+
+          <el-tab-pane :label="`积分明细 (${detail.points_ledgers.length})`" name="points">
+            <div class="points-summary">
+              <el-tag type="success">累计收入 {{ formatNumber(detail.points_summary.income_total) }}</el-tag>
+              <el-tag type="danger">累计支出 {{ formatNumber(detail.points_summary.expense_total) }}</el-tag>
+            </div>
+            <el-table :data="detail.points_ledgers" border empty-text="暂无积分明细">
+              <el-table-column prop="source_type" label="来源" width="130" />
+              <el-table-column label="变动" width="110">
+                <template #default="{ row }"><span :class="row.points_change >= 0 ? 'income' : 'expense'">{{ row.points_change > 0 ? '+' : '' }}{{ row.points_change }}</span></template>
+              </el-table-column>
+              <el-table-column prop="balance_after" label="变动后余额" width="130" />
+              <el-table-column prop="description" label="说明" min-width="220" show-overflow-tooltip />
+              <el-table-column label="发生时间" min-width="180"><template #default="{ row }">{{ formatDate(row.occurred_at) }}</template></el-table-column>
+            </el-table>
+          </el-tab-pane>
+        </el-tabs>
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑客户端用户' : '新增客户端用户'" width="920px" destroy-on-close>
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="112px">
-        <el-tabs v-model="formTab">
-          <el-tab-pane label="账号资料" name="account">
-            <div class="form-grid">
-              <el-form-item label="用户昵称" prop="username"><el-input v-model="form.username" maxlength="128" /></el-form-item>
-              <el-form-item label="设备编号" prop="imei"><el-input v-model="form.imei" maxlength="128" /></el-form-item>
-              <el-form-item label="登录方式"><el-select v-model="form.login_type" style="width: 100%"><el-option v-for="item in loginTypeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-              <el-form-item label="登录账号"><el-input v-model="form.login_account" maxlength="255" /></el-form-item>
-              <el-form-item label="Google 邮箱" prop="google_email"><el-input v-model="form.google_email" maxlength="50" /></el-form-item>
-              <el-form-item label="Google 唯一码"><el-input v-model="form.google_third_code" maxlength="50" /></el-form-item>
-              <el-form-item label="Apple 邮箱" prop="appid_email"><el-input v-model="form.appid_email" maxlength="50" /></el-form-item>
-              <el-form-item label="Apple 唯一码"><el-input v-model="form.appid_third_code" maxlength="50" /></el-form-item>
-              <el-form-item label="用户类型"><el-select v-model="form.user_type" style="width: 100%"><el-option v-for="item in userTypeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-              <el-form-item label="账号状态"><el-radio-group v-model="form.status"><el-radio :value="1">正常</el-radio><el-radio :value="0">禁用</el-radio></el-radio-group></el-form-item>
-              <el-form-item label="重注册来源ID"><el-input-number v-model="form.re_registered_from_id" :min="0" :max="999999999999" controls-position="right" /></el-form-item>
-            </div>
-          </el-tab-pane>
-
-          <el-tab-pane label="应用与设备" name="device">
-            <div class="form-grid">
-              <el-form-item label="应用名称"><el-input v-model="form.app_name" maxlength="255" /></el-form-item>
-              <el-form-item label="应用版本"><el-input v-model="form.app_version" maxlength="32" /></el-form-item>
-              <el-form-item label="设备国家"><el-input v-model="form.device_country" maxlength="64" /></el-form-item>
-              <el-form-item label="渠道 ID"><el-input v-model="form.channel_id" maxlength="64" /></el-form-item>
-              <el-form-item label="手机型号"><el-input v-model="form.phone_model" maxlength="128" /></el-form-item>
-              <el-form-item label="首次打开"><el-date-picker v-model="form.first_opened_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" clearable style="width: 100%" /></el-form-item>
-              <el-form-item label="上次打开"><el-date-picker v-model="form.last_opened_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" clearable style="width: 100%" /></el-form-item>
-              <el-form-item label="最近登录"><el-date-picker v-model="form.last_login_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" clearable style="width: 100%" /></el-form-item>
-              <el-form-item label="最近登录 IP"><el-input v-model="form.last_login_ip" maxlength="64" /></el-form-item>
-            </div>
-          </el-tab-pane>
-
-          <el-tab-pane label="订阅与活跃" name="subscription">
-            <div class="form-grid">
-              <el-form-item label="订阅状态"><el-select v-model="form.subscription_status" style="width: 100%"><el-option v-for="item in subscriptionOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>
-              <el-form-item label="VIP 到期时间"><el-date-picker v-model="form.vip_expires_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" clearable style="width: 100%" /></el-form-item>
-              <el-form-item label="积分余额"><el-input-number v-model="form.points_balance" :min="0" :max="999999999999" controls-position="right" /></el-form-item>
-              <el-form-item label="积分成本"><el-input-number v-model="form.points_money" :min="0" :precision="2" :step="0.01" controls-position="right" /></el-form-item>
-              <el-form-item label="活跃天数"><el-input-number v-model="form.active_days" :min="0" :max="999999" controls-position="right" /></el-form-item>
-              <el-form-item label="日均使用秒数"><el-input-number v-model="form.avg_daily_usage_seconds" :min="0" :max="999999999" controls-position="right" /></el-form-item>
-            </div>
-          </el-tab-pane>
-
-          <el-tab-pane label="付费数据" name="payment">
-            <div class="form-grid">
-              <el-form-item label="订单创建次数"><el-input-number v-model="form.order_count" :min="0" controls-position="right" /></el-form-item>
-              <el-form-item label="付费次数"><el-input-number v-model="form.payment_count" :min="0" controls-position="right" /></el-form-item>
-              <el-form-item label="订阅付费次数"><el-input-number v-model="form.subscription_payment_count" :min="0" controls-position="right" /></el-form-item>
-              <el-form-item label="单次付费次数"><el-input-number v-model="form.one_time_payment_count" :min="0" controls-position="right" /></el-form-item>
-              <el-form-item label="累计订单金额"><el-input-number v-model="form.order_amount_money" :min="0" :precision="2" :step="0.01" controls-position="right" /></el-form-item>
-              <el-form-item label="累计实付金额"><el-input-number v-model="form.actual_amount_money" :min="0" :precision="2" :step="0.01" controls-position="right" /></el-form-item>
-              <el-form-item label="累计退款金额"><el-input-number v-model="form.refund_amount_money" :min="0" :precision="2" :step="0.01" controls-position="right" /></el-form-item>
-              <el-form-item label="累计 AI 成本"><el-input-number v-model="form.ai_cots_money" :min="0" :precision="2" :step="0.01" controls-position="right" /></el-form-item>
-              <el-form-item label="首单创建时间"><el-date-picker v-model="form.first_order_created_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" clearable style="width: 100%" /></el-form-item>
-              <el-form-item label="首次付费时间"><el-date-picker v-model="form.first_paid_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" clearable style="width: 100%" /></el-form-item>
-              <el-form-item label="最后付费时间"><el-date-picker v-model="form.last_paid_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" clearable style="width: 100%" /></el-form-item>
-            </div>
-          </el-tab-pane>
-
-          <el-tab-pane label="行为指标" name="behavior">
-            <div class="form-grid behavior-form">
-              <el-form-item label="激活达标"><el-switch v-model="form.activated" :active-value="1" :inactive-value="0" /></el-form-item>
-              <el-form-item label="关键行为达标"><el-switch v-model="form.key_behavior_met" :active-value="1" :inactive-value="0" /></el-form-item>
-              <el-form-item label="付费达标"><el-switch v-model="form.payment_met" /></el-form-item>
-              <el-form-item label="首次付费达标"><el-switch v-model="form.first_payment_met" /></el-form-item>
-              <el-form-item label="注册达标"><el-switch v-model="form.registered" /></el-form-item>
-              <el-form-item label="归因点击时间"><el-date-picker v-model="form.attribution_clicked_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" clearable style="width: 100%" /></el-form-item>
-            </div>
-          </el-tab-pane>
-        </el-tabs>
+    <el-dialog v-model="vipDialogVisible" title="添加 VIP" width="480px">
+      <el-form label-width="100px">
+        <el-form-item label="VIP 等级" required><el-input-number v-model="vipForm.level" :min="1" :max="999" /></el-form-item>
+        <el-form-item label="开始时间"><el-date-picker v-model="vipForm.started_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" style="width:100%" /></el-form-item>
+        <el-form-item label="结束时间" required><el-date-picker v-model="vipForm.expires_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" style="width:100%" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit">保存</el-button>
+        <el-button @click="vipDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="operating" @click="submitVIP">确认</el-button>
       </template>
     </el-dialog>
-
-    <el-drawer v-model="detailVisible" title="客户端用户详情" size="760px" destroy-on-close>
-      <div v-loading="detailLoading" class="detail-body">
-        <template v-if="detailUser">
-          <div class="detail-title">账号资料</div>
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="用户 ID">{{ detailUser.id }}</el-descriptions-item>
-            <el-descriptions-item label="昵称">{{ detailUser.username }}</el-descriptions-item>
-            <el-descriptions-item label="设备编号">{{ detailUser.imei }}</el-descriptions-item>
-            <el-descriptions-item label="重注册来源 ID">{{ detailUser.re_registered_from_id || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="登录方式">{{ optionLabel(loginTypeOptions, detailUser.login_type) }}</el-descriptions-item>
-            <el-descriptions-item label="登录账号">{{ detailUser.login_account || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="Google 邮箱">{{ detailUser.google_email || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="Google 唯一码">{{ detailUser.google_third_code || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="Apple 邮箱">{{ detailUser.appid_email || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="Apple 唯一码">{{ detailUser.appid_third_code || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="用户类型">{{ optionLabel(userTypeOptions, detailUser.user_type) }}</el-descriptions-item>
-            <el-descriptions-item label="状态">{{ detailUser.status === 1 ? '正常' : '禁用' }}</el-descriptions-item>
-          </el-descriptions>
-
-          <div class="detail-title">应用、订阅与资产</div>
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="应用">{{ detailUser.app_name || '-' }} {{ detailUser.app_version }}</el-descriptions-item>
-            <el-descriptions-item label="渠道">{{ detailUser.channel_id || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="设备国家">{{ detailUser.device_country || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="设备型号">{{ detailUser.phone_model || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="订阅状态">{{ optionLabel(subscriptionOptions, detailUser.subscription_status) }}</el-descriptions-item>
-            <el-descriptions-item label="VIP 到期">{{ formatDate(detailUser.vip_expires_at) }}</el-descriptions-item>
-            <el-descriptions-item label="积分余额">{{ formatNumber(detailUser.points_balance) }}</el-descriptions-item>
-            <el-descriptions-item label="活跃天数">{{ detailUser.active_days }}</el-descriptions-item>
-            <el-descriptions-item label="日均使用">{{ formatDuration(detailUser.avg_daily_usage_seconds) }}</el-descriptions-item>
-          </el-descriptions>
-
-          <div class="detail-title">付费与成本</div>
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="订单/付费次数">{{ detailUser.order_count }} / {{ detailUser.payment_count }}</el-descriptions-item>
-            <el-descriptions-item label="订阅/单次付费">{{ detailUser.subscription_payment_count }} / {{ detailUser.one_time_payment_count }}</el-descriptions-item>
-            <el-descriptions-item label="订单金额">¥{{ formatMoney(detailUser.order_amount_money) }}</el-descriptions-item>
-            <el-descriptions-item label="实付金额">¥{{ formatMoney(detailUser.actual_amount_money) }}</el-descriptions-item>
-            <el-descriptions-item label="退款金额">¥{{ formatMoney(detailUser.refund_amount_money) }}</el-descriptions-item>
-            <el-descriptions-item label="AI 成本">¥{{ formatMoney(detailUser.ai_cots_money) }}</el-descriptions-item>
-            <el-descriptions-item label="首次付费">{{ formatDate(detailUser.first_paid_at) }}</el-descriptions-item>
-            <el-descriptions-item label="最后付费">{{ formatDate(detailUser.last_paid_at) }}</el-descriptions-item>
-          </el-descriptions>
-
-          <div class="detail-title">时间与登录</div>
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="首次打开">{{ formatDate(detailUser.first_opened_at) }}</el-descriptions-item>
-            <el-descriptions-item label="上次打开">{{ formatDate(detailUser.last_opened_at) }}</el-descriptions-item>
-            <el-descriptions-item label="最近登录">{{ formatDate(detailUser.last_login_at) }}</el-descriptions-item>
-            <el-descriptions-item label="最近登录 IP">{{ detailUser.last_login_ip || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="创建时间">{{ formatDate(detailUser.created_at) }}</el-descriptions-item>
-            <el-descriptions-item label="更新时间">{{ formatDate(detailUser.updated_at) }}</el-descriptions-item>
-          </el-descriptions>
-        </template>
-      </div>
-    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { computed, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  createAppUser,
-  deleteAppUser,
-  getAppUser,
-  getAppUserList,
-  updateAppUser,
-  type AppUser,
-  type AppUserPayload,
+  bindUserPhone, clearUserDevice, extendUserVIP, getUserCenter, grantUserVIP,
+  lookupAppUser, setUserBlacklisted, setUserFrozen, terminateUserVIP, transferUserVIP,
+  type UserCenterDetail,
 } from '@/api/appUser'
 import { useUserStore } from '@/store/user'
 
-const loginTypeOptions = [{ value: 1, label: '游客' }, { value: 2, label: 'Google' }, { value: 3, label: 'App ID' }]
-const userTypeOptions = [{ value: 1, label: '免费用户' }, { value: 2, label: '付费用户' }]
-const subscriptionOptions = [{ value: 1, label: '未订阅' }, { value: 2, label: '订阅中' }, { value: 3, label: '已取消' }]
-
 const userStore = useUserStore()
-const canAdd = computed(() => userStore.hasPermission('system:app-user:add'))
-const canEdit = computed(() => userStore.hasPermission('system:app-user:edit'))
-const canDelete = computed(() => userStore.hasPermission('system:app-user:delete'))
-const loading = ref(false)
-const submitting = ref(false)
-const dialogVisible = ref(false)
-const detailVisible = ref(false)
-const detailLoading = ref(false)
-const detailUser = ref<AppUser | null>(null)
-const updatingIds = ref<number[]>([])
-const formRef = ref<FormInstance>()
-const formTab = ref('account')
-const tableData = ref<AppUser[]>([])
-const page = ref(1)
-const pageSize = ref(20)
-const total = ref(0)
-const query = reactive({ keyword: '', app_name: '', device_country: '', channel_id: '', login_type: '', user_type: '', subscription_status: '', status: '' })
+const canManage = computed(() => userStore.hasPermission('system:app-user:manage'))
+const searchValue = ref('')
+const searching = ref(false)
+const loadingDetail = ref(false)
+const operating = ref(false)
+const detail = ref<UserCenterDetail | null>(null)
+const user = computed(() => detail.value!.user)
+const activeTab = ref('account')
+const vipDialogVisible = ref(false)
+const vipForm = reactive({ level: 1, started_at: '', expires_at: '' })
 
-const defaultForm: AppUserPayload & { id: number } = {
-  id: 0, imei: '', username: '', device_country: '', channel_id: '', app_version: '', app_name: '',
-  first_opened_at: null, last_opened_at: null, login_type: 1, user_type: 1, active_days: 0,
-  avg_daily_usage_seconds: 0, vip_expires_at: null, points_balance: 0, subscription_status: 1,
-  first_order_created_at: null, first_paid_at: null, order_count: 0, payment_count: 0,
-  subscription_payment_count: 0, one_time_payment_count: 0, order_amount_money: 0, actual_amount_money: 0,
-  last_paid_at: null, refund_amount_money: 0, points_money: 0, ai_cots_money: 0, activated: 0,
-  key_behavior_met: 0, payment_met: false, first_payment_met: false, registered: false,
-  attribution_clicked_at: null, phone_model: '', re_registered_from_id: null,
-  appid_email: '', appid_third_code: '', google_email: '', google_third_code: '',
-  status: 1, last_login_at: null, last_login_ip: '', login_account: '',
-}
-const form = reactive({ ...defaultForm })
-const rules: FormRules = {
-  username: [{ required: true, message: '请输入用户昵称', trigger: 'blur' }],
-  imei: [{ required: true, message: '请输入设备编号', trigger: 'blur' }],
-  google_email: [{ type: 'email', message: 'Google 邮箱格式不正确', trigger: 'blur' }],
-  appid_email: [{ type: 'email', message: 'Apple 邮箱格式不正确', trigger: 'blur' }],
-}
-
-async function fetchData() {
-  loading.value = true
+async function handleSearch() {
+  const query = searchValue.value.trim()
+  if (!query) { ElMessage.warning('请输入用户 ID 或邮箱'); return }
+  searching.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
-    for (const [key, value] of Object.entries(query)) if (value !== '') params[key] = typeof value === 'string' ? value.trim() : value
-    const res: any = await getAppUserList(params)
-    tableData.value = res.data.list || []
-    total.value = res.data.total || 0
-  } finally { loading.value = false }
+    const result: any = await lookupAppUser(query)
+    await loadDetail(result.data.id)
+  } finally { searching.value = false }
 }
 
-function handleSearch() { page.value = 1; fetchData() }
-function handleReset() {
-  Object.assign(query, { keyword: '', app_name: '', device_country: '', channel_id: '', login_type: '', user_type: '', subscription_status: '', status: '' })
-  page.value = 1
-  fetchData()
-}
-function handlePageSizeChange() { page.value = 1; fetchData() }
-
-function openCreate() {
-  Object.assign(form, defaultForm)
-  formTab.value = 'account'
-  dialogVisible.value = true
-}
-
-function openEdit(row: AppUser) {
-  Object.assign(form, defaultForm, row, {
-    appid_email: row.appid_email || '', appid_third_code: row.appid_third_code || '',
-    google_email: row.google_email || '', google_third_code: row.google_third_code || '',
-  })
-  formTab.value = 'account'
-  dialogVisible.value = true
-}
-
-async function openDetail(id: number) {
-  detailVisible.value = true
-  detailLoading.value = true
+async function loadDetail(id: number) {
+  loadingDetail.value = true
   try {
-    const res: any = await getAppUser(id)
-    detailUser.value = res.data
-  } finally { detailLoading.value = false }
+    const result: any = await getUserCenter(id)
+    detail.value = result.data
+  } finally { loadingDetail.value = false }
 }
 
-async function handleSubmit() {
-  await formRef.value?.validate()
-  submitting.value = true
+async function runOperation(message: string, operation: () => Promise<unknown>) {
+  operating.value = true
   try {
-    const { id, ...values } = form
-    const payload = {
-      ...values,
-      username: values.username.trim(), imei: values.imei.trim(),
-      appid_email: values.appid_email?.trim() || '', appid_third_code: values.appid_third_code?.trim() || '',
-      google_email: values.google_email?.trim() || '', google_third_code: values.google_third_code?.trim() || '',
-    }
-    if (id) await updateAppUser(id, payload)
-    else await createAppUser(payload)
-    ElMessage.success('客户端用户已保存')
-    dialogVisible.value = false
-    await fetchData()
-  } finally { submitting.value = false }
+    await operation()
+    ElMessage.success(message)
+    await loadDetail(user.value.id)
+  } finally { operating.value = false }
 }
 
-async function handleStatusChange(row: AppUser) {
-  updatingIds.value.push(row.id)
-  try {
-    await updateAppUser(row.id, { status: row.status })
-    ElMessage.success(`用户已${row.status === 1 ? '启用' : '禁用'}`)
-  } catch {
-    row.status = row.status === 1 ? 0 : 1
-  } finally { updatingIds.value = updatingIds.value.filter((id) => id !== row.id) }
+function openVIPDialog() {
+  vipForm.level = user.value.vip_level || 1
+  vipForm.started_at = new Date().toISOString()
+  const expires = new Date(); expires.setDate(expires.getDate() + 30)
+  vipForm.expires_at = expires.toISOString()
+  vipDialogVisible.value = true
 }
 
-async function handleDelete(id: number) {
-  await deleteAppUser(id)
-  ElMessage.success('客户端用户已删除')
-  if (tableData.value.length === 1 && page.value > 1) page.value--
-  await fetchData()
+async function submitVIP() {
+  if (!vipForm.expires_at) { ElMessage.warning('请选择 VIP 结束时间'); return }
+  await runOperation('VIP 已添加', () => grantUserVIP(user.value.id, {
+    level: vipForm.level, started_at: vipForm.started_at || null, expires_at: vipForm.expires_at,
+  }))
+  vipDialogVisible.value = false
 }
 
-function optionLabel(options: Array<{ value: number; label: string }>, value: number) {
-  return options.find((item) => item.value === value)?.label || String(value || '-')
+async function toggleFrozen() {
+  const enabled = !user.value.is_frozen
+  await ElMessageBox.confirm(`确认${enabled ? '冻结' : '解除冻结'}该用户？`, '用户状态确认', { type: 'warning' })
+  await runOperation(enabled ? '用户已冻结' : '用户已解除冻结', () => setUserFrozen(user.value.id, enabled))
 }
-function subscriptionTagType(value: number) { return value === 2 ? 'success' : value === 3 ? 'danger' : 'info' }
+
+async function toggleBlacklisted() {
+  const enabled = !user.value.is_blacklisted
+  await ElMessageBox.confirm(`确认${enabled ? '将用户加入' : '将用户移出'}黑名单？`, '黑名单确认', { type: 'warning' })
+  await runOperation(enabled ? '用户已加入黑名单' : '用户已移出黑名单', () => setUserBlacklisted(user.value.id, enabled))
+}
+
+async function bindPhone() {
+  const result = await ElMessageBox.prompt('请输入要绑定的手机号', '绑定手机号', { inputValue: user.value.phone || '', inputPattern: /^\+?[0-9 -]{5,32}$/, inputErrorMessage: '手机号格式不正确' })
+  await runOperation('手机号已绑定', () => bindUserPhone(user.value.id, result.value.trim()))
+}
+
+async function extendVIP() {
+  const result = await ElMessageBox.prompt('请输入延长天数', '延长会员', { inputValue: '30', inputPattern: /^(?:[1-9]\d{0,2}|[1-2]\d{3}|3[0-5]\d{2}|36[0-4]\d|3650)$/, inputErrorMessage: '请输入 1 到 3650 天' })
+  await runOperation('会员期限已延长', () => extendUserVIP(user.value.id, Number(result.value)))
+}
+
+async function transferVIP() {
+  const result = await ElMessageBox.prompt('请输入目标用户 ID', '转移会员', { inputPattern: /^[1-9]\d*$/, inputErrorMessage: '请输入正确的用户 ID' })
+  await ElMessageBox.confirm(`会员权益将转移到用户 ${result.value}，原用户会员会终止。是否继续？`, '转移确认', { type: 'warning' })
+  await runOperation('会员已转移', () => transferUserVIP(user.value.id, Number(result.value)))
+}
+
+async function terminateVIP() {
+  await ElMessageBox.confirm('确认立即终止该用户会员？', '终止会员', { type: 'warning' })
+  await runOperation('会员已终止', () => terminateUserVIP(user.value.id))
+}
+
+async function clearDevice() {
+  await ElMessageBox.confirm('将清除 IMEI、设备型号、国家、最近登录 IP 和归因设备标识，并使当前会话失效。是否继续？', '清除设备信息', { type: 'warning' })
+  await runOperation('设备信息已清除', () => clearUserDevice(user.value.id))
+}
+
+function loginTypeLabel(value: number) { return value === 2 ? 'Google' : value === 3 ? 'Apple' : '游客' }
 function formatNumber(value: number) { return new Intl.NumberFormat('zh-CN').format(value || 0) }
-function formatMoney(value: number) { return Number(value || 0).toFixed(2) }
-function formatDuration(seconds: number) {
-  if (!seconds) return '0秒'
-  if (seconds < 60) return `${seconds}秒`
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  return hours ? `${hours}小时${minutes}分` : `${minutes}分钟`
-}
 function formatDate(value?: string | null) {
   if (!value) return '-'
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false })
 }
-
-onMounted(fetchData)
 </script>
 
 <style scoped>
-.page-wrap { min-width: 0; }
-.page-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.page-title { color: #303133; font-size: 17px; font-weight: 600; }
-.page-subtitle { margin-top: 4px; color: #909399; font-size: 12px; }
-.filters { display: grid; grid-template-columns: minmax(230px, 1.5fr) repeat(3, minmax(130px, 1fr)) repeat(4, 125px) auto auto; gap: 10px; margin-bottom: 16px; }
-.primary-text { color: #303133; font-weight: 600; }
-.secondary-text { margin-top: 3px; color: #909399; font-size: 12px; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.tag-row, .behavior-tags { display: flex; flex-wrap: wrap; gap: 5px; }
-.subscription-tag { margin-top: 6px; }
-.metric-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; line-height: 1.75; }
-.metric-line span { color: #909399; font-size: 12px; }
-.metric-line strong { color: #303133; font-size: 13px; font-variant-numeric: tabular-nums; }
-.pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; overflow-x: auto; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; padding-top: 8px; }
-.form-grid :deep(.el-input-number) { width: 100%; }
-.behavior-form { align-items: center; }
-.detail-body { min-height: 240px; padding: 0 4px 30px; }
-.detail-title { margin: 22px 0 10px; color: #303133; font-weight: 600; }
-.detail-title:first-child { margin-top: 0; }
-@media (max-width: 1200px) { .filters { grid-template-columns: repeat(4, minmax(130px, 1fr)); } }
+.user-center { min-width: 0; }
+.header { display: flex; align-items: center; justify-content: space-between; }
+.title { color: #303133; font-size: 18px; font-weight: 600; }
+.subtitle { margin-top: 5px; color: #909399; font-size: 12px; }
+.search-form { display: flex; align-items: center; margin-bottom: 18px; }
+.search-form :deep(.el-form-item:first-child) { flex: 1; max-width: 720px; }
+.search-form :deep(.el-form-item:first-child .el-form-item__content), .search-form :deep(.el-input) { width: 100%; }
+.summary { max-width: 1080px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.actions .el-button { margin-left: 0; }
+.detail-tabs { margin-top: 22px; }
+.points-summary { display: flex; gap: 10px; margin-bottom: 12px; }
+.income { color: #67c23a; font-weight: 600; }
+.expense { color: #f56c6c; font-weight: 600; }
 @media (max-width: 700px) {
-  .page-header { align-items: stretch; flex-direction: column; }
-  .filters, .form-grid { grid-template-columns: 1fr; }
-  .page-wrap :deep(.el-card__header), .page-wrap :deep(.el-card__body) { padding: 14px; }
+  .search-form { align-items: stretch; flex-direction: column; }
+  .search-form :deep(.el-form-item) { width: 100%; margin-right: 0; }
+  .summary :deep(.el-descriptions__body) { overflow-x: auto; }
 }
 </style>

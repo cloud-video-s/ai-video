@@ -19,6 +19,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodPost, Path: "/api/auth/logout", Handler: "api.Auth.Logout"},
 		{Method: http.MethodGet, Path: "/api/ob_delay", Handler: "api.DelayConfig.All"},
 		{Method: http.MethodGet, Path: "/api/banners/list", Handler: "api.Banner.List"},
+		{Method: http.MethodGet, Path: "/api/templates/recommend", Handler: "api.Template.Recommend"},
 		{Method: http.MethodPost, Path: "/api/uploads/images/batches", Handler: "upload.CreateBatch"},
 		{Method: http.MethodPut, Path: "/api/uploads/images/:upload_id/chunks/:index", Handler: "upload.PutChunk"},
 	}
@@ -40,16 +41,16 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		t.Fatal("public login route unexpectedly requires bearer auth")
 	}
 	assertCommonHeaderParametersAbsent(t, login)
-	assertParameter(t, login, "imei", "json", true)
+	assertParameter(t, login, "device_code", "json", true)
 	assertParameterAbsent(t, login, "Authorization")
 	requestBody := login["requestBody"].(map[string]any)
 	content := requestBody["content"].(map[string]any)
 	schema := content["application/json"].(map[string]any)["schema"].(map[string]any)
 	properties := schema["properties"].(map[string]any)
-	if properties["imei"] == nil || properties["first_opened_at"] == nil {
+	if properties["device_code"] == nil || properties["first_opened_at"] == nil {
 		t.Fatalf("login-specific DTO schema is incomplete: %#v", properties)
 	}
-	if properties["login_type"] != nil || properties["app_package"] != nil || properties["channel_id"] != nil {
+	if properties["login_type"] != nil || properties["app_package"] != nil || properties["channel_id"] != nil || properties["client_country"] != nil {
 		t.Fatalf("common context fields must not be repeated in login DTO: %#v", properties)
 	}
 	banner := document.Paths["/api/banners/list"]["get"].(map[string]any)
@@ -103,6 +104,15 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	if len(delayData) != 12 || delayData[0].Key != "OBPaymentCloseDely" || delayData[0].Value != "5" {
 		t.Fatalf("delay response example is incomplete: %#v", delayExample)
 	}
+	recommend := document.Paths["/api/templates/recommend"]["get"].(map[string]any)
+	assertResponseParameter(t, recommend, "data[].id", true)
+	assertResponseParameter(t, recommend, "data[].name", true)
+	assertResponseParameterAbsent(t, recommend, "data[].display_config_id")
+	assertResponseParameterAbsent(t, recommend, "data[].position_key")
+	assertResponseParameterAbsent(t, recommend, "data[].display_sort")
+	if recommend["description"] != operationDescriptions["GET /api/templates/recommend"] {
+		t.Fatalf("recommend documentation was not regenerated: %#v", recommend["description"])
+	}
 	if _, err := json.Marshal(document); err != nil {
 		t.Fatalf("marshal document: %v", err)
 	}
@@ -122,6 +132,16 @@ func assertResponseParameter(t *testing.T, operation map[string]any, name string
 		return
 	}
 	t.Fatalf("response parameter %q is missing: %#v", name, parameters)
+}
+
+func assertResponseParameterAbsent(t *testing.T, operation map[string]any, name string) {
+	t.Helper()
+	parameters, _ := operation["x-response-parameters"].([]any)
+	for _, raw := range parameters {
+		if raw.(map[string]any)["name"] == name {
+			t.Fatalf("response parameter %q must be absent: %#v", name, parameters)
+		}
+	}
 }
 
 func assertParameter(t *testing.T, operation map[string]any, name, location string, required bool) {

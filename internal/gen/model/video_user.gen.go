@@ -14,6 +14,11 @@ const TableNameVideoUser = "video_user"
 
 // VideoUser mapped from table <video_user>
 type VideoUser struct {
+	Phone                    string         `gorm:"column:phone;type:varchar(32);not null;default:'';index:idx_video_user_phone,priority:1;comment:bound phone number" json:"phone"`
+	VIPLevel                 uint32         `gorm:"column:vip_level;type:int unsigned;not null;default:0;index:idx_video_user_vip_level,priority:1;comment:VIP level, 0 means no VIP" json:"vip_level"`
+	VIPStartedAt             *time.Time     `gorm:"column:vip_started_at;type:datetime(3);comment:VIP entitlement start time" json:"vip_started_at"`
+	IsFrozen                 bool           `gorm:"column:is_frozen;type:tinyint(1);not null;default:0;index:idx_video_user_is_frozen,priority:1;comment:whether login is frozen" json:"is_frozen"`
+	IsBlacklisted            bool           `gorm:"column:is_blacklisted;type:tinyint(1);not null;default:0;index:idx_video_user_is_blacklisted,priority:1;comment:whether user is blacklisted" json:"is_blacklisted"`
 	ID                       uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
 	DeviceCode               string         `gorm:"column:device_code;type:varchar(128);not null;index:idx_video_user_login_account,priority:1;index:uidx_video_user_phone_registration,priority:1;comment:设备编号" json:"device_code"` // 设备编号
 	Username                 string         `gorm:"column:username;type:varchar(128);index:idx_video_user_username,priority:1;comment:昵称" json:"username"`                                                                           // 昵称

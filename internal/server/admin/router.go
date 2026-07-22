@@ -96,9 +96,19 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		// Client app users
 		auth.GET("/app-users", appUserHandler.List)
 		auth.POST("/app-users", appUserHandler.Create)
+		auth.GET("/app-users/lookup", appUserHandler.Lookup)
 		auth.GET("/app-users/:id", appUserHandler.GetByID)
+		auth.GET("/app-users/:id/center", appUserHandler.GetCenter)
 		auth.PUT("/app-users/:id", appUserHandler.Update)
 		auth.DELETE("/app-users/:id", appUserHandler.Delete)
+		auth.PATCH("/app-users/:id/frozen", appUserHandler.SetFrozen)
+		auth.PATCH("/app-users/:id/blacklisted", appUserHandler.SetBlacklisted)
+		auth.PUT("/app-users/:id/phone", appUserHandler.BindPhone)
+		auth.POST("/app-users/:id/vip", appUserHandler.GrantVIP)
+		auth.POST("/app-users/:id/vip/extend", appUserHandler.ExtendVIP)
+		auth.POST("/app-users/:id/vip/transfer", appUserHandler.TransferVIP)
+		auth.DELETE("/app-users/:id/vip", appUserHandler.TerminateVIP)
+		auth.DELETE("/app-users/:id/device", appUserHandler.ClearDevice)
 
 		// User attribution
 		auth.GET("/user-attributions", attributionHandler.List)

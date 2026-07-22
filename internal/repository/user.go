@@ -2,8 +2,9 @@ package repository
 
 import (
 	"context"
+	"strconv"
+	"strings"
 
-	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
@@ -27,6 +28,8 @@ type AppUserListFilter struct {
 	Registered         *bool
 	PaymentMet         *bool
 	Status             *int32
+	IsFrozen           *bool
+	IsBlacklisted      *bool
 }
 
 func (d *AppUserRepo) Create(ctx context.Context, user *model.VideoUser) error {
@@ -36,6 +39,28 @@ func (d *AppUserRepo) Create(ctx context.Context, user *model.VideoUser) error {
 func (d *AppUserRepo) GetByID(ctx context.Context, id uint64) (*model.VideoUser, error) {
 	var user model.VideoUser
 	if err := dbFrom(ctx).First(&user, id).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// GetByLookup resolves an exact user ID, account/email or an email stored in
+// the normalized identity table. It keeps legacy direct-email rows searchable.
+func (d *AppUserRepo) GetByLookup(ctx context.Context, value string) (*model.VideoUser, error) {
+	value = strings.TrimSpace(value)
+	var user model.VideoUser
+	db := dbFrom(ctx)
+	if id, err := strconv.ParseUint(value, 10, 64); err == nil && id != 0 {
+		if err := db.First(&user, id).Error; err != nil {
+			return nil, err
+		}
+		return &user, nil
+	}
+	err := db.Where(`login_account = ? OR LOWER(email) = LOWER(?) OR EXISTS (
+		SELECT 1 FROM video_user_identity identity
+		WHERE identity.user_id = video_user.id AND LOWER(identity.email) = LOWER(?)
+	)`, value, value, value).First(&user).Error
+	if err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -61,13 +86,9 @@ func (d *AppUserRepo) GetByDeviceCode(ctx context.Context, deviceCode string, lo
 	return &user, nil
 }
 
-func (d *AppUserRepo) GetByProviderSubject(ctx context.Context, provider, subject string, lock bool) (*model.VideoUser, error) {
-	loginType := domain.AppUserLoginGoogle
-	if provider == domain.IdentityProviderApple {
-		loginType = domain.AppUserLoginAppID
-	}
+func (d *AppUserRepo) GetByProviderSubject(ctx context.Context, thirdCode string, lock bool) (*model.VideoUser, error) {
 	var user model.VideoUser
-	db := dbFrom(ctx).Where("third_code = ? AND login_type = ?", subject, loginType)
+	db := dbFrom(ctx).Where("third_code = ?", thirdCode)
 	if lock {
 		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
@@ -79,7 +100,9 @@ func (d *AppUserRepo) GetByProviderSubject(ctx context.Context, provider, subjec
 
 func (d *AppUserRepo) GetAuthState(ctx context.Context, id uint64) (string, int64, error) {
 	var user model.VideoUser
-	if err := dbFrom(ctx).Select("imei", "token_version").Where("id = ? AND status = 1", id).First(&user).Error; err != nil {
+	if err := dbFrom(ctx).Select("imei", "token_version").
+		Where("id = ? AND status = 1 AND is_frozen = ? AND is_blacklisted = ?", id, false, false).
+		First(&user).Error; err != nil {
 		return "", 0, err
 	}
 	return user.IMEI, user.TokenVersion, nil
@@ -147,10 +170,23 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 		if filter.Status != nil {
 			db = db.Where("status = ?", *filter.Status)
 		}
+		if filter.IsFrozen != nil {
+			db = db.Where("is_frozen = ?", *filter.IsFrozen)
+		}
+		if filter.IsBlacklisted != nil {
+			db = db.Where("is_blacklisted = ?", *filter.IsBlacklisted)
+		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			db = db.Where("username LIKE ? OR login_account LIKE ? OR imei LIKE ? OR email LIKE ? OR third_code LIKE ? OR app_name LIKE ?",
-				keyword, keyword, keyword, keyword, keyword, keyword)
+			condition := `username LIKE ? OR login_account LIKE ? OR imei LIKE ? OR email LIKE ? OR phone LIKE ? OR third_code LIKE ? OR app_name LIKE ? OR EXISTS (
+				SELECT 1 FROM video_user_identity identity WHERE identity.user_id = video_user.id AND identity.email LIKE ?
+			)`
+			args := []interface{}{keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword}
+			if id, err := strconv.ParseUint(strings.TrimSpace(filter.Keyword), 10, 64); err == nil {
+				condition = "video_user.id = ? OR " + condition
+				args = append([]interface{}{id}, args...)
+			}
+			db = db.Where(condition, args...)
 		}
 	}
 

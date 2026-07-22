@@ -47,13 +47,10 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.GET("/health", healthHandler.Health)
 
 	rg.POST("/auth/login", authHandler.Login)
-	rg.POST("/auth/re-register", authHandler.ReRegister)
-	rg.POST("/auth/google", authHandler.GoogleLogin)
-	rg.POST("/auth/apple", authHandler.AppleLogin)
 	authenticated := rg.Group("", middleware.ApiAuth(repository.NewAppUserRepo()))
 	{
 		authenticated.GET("/ob_delay", delayConfigHandler.All)
-
+		authenticated.POST("/third_binding", authHandler.ThirdBinding)
 		uploadHandler.RegisterRoutes(authenticated.Group("/uploads"))
 		auth := authenticated.Group("/auth")
 		{
@@ -65,8 +62,6 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 			users.GET("/me", authHandler.Profile)
 			users.PUT("/me/country", authHandler.UpdateCountry)
 			users.GET("/me/identities", authHandler.ListIdentities)
-			users.POST("/me/identities/google", authHandler.BindGoogle)
-			users.POST("/me/identities/apple", authHandler.BindApple)
 			users.DELETE("/me/identities/:provider", authHandler.UnbindIdentity)
 		}
 

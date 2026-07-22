@@ -117,6 +117,8 @@ type ListAppUserRequest struct {
 	Registered         *bool   `form:"registered"`
 	PaymentMet         *bool   `form:"payment_met"`
 	Status             *int32  `form:"status" binding:"omitempty,oneof=0 1"`
+	IsFrozen           *bool   `form:"is_frozen"`
+	IsBlacklisted      *bool   `form:"is_blacklisted"`
 }
 
 func (s *AppUserService) Create(ctx context.Context, req *CreateAppUserRequest) (*model.VideoUser, error) {
@@ -271,5 +273,6 @@ func (s *AppUserService) List(ctx context.Context, page, pageSize int, req *List
 		AppVersion: req.AppVersion, AppName: req.AppName, LoginType: req.LoginType,
 		UserType: req.UserType, SubscriptionStatus: req.SubscriptionStatus,
 		Activated: req.Activated, Registered: req.Registered, PaymentMet: req.PaymentMet, Status: req.Status,
+		IsFrozen: req.IsFrozen, IsBlacklisted: req.IsBlacklisted,
 	})
 }

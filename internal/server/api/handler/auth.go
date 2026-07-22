@@ -37,30 +37,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	response.OK(c, result)
 }
 
-func (h *AuthHandler) ReRegister(c *gin.Context) {
-	var req apiservice.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
-		return
-	}
-	result, err := h.svc.ReRegister(c, &req, c.ClientIP(), c.Request.UserAgent())
-	if err != nil {
-		response.Fail(c, errcode.ErrServer, err.Error())
-		return
-	}
-	response.OK(c, result)
-}
-
-func (h *AuthHandler) GoogleLogin(c *gin.Context) { h.thirdPartyLogin(c, "google") }
-func (h *AuthHandler) AppleLogin(c *gin.Context)  { h.thirdPartyLogin(c, "apple") }
-
-func (h *AuthHandler) thirdPartyLogin(c *gin.Context, provider string) {
+func (h *AuthHandler) ThirdBinding(c *gin.Context) {
 	var req apiservice.ThirdPartyLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	result, err := h.svc.ThirdPartyLogin(c, provider, &req, c.ClientIP(), c.Request.UserAgent())
+	if req.ThirdCode == "" && req.IDToken == "" {
+		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, "参数异常")
+	}
+	result, err := h.svc.ThirdPartyLogin(c, &req, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		h.handleIdentityError(c, err)
 		return
@@ -75,23 +61,6 @@ func (h *AuthHandler) ListIdentities(c *gin.Context) {
 		return
 	}
 	response.OK(c, list)
-}
-
-func (h *AuthHandler) BindGoogle(c *gin.Context) { h.bindIdentity(c, "google") }
-func (h *AuthHandler) BindApple(c *gin.Context)  { h.bindIdentity(c, "apple") }
-
-func (h *AuthHandler) bindIdentity(c *gin.Context, provider string) {
-	var req apiservice.BindIdentityRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, "参数错误: "+err.Error())
-		return
-	}
-	item, err := h.svc.BindIdentity(c.Request.Context(), middleware.GetAPIUserID(c), provider, &req)
-	if err != nil {
-		h.handleIdentityError(c, err)
-		return
-	}
-	response.OK(c, item)
 }
 
 func (h *AuthHandler) UnbindIdentity(c *gin.Context) {

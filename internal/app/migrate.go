@@ -13,6 +13,9 @@ func AutoMigrate() error {
 	if err := PrepareVideoUserColumns(config.DB); err != nil {
 		return err
 	}
+	if err := MigrateUserCenterColumns(config.DB); err != nil {
+		return err
+	}
 	if err := NormalizeUserAttributionColumns(config.DB); err != nil {
 		return err
 	}

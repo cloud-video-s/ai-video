@@ -64,6 +64,11 @@ type AuthResponse struct {
 	TokenVersion int64  `json:"token_version"`
 }
 
+type ThirdAuthResponse struct {
+	AuthResponse
+	Status int `json:"status"`
+}
+
 type UserResponse struct {
 	ID                 uint64 `json:"id"`
 	Email              string `json:"email"`
@@ -123,7 +128,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 			return errors.New("账号异常，请稍后重试")
 		}
 		if latest != nil {
-			if latest.Status != 1 {
+			if latest.Status != 1 || latest.IsFrozen || latest.IsBlacklisted {
 				return errors.New("当前设备账号已停用")
 			}
 			updates := baseTrackingUpdates(1, &req.AccountBaseRequest, clientIP, now)
@@ -346,15 +351,16 @@ func newGuestUsername() string {
 	return fmt.Sprintf("guest_%d", time.Now().UnixNano())
 }
 
-func ThirdPartyLoginBinding(provider string, email, subject, clientIP string, now time.Time) map[string]interface{} {
+func ThirdPartyLoginBinding(provider string, email, thirdCode, clientIP, serverCountry string, now time.Time) map[string]interface{} {
 	updates := map[string]interface{}{
-		"login_type":    providerLoginType(provider),
-		"login_account": email,
-		"registered":    true,
-		"last_login_ip": clientIP,
-		"last_login_at": now,
-		"third_code":    subject,
-		"email":         email,
+		"login_type":     providerLoginType(provider),
+		"login_account":  email,
+		"registered":     true,
+		"last_login_ip":  clientIP,
+		"last_login_at":  now,
+		"third_code":     thirdCode,
+		"email":          email,
+		"server_country": serverCountry,
 	}
 	return updates
 }

@@ -12,14 +12,18 @@ ENV VITE_API_BASE=${VITE_API_BASE}
 
 RUN npm run build
 
-FROM docker.io/library/nginx:1.28-alpine
+FROM docker.io/library/nginx:1.28-alpine-slim
 
-ENV BACKEND_HOST=ai-video-go \
+ENV BACKEND_HOST=host.containers.internal \
     BACKEND_PORT=8080 \
     NGINX_ENVSUBST_FILTER="^(BACKEND_HOST|BACKEND_PORT)$"
 
 COPY deploy/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=builder /app/dist /usr/share/nginx/html
+
+RUN rm -rf /usr/share/nginx/html/50x.html \
+    /etc/nginx/conf.d/default.conf \
+    /var/cache/nginx/*
 
 EXPOSE 80
 

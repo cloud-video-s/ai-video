@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -10,8 +11,60 @@ var deprecatedVideoUserColumns = []string{
 	"phone_code",
 	"ip_country",
 	"registration_no",
-	"email",
 	"email_verified",
+}
+
+type videoUserCenterColumns struct {
+	ID            uint64     `gorm:"column:id;primaryKey"`
+	Email         string     `gorm:"column:email;type:varchar(255);not null;default:'';index:idx_video_user_email"`
+	Phone         string     `gorm:"column:phone;type:varchar(32);not null;default:'';index:idx_video_user_phone"`
+	VIPLevel      uint32     `gorm:"column:vip_level;not null;default:0;index:idx_video_user_vip_level"`
+	VIPStartedAt  *time.Time `gorm:"column:vip_started_at;type:datetime(3)"`
+	IsFrozen      bool       `gorm:"column:is_frozen;type:tinyint(1);not null;default:0;index:idx_video_user_is_frozen"`
+	IsBlacklisted bool       `gorm:"column:is_blacklisted;type:tinyint(1);not null;default:0;index:idx_video_user_is_blacklisted"`
+}
+
+func (videoUserCenterColumns) TableName() string { return "video_user" }
+
+// MigrateUserCenterColumns incrementally adds user-center fields without
+// rebuilding the table or dropping existing user data.
+func MigrateUserCenterColumns(db *gorm.DB) error {
+	if db == nil || !db.Migrator().HasTable("video_user") {
+		return nil
+	}
+	if err := db.AutoMigrate(&videoUserCenterColumns{}); err != nil {
+		return fmt.Errorf("migrate video user center columns: %w", err)
+	}
+	if db.Migrator().HasColumn("video_user", "google_email") {
+		if err := db.Exec(`UPDATE video_user SET email = google_email
+			WHERE (email IS NULL OR email = '') AND google_email IS NOT NULL AND google_email <> ''`).Error; err != nil {
+			return fmt.Errorf("backfill Google user emails: %w", err)
+		}
+	}
+	if db.Migrator().HasColumn("video_user", "appid_email") {
+		if err := db.Exec(`UPDATE video_user SET email = appid_email
+			WHERE (email IS NULL OR email = '') AND appid_email IS NOT NULL AND appid_email <> ''`).Error; err != nil {
+			return fmt.Errorf("backfill Apple user emails: %w", err)
+		}
+	}
+	if db.Migrator().HasColumn("video_user", "status") {
+		if err := db.Exec(`UPDATE video_user SET is_frozen = 1 WHERE status = 0 AND is_frozen = 0`).Error; err != nil {
+			return fmt.Errorf("backfill frozen video users: %w", err)
+		}
+	}
+	if db.Migrator().HasColumn("video_user", "vip_expires_at") &&
+		db.Migrator().HasColumn("video_user", "user_type") &&
+		db.Migrator().HasColumn("video_user", "subscription_status") {
+		expiryCondition := "vip_expires_at > CURRENT_TIMESTAMP"
+		if db.Dialector.Name() == "sqlite" {
+			expiryCondition = "datetime(vip_expires_at) > CURRENT_TIMESTAMP"
+		}
+		if err := db.Exec(`UPDATE video_user SET vip_level = 1, user_type = 2, subscription_status = 2
+			WHERE vip_expires_at IS NOT NULL AND ` + expiryCondition + ` AND vip_level = 0`).Error; err != nil {
+			return fmt.Errorf("backfill legacy VIP users: %w", err)
+		}
+	}
+	return nil
 }
 
 // PrepareVideoUserColumns preserves the legacy device identifier before the

@@ -1,10 +1,13 @@
 package service
 
 import (
+	"ai-video/internal/config"
 	"ai-video/internal/middleware"
+	"ai-video/internal/pkg/utils"
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -18,13 +21,13 @@ import (
 )
 
 type ThirdPartyLoginRequest struct {
+	ThirdType     string `json:"third_type" binding:"required,max=50"`
+	ThirdCode     string `json:"third_code" binding:"omitempty,max=100"`
+	Email         string `json:"email" binding:"omitempty,max=50"`
 	IDToken       string `json:"id_token" binding:"omitempty,max=16384"`
 	IdentityToken string `json:"identity_token" binding:"omitempty,max=16384"`
 	Nonce         string `json:"nonce" binding:"omitempty,max=255"`
-	IMEI          string `json:"imei" binding:"required,max=128"`
-	DisplayName   string `json:"display_name" binding:"omitempty,max=128"`
-	GivenName     string `json:"given_name" binding:"omitempty,max=128"`
-	FamilyName    string `json:"family_name" binding:"omitempty,max=128"`
+	ForceNew      bool   `json:"force_new"`
 	AccountBaseRequest
 }
 
@@ -39,177 +42,92 @@ type BindIdentityRequest struct {
 
 var ErrIdentityProviderNotConfigured = errors.New("third-party identity provider is not configured")
 
-func (s *AuthService) ThirdPartyLogin(
-	ctx *gin.Context, provider string, req *ThirdPartyLoginRequest,
-	clientIP, userAgent string,
-) (*AuthResponse, error) {
-	provider, err := normalizeIdentityProvider(provider)
+func (s *AuthService) ThirdPartyLogin(ctx *gin.Context, req *ThirdPartyLoginRequest, clientIP, userAgent string) (*ThirdAuthResponse, error) {
+	provider, err := normalizeIdentityProvider(req.ThirdType)
 	if err != nil {
 		return nil, err
 	}
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
-	req.IMEI = strings.TrimSpace(req.IMEI)
-	identity, err := s.verifyIdentity(ctx, provider, firstToken(req.IDToken, req.IdentityToken), req.Nonce)
-	if err != nil {
-		return nil, err
+	if req.ThirdCode == "" {
+		identity, err := s.verifyIdentity(ctx, provider, firstToken(req.IDToken, req.IdentityToken), req.Nonce)
+		if err != nil {
+			return nil, err
+		}
+		if err := validateIdentityUserColumns(identity); err != nil {
+			return nil, err
+		}
+		req.ThirdCode = identity.Subject
+		req.Email = identity.Email
+	} else {
+		if req.ThirdCode == "" || req.Email == "" {
+			return nil, ErrIdentityProviderNotConfigured
+		}
 	}
-	if err := validateIdentityUserColumns(identity); err != nil {
-		return nil, err
-	}
-	mergeIdentityNames(identity, req.DisplayName, req.GivenName, req.FamilyName)
-	return s.loginVerifiedIdentity(ctx, provider, identity, req, clientIP, userAgent)
+	return s.loginVerifiedIdentity(ctx, req, clientIP, userAgent)
 }
 
-func (s *AuthService) loginVerifiedIdentity(
-	ctx *gin.Context, provider string, identity *oidc.Identity, req *ThirdPartyLoginRequest,
-	clientIP, userAgent string,
-) (*AuthResponse, error) {
+func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLoginRequest, clientIP, userAgent string) (*ThirdAuthResponse, error) {
 	now := time.Now()
 	var user *model.VideoUser
 	apiUserID := middleware.GetAPIUserID(ctx)
-	err := repository.Transaction(ctx, func(ctx context.Context) error {
-		var err error
-		user, err = s.userRepo.GetByProviderSubject(ctx, provider, identity.Subject, true)
-		identityExists := err == nil && user != nil
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			user, err = nil, nil
-		}
+	serverCountry := utils.ClientIP(ctx)
+	var err error
+	user, err = s.userRepo.GetByProviderSubject(ctx, req.ThirdCode, true)
+	if errors.Is(err, gorm.ErrRecordNotFound) || user == nil {
+		user, err = s.userRepo.GetByID(ctx, apiUserID)
 		if err != nil {
-			return err
+			return nil, errors.New("user not found")
 		}
+		firstOpenedAt := req.FirstOpenedAt
+		if firstOpenedAt == nil {
+			firstOpenedAt = &now
+		}
+		lastOpenedAt := req.LastOpenedAt
+		if lastOpenedAt == nil {
+			lastOpenedAt = &now
+		}
+		user.Email = req.Email
+		user.ThirdCode = req.ThirdCode
+		user.LoginType = providerLoginType(req.ThirdType)
+		user.LastLoginIP = clientIP
+		user.LastLoginAt = &now
+		user.ServerCountry = serverCountry
+		if err := s.userRepo.Update(ctx, user.ID, ThirdPartyLoginBinding(req.ThirdType, req.Email, req.ThirdCode, clientIP, serverCountry, now)); err != nil {
+			log.Printf("failed to update third party login info: %v", err)
+			return nil, errors.New("failed to update third party login info")
+		}
+	}
 
-		if user == nil {
-			user, err = s.userRepo.GetByID(ctx, apiUserID)
-			if err != nil {
-				return err
-			}
-			firstOpenedAt := req.FirstOpenedAt
-			if firstOpenedAt == nil {
-				firstOpenedAt = &now
-			}
-			lastOpenedAt := req.LastOpenedAt
-			if lastOpenedAt == nil {
-				lastOpenedAt = &now
-			}
-			user.Email = identity.Email
-			user.ThirdCode = identity.Subject
-			user.LoginType = providerLoginType(provider)
-			user.LastLoginIP = clientIP
-			user.LastLoginAt = &now
-			if err := s.userRepo.Update(ctx, user.ID, ThirdPartyLoginBinding(provider, identity.Email, identity.Subject, clientIP, now)); err != nil {
-				return err
+	if user.ID != apiUserID {
+		if user.Status != 1 || user.IsFrozen || user.IsBlacklisted {
+			return nil, errors.New("当前邮箱绑定账号已停用，暂时无法使用")
+		}
+		if req.ForceNew {
+			if err := s.userRepo.Update(ctx, user.ID, ThirdPartyLoginBinding(req.ThirdType, req.Email, req.ThirdCode, clientIP, serverCountry, now)); err != nil {
+				config.Log.Errorf("")
+				return nil, errors.New("failed to update third party login info")
 			}
 		} else {
-			if apiUserID != user.ID {
-				return errors.New("当前邮箱已绑定其他用户，是否确认登录？")
-			}
-			if user.Status != 1 {
-				return errors.New("当前账号已停用")
-			}
-			if subject := directProviderSubject(user, provider); subject != "" && subject != identity.Subject {
-				return errors.New("当前设备已绑定另一个同类型第三方账号")
-			}
-			updates := baseTrackingUpdates(int(providerLoginType(provider)), &req.AccountBaseRequest, clientIP, now)
-			updates["login_type"] = providerLoginType(provider)
-			updates["login_account"] = identityLoginAccount(provider, identity)
-			updates["registered"] = true
-			applyIdentityUserProfile(updates, provider, identity, user.Username)
-			if err := s.userRepo.Update(ctx, user.ID, updates); err != nil {
-				return err
-			}
+			return &ThirdAuthResponse{
+				Status: 1,
+			}, errors.New("当前设备已绑定另一个同类型第三方账号，是否确认登录？")
 		}
-
-		if !identityExists {
-			association := &model.VideoUserIdentity{UserID: user.ID, Provider: provider, ProviderSubject: identity.Subject}
-			applyIdentityRecord(association, identity, now)
-			if err := s.identityRepo.Create(ctx, association); err != nil {
-				return err
-			}
-		}
-		if err := s.attributionRepo.UpsertDevice(ctx, user.ID, attributionTrackingUpdates(&req.AccountBaseRequest, clientIP, userAgent)); err != nil {
-			return err
-		}
-		user, err = s.prepareLoginSession(ctx, user.ID)
-		return err
-	})
+	}
+	user, err = s.prepareLoginSession(ctx, user.ID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, errors.New("第三方账号已关联，请重试登录")
-		}
 		return nil, err
 	}
-	return issueToken(user, providerLoginType(provider))
+	authResponse, err := issueToken(user, providerLoginType(req.ThirdType))
+	if err != nil {
+		return nil, err
+	}
+	return &ThirdAuthResponse{
+		AuthResponse: *authResponse,
+	}, err
 }
 
 func (s *AuthService) ListIdentities(ctx context.Context, userID uint64) ([]model.VideoUserIdentity, error) {
 	return s.identityRepo.ListByUser(ctx, userID)
-}
-
-func (s *AuthService) BindIdentity(ctx context.Context, userID uint64, provider string, req *BindIdentityRequest) (*model.VideoUserIdentity, error) {
-	provider, err := normalizeIdentityProvider(provider)
-	if err != nil {
-		return nil, err
-	}
-	identity, err := s.verifyIdentity(ctx, provider, firstToken(req.IDToken, req.IdentityToken), req.Nonce)
-	if err != nil {
-		return nil, err
-	}
-	if err := validateIdentityUserColumns(identity); err != nil {
-		return nil, err
-	}
-	mergeIdentityNames(identity, req.DisplayName, req.GivenName, req.FamilyName)
-	now := time.Now()
-	var result *model.VideoUserIdentity
-	err = repository.Transaction(ctx, func(ctx context.Context) error {
-		user, err := s.userRepo.GetByIDForUpdate(ctx, userID)
-		if err != nil {
-			return err
-		}
-		linked, err := s.identityRepo.GetByProviderSubject(ctx, provider, identity.Subject, true)
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-		if linked != nil && linked.UserID != userID {
-			return errors.New("该第三方账号已关联其他用户")
-		}
-		direct, directErr := s.userRepo.GetByProviderSubject(ctx, provider, identity.Subject, true)
-		if directErr != nil && !errors.Is(directErr, gorm.ErrRecordNotFound) {
-			return directErr
-		}
-		if direct != nil && direct.ID != userID {
-			return errors.New("该第三方账号已关联其他用户")
-		}
-		if subject := directProviderSubject(user, provider); subject != "" && subject != identity.Subject {
-			return errors.New("当前用户已绑定另一个同类型第三方账号")
-		}
-		current, err := s.identityRepo.GetByUserProvider(ctx, userID, provider, true)
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-		if current != nil && current.ProviderSubject != identity.Subject {
-			return errors.New("当前用户已绑定另一个同类型第三方账号")
-		}
-		if current == nil {
-			current = &model.VideoUserIdentity{UserID: userID, Provider: provider, ProviderSubject: identity.Subject}
-			applyIdentityRecord(current, identity, now)
-			if err := s.identityRepo.Create(ctx, current); err != nil {
-				return err
-			}
-		} else {
-			applyIdentityRecord(current, identity, now)
-			if err := s.identityRepo.UpdateProfile(ctx, current); err != nil {
-				return err
-			}
-		}
-		updates := map[string]interface{}{"registered": true, "login_type": providerLoginType(provider), "login_account": identityLoginAccount(provider, identity)}
-		applyIdentityUserProfile(updates, provider, identity, user.Username)
-		if err := s.userRepo.Update(ctx, userID, updates); err != nil {
-			return err
-		}
-		result = current
-		return nil
-	})
-	return result, err
 }
 
 func (s *AuthService) UnbindIdentity(ctx context.Context, userID uint64, provider string) error {
@@ -300,81 +218,11 @@ func providerLoginType(provider string) uint32 {
 	return domain.AppUserLoginAppID
 }
 
-func mergeIdentityNames(identity *oidc.Identity, displayName, givenName, familyName string) {
-	if identity.DisplayName == "" {
-		identity.DisplayName = strings.TrimSpace(displayName)
-	}
-	if identity.GivenName == "" {
-		identity.GivenName = strings.TrimSpace(givenName)
-	}
-	if identity.FamilyName == "" {
-		identity.FamilyName = strings.TrimSpace(familyName)
-	}
-	if identity.DisplayName == "" {
-		identity.DisplayName = strings.TrimSpace(strings.Join([]string{identity.GivenName, identity.FamilyName}, " "))
-	}
-}
-
-func identityUsername(identity *oidc.Identity) string {
-	if value := strings.TrimSpace(identity.DisplayName); value != "" {
-		return value
-	}
-	if index := strings.Index(identity.Email, "@"); index > 0 {
-		return identity.Email[:index]
-	}
-	return newGuestUsername()
-}
-
-func identityLoginAccount(provider string, identity *oidc.Identity) string {
-	if identity.Email != "" {
-		return identity.Email
-	}
-	return provider + ":" + identity.Subject
-}
-
 func identityRecordLoginAccount(identity *model.VideoUserIdentity) string {
 	if identity.Email != "" {
 		return identity.Email
 	}
 	return identity.Provider + ":" + identity.ProviderSubject
-}
-
-func applyIdentityRecord(record *model.VideoUserIdentity, identity *oidc.Identity, now time.Time) {
-	record.Issuer = identity.Issuer
-	record.Audience = identity.Audience
-	record.Email = identity.Email
-	record.EmailVerified = identity.EmailVerified
-	record.IsPrivateEmail = identity.IsPrivateEmail
-	record.DisplayName = identity.DisplayName
-	record.GivenName = identity.GivenName
-	record.FamilyName = identity.FamilyName
-	record.AvatarURL = identity.AvatarURL
-	record.LastLoginAt = &now
-	record.LastTokenIssuedAt = identity.IssuedAt
-}
-
-func applyIdentityUserProfile(updates map[string]interface{}, provider string, identity *oidc.Identity, currentUsername string) {
-	for column, value := range identityUserColumns(provider, identity) {
-		updates[column] = value
-	}
-	if (strings.HasPrefix(currentUsername, "guest_") || strings.TrimSpace(currentUsername) == "") && identity.DisplayName != "" {
-		updates["username"] = identity.DisplayName
-	}
-}
-
-func identityUserColumns(provider string, identity *oidc.Identity) map[string]interface{} {
-	updates := map[string]interface{}{"third_code": strings.TrimSpace(identity.Subject)}
-	if identity.EmailVerified && strings.TrimSpace(identity.Email) != "" {
-		updates["email"] = strings.ToLower(strings.TrimSpace(identity.Email))
-	}
-	return updates
-}
-
-func directProviderSubject(user *model.VideoUser, provider string) string {
-	if user == nil || user.LoginType != providerLoginType(provider) {
-		return ""
-	}
-	return user.ThirdCode
 }
 
 func validateIdentityUserColumns(identity *oidc.Identity) error {

@@ -88,6 +88,20 @@ func (r *UserAttributionRepo) GetByID(ctx context.Context, id uint64, lock bool)
 	return &item, nil
 }
 
+func (r *UserAttributionRepo) GetByUserID(ctx context.Context, userID uint64) (*model.VideoUserAttribution, error) {
+	var item model.VideoUserAttribution
+	if err := dbFrom(ctx).Where("user_id = ?", userID).First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *UserAttributionRepo) ClearDevice(ctx context.Context, userID uint64) error {
+	return dbFrom(ctx).Model(&model.VideoUserAttribution{}).Where("user_id = ?", userID).Updates(map[string]interface{}{
+		"oaid": "", "imei": "", "android_id": "", "ip": "", "user_agent": "",
+	}).Error
+}
+
 func (r *UserAttributionRepo) Update(ctx context.Context, item *model.VideoUserAttribution) error {
 	return dbFrom(ctx).Model(item).Select(
 		"ChannelCode", "OAID", "IMEI", "AndroidID", "IP", "UserAgent", "AttributedAt", "Remark",
