@@ -100,9 +100,9 @@ func (s *ClientTemplateService) ListByPosition(ctx *gin.Context, userID uint64, 
 	}
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
 
-	countryCode := strings.ToUpper(strings.TrimSpace(req.DeviceCountry))
+	countryCode := strings.ToUpper(strings.TrimSpace(req.ClientCountry))
 	if countryCode == "" {
-		countryCode = strings.ToUpper(strings.TrimSpace(user.DeviceCountry))
+		countryCode = strings.ToUpper(strings.TrimSpace(user.ClientCountry))
 	}
 	var countryID uint64
 	if countryCode != "" {
@@ -155,7 +155,7 @@ func (s *ClientTemplateService) List(ctx *gin.Context, userID uint64, req *Clien
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
 	countryCode := strings.ToUpper(strings.TrimSpace(req.Country))
 	if countryCode == "" {
-		countryCode = strings.ToUpper(strings.TrimSpace(req.DeviceCountry))
+		countryCode = strings.ToUpper(strings.TrimSpace(req.ClientCountry))
 	}
 	var countryID uint64
 	if countryCode != "" {
@@ -213,7 +213,7 @@ func (s *ClientTemplateService) Categories(ctx *gin.Context, userID uint64, req 
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
 	countryCode := strings.ToUpper(strings.TrimSpace(req.Country))
 	if countryCode == "" {
-		countryCode = strings.ToUpper(strings.TrimSpace(req.DeviceCountry))
+		countryCode = strings.ToUpper(strings.TrimSpace(req.ClientCountry))
 	}
 	var countryID uint64
 	if countryCode != "" {
@@ -349,9 +349,9 @@ func (s *ClientTemplateService) Recommend(ctx *gin.Context, userID uint64, req *
 		return nil, err
 	}
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
-	countryCode := strings.ToUpper(strings.TrimSpace(req.DeviceCountry))
+	countryCode := strings.ToUpper(strings.TrimSpace(req.ClientCountry))
 	if countryCode == "" {
-		countryCode = strings.ToUpper(strings.TrimSpace(user.DeviceCountry))
+		countryCode = strings.ToUpper(strings.TrimSpace(user.ClientCountry))
 	}
 	var countryID uint64
 	if countryCode != "" {
@@ -379,17 +379,18 @@ func (s *ClientTemplateService) Recommend(ctx *gin.Context, userID uint64, req *
 	if user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed {
 		subscriptionState = "subscribed"
 	}
-	rows, err := s.templateRepo.ListForClient(ctx, repository.ClientTemplateTargets{
-		CountryID:  countryID,
+
+	rows, err := s.displayRepo.ListForClient(ctx, repository.ClientTemplateDisplayTargets{
+		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
 		ChannelIDs: clientChannelIDs(channels), PackageIDs: clientPackageIDs(packages),
-		UserType: user.UserType, SubscriptionStatus: subscriptionState,
+		UserType: user.UserType, SubscriptionState: subscriptionState,
 	})
 	if err != nil {
 		return nil, err
 	}
-	var result []ClientTemplate
+	result := make([]ClientTemplate, 0, len(rows))
 	for i := range rows {
-		result = append(result, mapClientTemplate(&rows[i]))
+		result = append(result, mapClientTemplate(&rows[i].Template))
 	}
 	return result, nil
 }

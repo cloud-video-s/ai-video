@@ -400,20 +400,25 @@ function compactSummary(labels: string[], allLabel: string) {
   return `${labels.slice(0, 2).join('、')} 等 ${labels.length} 项`
 }
 
-function positionSummary(items: DisplayPosition[] = []) {
-  return compactSummary(items.map((item) => item.position_name), '全部展示位置')
+function arrayValue<T>(value: T[] | null | undefined): T[] {
+	return Array.isArray(value) ? value : []
 }
 
-function countrySummary(items: Country[] = []) {
-  return compactSummary(items.map((item) => `${item.name_zh}·${item.code}`), '全部国家')
+function positionSummary(items?: DisplayPosition[] | null) {
+	return compactSummary(arrayValue(items).map((item) => item.position_name), '全部展示位置')
 }
 
-function packageSummary(items: AppPackage[] = []) {
-  return compactSummary(items.map((item) => item.package_name), '全部安装包')
+function countrySummary(items?: Country[] | null) {
+	return compactSummary(arrayValue(items).map((item) => `${item.name_zh}·${item.code}`), '全部国家')
 }
 
-function channelSummary(items: Channel[] = []) {
-  return compactSummary(items.map((item) => item.channel_name), '全部渠道')
+function packageSummary(items?: AppPackage[] | null) {
+	return compactSummary(arrayValue(items).map((item) => item.package_name), '全部安装包')
+
+}
+
+function channelSummary(items?: Channel[] | null) {
+	return compactSummary(arrayValue(items).map((item) => item.channel_name), '全部渠道')
 }
 
 function normalizeUserTypeValues(value: unknown): number[] {
@@ -439,8 +444,37 @@ function userTypesLabel(types: unknown) {
   return compactSummary(values.map((type) => (type === 1 ? '免费用户' : '付费用户')), '全部用户')
 }
 
-function subscriptionStatusesLabel(statuses: string[] = []) {
-  return compactSummary(statuses.map((status) => (status === 'subscribed' ? '已订阅' : '未订阅')), '全部订阅状态')
+function subscriptionStatusesLabel(statuses?: string[] | null) {
+	return compactSummary(
+		arrayValue(statuses).map((status) => (status === 'subscribed' ? '已订阅' : '未订阅')),
+		'全部订阅状态',
+	)
+}
+
+function normalizeTemplateType(item: any): VideoTemplateType {
+	return {
+		...item,
+		display_positions: arrayValue<DisplayPosition>(item?.display_positions),
+		countries: arrayValue<Country>(item?.countries),
+		channels: arrayValue<Channel>(item?.channels),
+		packages: arrayValue<AppPackage>(item?.packages),
+		user_types: normalizeUserTypeValues(item?.user_types),
+		subscription_statuses: arrayValue<string>(item?.subscription_statuses),
+	}
+}
+
+function normalizeTemplate(item: any): VideoTemplate {
+	return {
+		...item,
+		countries: arrayValue<Country>(item?.countries),
+		packages: arrayValue<AppPackage>(item?.packages),
+		channels: arrayValue<Channel>(item?.channels),
+		user_types: normalizeUserTypeValues(item?.user_types),
+		subscription_statuses: arrayValue<string>(item?.subscription_statuses),
+		video_template_type: item?.video_template_type
+			? normalizeTemplateType(item.video_template_type)
+			: undefined,
+	}
 }
 
 function packageLabel(item: AppPackage) {
@@ -452,8 +486,8 @@ function channelLabel(item: Channel) {
 }
 
 async function fetchTypes() {
-  const res: any = await getTemplateTypeOptions()
-  typeOptions.value = res.data || []
+	const res: any = await getTemplateTypeOptions()
+	typeOptions.value = arrayValue<any>(res.data).map(normalizeTemplateType)
 }
 
 async function fetchPositions() {
@@ -482,10 +516,10 @@ async function fetchData() {
     const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
     for (const [key, value] of Object.entries(query)) {
       if (value !== '') params[key] = value
-    }
-    const res: any = await getTemplateList(params)
-    tableData.value = res.data.list || []
-    total.value = res.data.total || 0
+	}
+	const res: any = await getTemplateList(params)
+	tableData.value = arrayValue<any>(res.data?.list).map(normalizeTemplate)
+	total.value = Number(res.data?.total) || 0
   } finally {
     loading.value = false
   }

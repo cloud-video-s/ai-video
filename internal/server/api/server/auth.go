@@ -52,8 +52,8 @@ func NewAuthService() *AuthService {
 }
 
 type LoginRequest struct {
-	IMEI     string `json:"imei" binding:"required,max=128"`
-	ForceNew bool   `json:"force_new"`
+	DeviceCode string `json:"device_code" binding:"required,max=128"`
+	ForceNew   bool   `json:"force_new"`
 	AccountBaseRequest
 }
 
@@ -85,8 +85,8 @@ type UpdateCountryRequest struct {
 }
 
 func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string, userAgent string) (*AuthResponse, error) {
-	req.IMEI = strings.TrimSpace(req.IMEI)
-	if req.IMEI == "" {
+	req.DeviceCode = strings.TrimSpace(req.DeviceCode)
+	if req.DeviceCode == "" {
 		return nil, errors.New("设备标识不能为空")
 	}
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
@@ -103,10 +103,10 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 		}
 		if req.ForceNew {
 			user = &model.VideoUser{
-				IMEI:     req.IMEI,
-				Username: newGuestUsername(), LoginType: domain.AppUserLoginGuest,
+				DeviceCode: req.DeviceCode,
+				Username:   newGuestUsername(), LoginType: domain.AppUserLoginGuest,
 				UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
-				DeviceCountry: req.DeviceCountry, ChannelID: req.ChannelID,
+				ClientCountry: req.ClientCountry, ChannelID: req.ChannelID,
 				AppVersion: req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 				FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
 				AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
@@ -118,7 +118,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 			user, _ = s.prepareLoginSession(ctx, user.ID)
 			return nil
 		}
-		latest, err := s.userRepo.GetByIMEI(ctx, req.IMEI, true)
+		latest, err := s.userRepo.GetByDeviceCode(ctx, req.DeviceCode, true)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("账号异常，请稍后重试")
 		}
@@ -141,10 +141,10 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 		}
 
 		user = &model.VideoUser{
-			IMEI:     req.IMEI,
-			Username: newGuestUsername(), LoginType: domain.AppUserLoginGuest,
+			DeviceCode: req.DeviceCode,
+			Username:   newGuestUsername(), LoginType: domain.AppUserLoginGuest,
 			UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
-			DeviceCountry: req.DeviceCountry, ChannelID: req.ChannelID,
+			ClientCountry: req.ClientCountry, ChannelID: req.ChannelID,
 			AppVersion: req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
 			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
@@ -158,7 +158,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			latest, lookupErr := s.userRepo.GetByIMEI(ctx, req.IMEI, false)
+			latest, lookupErr := s.userRepo.GetByDeviceCode(ctx, req.DeviceCode, false)
 			if lookupErr == nil {
 				latest, lookupErr = s.prepareLoginSession(ctx, latest.ID)
 				if lookupErr == nil {
@@ -182,8 +182,8 @@ func (s *AuthService) prepareLoginSession(ctx context.Context, userID uint64) (*
 
 func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, userAgent string) (*AuthResponse, error) {
 	req.ForceNew = true
-	req.IMEI = strings.TrimSpace(req.IMEI)
-	if req.IMEI == "" {
+	req.DeviceCode = strings.TrimSpace(req.DeviceCode)
+	if req.DeviceCode == "" {
 		return nil, errors.New("设备标识不能为空")
 	}
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
@@ -200,10 +200,10 @@ func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, 
 		}
 
 		user = &model.VideoUser{
-			IMEI:     req.IMEI,
-			Username: newGuestUsername(), LoginType: domain.AppUserLoginGuest,
+			DeviceCode: req.DeviceCode,
+			Username:   newGuestUsername(), LoginType: domain.AppUserLoginGuest,
 			UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
-			DeviceCountry: req.DeviceCountry, ChannelID: req.ChannelID,
+			ClientCountry: req.ClientCountry, ChannelID: req.ChannelID,
 			AppVersion: req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
 			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
@@ -217,7 +217,7 @@ func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, 
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			latest, lookupErr := s.userRepo.GetByIMEI(ctx, req.IMEI, false)
+			latest, lookupErr := s.userRepo.GetByDeviceCode(ctx, req.DeviceCode, false)
 			if lookupErr == nil {
 				latest, lookupErr = s.prepareLoginSession(ctx, latest.ID)
 				if lookupErr == nil {
@@ -253,7 +253,7 @@ func (s *AuthService) GetProfile(ctx context.Context, userID uint64) (*UserRespo
 	data := &UserResponse{
 		ID:                 user.ID,
 		Email:              user.Email,
-		DeviceCountry:      user.DeviceCountry,
+		DeviceCountry:      user.ClientCountry,
 		ChannelID:          user.ChannelID,
 		LoginType:          user.LoginType,
 		UserType:           user.UserType,
@@ -307,7 +307,7 @@ func issueToken(user *model.VideoUser, loginType uint32) (*AuthResponse, error) 
 
 func baseTrackingUpdates(loginType int, req *AccountBaseRequest, clientIP string, now time.Time) map[string]interface{} {
 	updates := map[string]interface{}{"last_opened_at": now, "last_login_at": now, "last_login_ip": clientIP, "activated": uint32(1),
-		"device_country": req.DeviceCountry,
+		"client_country": req.ClientCountry,
 		"app_name":       req.AppName,
 		"phone_model":    req.PhoneModel,
 		"login_type":     loginType,

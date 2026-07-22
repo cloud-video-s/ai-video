@@ -28,9 +28,9 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	tableName := _videoUser.videoUserDo.TableName()
 	_videoUser.ALL = field.NewAsterisk(tableName)
 	_videoUser.ID = field.NewUint64(tableName, "id")
-	_videoUser.IMEI = field.NewString(tableName, "imei")
+	_videoUser.DeviceCode = field.NewString(tableName, "device_code")
 	_videoUser.Username = field.NewString(tableName, "username")
-	_videoUser.DeviceCountry = field.NewString(tableName, "device_country")
+	_videoUser.ClientCountry = field.NewString(tableName, "client_country")
 	_videoUser.ChannelID = field.NewString(tableName, "channel_id")
 	_videoUser.AppVersion = field.NewString(tableName, "app_version")
 	_videoUser.FirstOpenedAt = field.NewTime(tableName, "first_opened_at")
@@ -71,6 +71,8 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.Email = field.NewString(tableName, "email")
 	_videoUser.ThirdCode = field.NewString(tableName, "third_code")
 	_videoUser.PackageCode = field.NewString(tableName, "package_code")
+	_videoUser.IMEI = field.NewString(tableName, "imei")
+	_videoUser.ServerCountry = field.NewString(tableName, "server_country")
 	_videoUser.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUser.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUser.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -85,9 +87,9 @@ type videoUser struct {
 
 	ALL                      field.Asterisk
 	ID                       field.Uint64
-	IMEI                     field.String  // 设备编号
+	DeviceCode               field.String  // 设备编号
 	Username                 field.String  // 昵称
-	DeviceCountry            field.String  // 国家
+	ClientCountry            field.String  // 国家
 	ChannelID                field.String  // 渠道id
 	AppVersion               field.String  // 激活版本号
 	FirstOpenedAt            field.Time    // 首次打开时间
@@ -128,6 +130,8 @@ type videoUser struct {
 	Email                    field.String // 邮箱
 	ThirdCode                field.String // 三方唯一码
 	PackageCode              field.String // package identifier
+	IMEI                     field.String // imei
+	ServerCountry            field.String // ip获取国家
 	CreatedAt                field.Time
 	UpdatedAt                field.Time
 	DeletedAt                field.Field
@@ -148,9 +152,9 @@ func (v videoUser) As(alias string) *videoUser {
 func (v *videoUser) updateTableName(table string) *videoUser {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
-	v.IMEI = field.NewString(table, "imei")
+	v.DeviceCode = field.NewString(table, "device_code")
 	v.Username = field.NewString(table, "username")
-	v.DeviceCountry = field.NewString(table, "device_country")
+	v.ClientCountry = field.NewString(table, "client_country")
 	v.ChannelID = field.NewString(table, "channel_id")
 	v.AppVersion = field.NewString(table, "app_version")
 	v.FirstOpenedAt = field.NewTime(table, "first_opened_at")
@@ -191,6 +195,8 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.Email = field.NewString(table, "email")
 	v.ThirdCode = field.NewString(table, "third_code")
 	v.PackageCode = field.NewString(table, "package_code")
+	v.IMEI = field.NewString(table, "imei")
+	v.ServerCountry = field.NewString(table, "server_country")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -220,11 +226,11 @@ func (v *videoUser) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoUser) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 47)
+	v.fieldMap = make(map[string]field.Expr, 49)
 	v.fieldMap["id"] = v.ID
-	v.fieldMap["imei"] = v.IMEI
+	v.fieldMap["device_code"] = v.DeviceCode
 	v.fieldMap["username"] = v.Username
-	v.fieldMap["device_country"] = v.DeviceCountry
+	v.fieldMap["client_country"] = v.ClientCountry
 	v.fieldMap["channel_id"] = v.ChannelID
 	v.fieldMap["app_version"] = v.AppVersion
 	v.fieldMap["first_opened_at"] = v.FirstOpenedAt
@@ -265,6 +271,8 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["email"] = v.Email
 	v.fieldMap["third_code"] = v.ThirdCode
 	v.fieldMap["package_code"] = v.PackageCode
+	v.fieldMap["imei"] = v.IMEI
+	v.fieldMap["server_country"] = v.ServerCountry
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

@@ -15,9 +15,9 @@ const TableNameVideoUser = "video_user"
 // VideoUser mapped from table <video_user>
 type VideoUser struct {
 	ID                       uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	IMEI                     string         `gorm:"column:imei;type:varchar(128);not null;index:idx_video_user_login_account,priority:1;index:uidx_video_user_phone_registration,priority:1;comment:设备编号" json:"imei"`               // 设备编号
+	DeviceCode               string         `gorm:"column:device_code;type:varchar(128);not null;index:idx_video_user_login_account,priority:1;index:uidx_video_user_phone_registration,priority:1;comment:设备编号" json:"device_code"` // 设备编号
 	Username                 string         `gorm:"column:username;type:varchar(128);index:idx_video_user_username,priority:1;comment:昵称" json:"username"`                                                                           // 昵称
-	DeviceCountry            string         `gorm:"column:device_country;type:varchar(64);index:idx_video_user_device_country,priority:1;comment:国家" json:"device_country"`                                                          // 国家
+	ClientCountry            string         `gorm:"column:client_country;type:varchar(64);index:idx_video_user_device_country,priority:1;comment:国家" json:"client_country"`                                                          // 国家
 	ChannelID                string         `gorm:"column:channel_id;type:varchar(64);index:idx_video_user_channel_id,priority:1;comment:渠道id" json:"channel_id"`                                                                    // 渠道id
 	AppVersion               string         `gorm:"column:app_version;type:varchar(32);index:idx_video_user_app_version,priority:1;comment:激活版本号" json:"app_version"`                                                                // 激活版本号
 	FirstOpenedAt            *time.Time     `gorm:"column:first_opened_at;type:datetime(3);index:idx_video_user_first_opened_at,priority:1;comment:首次打开时间" json:"first_opened_at"`                                                   // 首次打开时间
@@ -58,6 +58,8 @@ type VideoUser struct {
 	Email                    string         `gorm:"column:email;type:varchar(50);comment:邮箱" json:"email"`                                         // 邮箱
 	ThirdCode                string         `gorm:"column:third_code;type:varchar(50);comment:三方唯一码" json:"third_code"`                            // 三方唯一码
 	PackageCode              string         `gorm:"column:package_code;type:varchar(128);not null;comment:package identifier" json:"package_code"` // package identifier
+	IMEI                     string         `gorm:"column:imei;type:varchar(50);comment:imei" json:"imei"`                                         // imei
+	ServerCountry            string         `gorm:"column:server_country;type:varchar(255);comment:ip获取国家" json:"server_country"`                  // ip获取国家
 	CreatedAt                time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_video_user_created_at,priority:1" json:"created_at"`
 	UpdatedAt                time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt                gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_user_deleted_at,priority:1" json:"deleted_at"`

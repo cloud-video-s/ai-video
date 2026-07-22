@@ -26,10 +26,10 @@ type VideoBanner struct {
 	CreatedAt        time.Time              `gorm:"column:created_at;type:datetime(3);index:idx_video_banner_created_at,priority:1" json:"created_at"`
 	UpdatedAt        time.Time              `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt        gorm.DeletedAt         `gorm:"column:deleted_at;type:datetime(3);index:idx_video_banner_deleted_at,priority:1" json:"deleted_at"`
-	Channels         []VideoChannel         `gorm:"References:ChannelCode;foreignKey:ID;joinForeignKey:BannerID;joinReferences:ChannelCode;many2many:video_banner_channel" json:"channels"`
 	Countries        []VideoCountry         `gorm:"References:Code;foreignKey:ID;joinForeignKey:BannerID;joinReferences:CountryCode;many2many:video_banner_country" json:"countries"`
 	DisplayPositions []VideoDisplayPosition `gorm:"References:PositionKey;foreignKey:ID;joinForeignKey:BannerID;joinReferences:PositionKey;many2many:video_banner_display_position" json:"display_positions"`
 	Packages         []VideoPackage         `gorm:"References:PackageCode;foreignKey:ID;joinForeignKey:BannerID;joinReferences:PackageCode;many2many:video_banner_package" json:"packages"`
+	Channels         []VideoChannel         `gorm:"References:ChannelID;foreignKey:ID;joinForeignKey:BannerID;joinReferences:ChannelCode;many2many:video_banner_channel" json:"channels"`
 	Template         *VideoTemplate         `gorm:"References:ID;foreignKey:TemplateID" json:"template"`
 }
 

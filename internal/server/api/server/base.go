@@ -14,7 +14,7 @@ func GetCtxAccountBaseRequest(ctx *gin.Context, req *AccountBaseRequest) {
 	if strings.TrimSpace(deviceCountry) == "" && ctx.Request != nil {
 		deviceCountry, _ = utils.GetCountryByIP(ctx.ClientIP())
 	}
-	req.DeviceCountry = deviceCountry
+	req.ClientCountry = deviceCountry
 	req.AppName = middleware.GetAPIAppPackage(ctx)
 	req.AppVersion = middleware.GetAPIAppVersion(ctx)
 	req.ChannelID = middleware.GetAPIChannelID(ctx)
@@ -25,7 +25,7 @@ func GetCtxAccountBaseRequest(ctx *gin.Context, req *AccountBaseRequest) {
 }
 
 type AccountBaseRequest struct {
-	DeviceCountry        string     `json:"device_country"`
+	ClientCountry        string     `json:"client_country"`
 	ChannelID            string     `json:"channel_id"`
 	AppVersion           string     `json:"app_version"`
 	AppName              string     `json:"app_name"`

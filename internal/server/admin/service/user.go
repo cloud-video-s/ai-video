@@ -15,9 +15,9 @@ type AppUserService struct{ repo *repository.AppUserRepo }
 func NewAppUserService() *AppUserService { return &AppUserService{repo: repository.NewAppUserRepo()} }
 
 type CreateAppUserRequest struct {
-	IMEI                     string     `json:"imei" binding:"required,max=128"`
+	DeviceCode               string     `json:"device_code" binding:"required,max=128"`
 	Username                 string     `json:"username" binding:"required,max=128"`
-	DeviceCountry            string     `json:"device_country" binding:"max=64"`
+	ClientCountry            string     `json:"client_country" binding:"max=64"`
 	ChannelID                string     `json:"channel_id" binding:"max=64"`
 	AppVersion               string     `json:"app_version" binding:"max=32"`
 	AppName                  string     `json:"app_name" binding:"max=255"`
@@ -141,8 +141,8 @@ func (s *AppUserService) Create(ctx context.Context, req *CreateAppUserRequest) 
 		appName = "0"
 	}
 	user := &model.VideoUser{
-		IMEI: strings.TrimSpace(req.IMEI), Username: strings.TrimSpace(req.Username),
-		DeviceCountry: strings.TrimSpace(req.DeviceCountry), ChannelID: strings.TrimSpace(req.ChannelID),
+		DeviceCode: strings.TrimSpace(req.DeviceCode), Username: strings.TrimSpace(req.Username),
+		ClientCountry: strings.TrimSpace(req.ClientCountry), ChannelID: strings.TrimSpace(req.ChannelID),
 		AppVersion: strings.TrimSpace(req.AppVersion), AppName: appName,
 		FirstOpenedAt: req.FirstOpenedAt, LastOpenedAt: req.LastOpenedAt,
 		LoginType: loginType, LoginAccount: strings.TrimSpace(req.LoginAccount), UserType: userType,

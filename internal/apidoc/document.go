@@ -111,7 +111,7 @@ var operationDescriptions = map[string]string{
 	"POST /api/users/me/identities/apple": "绑定 Apple 身份。", "DELETE /api/users/me/identities/:provider": "解绑指定第三方身份。",
 	"GET /api/delay-configs": "获取客户端延迟配置。", "GET /api/ob-delay-configs": "获取 OB 延迟配置（兼容路径）。",
 	"GET /api/ob_delay": "获取 OB 延迟配置（旧版兼容路径）。", "GET /api/banners/list": "按展示位置和当前用户投放条件查询 Banner。",
-	"GET /api/templates/recommend": "查询指定展示位置的推荐模板。", "GET /api/templates/by-position": "查询已配置到指定展示位置的模板。",
+	"GET /api/templates/recommend": "查询指定展示位置已配置的推荐模板，仅返回模板数据。", "GET /api/templates/by-position": "查询已配置到指定展示位置的模板。",
 	"GET /api/templates/list": "查询首页分类及其模板。", "GET /api/templates/categories": "查询模板分类及其模板。",
 	"GET /api/vip/recommend": "查询当前用户适用的推荐 VIP 套餐。",
 }
@@ -134,9 +134,9 @@ var operationSummaries = map[string]string{
 }
 
 var fieldDescriptions = map[string]string{
-	"imei": "设备唯一标识", "force_new": "是否强制创建新账号", "id_token": "Google 等提供方签发的 ID Token",
+	"imei": "设备唯一标识", "device_code": "设备唯一标识", "force_new": "是否强制创建新账号", "id_token": "Google 等提供方签发的 ID Token",
 	"identity_token": "Apple 签发的 Identity Token", "nonce": "用于防重放校验的随机值", "display_name": "显示名称",
-	"given_name": "名", "family_name": "姓", "device_country": "设备国家或地区代码", "channel_id": "渠道标识",
+	"given_name": "名", "family_name": "姓", "device_country": "设备国家或地区代码", "client_country": "客户端国家或地区代码", "channel_id": "渠道标识",
 	"app_version": "应用版本号", "app_name": "应用名称", "phone_model": "设备型号", "channel_package": "渠道包标识",
 	"app_package": "应用包名", "login_type": "登录类型：1 游客，2 Google，3 Apple", "first_opened_at": "首次打开时间",
 	"last_opened_at": "最近打开时间", "attribution_clicked_at": "归因点击时间", "country": "国家或地区代码",
@@ -364,7 +364,7 @@ func requestSchemaForType(valueType reflect.Type) map[string]any {
 }
 
 var commonContextFieldNames = map[string]bool{
-	"device_country": true, "channel_id": true, "app_version": true,
+	"device_country": true, "client_country": true, "channel_id": true, "app_version": true,
 	"app_name": true, "phone_model": true, "channel_package": true,
 	"app_package": true, "login_type": true,
 }

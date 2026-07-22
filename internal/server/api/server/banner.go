@@ -68,7 +68,7 @@ func (s *ClientBannerService) List(ctx *gin.Context, userID uint64, req *ClientB
 	}
 	countryCode := req.Country
 	if countryCode == "" {
-		countryCode = strings.ToUpper(strings.TrimSpace(user.DeviceCountry))
+		countryCode = strings.ToUpper(strings.TrimSpace(user.ClientCountry))
 	}
 	var countryID uint64
 	if countryCode != "" {

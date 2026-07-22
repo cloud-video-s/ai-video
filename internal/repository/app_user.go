@@ -49,9 +49,9 @@ func (d *AppUserRepo) GetByIDForUpdate(ctx context.Context, id uint64) (*model.V
 	return &user, nil
 }
 
-func (d *AppUserRepo) GetByIMEI(ctx context.Context, imei string, lock bool) (*model.VideoUser, error) {
+func (d *AppUserRepo) GetByDeviceCode(ctx context.Context, deviceCode string, lock bool) (*model.VideoUser, error) {
 	var user model.VideoUser
-	db := dbFrom(ctx).Where("imei = ?", imei)
+	db := dbFrom(ctx).Where("device_code = ?", deviceCode)
 	if lock {
 		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
