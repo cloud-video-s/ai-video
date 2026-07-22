@@ -49,11 +49,438 @@ func main() {
 	g.UseDB(db)
 
 	g.GenerateAllTable()
-	models, err := generateModelsWithRelations(g, db)
-	if err != nil {
-		panic(fmt.Sprintf("inspect database relationships failed: %v", err))
+	// 1. casbin_rule
+	casbinRule := g.GenerateModel("casbin_rule",
+		gen.FieldType("id", "uint64"),
+	)
+
+	videoAdminRole := g.GenerateModel("video_admin_role",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("video_admin_id", "uint64"),
+		gen.FieldType("video_role_id", "uint64"),
+	)
+
+	// 15. video_menu
+	videoMenu := g.GenerateModel("video_menu",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("parent_id", "uint64"),
+		gen.FieldType("type", "uint8"),
+		gen.FieldType("visible", "uint8"),
+		gen.FieldType("status", "uint8"),
+		// 自关联：子菜单
+		gen.FieldRelate(
+			field.HasMany, "ChildMenus", g.GenerateModel("video_menu"),
+			&field.RelateConfig{
+				RelateSlicePointer: true,
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"parent_id"},
+					"references": []string{"id"},
+				},
+			},
+		),
+	)
+
+	// 24. video_role
+	videoRole := g.GenerateModel("video_role",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("status", "uint8"),
+		gen.FieldRelate(
+			field.Many2Many, "Menus", videoMenu,
+			&field.RelateConfig{
+				RelateSlicePointer: true,
+				GORMTag: field.GormTag{
+					"many2many":      []string{"video_role_menu"},
+					"foreignKey":     []string{"ID"},
+					"joinForeignKey": []string{"video_role_id"},
+					"joinReferences": []string{"video_menu_id"},
+					"References":     []string{"ID"},
+				},
+			},
+		),
+	)
+
+	// 2. video_admin
+	videoAdmin := g.GenerateModel("video_admin",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("status", "int8"),
+		gen.FieldType("token_version", "int64"),
+		gen.FieldRelate(
+			field.Many2Many, "Roles", videoRole,
+			&field.RelateConfig{
+				RelateSlicePointer: true,
+				GORMTag: field.GormTag{
+					"many2many":      []string{"video_admin_role"},
+					"foreignKey":     []string{"ID"},
+					"joinForeignKey": []string{"video_admin_id"},
+					"joinReferences": []string{"video_role_id"},
+					"References":     []string{"ID"},
+				},
+			},
+		),
+	)
+
+	// 4. video_api
+	videoApi := g.GenerateModel("video_api",
+		gen.FieldType("id", "uint64"),
+	)
+
+	// 5. video_app
+	videoApp := g.GenerateModel("video_app",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("status", "uint8"),
+		gen.FieldType("sort", "uint"),
+	)
+
+	// 6. video_banner
+	videoBanner := g.GenerateModel("video_banner",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("sort", "uint64"),
+		gen.FieldType("jump_type", "uint8"),
+		gen.FieldType("status", "int8"),
+		gen.FieldType("subscription_status", "uint8"),
+	)
+
+	// 7. video_banner_app
+	videoBannerApp := g.GenerateModel("video_banner_app",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("banner_id", "uint64"),
+	)
+
+	// 8. video_banner_country
+	videoBannerCountry := g.GenerateModel("video_banner_country",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("banner_id", "uint64"),
+	)
+
+	// 9. video_banner_display_position
+	videoBannerDisplayPos := g.GenerateModel("video_banner_display_position",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("banner_id", "uint64"),
+	)
+
+	// 10. video_channel
+	videoChannel := g.GenerateModel("video_channel",
+		gen.FieldType("channel_id", "uint64"),
+		gen.FieldType("status", "int8"),
+		gen.FieldType("port_rebate", "float64"),
+		gen.FieldType("service_order_fee", "float64"),
+	)
+
+	// 11. video_config
+	videoConfig := g.GenerateModel("video_config",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("is_public", "bool"),
+		gen.FieldType("editable", "bool"),
+		gen.FieldType("builtin", "bool"),
+		gen.FieldType("sensitive", "bool"),
+	)
+
+	// 12. video_country
+	videoCountry := g.GenerateModel("video_country",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("status", "int8"),
+	)
+
+	// 13. video_delay_config
+	videoDelayConfig := g.GenerateModel("video_delay_config",
+		gen.FieldType("id", "uint64"),
+	)
+
+	// 14. video_display_position
+	videoDisplayPosition := g.GenerateModel("video_display_position",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("status", "int8"),
+	)
+
+	// 16. video_menu_api
+	videoMenuAPI := g.GenerateModel("video_menu_api",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("video_menu_id", "uint64"),
+		gen.FieldType("video_api_id", "uint64"),
+	)
+
+	// 17. video_operation_log
+	videoOperationLog := g.GenerateModel("video_operation_log",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("user_id", "uint64"),
+		gen.FieldType("success", "bool"),
+	)
+
+	// 18. video_order
+	videoOrder := g.GenerateModel("video_order",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("user_id", "uint64"),
+		gen.FieldType("product_id", "uint64"),
+		gen.FieldType("vip_level", "uint"),
+		gen.FieldType("vip_duration_days", "uint"),
+		gen.FieldType("bonus_points", "uint64"),
+	)
+
+	// 19. video_package
+	videoPackage := g.GenerateModel("video_package",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("status", "uint8"),
+		gen.FieldType("system_type", "uint8"),
+	)
+
+	// 20. video_package_version
+	videoPackageVersion := g.GenerateModel("video_package_version",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("status", "uint8"),
+		gen.FieldType("install_count", "uint64"),
+		gen.FieldType("download_count", "uint64"),
+		gen.FieldType("device_count", "uint64"),
+	)
+
+	// 21. video_points_package
+	videoPointsPackage := g.GenerateModel("video_points_package",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("points", "uint64"),
+		gen.FieldType("is_default", "bool"),
+		gen.FieldType("status", "int8"),
+		gen.FieldType("sale_price", "float64"),
+		gen.FieldType("actual_revenue", "float64"),
+		gen.FieldType("original_price", "float64"),
+	)
+
+	// 22. video_points_package_channel
+	videoPointsPackageChannel := g.GenerateModel("video_points_package_channel",
+		gen.FieldType("id", "uint64"),
+	)
+
+	// 23. video_points_package_package
+	videoPointsPackagePackage := g.GenerateModel("video_points_package_package",
+		gen.FieldType("id", "uint64"),
+	)
+
+	// 25. video_role_menu
+	videoRoleMenu := g.GenerateModel("video_role_menu",
+		gen.FieldType("video_role_id", "uint64"),
+		gen.FieldType("video_menu_id", "uint64"),
+	)
+
+	// 26. video_template
+	videoTemplate := g.GenerateModel("video_template",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("video_template_type_id", "uint64"),
+		gen.FieldType("status", "int8"),
+		gen.FieldType("usage_count", "uint64"),
+		gen.FieldType("like_count", "uint64"),
+		gen.FieldType("view_count", "uint64"),
+		gen.FieldType("favorite_count", "uint64"),
+		// BelongsTo: video_template_type
+		gen.FieldRelate(
+			field.BelongsTo, "TemplateType", g.GenerateModel("video_template_type"),
+			&field.RelateConfig{
+				RelateSlicePointer: false,
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"video_template_type_id"},
+					"references": []string{"id"},
+				},
+			},
+		),
+	)
+
+	// 27. video_template_display_config
+	videoTemplateDisplayConfig := g.GenerateModel("video_template_display_config",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("template_id", "uint64"),
+		gen.FieldType("status", "uint8"),
+	)
+
+	// 28. video_template_type
+	videoTemplateType := g.GenerateModel("video_template_type",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("status", "int8"),
+		gen.FieldType("is_subscribed", "bool"),
+		// HasMany: video_template
+		gen.FieldRelate(
+			field.HasMany, "Templates", videoTemplate,
+			&field.RelateConfig{
+				RelateSlicePointer: true,
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"video_template_type_id"},
+					"references": []string{"id"},
+				},
+			},
+		),
+	)
+
+	// 29. video_template_type_app
+	videoTemplateTypeApp := g.GenerateModel("video_template_type_app",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("template_type_id", "uint64"),
+	)
+
+	// 30. video_template_type_country
+	videoTemplateTypeCountry := g.GenerateModel("video_template_type_country",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("template_type_id", "uint64"),
+	)
+
+	// 31. video_template_type_display_position
+	videoTemplateTypeDisplayPos := g.GenerateModel("video_template_type_display_position",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("template_type_id", "uint64"),
+	)
+
+	// 32. video_upload
+	videoUpload := g.GenerateModel("video_upload",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("user_type", "int8"),
+		gen.FieldType("user_id", "uint64"),
+		gen.FieldType("file_size", "uint64"),
+	)
+
+	// 33. video_user
+	videoUser := g.GenerateModel("video_user",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("login_type", "uint8"),
+		gen.FieldType("user_type", "uint8"),
+		gen.FieldType("active_days", "uint"),
+		gen.FieldType("avg_daily_usage_seconds", "uint64"),
+		gen.FieldType("points_balance", "uint64"),
+		gen.FieldType("subscription_status", "uint8"),
+		gen.FieldType("order_count", "uint64"),
+		gen.FieldType("payment_count", "uint64"),
+		gen.FieldType("subscription_payment_count", "uint64"),
+		gen.FieldType("one_time_payment_count", "uint64"),
+		gen.FieldType("activated", "uint"),
+		gen.FieldType("key_behavior_met", "uint"),
+		gen.FieldType("payment_met", "bool"),
+		gen.FieldType("first_payment_met", "bool"),
+		gen.FieldType("registered", "bool"),
+		gen.FieldType("token_version", "int64"),
+		gen.FieldType("status", "int8"),
+		gen.FieldType("vip_level", "uint"),
+		gen.FieldType("is_frozen", "bool"),
+		gen.FieldType("is_blacklisted", "bool"),
+	)
+
+	// 34. video_user_attribution
+	videoUserAttribution := g.GenerateModel("video_user_attribution",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("user_id", "uint64"),
+	)
+
+	// 35. video_user_identity
+	videoUserIdentity := g.GenerateModel("video_user_identity",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("user_id", "uint64"),
+		gen.FieldType("email_verified", "bool"),
+		gen.FieldType("is_private_email", "bool"),
+	)
+
+	// 36. video_user_points_ledger
+	videoUserPointsLedger := g.GenerateModel("video_user_points_ledger",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("user_id", "uint64"),
+		gen.FieldType("direction", "int8"),
+		gen.FieldType("points_change", "int64"),
+		gen.FieldType("balance_before", "uint64"),
+		gen.FieldType("balance_after", "uint64"),
+		gen.FieldType("points_package_id", "uint64"),
+		gen.FieldType("operator_admin_id", "uint64"),
+		gen.FieldType("order_id", "uint64"),
+	)
+
+	// 37. video_user_template_favorite
+	videoUserTemplateFavorite := g.GenerateModel("video_user_template_favorite",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("user_id", "uint64"),
+		gen.FieldType("template_id", "uint64"),
+	)
+
+	// 38. video_vip_subscription
+	videoVipSubscription := g.GenerateModel("video_vip_subscription",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("first_subscription_price", "float64"),
+		gen.FieldType("first_subscription_revenue", "float64"),
+		gen.FieldType("first_bonus_points", "uint64"),
+		gen.FieldType("original_price", "float64"),
+		gen.FieldType("v_ip_duration_days", "uint"),
+		gen.FieldType("trial_days", "uint"),
+		gen.FieldType("agreement_default_checked", "bool"),
+		gen.FieldType("display_mode", "int8"),
+		gen.FieldType("status", "int8"),
+		gen.FieldType("free_trial", "bool"),
+		gen.FieldType("is_subscription", "bool"),
+		gen.FieldType("is_default", "bool"),
+		gen.FieldType("subscription_price", "float64"),
+		gen.FieldType("subscription_revenue", "float64"),
+		gen.FieldType("subscription_points", "uint64"),
+	)
+
+	// 39. video_vip_subscription_channel
+	videoVipSubscriptionChannel := g.GenerateModel("video_vip_subscription_channel",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("subscription_id", "uint64"),
+	)
+
+	// 40. video_vip_subscription_package
+	videoVipSubscriptionPackage := g.GenerateModel("video_vip_subscription_package",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("subscription_id", "uint64"),
+	)
+
+	// 41. video_vip_subscription_position
+	videoVipSubscriptionPosition := g.GenerateModel("video_vip_subscription_position",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("subscription_id", "uint64"),
+	)
+
+	// 42. video_vip_subscription_excluded_channel
+	videoVipSubscriptionExcludedChannel := g.GenerateModel("video_vip_subscription_excluded_channel",
+		gen.FieldType("subscription_id", "uint64"),
+		gen.FieldType("channel_id", "uint64"),
+	)
+
+	// ------------------------- 应用并执行生成 -------------------------
+	allModels := []interface{}{
+		casbinRule,
+		videoAdmin,
+		videoAdminRole,
+		videoApi,
+		videoApp,
+		videoBanner,
+		videoBannerApp,
+		videoBannerCountry,
+		videoBannerDisplayPos,
+		videoChannel,
+		videoConfig,
+		videoCountry,
+		videoDelayConfig,
+		videoDisplayPosition,
+		videoMenu,
+		videoMenuAPI,
+		videoOperationLog,
+		videoOrder,
+		videoPackage,
+		videoPackageVersion,
+		videoPointsPackage,
+		videoPointsPackageChannel,
+		videoPointsPackagePackage,
+		videoRole,
+		videoRoleMenu,
+		videoTemplate,
+		videoTemplateDisplayConfig,
+		videoTemplateType,
+		videoTemplateTypeApp,
+		videoTemplateTypeCountry,
+		videoTemplateTypeDisplayPos,
+		videoUpload,
+		videoUser,
+		videoUserAttribution,
+		videoUserIdentity,
+		videoUserPointsLedger,
+		videoUserTemplateFavorite,
+		videoVipSubscription,
+		videoVipSubscriptionChannel,
+		videoVipSubscriptionPackage,
+		videoVipSubscriptionPosition,
+		videoVipSubscriptionExcludedChannel,
 	}
-	g.ApplyBasic(models...)
+	g.ApplyBasic(allModels...)
 
 	g.Execute()
 }
