@@ -21,7 +21,6 @@ func main() {
 	cfgFile := flag.String("config", "", "config file path")
 	outPath := flag.String("out", "internal/gen/query", "generated query package path")
 	modelPath := flag.String("model", "internal/gen/model", "generated model package path")
-	source := flag.String("source", "db", "generate model and query code from database tables")
 	flag.Parse()
 
 	if err := config.InitConfig(*cfgFile); err != nil {
@@ -48,16 +47,13 @@ func main() {
 		FieldWithTypeTag:  true,
 	})
 	g.UseDB(db)
-	switch *source {
-	case "db":
-		models, err := generateModelsWithRelations(g, db)
-		if err != nil {
-			panic(fmt.Sprintf("inspect database relationships failed: %v", err))
-		}
-		g.ApplyBasic(models...)
-	default:
-		panic(fmt.Sprintf("unsupported source: %s", *source))
+
+	g.GenerateAllTable()
+	models, err := generateModelsWithRelations(g, db)
+	if err != nil {
+		panic(fmt.Sprintf("inspect database relationships failed: %v", err))
 	}
+	g.ApplyBasic(models...)
 
 	g.Execute()
 }
@@ -73,10 +69,6 @@ type manyToManyRelation struct {
 	joinOwnerColumn, joinTargetColumn string
 }
 
-// generateModelsWithRelations discovers conventional join tables from the live
-// schema. A join table named <owner>_<target> is related when it contains a
-// column for both sides (for example banner_id and country_id). This also
-// supports non-ID references such as package_code and position_key.
 func generateModelsWithRelations(g *gen.Generator, db *gorm.DB) ([]interface{}, error) {
 	tables, err := inspectTables(db)
 	if err != nil {
