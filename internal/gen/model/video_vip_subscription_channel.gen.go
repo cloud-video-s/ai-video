@@ -10,19 +10,19 @@ import (
 	"gorm.io/gorm"
 )
 
-const TableNameVideoVipSubscriptionCountry = "video_vip_subscription_country"
+const TableNameVideoVipSubscriptionChannel = "video_vip_subscription_channel"
 
-// VideoVipSubscriptionCountry mapped from table <video_vip_subscription_country>
-type VideoVipSubscriptionCountry struct {
+// VideoVipSubscriptionChannel vip套餐渠道表
+type VideoVipSubscriptionChannel struct {
 	ID             uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
 	SubscriptionID int64          `gorm:"column:subscription_id;type:bigint;not null;uniqueIndex:idx_index,priority:1" json:"subscription_id"`
-	CountryCode    string         `gorm:"column:country_code;type:varchar(50);not null;uniqueIndex:idx_index,priority:2" json:"country_code"`
+	ChannelCode    string         `gorm:"column:channel_code;type:varchar(50);not null;uniqueIndex:idx_index,priority:2" json:"channel_code"`
 	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
 	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);uniqueIndex:idx_index,priority:3" json:"deleted_at"`
 }
 
-// TableName VideoVipSubscriptionCountry's table name
-func (*VideoVipSubscriptionCountry) TableName() string {
-	return TableNameVideoVipSubscriptionCountry
+// TableName VideoVipSubscriptionChannel's table name
+func (*VideoVipSubscriptionChannel) TableName() string {
+	return TableNameVideoVipSubscriptionChannel
 }

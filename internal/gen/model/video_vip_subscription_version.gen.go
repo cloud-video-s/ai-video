@@ -16,7 +16,7 @@ const TableNameVideoVipSubscriptionVersion = "video_vip_subscription_version"
 type VideoVipSubscriptionVersion struct {
 	ID             uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:channel ID" json:"id"` // channel ID
 	SubscriptionID uint64         `gorm:"column:subscription_id;type:bigint unsigned;not null" json:"subscription_id"`
-	VersionID      int64          `gorm:"column:version_id;type:bigint;not null" json:"version_id"`
+	VersionCode    string         `gorm:"column:version_code;type:varchar(50);not null" json:"version_code"`
 	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
 	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`

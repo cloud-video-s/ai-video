@@ -42,9 +42,9 @@ func (r *VideoAppRepo) PageList(ctx context.Context, page, pageSize int, filter 
 	return valuesOf(rows), total, err
 }
 
-func (r *VideoAppRepo) GetByAppCode(ctx context.Context, appID uint64) (*model.VideoApp, error) {
+func (r *VideoAppRepo) GetByAppCode(ctx context.Context, appCode string) (*model.VideoApp, error) {
 	q := qFrom(ctx).VideoApp
-	return q.WithContext(ctx).Where(q.ID.Eq(appID)).First()
+	return q.WithContext(ctx).Where(q.AppCode.Eq(appCode)).First()
 }
 
 func (r *VideoAppRepo) ListOptions(ctx context.Context) ([]model.VideoApp, error) {

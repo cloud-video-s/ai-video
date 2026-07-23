@@ -16,7 +16,7 @@ const TableNameVideoTemplateTypePackage = "video_template_type_package"
 type VideoTemplateTypePackage struct {
 	ID             uint64            `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:channel ID" json:"id"` // channel ID
 	TemplateTypeID uint64            `gorm:"column:template_type_id;type:bigint unsigned;not null" json:"template_type_id"`
-	PackageID      uint64            `gorm:"column:package_id;type:bigint unsigned;not null" json:"package_id"`
+	PackageCode    string            `gorm:"column:package_code;type:varchar(50);not null" json:"package_code"`
 	CreatedAt      time.Time         `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
 	UpdatedAt      time.Time         `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt      gorm.DeletedAt    `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`

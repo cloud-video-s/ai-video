@@ -64,6 +64,7 @@ var (
 	VideoVipPlacement                *videoVipPlacement
 	VideoVipSubscription             *videoVipSubscription
 	VideoVipSubscriptionApp          *videoVipSubscriptionApp
+	VideoVipSubscriptionChannel      *videoVipSubscriptionChannel
 	VideoVipSubscriptionCountry      *videoVipSubscriptionCountry
 	VideoVipSubscriptionLevel        *videoVipSubscriptionLevel
 	VideoVipSubscriptionPackage      *videoVipSubscriptionPackage
@@ -119,6 +120,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoVipPlacement = &Q.VideoVipPlacement
 	VideoVipSubscription = &Q.VideoVipSubscription
 	VideoVipSubscriptionApp = &Q.VideoVipSubscriptionApp
+	VideoVipSubscriptionChannel = &Q.VideoVipSubscriptionChannel
 	VideoVipSubscriptionCountry = &Q.VideoVipSubscriptionCountry
 	VideoVipSubscriptionLevel = &Q.VideoVipSubscriptionLevel
 	VideoVipSubscriptionPackage = &Q.VideoVipSubscriptionPackage
@@ -175,6 +177,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoVipPlacement:                newVideoVipPlacement(db, opts...),
 		VideoVipSubscription:             newVideoVipSubscription(db, opts...),
 		VideoVipSubscriptionApp:          newVideoVipSubscriptionApp(db, opts...),
+		VideoVipSubscriptionChannel:      newVideoVipSubscriptionChannel(db, opts...),
 		VideoVipSubscriptionCountry:      newVideoVipSubscriptionCountry(db, opts...),
 		VideoVipSubscriptionLevel:        newVideoVipSubscriptionLevel(db, opts...),
 		VideoVipSubscriptionPackage:      newVideoVipSubscriptionPackage(db, opts...),
@@ -232,6 +235,7 @@ type Query struct {
 	VideoVipPlacement                videoVipPlacement
 	VideoVipSubscription             videoVipSubscription
 	VideoVipSubscriptionApp          videoVipSubscriptionApp
+	VideoVipSubscriptionChannel      videoVipSubscriptionChannel
 	VideoVipSubscriptionCountry      videoVipSubscriptionCountry
 	VideoVipSubscriptionLevel        videoVipSubscriptionLevel
 	VideoVipSubscriptionPackage      videoVipSubscriptionPackage
@@ -292,6 +296,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoVipPlacement:                q.VideoVipPlacement.clone(db),
 		VideoVipSubscription:             q.VideoVipSubscription.clone(db),
 		VideoVipSubscriptionApp:          q.VideoVipSubscriptionApp.clone(db),
+		VideoVipSubscriptionChannel:      q.VideoVipSubscriptionChannel.clone(db),
 		VideoVipSubscriptionCountry:      q.VideoVipSubscriptionCountry.clone(db),
 		VideoVipSubscriptionLevel:        q.VideoVipSubscriptionLevel.clone(db),
 		VideoVipSubscriptionPackage:      q.VideoVipSubscriptionPackage.clone(db),
@@ -357,6 +362,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoVipPlacement:                q.VideoVipPlacement.replaceDB(db),
 		VideoVipSubscription:             q.VideoVipSubscription.replaceDB(db),
 		VideoVipSubscriptionApp:          q.VideoVipSubscriptionApp.replaceDB(db),
+		VideoVipSubscriptionChannel:      q.VideoVipSubscriptionChannel.replaceDB(db),
 		VideoVipSubscriptionCountry:      q.VideoVipSubscriptionCountry.replaceDB(db),
 		VideoVipSubscriptionLevel:        q.VideoVipSubscriptionLevel.replaceDB(db),
 		VideoVipSubscriptionPackage:      q.VideoVipSubscriptionPackage.replaceDB(db),
@@ -412,6 +418,7 @@ type queryCtx struct {
 	VideoVipPlacement                IVideoVipPlacementDo
 	VideoVipSubscription             IVideoVipSubscriptionDo
 	VideoVipSubscriptionApp          IVideoVipSubscriptionAppDo
+	VideoVipSubscriptionChannel      IVideoVipSubscriptionChannelDo
 	VideoVipSubscriptionCountry      IVideoVipSubscriptionCountryDo
 	VideoVipSubscriptionLevel        IVideoVipSubscriptionLevelDo
 	VideoVipSubscriptionPackage      IVideoVipSubscriptionPackageDo
@@ -467,6 +474,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoVipPlacement:                q.VideoVipPlacement.WithContext(ctx),
 		VideoVipSubscription:             q.VideoVipSubscription.WithContext(ctx),
 		VideoVipSubscriptionApp:          q.VideoVipSubscriptionApp.WithContext(ctx),
+		VideoVipSubscriptionChannel:      q.VideoVipSubscriptionChannel.WithContext(ctx),
 		VideoVipSubscriptionCountry:      q.VideoVipSubscriptionCountry.WithContext(ctx),
 		VideoVipSubscriptionLevel:        q.VideoVipSubscriptionLevel.WithContext(ctx),
 		VideoVipSubscriptionPackage:      q.VideoVipSubscriptionPackage.WithContext(ctx),

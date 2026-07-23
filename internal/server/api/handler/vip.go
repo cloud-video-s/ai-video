@@ -19,7 +19,12 @@ func NewVipHandler() *VipHandler {
 }
 
 func (h *VipHandler) Recommend(c *gin.Context) {
-	result, err := h.svc.Recommend(c)
+	var req service.VipRecommendRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
+	result, err := h.svc.Recommend(c, &req)
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return

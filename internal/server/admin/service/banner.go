@@ -49,7 +49,7 @@ type BannerPayload struct {
 	Name                string                   `json:"name" binding:"required,max=128"`
 	CoverImage          string                   `json:"cover_image" binding:"required,max=1024"`
 	DisplayPositionKeys []string                 `json:"display_position_keys" binding:"max=100,dive,required,max=64"`
-	CountryIDs          []uint64                 `json:"country_ids" binding:"max=100,dive,gt=0"`
+	CountryCodes        []string                 `json:"country_codes" binding:"max=100,dive,gt=0"`
 	AppTargets          []BannerAppTargetPayload `json:"app_targets" binding:"max=100,dive"`
 	Remark              string                   `json:"remark" binding:"max=500"`
 	Sort                uint64                   `json:"sort"`
@@ -153,11 +153,11 @@ func (s *BannerService) prepareAndValidate(ctx context.Context, req *BannerPaylo
 			return errors.New("所选展示位置中包含已禁用项")
 		}
 	}
-	if req.CountryIDs, err = normalizeTargetIDs(req.CountryIDs, "国家"); err != nil {
+	if req.CountryCodes, err = normalizeTargetIDs(req.CountryCodes, "国家"); err != nil {
 		return err
 	}
-	for _, id := range req.CountryIDs {
-		country, lookupErr := s.countryRepo.GetByID(ctx, uint(id))
+	for _, code := range req.CountryCodes {
+		country, lookupErr := s.countryRepo.GetEnabledByCode(ctx, code)
 		if lookupErr != nil {
 			return notFoundOr(lookupErr, "国家不存在")
 		}
@@ -301,7 +301,7 @@ func applyBannerPayload(item *model.VideoBanner, req *BannerPayload) {
 func bannerTargetIDs(req *BannerPayload) repository.BannerTargetIDs {
 	return repository.BannerTargetIDs{
 		DisplayPositionKeys: append([]string(nil), req.DisplayPositionKeys...),
-		CountryIDs:          req.CountryIDs, AppTargets: bannerAppTargetInputs(req.AppTargets),
+		CountryCodes:        req.CountryCodes, AppTargets: bannerAppTargetInputs(req.AppTargets),
 	}
 }
 

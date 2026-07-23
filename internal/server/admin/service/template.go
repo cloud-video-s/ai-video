@@ -45,13 +45,13 @@ type ListTemplateTypeRequest struct {
 // TemplateTypeAppRulePayload 描述分类可投放的精确 APP、包与版本组合。
 // app_rules 为空表示全部 APP/包/版本，不向关系表写入默认数据。
 type TemplateTypeAppRulePayload struct {
-	AppID uint64 `json:"app_id" binding:"required,max=50"`
+	AppCode string `json:"app_code" binding:"required,max=50"`
 }
 
 type TemplateTypePayload struct {
 	CategoryName         string                       `json:"category_name" binding:"required,max=128"`
 	DisplayPositionKeys  []string                     `json:"display_position_keys" binding:"max=100,dive,required,max=64"`
-	CountryIDs           []uint64                     `json:"country_ids" binding:"max=100,dive,gt=0"`
+	CountryCodes         []string                     `json:"country_codes" binding:"max=100,dive,gt=0"`
 	AppRules             []TemplateTypeAppRulePayload `json:"app_rules" binding:"max=100,dive"`
 	UserTypes            []int                        `json:"user_types" binding:"required,min=1,max=2,dive,oneof=1 2"`
 	SubscriptionStatuses []string                     `json:"subscription_statuses" binding:"required,min=1,max=2,dive,oneof=subscribed unsubscribed"`
@@ -157,11 +157,11 @@ func (s *TemplateTypeService) prepareTargets(ctx context.Context, req *TemplateT
 	}
 	req.DisplayPositionKeys = keys
 	var err error
-	if req.CountryIDs, err = normalizeTargetIDs(req.CountryIDs, "国家"); err != nil {
+	if req.CountryCodes, err = normalizeTargetIDs(req.CountryCodes, "国家"); err != nil {
 		return err
 	}
-	for _, id := range req.CountryIDs {
-		country, lookupErr := s.countryRepo.GetByID(ctx, uint(id))
+	for _, id := range req.CountryCodes {
+		country, lookupErr := s.countryRepo.GetEnabledByCode(ctx, id)
 		if lookupErr != nil {
 			return notFoundOr(lookupErr, "国家不存在")
 		}
@@ -171,7 +171,7 @@ func (s *TemplateTypeService) prepareTargets(ctx context.Context, req *TemplateT
 	}
 	normalizedRules := make([]TemplateTypeAppRulePayload, 0, len(req.AppRules))
 	for _, rule := range req.AppRules {
-		app, lookupErr := s.appRepo.GetByAppCode(ctx, rule.AppID)
+		app, lookupErr := s.appRepo.GetByAppCode(ctx, rule.AppCode)
 		if lookupErr != nil {
 			return notFoundOr(lookupErr, "APP 不存在")
 		}
@@ -193,12 +193,12 @@ func (s *TemplateTypeService) prepareTargets(ctx context.Context, req *TemplateT
 func templateTypeTargetIDs(req *TemplateTypePayload) repository.TemplateTypeTargetIDs {
 	return repository.TemplateTypeTargetIDs{
 		DisplayPositionKeys: req.DisplayPositionKeys,
-		CountryIDs:          req.CountryIDs,
+		CountryCodes:        req.CountryCodes,
 		AppRules: func() []repository.TemplateTypeAppRule {
 			rules := make([]repository.TemplateTypeAppRule, 0, len(req.AppRules))
 			for _, rule := range req.AppRules {
 				rules = append(rules, repository.TemplateTypeAppRule{
-					AppID: rule.AppID,
+					AppCode: rule.AppCode,
 				})
 			}
 			return rules
@@ -374,15 +374,15 @@ func normalizeUserTypes(values []int) ([]int, error) {
 	return result, nil
 }
 
-func normalizeTargetIDs(values []uint64, label string) ([]uint64, error) {
+func normalizeTargetIDs(values []string, label string) ([]string, error) {
 	if len(values) > 100 {
 		return nil, errors.New(label + "最多选择 100 项")
 	}
-	result := make([]uint64, 0, len(values))
-	seen := make(map[uint64]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
 	for _, id := range values {
-		if id == 0 {
-			return nil, errors.New(label + " ID 无效")
+		if id == "" {
+			return nil, errors.New(label + " Code 无效")
 		}
 		if _, exists := seen[id]; exists {
 			continue

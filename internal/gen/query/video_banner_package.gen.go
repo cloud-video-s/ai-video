@@ -30,7 +30,7 @@ func newVideoBannerPackage(db *gorm.DB, opts ...gen.DOOption) videoBannerPackage
 	_videoBannerPackage.ALL = field.NewAsterisk(tableName)
 	_videoBannerPackage.ID = field.NewUint64(tableName, "id")
 	_videoBannerPackage.BannerID = field.NewUint64(tableName, "banner_id")
-	_videoBannerPackage.PackageID = field.NewUint64(tableName, "package_id")
+	_videoBannerPackage.PackageCode = field.NewString(tableName, "package_code")
 	_videoBannerPackage.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoBannerPackage.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoBannerPackage.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -159,14 +159,14 @@ func newVideoBannerPackage(db *gorm.DB, opts ...gen.DOOption) videoBannerPackage
 type videoBannerPackage struct {
 	videoBannerPackageDo videoBannerPackageDo
 
-	ALL       field.Asterisk
-	ID        field.Uint64 // channel ID
-	BannerID  field.Uint64
-	PackageID field.Uint64
-	CreatedAt field.Time
-	UpdatedAt field.Time
-	DeletedAt field.Field
-	Banner    videoBannerPackageBelongsToBanner
+	ALL         field.Asterisk
+	ID          field.Uint64 // channel ID
+	BannerID    field.Uint64
+	PackageCode field.String
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
+	Banner      videoBannerPackageBelongsToBanner
 
 	Package videoBannerPackageBelongsToPackage
 
@@ -187,7 +187,7 @@ func (v *videoBannerPackage) updateTableName(table string) *videoBannerPackage {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
 	v.BannerID = field.NewUint64(table, "banner_id")
-	v.PackageID = field.NewUint64(table, "package_id")
+	v.PackageCode = field.NewString(table, "package_code")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -222,7 +222,7 @@ func (v *videoBannerPackage) fillFieldMap() {
 	v.fieldMap = make(map[string]field.Expr, 8)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["banner_id"] = v.BannerID
-	v.fieldMap["package_id"] = v.PackageID
+	v.fieldMap["package_code"] = v.PackageCode
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

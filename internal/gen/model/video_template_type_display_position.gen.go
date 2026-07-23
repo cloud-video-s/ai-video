@@ -17,8 +17,8 @@ type VideoTemplateTypeDisplayPosition struct {
 	ID             uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
 	TemplateTypeID uint64         `gorm:"column:template_type_id;type:bigint unsigned;not null" json:"template_type_id"`
 	PositionKey    string         `gorm:"column:position_key;type:varchar(64);not null" json:"position_key"`
-	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
-	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3);not null" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 }
 

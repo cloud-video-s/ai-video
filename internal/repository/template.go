@@ -176,14 +176,14 @@ func (r *TemplateTypeRepo) ReplaceDisplayPositions(ctx context.Context, item *mo
 
 type TemplateTypeTargetIDs struct {
 	DisplayPositionKeys []string
-	CountryIDs          []uint64
+	CountryCodes        []string
 	AppRules            []TemplateTypeAppRule
 }
 
 // TemplateTypeAppRule selects one application delivery target.
 // An empty rule list means the template type is available to every app.
 type TemplateTypeAppRule struct {
-	AppID uint64
+	AppCode string
 }
 
 func (r *TemplateTypeRepo) ReplaceTargets(ctx context.Context, item *model.VideoTemplateType, targets TemplateTypeTargetIDs) error {
@@ -192,7 +192,7 @@ func (r *TemplateTypeRepo) ReplaceTargets(ctx context.Context, item *model.Video
 	if err != nil {
 		return err
 	}
-	countries, err := loadCountriesByIDs(ctx, targets.CountryIDs)
+	countries, err := loadCountriesByIDs(ctx, targets.CountryCodes)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func (r *TemplateTypeRepo) ReplaceTargets(ctx context.Context, item *model.Video
 	for _, rule := range targets.AppRules {
 		rules = append(rules, model.VideoTemplateTypeApp{
 			ID: nextTemplateTypeAppID(), TemplateTypeID: item.ID,
-			AppID: rule.AppID,
+			AppCode: rule.AppCode,
 		})
 	}
 	return db.Create(&rules).Error
@@ -479,13 +479,13 @@ func loadDisplayPositionsByKeys(ctx context.Context, keys []string) ([]model.Vid
 	return items, nil
 }
 
-func loadCountriesByIDs(ctx context.Context, ids []uint64) ([]model.VideoCountry, error) {
+func loadCountriesByIDs(ctx context.Context, ids []string) ([]model.VideoCountry, error) {
 	items := make([]model.VideoCountry, 0, len(ids))
 	if len(ids) == 0 {
 		return items, nil
 	}
 	q := qFrom(ctx).VideoCountry
-	rows, err := q.WithContext(ctx).Where(q.ID.In(ids...)).Find()
+	rows, err := q.WithContext(ctx).Where(q.Code.In(ids...)).Find()
 	if err != nil {
 		return nil, err
 	}

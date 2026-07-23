@@ -30,7 +30,7 @@ func newVideoTemplateTypeVersion(db *gorm.DB, opts ...gen.DOOption) videoTemplat
 	_videoTemplateTypeVersion.ALL = field.NewAsterisk(tableName)
 	_videoTemplateTypeVersion.ID = field.NewUint64(tableName, "id")
 	_videoTemplateTypeVersion.TemplateTypeID = field.NewUint64(tableName, "template_type_id")
-	_videoTemplateTypeVersion.VersionID = field.NewUint64(tableName, "version_id")
+	_videoTemplateTypeVersion.VersionCode = field.NewString(tableName, "version_code")
 	_videoTemplateTypeVersion.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoTemplateTypeVersion.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoTemplateTypeVersion.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -180,7 +180,7 @@ type videoTemplateTypeVersion struct {
 	ALL            field.Asterisk
 	ID             field.Uint64 // channel ID
 	TemplateTypeID field.Uint64
-	VersionID      field.Uint64
+	VersionCode    field.String
 	CreatedAt      field.Time
 	UpdatedAt      field.Time
 	DeletedAt      field.Field
@@ -205,7 +205,7 @@ func (v *videoTemplateTypeVersion) updateTableName(table string) *videoTemplateT
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
 	v.TemplateTypeID = field.NewUint64(table, "template_type_id")
-	v.VersionID = field.NewUint64(table, "version_id")
+	v.VersionCode = field.NewString(table, "version_code")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -240,7 +240,7 @@ func (v *videoTemplateTypeVersion) fillFieldMap() {
 	v.fieldMap = make(map[string]field.Expr, 8)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["template_type_id"] = v.TemplateTypeID
-	v.fieldMap["version_id"] = v.VersionID
+	v.fieldMap["version_code"] = v.VersionCode
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

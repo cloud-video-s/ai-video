@@ -160,7 +160,7 @@ type BannerDeliveryApp struct {
 
 type BannerTargetIDs struct {
 	DisplayPositionKeys []string
-	CountryIDs          []uint64
+	CountryCodes        []string
 	AppTargets          []BannerAppTargetInput
 }
 
@@ -293,10 +293,10 @@ func (r *BannerRepo) ReplaceTargets(ctx context.Context, item *model.VideoBanner
 			return err
 		}
 	}
-	countryIDs := uniqueUint64s(targets.CountryIDs)
+	countryIDs := sortedUniqueStrings(targets.CountryCodes)
 	if len(countryIDs) > 0 {
 		countryDAO := q.VideoCountry
-		countries, err := countryDAO.WithContext(ctx).Where(countryDAO.ID.In(countryIDs...)).Find()
+		countries, err := countryDAO.WithContext(ctx).Where(countryDAO.Code.In(countryIDs...)).Find()
 		if err != nil {
 			return err
 		}
@@ -342,7 +342,7 @@ func createBannerAppTargets(ctx context.Context, bannerID uint64, targets []Bann
 		}
 		if _, exists := seenApps[app.ID]; !exists {
 			seenApps[app.ID] = struct{}{}
-			appRows = append(appRows, &model.VideoBannerApp{BannerID: bannerID, AppID: app.ID})
+			appRows = append(appRows, &model.VideoBannerApp{BannerID: bannerID, AppCode: app.AppCode})
 		}
 		packageDAO := q.VideoPackage
 		packageItem, err := packageDAO.WithContext(ctx).Where(
@@ -354,7 +354,7 @@ func createBannerAppTargets(ctx context.Context, bannerID uint64, targets []Bann
 		}
 		if _, exists := seenPackages[packageItem.ID]; !exists {
 			seenPackages[packageItem.ID] = struct{}{}
-			packageRows = append(packageRows, &model.VideoBannerPackage{BannerID: bannerID, PackageID: packageItem.ID})
+			packageRows = append(packageRows, &model.VideoBannerPackage{BannerID: bannerID, PackageCode: packageItem.PackageCode})
 		}
 		versionCodes := sortedUniqueStrings(target.VersionCodes)
 		if len(versionCodes) == 0 {
@@ -376,7 +376,7 @@ func createBannerAppTargets(ctx context.Context, bannerID uint64, targets []Bann
 				continue
 			}
 			seenVersions[version.ID] = struct{}{}
-			versionRows = append(versionRows, &model.VideoBannerVersion{BannerID: bannerID, VersionID: version.ID})
+			versionRows = append(versionRows, &model.VideoBannerVersion{BannerID: bannerID, VersionCode: version.VersionCode})
 		}
 	}
 	if len(appRows) > 0 {
@@ -430,101 +430,99 @@ func (r *BannerRepo) LoadAppTargets(ctx context.Context, bannerIDs []uint64) (ma
 	appRelationDAO := q.VideoBannerApp
 	appRelations, err := appRelationDAO.WithContext(ctx).
 		Where(appRelationDAO.BannerID.In(bannerIDs...)).
-		Order(appRelationDAO.BannerID.Asc(), appRelationDAO.AppID.Asc()).Find()
+		Order(appRelationDAO.BannerID.Asc(), appRelationDAO.AppCode.Asc()).Find()
 	if err != nil {
 		return nil, err
 	}
 	packageRelationDAO := q.VideoBannerPackage
 	packageRelations, err := packageRelationDAO.WithContext(ctx).
 		Where(packageRelationDAO.BannerID.In(bannerIDs...)).
-		Order(packageRelationDAO.BannerID.Asc(), packageRelationDAO.PackageID.Asc()).Find()
+		Order(packageRelationDAO.BannerID.Asc(), packageRelationDAO.PackageCode.Asc()).Find()
 	if err != nil {
 		return nil, err
 	}
 	versionRelationDAO := q.VideoBannerVersion
 	versionRelations, err := versionRelationDAO.WithContext(ctx).
 		Where(versionRelationDAO.BannerID.In(bannerIDs...)).
-		Order(versionRelationDAO.BannerID.Asc(), versionRelationDAO.VersionID.Asc()).Find()
+		Order(versionRelationDAO.BannerID.Asc(), versionRelationDAO.VersionCode.Asc()).Find()
 	if err != nil {
 		return nil, err
 	}
-	appIDs := make([]uint64, 0, len(appRelations))
+	appCodes := make([]string, 0, len(appRelations))
 	for _, relation := range appRelations {
-		appIDs = append(appIDs, relation.AppID)
+		appCodes = append(appCodes, relation.AppCode)
 	}
-	packageIDs := make([]uint64, 0, len(packageRelations))
+	packageCodes := make([]string, 0, len(packageRelations))
 	for _, relation := range packageRelations {
-		packageIDs = append(packageIDs, relation.PackageID)
+		packageCodes = append(packageCodes, relation.PackageCode)
 	}
-	versionIDs := make([]uint64, 0, len(versionRelations))
+	versionCodes := make([]string, 0, len(versionRelations))
 	for _, relation := range versionRelations {
-		if relation.VersionID > 0 {
-			versionIDs = append(versionIDs, uint64(relation.VersionID))
+		if relation.VersionCode != "" {
+			versionCodes = append(versionCodes, relation.VersionCode)
 		}
 	}
-	appsByID := make(map[uint64]*model.VideoApp)
-	if appIDs = uniqueUint64s(appIDs); len(appIDs) > 0 {
+	appsByCode := make(map[string]*model.VideoApp)
+	if appCodes = sortedUniqueStrings(appCodes); len(appCodes) > 0 {
 		appDAO := q.VideoApp
-		apps, err := appDAO.WithContext(ctx).Where(appDAO.ID.In(appIDs...)).Find()
+		apps, err := appDAO.WithContext(ctx).Where(appDAO.AppCode.In(appCodes...)).Find()
 		if err != nil {
 			return nil, err
 		}
 		for _, app := range apps {
-			appsByID[app.ID] = app
+			appsByCode[app.AppCode] = app
 		}
 	}
-	packagesByID := make(map[uint64]*model.VideoPackage)
-	if packageIDs = uniqueUint64s(packageIDs); len(packageIDs) > 0 {
+	packagesByCode := make(map[string]*model.VideoPackage)
+	if packageCodes = sortedUniqueStrings(packageCodes); len(packageCodes) > 0 {
 		packageDAO := q.VideoPackage
-		packages, err := packageDAO.WithContext(ctx).Where(packageDAO.ID.In(packageIDs...)).Find()
+		packages, err := packageDAO.WithContext(ctx).Where(packageDAO.PackageCode.In(packageCodes...)).Find()
 		if err != nil {
 			return nil, err
 		}
 		for _, packageItem := range packages {
-			packagesByID[packageItem.ID] = packageItem
+			packagesByCode[packageItem.PackageCode] = packageItem
 		}
 	}
-	versionsByID := make(map[uint64]*model.VideoPackageVersion)
-	if versionIDs = uniqueUint64s(versionIDs); len(versionIDs) > 0 {
+	versionsByCode := make(map[string]*model.VideoPackageVersion)
+	if versionCodes = sortedUniqueStrings(versionCodes); len(versionCodes) > 0 {
 		versionDAO := q.VideoPackageVersion
-		versions, err := versionDAO.WithContext(ctx).Where(versionDAO.ID.In(versionIDs...)).Find()
+		versions, err := versionDAO.WithContext(ctx).Where(versionDAO.VersionCode.In(versionCodes...)).Find()
 		if err != nil {
 			return nil, err
 		}
 		for _, version := range versions {
-			versionsByID[version.ID] = version
+			versionsByCode[version.VersionCode] = version
 		}
 	}
-	appsByBanner := make(map[uint64][]uint64)
+	appsByBanner := make(map[uint64][]string)
 	for _, relation := range appRelations {
-		appsByBanner[relation.BannerID] = append(appsByBanner[relation.BannerID], relation.AppID)
+		appsByBanner[relation.BannerID] = append(appsByBanner[relation.BannerID], relation.AppCode)
 	}
-	packagesByBanner := make(map[uint64][]uint64)
+	packagesByBanner := make(map[uint64][]string)
 	for _, relation := range packageRelations {
-		packagesByBanner[relation.BannerID] = append(packagesByBanner[relation.BannerID], relation.PackageID)
+		packagesByBanner[relation.BannerID] = append(packagesByBanner[relation.BannerID], relation.PackageCode)
 	}
-	versionsByBanner := make(map[uint64][]uint64)
+	versionsByBanner := make(map[uint64][]string)
 	for _, relation := range versionRelations {
-		if relation.VersionID > 0 {
-			versionsByBanner[relation.BannerID] = append(versionsByBanner[relation.BannerID], uint64(relation.VersionID))
-		}
+		versionsByBanner[relation.BannerID] = append(versionsByBanner[relation.BannerID], relation.VersionCode)
 	}
 	for _, bannerID := range bannerIDs {
-		for _, appID := range uniqueUint64s(appsByBanner[bannerID]) {
-			app := appsByID[appID]
+		for _, appCode := range sortedUniqueStrings(appsByBanner[bannerID]) {
+			app := appsByCode[appCode]
 			if app == nil {
 				continue
 			}
-			for _, packageID := range uniqueUint64s(packagesByBanner[bannerID]) {
-				packageItem := packagesByID[packageID]
+			for _, packageID := range sortedUniqueStrings(packagesByBanner[bannerID]) {
+				packageItem := packagesByCode[packageID]
 				if packageItem == nil || packageItem.AppCode != app.AppCode {
 					continue
 				}
-				versionCodes := make([]string, 0)
-				for _, versionID := range uniqueUint64s(versionsByBanner[bannerID]) {
-					version := versionsByID[versionID]
+				versionCodess := make([]string, 0)
+				for _, versionCode := range sortedUniqueStrings(versionsByBanner[bannerID]) {
+					version := versionsByCode[versionCode]
 					if version != nil && version.PackageCode == packageItem.PackageCode {
-						versionCodes = append(versionCodes, version.VersionCode)
+						versionCodess = append(versionCodess, version.VersionCode)
 					}
 				}
 				result[bannerID] = append(result[bannerID], BannerAppTarget{

@@ -26,7 +26,7 @@ type ListVideoAppRequest struct {
 
 type VideoAppPayload struct {
 	Name        string `json:"name" binding:"required,max=255"`
-	AppID       uint64 `json:"app_id" binding:"required,max=60"`
+	AppCode     string `json:"app_code" binding:"required,max=60"`
 	Status      uint32 `json:"status" binding:"oneof=0 1"`
 	Sort        uint32 `json:"sort" binding:"max=999999"`
 	Description string `json:"description" binding:"max=10000"`
@@ -114,7 +114,7 @@ func (s *VideoAppService) validatePayload(ctx context.Context, req *VideoAppPayl
 	//if !videoAppCodePattern.MatchString(code) {
 	//	return errors.New("应用标识只能包含字母、数字、点、下划线和中划线")
 	//}
-	existing, err := s.repo.GetByAppCode(ctx, req.AppID)
+	existing, err := s.repo.GetByAppCode(ctx, req.AppCode)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil
 	}

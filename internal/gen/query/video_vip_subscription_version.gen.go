@@ -30,7 +30,7 @@ func newVideoVipSubscriptionVersion(db *gorm.DB, opts ...gen.DOOption) videoVipS
 	_videoVipSubscriptionVersion.ALL = field.NewAsterisk(tableName)
 	_videoVipSubscriptionVersion.ID = field.NewUint64(tableName, "id")
 	_videoVipSubscriptionVersion.SubscriptionID = field.NewUint64(tableName, "subscription_id")
-	_videoVipSubscriptionVersion.VersionID = field.NewInt64(tableName, "version_id")
+	_videoVipSubscriptionVersion.VersionCode = field.NewString(tableName, "version_code")
 	_videoVipSubscriptionVersion.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoVipSubscriptionVersion.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoVipSubscriptionVersion.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -46,7 +46,7 @@ type videoVipSubscriptionVersion struct {
 	ALL            field.Asterisk
 	ID             field.Uint64 // channel ID
 	SubscriptionID field.Uint64
-	VersionID      field.Int64
+	VersionCode    field.String
 	CreatedAt      field.Time
 	UpdatedAt      field.Time
 	DeletedAt      field.Field
@@ -68,7 +68,7 @@ func (v *videoVipSubscriptionVersion) updateTableName(table string) *videoVipSub
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
 	v.SubscriptionID = field.NewUint64(table, "subscription_id")
-	v.VersionID = field.NewInt64(table, "version_id")
+	v.VersionCode = field.NewString(table, "version_code")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -105,7 +105,7 @@ func (v *videoVipSubscriptionVersion) fillFieldMap() {
 	v.fieldMap = make(map[string]field.Expr, 6)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["subscription_id"] = v.SubscriptionID
-	v.fieldMap["version_id"] = v.VersionID
+	v.fieldMap["version_code"] = v.VersionCode
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

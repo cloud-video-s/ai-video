@@ -199,9 +199,9 @@ func (s *PointsPackageService) prepareAndValidate(ctx context.Context, req *Poin
 	if appPackage.Status != 1 {
 		return errors.New("所选安装包已禁用")
 	}
-	if req.ChannelIDs, err = normalizeTargetIDs(req.ChannelIDs, "渠道"); err != nil {
-		return err
-	}
+	//if req.ChannelIDs, err = normalizeTargetIDs(req.ChannelIDs, "渠道"); err != nil {
+	//	return err
+	//}
 	for _, id := range req.ChannelIDs {
 		if _, err := s.channelRepo.GetByID(ctx, uint(id)); err != nil {
 			return notFoundOr(err, "渠道不存在")

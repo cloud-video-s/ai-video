@@ -16,7 +16,7 @@ const TableNameVideoVipSubscriptionApp = "video_vip_subscription_app"
 type VideoVipSubscriptionApp struct {
 	ID             uint64         `gorm:"column:id;type:bigint unsigned;primaryKey" json:"id"`
 	SubscriptionID uint64         `gorm:"column:subscription_id;type:bigint unsigned;not null;uniqueIndex:idx_trmplate_app,priority:1" json:"subscription_id"`
-	AppID          uint64         `gorm:"column:app_id;type:bigint unsigned;not null;uniqueIndex:idx_trmplate_app,priority:2" json:"app_id"`
+	AppCode        string         `gorm:"column:app_code;type:varchar(50);not null;uniqueIndex:idx_trmplate_app,priority:2" json:"app_code"`
 	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3);not null" json:"created_at"`
 	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);uniqueIndex:idx_trmplate_app,priority:3" json:"deleted_at"`

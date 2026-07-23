@@ -20,10 +20,10 @@ func NewVIPSubscriptionService() *VIPSubscriptionService {
 }
 
 type ListVIPSubscriptionRequest struct {
-	AppID          uint64 `form:"app_id"`
-	PackageID      uint64 `form:"package_id"`
-	VersionID      uint64 `form:"version_id"`
-	CountryID      uint64 `form:"country_id"`
+	AppCode        string `form:"app_code"`
+	PackageCode    string `form:"package_code"`
+	VersionCode    string `form:"version_code"`
+	CountryCode    string `form:"country_code"`
 	PlacementKey   string `form:"placement_key" binding:"omitempty,max=100"`
 	LevelID        int64  `form:"level_id"`
 	PlanType       string `form:"plan_type" binding:"omitempty,oneof=normal trial paywall"`
@@ -36,10 +36,10 @@ type ListVIPSubscriptionRequest struct {
 
 // VIPSubscriptionPayload 与新模型保持一致，投放范围使用 APP、包、版本和国家关联表。
 type VIPSubscriptionPayload struct {
-	AppIDs                   []uint64 `json:"app_ids" binding:"max=100,dive,gt=0"`
-	PackageIDs               []uint64 `json:"package_ids" binding:"required,min=1,max=100,dive,gt=0"`
-	VersionIDs               []uint64 `json:"version_ids" binding:"max=100,dive,gt=0"`
-	CountryIDs               []uint64 `json:"country_ids" binding:"max=250,dive,gt=0"`
+	AppCodes                 []string `json:"app_codes" binding:"max=100,dive,gt=0"`
+	PackageCodes             []string `json:"package_codes" binding:"required,min=1,max=100,dive,gt=0"`
+	VersionCodes             []string `json:"version_codes" binding:"max=100,dive,gt=0"`
+	CountryCodes             []string `json:"country_codes" binding:"max=250,dive,gt=0"`
 	PlacementKey             string   `json:"placement_key" binding:"required,max=100"`
 	LevelID                  int64    `json:"level_id" binding:"required,gt=0"`
 	VipType                  string   `json:"vip_type" binding:"required,oneof=android ios pc web"`
@@ -87,7 +87,7 @@ type CloneVIPSubscriptionRequest struct {
 
 func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]model.VideoVipSubscription, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.VIPSubscriptionListFilter{
-		AppID: req.AppID, PackageID: req.PackageID, VersionID: req.VersionID, CountryID: req.CountryID,
+		AppCode: req.AppCode, PackageCode: req.PackageCode, VersionCode: req.VersionCode, CountryCode: req.CountryCode,
 		PlacementKey: strings.TrimSpace(req.PlacementKey), LevelID: req.LevelID,
 		PlanType: strings.TrimSpace(req.PlanType), VipType: strings.TrimSpace(req.VipType),
 		DisplayMode: req.DisplayMode, Status: req.Status, IsSubscription: req.IsSubscription,
@@ -117,7 +117,7 @@ func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptio
 			return err
 		}
 		if item.IsDefault == 1 {
-			return s.clearDefaults(txCtx, req.PackageIDs, item.VipType, item.ID)
+			return s.clearDefaults(txCtx, req.PackageCodes, item.VipType, item.ID)
 		}
 		return nil
 	})
@@ -147,7 +147,7 @@ func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIP
 			return err
 		}
 		if item.IsDefault == 1 {
-			return s.clearDefaults(txCtx, req.PackageIDs, item.VipType, item.ID)
+			return s.clearDefaults(txCtx, req.PackageCodes, item.VipType, item.ID)
 		}
 		return nil
 	})
@@ -160,9 +160,9 @@ func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIP
 	return s.repo.GetDetail(ctx, item.ID)
 }
 
-func (s *VIPSubscriptionService) clearDefaults(ctx context.Context, packageIDs []uint64, vipType string, exceptID uint64) error {
-	for _, packageID := range packageIDs {
-		if err := s.repo.ClearDefaults(ctx, packageID, vipType, exceptID); err != nil {
+func (s *VIPSubscriptionService) clearDefaults(ctx context.Context, packageCodes []string, vipType string, exceptID uint64) error {
+	for _, packageCode := range packageCodes {
+		if err := s.repo.ClearDefaults(ctx, packageCode, vipType, exceptID); err != nil {
 			return err
 		}
 	}
@@ -216,19 +216,19 @@ func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *Clon
 
 func (s *VIPSubscriptionService) prepareAndValidate(ctx context.Context, req *VIPSubscriptionPayload) error {
 	var err error
-	if req.AppIDs, err = normalizeTargetIDs(req.AppIDs, "APP"); err != nil {
+	if req.AppCodes, err = normalizeTargetIDs(req.AppCodes, "APP"); err != nil {
 		return err
 	}
-	if req.PackageIDs, err = normalizeTargetIDs(req.PackageIDs, "安装包"); err != nil {
+	if req.PackageCodes, err = normalizeTargetIDs(req.PackageCodes, "安装包"); err != nil {
 		return err
 	}
-	if len(req.PackageIDs) == 0 {
+	if len(req.PackageCodes) == 0 {
 		return errors.New("至少选择一个安装包")
 	}
-	if req.VersionIDs, err = normalizeTargetIDs(req.VersionIDs, "版本"); err != nil {
+	if req.VersionCodes, err = normalizeTargetIDs(req.VersionCodes, "版本"); err != nil {
 		return err
 	}
-	if req.CountryIDs, err = normalizeTargetIDs(req.CountryIDs, "国家"); err != nil {
+	if req.CountryCodes, err = normalizeTargetIDs(req.CountryCodes, "国家"); err != nil {
 		return err
 	}
 	req.PlacementKey = strings.TrimSpace(req.PlacementKey)
@@ -283,13 +283,13 @@ func applyVIPSubscriptionPayload(item *model.VideoVipSubscription, req *VIPSubsc
 
 func vipSubscriptionTargets(req *VIPSubscriptionPayload) repository.VIPSubscriptionTargets {
 	return repository.VIPSubscriptionTargets{
-		AppIDs: req.AppIDs, PackageIDs: req.PackageIDs, VersionIDs: req.VersionIDs, CountryIDs: req.CountryIDs,
+		AppCodes: req.AppCodes, PackageCodes: req.PackageCodes, VersionCdes: req.VersionCodes, CountryCode: req.CountryCodes,
 	}
 }
 
 func vipSubscriptionPayloadFromModel(item *model.VideoVipSubscription) *VIPSubscriptionPayload {
 	return &VIPSubscriptionPayload{
-		AppIDs: appIDs(item.Apps), PackageIDs: packageIDs(item.Packages), VersionIDs: versionIDs(item.Versions), CountryIDs: countryIDs(item.Countries),
+		AppCodes: appIDs(item.Apps), PackageCodes: packageIDs(item.Packages), VersionCodes: versionIDs(item.Versions), CountryCodes: countryIDs(item.Countries),
 		PlacementKey: item.PlacementKey, LevelID: item.LevelID, VipType: item.VipType, ProductCode: item.ProductCode,
 		Name: item.Name, PlanType: item.PlanType, AppVersion: item.AppVersion, Currency: item.Currency,
 		FirstSubscriptionPrice: item.FirstSubscriptionPrice, FirstSubscriptionRevenue: item.FirstSubscriptionRevenue,
@@ -304,34 +304,34 @@ func vipSubscriptionPayloadFromModel(item *model.VideoVipSubscription) *VIPSubsc
 	}
 }
 
-func appIDs(items []model.VideoApp) []uint64 {
-	result := make([]uint64, len(items))
+func appIDs(items []model.VideoApp) []string {
+	result := make([]string, len(items))
 	for i := range items {
-		result[i] = items[i].ID
+		result[i] = items[i].AppCode
 	}
 	return result
 }
 
-func packageIDs(items []model.VideoPackage) []uint64 {
-	result := make([]uint64, len(items))
+func packageIDs(items []model.VideoPackage) []string {
+	result := make([]string, len(items))
 	for i := range items {
-		result[i] = items[i].ID
+		result[i] = items[i].PackageCode
 	}
 	return result
 }
 
-func versionIDs(items []model.VideoPackageVersion) []uint64 {
-	result := make([]uint64, len(items))
+func versionIDs(items []model.VideoPackageVersion) []string {
+	result := make([]string, len(items))
 	for i := range items {
-		result[i] = items[i].ID
+		result[i] = items[i].VersionCode
 	}
 	return result
 }
 
-func countryIDs(items []model.VideoCountry) []uint64 {
-	result := make([]uint64, len(items))
+func countryIDs(items []model.VideoCountry) []string {
+	result := make([]string, len(items))
 	for i := range items {
-		result[i] = items[i].ID
+		result[i] = items[i].Code
 	}
 	return result
 }

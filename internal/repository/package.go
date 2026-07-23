@@ -116,9 +116,9 @@ func (r *PackageRepo) VersionCount(ctx context.Context, packageID uint64) (int64
 	return version.WithContext(ctx).Where(version.PackageCode.Eq(item.PackageCode)).Count()
 }
 
-func (r *PackageRepo) TemplateCount(ctx context.Context, packageID uint64) (int64, error) {
+func (r *PackageRepo) TemplateCount(ctx context.Context, packageCode string) (int64, error) {
 	relation := qFrom(ctx).VideoTemplateTypePackage
-	return relation.WithContext(ctx).Where(relation.PackageID.Eq(packageID)).Count()
+	return relation.WithContext(ctx).Where(relation.PackageCode.Eq(packageCode)).Count()
 }
 
 func (r *PackageRepo) PointsPackageCount(ctx context.Context, packageID uint64) (int64, error) {

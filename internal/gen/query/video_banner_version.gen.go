@@ -30,7 +30,7 @@ func newVideoBannerVersion(db *gorm.DB, opts ...gen.DOOption) videoBannerVersion
 	_videoBannerVersion.ALL = field.NewAsterisk(tableName)
 	_videoBannerVersion.ID = field.NewUint64(tableName, "id")
 	_videoBannerVersion.BannerID = field.NewUint64(tableName, "banner_id")
-	_videoBannerVersion.VersionID = field.NewUint64(tableName, "version_id")
+	_videoBannerVersion.VersionCode = field.NewString(tableName, "version_code")
 	_videoBannerVersion.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoBannerVersion.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoBannerVersion.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -182,14 +182,14 @@ func newVideoBannerVersion(db *gorm.DB, opts ...gen.DOOption) videoBannerVersion
 type videoBannerVersion struct {
 	videoBannerVersionDo videoBannerVersionDo
 
-	ALL       field.Asterisk
-	ID        field.Uint64 // channel ID
-	BannerID  field.Uint64
-	VersionID field.Uint64
-	CreatedAt field.Time
-	UpdatedAt field.Time
-	DeletedAt field.Field
-	Banner    videoBannerVersionBelongsToBanner
+	ALL         field.Asterisk
+	ID          field.Uint64 // channel ID
+	BannerID    field.Uint64
+	VersionCode field.String
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
+	Banner      videoBannerVersionBelongsToBanner
 
 	Version videoBannerVersionBelongsToVersion
 
@@ -210,7 +210,7 @@ func (v *videoBannerVersion) updateTableName(table string) *videoBannerVersion {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
 	v.BannerID = field.NewUint64(table, "banner_id")
-	v.VersionID = field.NewUint64(table, "version_id")
+	v.VersionCode = field.NewString(table, "version_code")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -245,7 +245,7 @@ func (v *videoBannerVersion) fillFieldMap() {
 	v.fieldMap = make(map[string]field.Expr, 8)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["banner_id"] = v.BannerID
-	v.fieldMap["version_id"] = v.VersionID
+	v.fieldMap["version_code"] = v.VersionCode
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
