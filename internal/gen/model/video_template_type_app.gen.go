@@ -14,14 +14,12 @@ const TableNameVideoTemplateTypeApp = "video_template_type_app"
 
 // VideoTemplateTypeApp mapped from table <video_template_type_app>
 type VideoTemplateTypeApp struct {
-	ID             uint64            `gorm:"column:id;type:bigint unsigned;primaryKey" json:"id"`
-	TemplateTypeID uint64            `gorm:"column:template_type_id;type:bigint unsigned;not null;uniqueIndex:idx_trmplate_app,priority:1" json:"template_type_id"`
-	AppCode        string            `gorm:"column:app_code;type:varchar(50);not null;uniqueIndex:idx_trmplate_app,priority:2" json:"app_code"`
-	CreatedAt      time.Time         `gorm:"column:created_at;type:datetime(3);not null" json:"created_at"`
-	UpdatedAt      time.Time         `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
-	DeletedAt      gorm.DeletedAt    `gorm:"column:deleted_at;type:datetime(3);uniqueIndex:idx_trmplate_app,priority:3" json:"deleted_at"`
-	TemplateType   VideoTemplateType `gorm:"foreignKey:TemplateTypeID;references:ID" json:"template_type"`
-	App            VideoApp          `gorm:"foreignKey:AppID;references:ID" json:"app"`
+	ID             uint64         `gorm:"column:id;type:bigint unsigned;primaryKey" json:"id"`
+	TemplateTypeID uint64         `gorm:"column:template_type_id;type:bigint unsigned;not null;uniqueIndex:idx_trmplate_app,priority:1" json:"template_type_id"`
+	AppCode        string         `gorm:"column:app_code;type:varchar(50);not null;uniqueIndex:idx_trmplate_app,priority:2" json:"app_code"`
+	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3);not null" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);uniqueIndex:idx_trmplate_app,priority:3" json:"deleted_at"`
 }
 
 // TableName VideoTemplateTypeApp's table name

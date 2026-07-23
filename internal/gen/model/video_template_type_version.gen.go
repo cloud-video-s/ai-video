@@ -14,14 +14,12 @@ const TableNameVideoTemplateTypeVersion = "video_template_type_version"
 
 // VideoTemplateTypeVersion mapped from table <video_template_type_version>
 type VideoTemplateTypeVersion struct {
-	ID             uint64              `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:channel ID" json:"id"` // channel ID
-	TemplateTypeID uint64              `gorm:"column:template_type_id;type:bigint unsigned;not null" json:"template_type_id"`
-	VersionCode    string              `gorm:"column:version_code;type:varchar(50);not null" json:"version_code"`
-	CreatedAt      time.Time           `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
-	UpdatedAt      time.Time           `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt      gorm.DeletedAt      `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
-	TemplateType   VideoTemplateType   `gorm:"foreignKey:TemplateTypeID;references:ID" json:"template_type"`
-	Version        VideoPackageVersion `gorm:"foreignKey:VersionID;references:ID" json:"version"`
+	ID             uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:channel ID" json:"id"` // channel ID
+	TemplateTypeID uint64         `gorm:"column:template_type_id;type:bigint unsigned;not null" json:"template_type_id"`
+	VersionCode    string         `gorm:"column:version_code;type:varchar(50);not null" json:"version_code"`
+	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 }
 
 // TableName VideoTemplateTypeVersion's table name

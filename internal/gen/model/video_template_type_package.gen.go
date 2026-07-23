@@ -14,14 +14,12 @@ const TableNameVideoTemplateTypePackage = "video_template_type_package"
 
 // VideoTemplateTypePackage mapped from table <video_template_type_package>
 type VideoTemplateTypePackage struct {
-	ID             uint64            `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:channel ID" json:"id"` // channel ID
-	TemplateTypeID uint64            `gorm:"column:template_type_id;type:bigint unsigned;not null" json:"template_type_id"`
-	PackageCode    string            `gorm:"column:package_code;type:varchar(50);not null" json:"package_code"`
-	CreatedAt      time.Time         `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
-	UpdatedAt      time.Time         `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt      gorm.DeletedAt    `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
-	TemplateType   VideoTemplateType `gorm:"foreignKey:TemplateTypeID;references:ID" json:"template_type"`
-	Package        VideoPackage      `gorm:"foreignKey:PackageID;references:ID" json:"package"`
+	ID             uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:channel ID" json:"id"` // channel ID
+	TemplateTypeID uint64         `gorm:"column:template_type_id;type:bigint unsigned;not null" json:"template_type_id"`
+	PackageCode    string         `gorm:"column:package_code;type:varchar(50);not null" json:"package_code"`
+	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 }
 
 // TableName VideoTemplateTypePackage's table name

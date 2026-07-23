@@ -30,9 +30,9 @@ type VideoBanner struct {
 	Template           *VideoTemplate         `gorm:"foreignKey:TemplateID;references:ID" json:"template"`
 	DisplayPositions   []VideoDisplayPosition `gorm:"foreignKey:ID;joinForeignKey:BannerID;joinReferences:PlacementKey;many2many:video_banner_placement_association;references:PositionKey" json:"display_positions"`
 	Countries          []VideoCountry         `gorm:"foreignKey:ID;joinForeignKey:BannerID;joinReferences:CountryCode;many2many:video_banner_country;references:Code" json:"countries"`
-	Apps               []VideoApp             `gorm:"foreignKey:ID;joinForeignKey:BannerID;joinReferences:AppID;many2many:video_banner_app;references:ID" json:"apps"`
-	Packages           []VideoPackage         `gorm:"foreignKey:ID;joinForeignKey:BannerID;joinReferences:PackageID;many2many:video_banner_package;references:ID" json:"packages"`
-	Versions           []VideoPackageVersion  `gorm:"foreignKey:ID;joinForeignKey:BannerID;joinReferences:VersionID;many2many:video_banner_version;references:ID" json:"versions"`
+	Apps               []VideoApp             `gorm:"foreignKey:ID;joinForeignKey:BannerID;joinReferences:AppCode;many2many:video_banner_app;references:AppCode" json:"apps"`
+	Packages           []VideoPackage         `gorm:"foreignKey:ID;joinForeignKey:BannerID;joinReferences:PackageCode;many2many:video_banner_package;references:PackageCode" json:"packages"`
+	Versions           []VideoPackageVersion  `gorm:"foreignKey:ID;joinForeignKey:BannerID;joinReferences:VersionCode;many2many:video_banner_version;references:VersionCode" json:"versions"`
 }
 
 // TableName VideoBanner's table name

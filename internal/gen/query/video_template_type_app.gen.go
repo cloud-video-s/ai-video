@@ -34,82 +34,6 @@ func newVideoTemplateTypeApp(db *gorm.DB, opts ...gen.DOOption) videoTemplateTyp
 	_videoTemplateTypeApp.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoTemplateTypeApp.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoTemplateTypeApp.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoTemplateTypeApp.TemplateType = videoTemplateTypeAppBelongsToTemplateType{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("TemplateType", "model.VideoTemplateType"),
-		DisplayPosition: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("TemplateType.DisplayPosition", "model.VideoDisplayPosition"),
-		},
-		Countrys: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("TemplateType.Countrys", "model.VideoCountry"),
-		},
-		App: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("TemplateType.App", "model.VideoApp"),
-		},
-		Package: struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}{
-			RelationField: field.NewRelation("TemplateType.Package", "model.VideoPackage"),
-			App: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("TemplateType.Package.App", "model.VideoApp"),
-			},
-		},
-		Version: struct {
-			field.RelationField
-			Package struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}
-		}{
-			RelationField: field.NewRelation("TemplateType.Version", "model.VideoPackageVersion"),
-			Package: struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}{
-				RelationField: field.NewRelation("TemplateType.Version.Package", "model.VideoPackage"),
-				App: struct {
-					field.RelationField
-				}{
-					RelationField: field.NewRelation("TemplateType.Version.Package.App", "model.VideoApp"),
-				},
-			},
-		},
-	}
-
-	_videoTemplateTypeApp.App = videoTemplateTypeAppBelongsToApp{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("App", "model.VideoApp"),
-		Packages: struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}{
-			RelationField: field.NewRelation("App.Packages", "model.VideoPackage"),
-			App: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("App.Packages.App", "model.VideoApp"),
-			},
-		},
-	}
 
 	_videoTemplateTypeApp.fillFieldMap()
 
@@ -126,9 +50,6 @@ type videoTemplateTypeApp struct {
 	CreatedAt      field.Time
 	UpdatedAt      field.Time
 	DeletedAt      field.Field
-	TemplateType   videoTemplateTypeAppBelongsToTemplateType
-
-	App videoTemplateTypeAppBelongsToApp
 
 	fieldMap map[string]field.Expr
 }
@@ -179,224 +100,23 @@ func (v *videoTemplateTypeApp) GetFieldByName(fieldName string) (field.OrderExpr
 }
 
 func (v *videoTemplateTypeApp) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 8)
+	v.fieldMap = make(map[string]field.Expr, 6)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["template_type_id"] = v.TemplateTypeID
 	v.fieldMap["app_code"] = v.AppCode
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-
 }
 
 func (v videoTemplateTypeApp) clone(db *gorm.DB) videoTemplateTypeApp {
 	v.videoTemplateTypeAppDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.TemplateType.db = db.Session(&gorm.Session{Initialized: true})
-	v.TemplateType.db.Statement.ConnPool = db.Statement.ConnPool
-	v.App.db = db.Session(&gorm.Session{Initialized: true})
-	v.App.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoTemplateTypeApp) replaceDB(db *gorm.DB) videoTemplateTypeApp {
 	v.videoTemplateTypeAppDo.ReplaceDB(db)
-	v.TemplateType.db = db.Session(&gorm.Session{})
-	v.App.db = db.Session(&gorm.Session{})
 	return v
-}
-
-type videoTemplateTypeAppBelongsToTemplateType struct {
-	db *gorm.DB
-
-	field.RelationField
-
-	DisplayPosition struct {
-		field.RelationField
-	}
-	Countrys struct {
-		field.RelationField
-	}
-	App struct {
-		field.RelationField
-	}
-	Package struct {
-		field.RelationField
-		App struct {
-			field.RelationField
-		}
-	}
-	Version struct {
-		field.RelationField
-		Package struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}
-	}
-}
-
-func (a videoTemplateTypeAppBelongsToTemplateType) Where(conds ...field.Expr) *videoTemplateTypeAppBelongsToTemplateType {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoTemplateTypeAppBelongsToTemplateType) WithContext(ctx context.Context) *videoTemplateTypeAppBelongsToTemplateType {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoTemplateTypeAppBelongsToTemplateType) Session(session *gorm.Session) *videoTemplateTypeAppBelongsToTemplateType {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoTemplateTypeAppBelongsToTemplateType) Model(m *model.VideoTemplateTypeApp) *videoTemplateTypeAppBelongsToTemplateTypeTx {
-	return &videoTemplateTypeAppBelongsToTemplateTypeTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoTemplateTypeAppBelongsToTemplateType) Unscoped() *videoTemplateTypeAppBelongsToTemplateType {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoTemplateTypeAppBelongsToTemplateTypeTx struct{ tx *gorm.Association }
-
-func (a videoTemplateTypeAppBelongsToTemplateTypeTx) Find() (result *model.VideoTemplateType, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoTemplateTypeAppBelongsToTemplateTypeTx) Append(values ...*model.VideoTemplateType) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoTemplateTypeAppBelongsToTemplateTypeTx) Replace(values ...*model.VideoTemplateType) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoTemplateTypeAppBelongsToTemplateTypeTx) Delete(values ...*model.VideoTemplateType) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoTemplateTypeAppBelongsToTemplateTypeTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoTemplateTypeAppBelongsToTemplateTypeTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoTemplateTypeAppBelongsToTemplateTypeTx) Unscoped() *videoTemplateTypeAppBelongsToTemplateTypeTx {
-	a.tx = a.tx.Unscoped()
-	return &a
-}
-
-type videoTemplateTypeAppBelongsToApp struct {
-	db *gorm.DB
-
-	field.RelationField
-
-	Packages struct {
-		field.RelationField
-		App struct {
-			field.RelationField
-		}
-	}
-}
-
-func (a videoTemplateTypeAppBelongsToApp) Where(conds ...field.Expr) *videoTemplateTypeAppBelongsToApp {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoTemplateTypeAppBelongsToApp) WithContext(ctx context.Context) *videoTemplateTypeAppBelongsToApp {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoTemplateTypeAppBelongsToApp) Session(session *gorm.Session) *videoTemplateTypeAppBelongsToApp {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoTemplateTypeAppBelongsToApp) Model(m *model.VideoTemplateTypeApp) *videoTemplateTypeAppBelongsToAppTx {
-	return &videoTemplateTypeAppBelongsToAppTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoTemplateTypeAppBelongsToApp) Unscoped() *videoTemplateTypeAppBelongsToApp {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoTemplateTypeAppBelongsToAppTx struct{ tx *gorm.Association }
-
-func (a videoTemplateTypeAppBelongsToAppTx) Find() (result *model.VideoApp, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoTemplateTypeAppBelongsToAppTx) Append(values ...*model.VideoApp) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoTemplateTypeAppBelongsToAppTx) Replace(values ...*model.VideoApp) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoTemplateTypeAppBelongsToAppTx) Delete(values ...*model.VideoApp) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoTemplateTypeAppBelongsToAppTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoTemplateTypeAppBelongsToAppTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoTemplateTypeAppBelongsToAppTx) Unscoped() *videoTemplateTypeAppBelongsToAppTx {
-	a.tx = a.tx.Unscoped()
-	return &a
 }
 
 type videoTemplateTypeAppDo struct{ gen.DO }

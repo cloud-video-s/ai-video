@@ -34,117 +34,6 @@ func newVideoTemplateTypePackage(db *gorm.DB, opts ...gen.DOOption) videoTemplat
 	_videoTemplateTypePackage.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoTemplateTypePackage.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoTemplateTypePackage.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoTemplateTypePackage.TemplateType = videoTemplateTypePackageBelongsToTemplateType{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("TemplateType", "model.VideoTemplateType"),
-		DisplayPosition: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("TemplateType.DisplayPosition", "model.VideoDisplayPosition"),
-		},
-		Countrys: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("TemplateType.Countrys", "model.VideoCountry"),
-		},
-		App: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("TemplateType.App", "model.VideoApp"),
-		},
-		Package: struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}{
-			RelationField: field.NewRelation("TemplateType.Package", "model.VideoPackage"),
-			App: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("TemplateType.Package.App", "model.VideoApp"),
-			},
-		},
-		Version: struct {
-			field.RelationField
-			Package struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}
-		}{
-			RelationField: field.NewRelation("TemplateType.Version", "model.VideoPackageVersion"),
-			Package: struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}{
-				RelationField: field.NewRelation("TemplateType.Version.Package", "model.VideoPackage"),
-				App: struct {
-					field.RelationField
-				}{
-					RelationField: field.NewRelation("TemplateType.Version.Package.App", "model.VideoApp"),
-				},
-			},
-		},
-	}
-
-	_videoTemplateTypePackage.Package = videoTemplateTypePackageBelongsToPackage{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("Package", "model.VideoPackage"),
-		App: struct {
-			field.RelationField
-			Packages struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}
-		}{
-			RelationField: field.NewRelation("Package.App", "model.VideoApp"),
-			Packages: struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}{
-				RelationField: field.NewRelation("Package.App.Packages", "model.VideoPackage"),
-				App: struct {
-					field.RelationField
-				}{
-					RelationField: field.NewRelation("Package.App.Packages.App", "model.VideoApp"),
-				},
-			},
-		},
-		Versions: struct {
-			field.RelationField
-			Package struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}
-		}{
-			RelationField: field.NewRelation("Package.Versions", "model.VideoPackageVersion"),
-			Package: struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}{
-				RelationField: field.NewRelation("Package.Versions.Package", "model.VideoPackage"),
-				App: struct {
-					field.RelationField
-				}{
-					RelationField: field.NewRelation("Package.Versions.Package.App", "model.VideoApp"),
-				},
-			},
-		},
-	}
 
 	_videoTemplateTypePackage.fillFieldMap()
 
@@ -161,9 +50,6 @@ type videoTemplateTypePackage struct {
 	CreatedAt      field.Time
 	UpdatedAt      field.Time
 	DeletedAt      field.Field
-	TemplateType   videoTemplateTypePackageBelongsToTemplateType
-
-	Package videoTemplateTypePackageBelongsToPackage
 
 	fieldMap map[string]field.Expr
 }
@@ -214,236 +100,23 @@ func (v *videoTemplateTypePackage) GetFieldByName(fieldName string) (field.Order
 }
 
 func (v *videoTemplateTypePackage) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 8)
+	v.fieldMap = make(map[string]field.Expr, 6)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["template_type_id"] = v.TemplateTypeID
 	v.fieldMap["package_code"] = v.PackageCode
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-
 }
 
 func (v videoTemplateTypePackage) clone(db *gorm.DB) videoTemplateTypePackage {
 	v.videoTemplateTypePackageDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.TemplateType.db = db.Session(&gorm.Session{Initialized: true})
-	v.TemplateType.db.Statement.ConnPool = db.Statement.ConnPool
-	v.Package.db = db.Session(&gorm.Session{Initialized: true})
-	v.Package.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoTemplateTypePackage) replaceDB(db *gorm.DB) videoTemplateTypePackage {
 	v.videoTemplateTypePackageDo.ReplaceDB(db)
-	v.TemplateType.db = db.Session(&gorm.Session{})
-	v.Package.db = db.Session(&gorm.Session{})
 	return v
-}
-
-type videoTemplateTypePackageBelongsToTemplateType struct {
-	db *gorm.DB
-
-	field.RelationField
-
-	DisplayPosition struct {
-		field.RelationField
-	}
-	Countrys struct {
-		field.RelationField
-	}
-	App struct {
-		field.RelationField
-	}
-	Package struct {
-		field.RelationField
-		App struct {
-			field.RelationField
-		}
-	}
-	Version struct {
-		field.RelationField
-		Package struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}
-	}
-}
-
-func (a videoTemplateTypePackageBelongsToTemplateType) Where(conds ...field.Expr) *videoTemplateTypePackageBelongsToTemplateType {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoTemplateTypePackageBelongsToTemplateType) WithContext(ctx context.Context) *videoTemplateTypePackageBelongsToTemplateType {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoTemplateTypePackageBelongsToTemplateType) Session(session *gorm.Session) *videoTemplateTypePackageBelongsToTemplateType {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoTemplateTypePackageBelongsToTemplateType) Model(m *model.VideoTemplateTypePackage) *videoTemplateTypePackageBelongsToTemplateTypeTx {
-	return &videoTemplateTypePackageBelongsToTemplateTypeTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoTemplateTypePackageBelongsToTemplateType) Unscoped() *videoTemplateTypePackageBelongsToTemplateType {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoTemplateTypePackageBelongsToTemplateTypeTx struct{ tx *gorm.Association }
-
-func (a videoTemplateTypePackageBelongsToTemplateTypeTx) Find() (result *model.VideoTemplateType, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoTemplateTypePackageBelongsToTemplateTypeTx) Append(values ...*model.VideoTemplateType) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoTemplateTypePackageBelongsToTemplateTypeTx) Replace(values ...*model.VideoTemplateType) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoTemplateTypePackageBelongsToTemplateTypeTx) Delete(values ...*model.VideoTemplateType) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoTemplateTypePackageBelongsToTemplateTypeTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoTemplateTypePackageBelongsToTemplateTypeTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoTemplateTypePackageBelongsToTemplateTypeTx) Unscoped() *videoTemplateTypePackageBelongsToTemplateTypeTx {
-	a.tx = a.tx.Unscoped()
-	return &a
-}
-
-type videoTemplateTypePackageBelongsToPackage struct {
-	db *gorm.DB
-
-	field.RelationField
-
-	App struct {
-		field.RelationField
-		Packages struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}
-	}
-	Versions struct {
-		field.RelationField
-		Package struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}
-	}
-}
-
-func (a videoTemplateTypePackageBelongsToPackage) Where(conds ...field.Expr) *videoTemplateTypePackageBelongsToPackage {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoTemplateTypePackageBelongsToPackage) WithContext(ctx context.Context) *videoTemplateTypePackageBelongsToPackage {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoTemplateTypePackageBelongsToPackage) Session(session *gorm.Session) *videoTemplateTypePackageBelongsToPackage {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoTemplateTypePackageBelongsToPackage) Model(m *model.VideoTemplateTypePackage) *videoTemplateTypePackageBelongsToPackageTx {
-	return &videoTemplateTypePackageBelongsToPackageTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoTemplateTypePackageBelongsToPackage) Unscoped() *videoTemplateTypePackageBelongsToPackage {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoTemplateTypePackageBelongsToPackageTx struct{ tx *gorm.Association }
-
-func (a videoTemplateTypePackageBelongsToPackageTx) Find() (result *model.VideoPackage, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoTemplateTypePackageBelongsToPackageTx) Append(values ...*model.VideoPackage) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoTemplateTypePackageBelongsToPackageTx) Replace(values ...*model.VideoPackage) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoTemplateTypePackageBelongsToPackageTx) Delete(values ...*model.VideoPackage) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoTemplateTypePackageBelongsToPackageTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoTemplateTypePackageBelongsToPackageTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoTemplateTypePackageBelongsToPackageTx) Unscoped() *videoTemplateTypePackageBelongsToPackageTx {
-	a.tx = a.tx.Unscoped()
-	return &a
 }
 
 type videoTemplateTypePackageDo struct{ gen.DO }

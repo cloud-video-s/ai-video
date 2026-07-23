@@ -21,7 +21,7 @@ type VideoBannerVersion struct {
 	UpdatedAt   time.Time           `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt   gorm.DeletedAt      `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 	Banner      VideoBanner         `gorm:"foreignKey:BannerID;references:ID" json:"banner"`
-	Version     VideoPackageVersion `gorm:"foreignKey:VersionID;references:ID" json:"version"`
+	Version     VideoPackageVersion `gorm:"foreignKey:VersionCode;references:VersionCode" json:"version"`
 }
 
 // TableName VideoBannerVersion's table name
