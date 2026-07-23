@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"gorm.io/driver/mysql"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -33,8 +32,6 @@ func InitDatabase() error {
 
 	var dialector gorm.Dialector
 	switch cfg.Driver {
-	case "postgres":
-		dialector = postgres.Open(cfg.DSN(Cfg.Timezone))
 	case "mysql":
 		dialector = mysql.Open(cfg.DSN(Cfg.Timezone))
 	default:

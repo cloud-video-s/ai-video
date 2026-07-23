@@ -34,6 +34,15 @@ func (h *BannerHandler) List(c *gin.Context) {
 	response.OK(c, gin.H{"list": list, "total": total, "page": p.Page, "size": p.PageSize})
 }
 
+func (h *BannerHandler) DeliveryOptions(c *gin.Context) {
+	options, err := h.svc.DeliveryOptions(c.Request.Context())
+	if err != nil {
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, options)
+}
+
 func (h *BannerHandler) GetByID(c *gin.Context) {
 	id, ok := bannerResourceID(c)
 	if !ok {

@@ -17,14 +17,17 @@
         <el-select v-model="query.position_key" clearable filterable placeholder="展示位置">
           <el-option v-for="item in positionOptions" :key="item.id" :label="positionLabel(item)" :value="item.position_key" />
         </el-select>
-        <el-select v-model="query.country_id" clearable filterable placeholder="国家">
-          <el-option v-for="item in countryOptions" :key="item.id" :label="countryLabel(item)" :value="String(item.id)" />
+        <el-select v-model="query.country_code" clearable filterable placeholder="国家">
+          <el-option v-for="item in countryOptions" :key="item.id" :label="countryLabel(item)" :value="item.code" />
         </el-select>
-        <el-select v-model="query.channel_id" clearable filterable placeholder="渠道">
-          <el-option v-for="item in channelOptions" :key="item.channel_id" :label="channelLabel(item)" :value="String(item.channel_id)" />
+        <el-select v-model="query.app_code" clearable filterable placeholder="应用" @change="handleFilterAppChange">
+          <el-option v-for="item in deliveryOptions" :key="item.app_code" :label="item.app_name" :value="item.app_code" />
         </el-select>
-        <el-select v-model="query.package_id" clearable filterable placeholder="APP 包">
-          <el-option v-for="item in packageOptions" :key="item.id" :label="packageLabel(item)" :value="String(item.id)" />
+        <el-select v-model="query.package_code" clearable filterable placeholder="应用包" @change="query.version_code = ''">
+          <el-option v-for="item in filterPackageOptions" :key="item.package_code" :label="`${item.package_name} · ${item.package_code}`" :value="item.package_code" />
+        </el-select>
+        <el-select v-model="query.version_code" clearable filterable placeholder="包版本">
+          <el-option v-for="item in filterVersionOptions" :key="item.version_code" :label="item.version_code" :value="item.version_code" />
         </el-select>
         <el-select v-model="query.jump_type" clearable placeholder="跳转方式">
           <el-option v-for="item in jumpTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -62,6 +65,7 @@
               <el-tag v-for="item in row.display_positions" :key="item.id" size="small" type="primary" effect="plain">
                 {{ item.position_name }}
               </el-tag>
+              <el-tag v-if="!row.display_positions?.length" size="small" type="info" effect="plain">全部位置</el-tag>
             </div>
             <el-tooltip v-if="row.remark" :content="row.remark" placement="top" :show-after="400">
               <div class="remark-text">{{ row.remark }}</div>
@@ -73,8 +77,8 @@
           <template #default="{ row }">
             <div class="target-tags">
               <el-tag size="small" effect="plain">{{ countrySummary(row.countries) }}</el-tag>
-              <el-tag size="small" type="info" effect="plain">{{ channelSummary(row.channels) }}</el-tag>
-              <el-tag size="small" type="warning" effect="plain">{{ packageSummary(row.packages) }}</el-tag>
+              <el-tag size="small" type="warning" effect="plain">{{ appTargetSummary(row.app_targets) }}</el-tag>
+              <el-tag size="small" type="success" effect="plain">{{ subscriptionStatusLabel(row.subscription_status) }}</el-tag>
             </div>
           </template>
         </el-table-column>
@@ -117,7 +121,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑 Banner' : '新增 Banner'" width="780px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑 Banner' : '新增 Banner'" width="940px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
         <div class="form-grid">
           <el-form-item label="Banner 名称" prop="name">
@@ -127,25 +131,39 @@
             <el-input-number v-model="form.sort" :min="0" :max="999999" controls-position="right" />
           </el-form-item>
           <el-form-item label="国家">
-            <el-select v-model="form.country_ids" multiple collapse-tags collapse-tags-tooltip clearable filterable placeholder="留空表示全部国家" style="width: 100%">
-              <el-option v-for="item in countryOptions" :key="item.id" :label="countryLabel(item)" :value="item.id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="渠道">
-            <el-select v-model="form.channel_ids" multiple collapse-tags collapse-tags-tooltip clearable filterable placeholder="留空表示全部渠道" style="width: 100%">
-              <el-option v-for="item in channelOptions" :key="item.channel_id" :label="channelLabel(item)" :value="item.channel_id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="APP 包">
-            <el-select v-model="form.package_ids" multiple collapse-tags collapse-tags-tooltip clearable filterable placeholder="留空表示全部安装包" style="width: 100%">
-              <el-option v-for="item in packageOptions" :key="item.id" :label="packageLabel(item)" :value="item.id" />
-            </el-select>
+            <div class="target-scope-control">
+              <el-radio-group v-model="targetModes.countries" @change="handleCountryModeChange">
+                <el-radio-button value="all">全部国家</el-radio-button>
+                <el-radio-button value="selected">指定国家</el-radio-button>
+              </el-radio-group>
+              <el-select
+                v-if="targetModes.countries === 'selected'"
+                v-model="form.country_ids"
+                multiple
+                collapse-tags
+                collapse-tags-tooltip
+                clearable
+                filterable
+                placeholder="请选择国家"
+                style="width: 100%"
+              >
+                <el-option v-for="item in countryOptions" :key="item.id" :label="countryLabel(item)" :value="item.id" />
+              </el-select>
+              <div v-else class="secondary-text target-tip">全部国家不写入国家关联数据</div>
+            </div>
           </el-form-item>
           <el-form-item label="状态">
             <el-radio-group v-model="form.status">
               <el-radio :value="1">启用</el-radio>
               <el-radio :value="0">禁用</el-radio>
             </el-radio-group>
+          </el-form-item>
+          <el-form-item label="会员类型">
+            <el-select v-model="form.subscription_status" style="width: 100%">
+              <el-option label="全部用户" :value="3" />
+              <el-option label="会员" :value="2" />
+              <el-option label="非会员" :value="1" />
+            </el-select>
           </el-form-item>
           <el-form-item label="跳转方式" prop="jump_type">
             <el-select v-model="form.jump_type" style="width: 100%" @change="handleJumpTypeChange">
@@ -159,19 +177,54 @@
           </el-form-item>
         </div>
 
-        <el-form-item label="展示区域" prop="display_position_keys">
-          <el-checkbox-group v-model="form.display_position_keys" class="position-card-grid">
-            <el-checkbox-button v-for="item in positionOptions" :key="item.position_key" :value="item.position_key" class="position-card-option">
-              <div class="position-card-content">
-                <el-image class="position-card-image" :src="item.cover_image" fit="cover">
-                  <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
-                </el-image>
-                <div class="position-card-name">{{ item.position_name }}</div>
-                <div class="position-card-key">{{ item.position_key }}</div>
+        <el-form-item label="应用范围">
+          <div class="app-target-field">
+            <el-radio-group v-model="targetModes.apps" @change="handleAppModeChange">
+              <el-radio-button value="all">全部应用、包和版本</el-radio-button>
+              <el-radio-button value="selected">指定应用范围</el-radio-button>
+            </el-radio-group>
+            <template v-if="targetModes.apps === 'selected'">
+              <div v-for="(target, index) in form.app_targets" :key="`${index}-${target.app_code}-${target.package_code}`" class="app-target-row">
+                <el-select v-model="target.app_code" filterable placeholder="先选择应用" @change="handleTargetAppChange(target)">
+                  <el-option v-for="item in deliveryOptions" :key="item.app_code" :label="item.app_name" :value="item.app_code" />
+                </el-select>
+                <el-select v-model="target.package_code" filterable placeholder="再选择应用包" :disabled="!target.app_code" @change="target.version_codes = []">
+                  <el-option v-for="item in targetPackageOptions(target)" :key="item.package_code" :label="`${item.package_name} · ${item.package_code}`" :value="item.package_code" />
+                </el-select>
+                <el-select v-model="target.version_codes" multiple collapse-tags collapse-tags-tooltip clearable filterable placeholder="全部版本（不绑定具体版本）" :disabled="!target.package_code">
+                  <el-option v-for="item in targetVersionOptions(target)" :key="item.version_code" :label="item.version_code" :value="item.version_code" />
+                </el-select>
+                <el-button type="danger" plain @click="removeAppTarget(index)">删除</el-button>
               </div>
-            </el-checkbox-button>
-          </el-checkbox-group>
-          <div v-if="!positionOptions.length" class="secondary-text">暂无启用的展示位置，请先到展示位置管理中启用</div>
+              <el-button type="primary" plain @click="addAppTarget"><el-icon><Plus /></el-icon>添加应用包范围</el-button>
+              <div class="secondary-text target-tip">已选择包但不选版本表示该包全部版本。</div>
+            </template>
+            <div v-else class="secondary-text target-tip">全部应用、包和版本不写入应用范围关联数据</div>
+          </div>
+        </el-form-item>
+
+        <el-form-item label="展示区域">
+          <div class="target-scope-control">
+            <el-radio-group v-model="targetModes.positions" @change="handlePositionModeChange">
+              <el-radio-button value="all">全部展示位置</el-radio-button>
+              <el-radio-button value="selected">指定展示位置</el-radio-button>
+            </el-radio-group>
+            <template v-if="targetModes.positions === 'selected'">
+              <el-checkbox-group v-if="positionOptions.length" v-model="form.display_position_keys" class="position-card-grid">
+                <el-checkbox-button v-for="item in positionOptions" :key="item.position_key" :value="item.position_key" class="position-card-option">
+                  <div class="position-card-content">
+                    <el-image class="position-card-image" :src="item.cover_image" fit="cover">
+                      <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
+                    </el-image>
+                    <div class="position-card-name">{{ item.position_name }}</div>
+                    <div class="position-card-key">{{ item.position_key }}</div>
+                  </div>
+                </el-checkbox-button>
+              </el-checkbox-group>
+              <div v-else class="secondary-text target-tip">暂无启用的展示位置，请先到展示位置管理中启用</div>
+            </template>
+            <div v-else class="secondary-text target-tip">全部展示位置不写入展示位置关联数据</div>
+          </div>
         </el-form-item>
 
         <el-form-item v-if="form.jump_type === 1" label="跳转链接" prop="jump_url">
@@ -232,21 +285,25 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import {
   createBanner,
   deleteBanner,
+  getBannerDeliveryOptions,
   getBannerList,
   updateBanner,
   type BannerJumpType,
+  type BannerAppTarget,
+  type BannerDeliveryApp,
+  type BannerDeliveryPackage,
+  type BannerDeliveryVersion,
   type VideoBanner,
   type VideoBannerPayload,
 } from '@/api/banner'
 import { getCountryOptions, type Country } from '@/api/country'
-import { getChannelOptions, type Channel } from '@/api/channel'
-import { getPackageOptions, type AppPackage } from '@/api/package'
 import { getTemplateList, type VideoTemplate } from '@/api/template'
 import { getDisplayPositionOptions, type DisplayPosition } from '@/api/displayPosition'
 import { useUserStore } from '@/store/user'
 import MediaUploader from '@/components/MediaUploader.vue'
 
 interface BannerForm extends VideoBannerPayload { id: number }
+type TargetMode = 'all' | 'selected'
 
 const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('banner:add'))
@@ -266,25 +323,35 @@ const dialogVisible = ref(false)
 const formRef = ref<FormInstance>()
 const tableData = ref<VideoBanner[]>([])
 const countryOptions = ref<Country[]>([])
-const channelOptions = ref<Channel[]>([])
-const packageOptions = ref<AppPackage[]>([])
+const deliveryOptions = ref<BannerDeliveryApp[]>([])
 const templateOptions = ref<VideoTemplate[]>([])
 const positionOptions = ref<DisplayPosition[]>([])
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
-const query = reactive({ position_key: '', country_id: '', channel_id: '', package_id: '', jump_type: '', status: '', keyword: '' })
+const query = reactive({ position_key: '', country_code: '', app_code: '', package_code: '', version_code: '', jump_type: '', status: '', keyword: '' })
+const targetModes = reactive<{ countries: TargetMode; apps: TargetMode; positions: TargetMode }>({
+  countries: 'all', apps: 'all', positions: 'all',
+})
+
+const filterPackageOptions = computed<BannerDeliveryPackage[]>(() => {
+  if (!query.app_code) return deliveryOptions.value.flatMap((item) => item.packages)
+  return deliveryOptions.value.find((item) => item.app_code === query.app_code)?.packages || []
+})
+const filterVersionOptions = computed<BannerDeliveryVersion[]>(() => {
+  if (!query.package_code) return []
+  return filterPackageOptions.value.find((item) => item.package_code === query.package_code)?.versions || []
+})
 
 function createDefaultForm(): BannerForm {
   return {
-    id: 0, name: '', cover_image: '', display_position_keys: [], country_ids: [], channel_ids: [], package_ids: [], remark: '',
-    sort: 0, jump_type: 1, jump_url: '', template_id: null, status: 1,
+    id: 0, name: '', cover_image: '', display_position_keys: [], country_ids: [], app_targets: [], remark: '',
+    sort: 0, jump_type: 1, jump_url: '', template_id: null, status: 1, subscription_status: 3,
   }
 }
 const form = reactive<BannerForm>(createDefaultForm())
 const rules: FormRules<BannerForm> = {
   name: [{ required: true, message: '请输入 Banner 名称', trigger: 'blur' }],
-  display_position_keys: [{ required: true, type: 'array', min: 1, message: '请至少选择一个展示位置', trigger: 'change' }],
   cover_image: [{ required: true, message: '请上传或输入封面图', trigger: 'change' }],
   jump_type: [{ required: true, message: '请选择跳转方式', trigger: 'change' }],
   jump_url: [{
@@ -305,8 +372,6 @@ const rules: FormRules<BannerForm> = {
 const preview = reactive({ visible: false, url: '', title: '' })
 
 function countryLabel(item: Country) { return `${item.name_zh} · ${item.code}` }
-function channelLabel(item: Channel) { return `${item.channel_name} · ${item.channel_code}` }
-function packageLabel(item: AppPackage) { return `${item.package_name} · ${item.package_code}` }
 function positionLabel(item: DisplayPosition) { return `${item.position_name} · ${item.position_key}` }
 function jumpTypeLabel(value: BannerJumpType) { return jumpTypeOptions.find((item) => item.value === value)?.label || value }
 function jumpTagType(value: BannerJumpType) {
@@ -317,16 +382,17 @@ function compactSummary(values: string[], allLabel: string) {
   return values.length > 2 ? `${values.slice(0, 2).join('、')} 等 ${values.length} 项` : values.join('、')
 }
 function countrySummary(items: Country[]) { return compactSummary(items?.map((item) => item.name_zh), '全部国家') }
-function channelSummary(items: Channel[]) { return compactSummary(items?.map((item) => item.channel_name), '全部渠道') }
-function packageSummary(items: AppPackage[]) { return compactSummary(items?.map((item) => item.package_name), '全部安装包') }
+function appTargetSummary(items: BannerAppTarget[]) {
+  return compactSummary(items?.map((item) => `${item.app_name || item.app_code}/${item.package_name || item.package_code}${item.version_codes.length ? `(${item.version_codes.join('、')})` : '(全部版本)'}`), '全部应用版本')
+}
+function subscriptionStatusLabel(value: number) { return ({ 1: '非会员', 2: '会员', 3: '全部用户' } as Record<number, string>)[value] || '全部用户' }
 
 async function fetchOptions() {
-  const [countryRes, channelRes, packageRes, templateRes, positionRes]: any[] = await Promise.all([
-    getCountryOptions(), getChannelOptions(), getPackageOptions(), getTemplateList({ page: 1, page_size: 100, status: 1 }), getDisplayPositionOptions(),
+  const [countryRes, deliveryRes, templateRes, positionRes]: any[] = await Promise.all([
+    getCountryOptions(), getBannerDeliveryOptions(), getTemplateList({ page: 1, page_size: 100, status: 1 }), getDisplayPositionOptions(),
   ])
   countryOptions.value = countryRes.data || []
-  channelOptions.value = channelRes.data || []
-  packageOptions.value = packageRes.data || []
+  deliveryOptions.value = deliveryRes.data || []
   templateOptions.value = templateRes.data?.list || []
   positionOptions.value = positionRes.data || []
 }
@@ -346,12 +412,13 @@ async function fetchData() {
 
 function handleSearch() { page.value = 1; void fetchData() }
 function handleReset() {
-  Object.assign(query, { position_key: '', country_id: '', channel_id: '', package_id: '', jump_type: '', status: '', keyword: '' })
+  Object.assign(query, { position_key: '', country_code: '', app_code: '', package_code: '', version_code: '', jump_type: '', status: '', keyword: '' })
   page.value = 1
   void fetchData()
 }
 function openCreate() {
   Object.assign(form, createDefaultForm())
+  Object.assign(targetModes, { countries: 'all', apps: 'all', positions: 'all' })
   dialogVisible.value = true
 }
 function openEdit(row: VideoBanner) {
@@ -361,14 +428,19 @@ function openEdit(row: VideoBanner) {
     cover_image: row.cover_image,
     display_position_keys: row.display_positions?.map((item) => item.position_key) || [],
     country_ids: row.countries?.map((item) => item.id) || [],
-    channel_ids: row.channels?.map((item) => item.channel_id) || [],
-    package_ids: row.packages?.map((item) => item.id) || [],
+    app_targets: (row.app_targets || []).map((item) => ({ app_code: item.app_code, package_code: item.package_code, version_codes: [...item.version_codes] })),
     remark: row.remark || '',
     sort: row.sort,
     jump_type: row.jump_type,
     jump_url: row.jump_url || '',
     template_id: row.template_id || null,
     status: row.status,
+    subscription_status: row.subscription_status || 3,
+  })
+  Object.assign(targetModes, {
+    countries: form.country_ids.length ? 'selected' : 'all',
+    apps: form.app_targets.length ? 'selected' : 'all',
+    positions: form.display_position_keys.length ? 'selected' : 'all',
   })
   dialogVisible.value = true
 }
@@ -377,17 +449,45 @@ function handleJumpTypeChange(value: BannerJumpType) {
   if (value !== 2) form.template_id = null
   formRef.value?.clearValidate(['jump_url', 'template_id'])
 }
+function handleFilterAppChange() { query.package_code = ''; query.version_code = '' }
+function targetPackageOptions(target: { app_code: string }) { return deliveryOptions.value.find((item) => item.app_code === target.app_code)?.packages || [] }
+function targetVersionOptions(target: { app_code: string; package_code: string }) { return targetPackageOptions(target).find((item) => item.package_code === target.package_code)?.versions || [] }
+function handleTargetAppChange(target: { package_code: string; version_codes: string[] }) { target.package_code = ''; target.version_codes = [] }
+function handleCountryModeChange(value: string | number | boolean | undefined) { if (value === 'all') form.country_ids = [] }
+function handleAppModeChange(value: string | number | boolean | undefined) { if (value === 'all') form.app_targets = [] }
+function handlePositionModeChange(value: string | number | boolean | undefined) { if (value === 'all') form.display_position_keys = [] }
+function addAppTarget() { form.app_targets.push({ app_code: '', package_code: '', version_codes: [] }) }
+function removeAppTarget(index: number) { form.app_targets.splice(index, 1) }
 function openPreview(url: string, title: string) { preview.url = url; preview.title = title; preview.visible = true }
 
 async function handleSubmit() {
   await formRef.value?.validate()
+  if (targetModes.countries === 'selected' && !form.country_ids.length) {
+    ElMessage.warning('请选择至少一个国家，或切换为全部国家')
+    return
+  }
+  if (targetModes.positions === 'selected' && !form.display_position_keys.length) {
+    ElMessage.warning('请选择至少一个展示位置，或切换为全部展示位置')
+    return
+  }
+  if (targetModes.apps === 'selected' && !form.app_targets.length) {
+    ElMessage.warning('请添加至少一个应用包范围，或切换为全部应用、包和版本')
+    return
+  }
+  if (targetModes.apps === 'selected' && form.app_targets.some((item) => !item.app_code || !item.package_code)) {
+    ElMessage.warning('请完整选择应用和应用包，版本可以留空表示全部版本')
+    return
+  }
   submitting.value = true
   try {
     const payload: VideoBannerPayload = {
-      name: form.name.trim(), cover_image: form.cover_image.trim(), display_position_keys: [...form.display_position_keys], country_ids: [...form.country_ids],
-      channel_ids: [...form.channel_ids], package_ids: [...form.package_ids], remark: form.remark.trim(),
+      name: form.name.trim(), cover_image: form.cover_image.trim(),
+      display_position_keys: targetModes.positions === 'all' ? [] : [...form.display_position_keys],
+      country_ids: targetModes.countries === 'all' ? [] : [...form.country_ids],
+      app_targets: targetModes.apps === 'all' ? [] : form.app_targets.map((item) => ({ app_code: item.app_code, package_code: item.package_code, version_codes: [...item.version_codes] })),
+      remark: form.remark.trim(),
       sort: form.sort, jump_type: form.jump_type, jump_url: form.jump_type === 1 ? form.jump_url.trim() : '',
-      template_id: form.jump_type === 2 ? form.template_id : null, status: form.status,
+      template_id: form.jump_type === 2 ? form.template_id : null, status: form.status, subscription_status: form.subscription_status,
     }
     if (form.id) await updateBanner(form.id, payload)
     else await createBanner(payload)
@@ -426,6 +526,9 @@ onMounted(async () => { await Promise.all([fetchOptions(), fetchData()]) })
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; }
 .form-grid :deep(.el-input-number) { width: 100%; }
 .jump-alert { margin: 0 0 18px 96px; width: calc(100% - 96px); }
+.target-scope-control, .app-target-field { display: flex; width: 100%; flex-direction: column; align-items: flex-start; gap: 10px; }
+.app-target-row { display: grid; width: 100%; grid-template-columns: 1fr 1.2fr 1.5fr auto; gap: 10px; }
+.target-tip { margin-top: 0; line-height: 1.5; }
 .position-card-grid { display: grid; width: 100%; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .position-card-option { width: 100%; margin: 0; }
 .position-card-option :deep(.el-checkbox-button__inner) { width: 100%; height: 100%; padding: 8px; border: 1px solid #dcdfe6; border-radius: 7px; box-shadow: none; white-space: normal; }
@@ -443,6 +546,7 @@ onMounted(async () => { await Promise.all([fetchOptions(), fetchData()]) })
 @media (max-width: 700px) {
   .page-header { align-items: stretch; flex-direction: column; }
   .filters, .form-grid { grid-template-columns: 1fr; }
+  .app-target-row { grid-template-columns: 1fr; }
   .jump-alert { margin-left: 0; width: 100%; }
   .page-wrap :deep(.el-card__header), .page-wrap :deep(.el-card__body) { padding: 14px; }
 }

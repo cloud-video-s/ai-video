@@ -25,7 +25,12 @@ redis:
 jwt:
   secret: video-jwt-secret-key-change-in-production
   expire: 7200    # token 过期时间（秒）
-  issuer: video
+  issuer: admin_video
+
+api_jwt:
+  secret: video-jwt-api-in-production
+  expire: 604800    # token 过期时间（秒）
+  issuer: api_video
 
 geoip:
   # Set country_header only when a trusted reverse proxy overwrites it.

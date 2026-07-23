@@ -19,7 +19,7 @@ type ApiClaims struct {
 }
 
 func GenerateApiToken(userID uint64, imei string, tokenVersion int64, loginType uint32) (string, error) {
-	cfg := config.Cfg.JWT
+	cfg := config.Cfg.ApiJwt
 	claims := ApiClaims{
 		UserID:       userID,
 		IMEI:         imei,

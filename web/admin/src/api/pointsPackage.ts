@@ -22,6 +22,7 @@ export interface PointsPackage {
   status: number
   sort: number
   package?: AppPackage
+  packages?: AppPackage[]
   channels: Channel[]
   created_at: string
   updated_at: string

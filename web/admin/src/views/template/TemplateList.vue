@@ -478,7 +478,7 @@ function normalizeTemplate(item: any): VideoTemplate {
 }
 
 function packageLabel(item: AppPackage) {
-  return `${item.package_name} · ${item.package_code} · ${item.package_version}`
+	return `${item.package_name} · ${item.package_code}`
 }
 
 function channelLabel(item: Channel) {

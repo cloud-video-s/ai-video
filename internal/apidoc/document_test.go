@@ -16,10 +16,14 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodPost, Path: "/admin/login", Handler: "admin.Login"},
 		{Method: http.MethodPut, Path: "/admin/banners/:id", Handler: "admin.Banner.Update"},
 		{Method: http.MethodPost, Path: "/api/auth/login", Handler: "api.Auth.Login"},
+		{Method: http.MethodPost, Path: "/api/third_binding", Handler: "api.Auth.ThirdBinding"},
 		{Method: http.MethodPost, Path: "/api/auth/logout", Handler: "api.Auth.Logout"},
 		{Method: http.MethodGet, Path: "/api/ob_delay", Handler: "api.DelayConfig.All"},
 		{Method: http.MethodGet, Path: "/api/banners/list", Handler: "api.Banner.List"},
 		{Method: http.MethodGet, Path: "/api/templates/recommend", Handler: "api.Template.Recommend"},
+		{Method: http.MethodGet, Path: "/api/templates/category_template_list", Handler: "api.Template.CategoryTemplateList"},
+		{Method: http.MethodPost, Path: "/api/templates/:id/favorite", Handler: "api.Template.Favorite"},
+		{Method: http.MethodDelete, Path: "/api/templates/:id/favorite", Handler: "api.Template.Unfavorite"},
 		{Method: http.MethodPost, Path: "/api/uploads/images/batches", Handler: "upload.CreateBatch"},
 		{Method: http.MethodPut, Path: "/api/uploads/images/:upload_id/chunks/:index", Handler: "upload.PutChunk"},
 	}
@@ -113,6 +117,32 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	if recommend["description"] != operationDescriptions["GET /api/templates/recommend"] {
 		t.Fatalf("recommend documentation was not regenerated: %#v", recommend["description"])
 	}
+	categoryTemplates := document.Paths["/api/templates/category_template_list"]["get"].(map[string]any)
+	assertParameter(t, categoryTemplates, "page", "query", false)
+	assertParameter(t, categoryTemplates, "pageSize", "query", false)
+	assertParameter(t, categoryTemplates, "position_key", "query", true)
+	assertParameter(t, categoryTemplates, "template_type_id", "query", true)
+	assertResponseParameter(t, categoryTemplates, "data[].id", true)
+	assertResponseParameter(t, categoryTemplates, "data[].name", true)
+	assertResponseParameterAbsent(t, categoryTemplates, "data[].display_config_id")
+	thirdBinding := document.Paths["/api/third_binding"]["post"].(map[string]any)
+	assertParameter(t, thirdBinding, "third_type", "json", true)
+	assertParameter(t, thirdBinding, "third_code", "json", false)
+	assertResponseParameter(t, thirdBinding, "data.token", true)
+	if _, secured := thirdBinding["security"]; !secured {
+		t.Fatal("third binding route must require bearer auth")
+	}
+	favoritePath := document.Paths["/api/templates/{id}/favorite"]
+	for _, method := range []string{"post", "delete"} {
+		operation := favoritePath[method].(map[string]any)
+		assertParameter(t, operation, "id", "path", true)
+		assertResponseParameter(t, operation, "data.template_id", true)
+		assertResponseParameter(t, operation, "data.favorited", true)
+		assertResponseParameter(t, operation, "data.favorite_count", true)
+		if _, secured := operation["security"]; !secured {
+			t.Fatalf("%s favorite operation must require bearer auth", method)
+		}
+	}
 	if _, err := json.Marshal(document); err != nil {
 		t.Fatalf("marshal document: %v", err)
 	}
@@ -179,9 +209,9 @@ func assertCommonHeaderParameters(t *testing.T, document Document) {
 		t.Fatalf("common request headers are missing: %#v", document.Components["parameters"])
 	}
 	wantRequired := map[string]bool{
-		"Video_Channel_ID": true, "Video_App_Version": true,
-		"Video_Phone_Model": true, "Video_App_Package": true,
-		"Video_Channel_Package": false, "Video_Device_Country": false,
+		"Video_App_Code": true, "Video_App_Package_Code": true,
+		"Video_App_Version": true, "Video_Phone_Model": true,
+		"Video_Channel_Code": true, "Video_Device_Country": false,
 		"Accept-Language": false,
 	}
 	found := make(map[string]bool, len(wantRequired))
@@ -205,9 +235,9 @@ func assertCommonHeaderParameters(t *testing.T, document Document) {
 func assertCommonHeaderParametersAbsent(t *testing.T, operation map[string]any) {
 	t.Helper()
 	commonNames := map[string]bool{
-		"Video_Channel_ID": true, "Video_App_Version": true,
-		"Video_Phone_Model": true, "Video_App_Package": true,
-		"Video_Channel_Package": true, "Video_Device_Country": true,
+		"Video_App_Code": true, "Video_App_Package_Code": true,
+		"Video_App_Version": true, "Video_Phone_Model": true,
+		"Video_Channel_Code": true, "Video_Device_Country": true,
 		"Accept-Language": true,
 	}
 	for _, field := range []string{"parameters", "x-request-parameters"} {

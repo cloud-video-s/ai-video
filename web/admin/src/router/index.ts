@@ -20,6 +20,7 @@ const routes: RouteRecordRaw[] = [
 	  { path: 'system/user', redirect: '/system/admin' },
 	  { path: 'template', redirect: '/template/list' },
 	  { path: 'package', redirect: '/package/list' },
+	  { path: 'app', redirect: '/package/apps' },
 	  { path: 'channel', redirect: '/channel/list' },
 	  { path: 'subscription', redirect: '/subscription/vip' },
 	  { path: 'user', redirect: '/user/list' },
@@ -79,10 +80,22 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'VIP 订阅' },
       },
       {
+        path: 'package/apps',
+        name: 'VideoAppList',
+        component: () => import('@/views/package/AppList.vue'),
+        meta: { title: '应用管理' },
+      },
+      {
         path: 'package/list',
         name: 'PackageList',
         component: () => import('@/views/package/PackageList.vue'),
         meta: { title: '安装包管理' },
+      },
+      {
+        path: 'package/versions',
+        name: 'PackageVersionList',
+        component: () => import('@/views/package/PackageVersionList.vue'),
+        meta: { title: '版本管理' },
       },
       {
         path: 'channel/list',

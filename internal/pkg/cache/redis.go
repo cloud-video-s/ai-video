@@ -36,6 +36,19 @@ func (s *RedisStore) Set(key string, value string, expiration time.Duration) err
 	return s.client.Set(s.ctx(), s.key(key), value, expiration).Err()
 }
 
+func (s *RedisStore) SetNX(key string, value string, expiration time.Duration) (bool, error) {
+	return s.client.SetNX(s.ctx(), s.key(key), value, expiration).Result()
+}
+
+func (s *RedisStore) CompareAndDelete(key string, value string) (bool, error) {
+	const script = `if redis.call("GET", KEYS[1]) == ARGV[1] then
+		return redis.call("DEL", KEYS[1])
+	end
+	return 0`
+	deleted, err := s.client.Eval(s.ctx(), script, []string{s.key(key)}, value).Int64()
+	return deleted > 0, err
+}
+
 func (s *RedisStore) Del(key string) error {
 	return s.client.Del(s.ctx(), s.key(key)).Err()
 }

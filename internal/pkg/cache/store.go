@@ -8,6 +8,8 @@ type Store interface {
 	// ── String ──
 	Get(key string) (string, error)
 	Set(key string, value string, expiration time.Duration) error
+	SetNX(key string, value string, expiration time.Duration) (bool, error)
+	CompareAndDelete(key string, value string) (bool, error)
 	Del(key string) error
 	Exists(key string) (bool, error)
 	Incr(key string) (int64, error)

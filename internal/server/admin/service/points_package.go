@@ -19,16 +19,19 @@ var (
 
 type PointsPackageService struct {
 	repo        *repository.PointsPackageRepo
+	packageRepo *repository.PackageRepo
 	channelRepo *repository.ChannelRepo
 }
 
 func NewPointsPackageService() *PointsPackageService {
 	return &PointsPackageService{
-		repo: repository.NewPointsPackageRepo(), channelRepo: repository.NewChannelRepo(),
+		repo: repository.NewPointsPackageRepo(), packageRepo: repository.NewPackageRepo(),
+		channelRepo: repository.NewChannelRepo(),
 	}
 }
 
 type ListPointsPackageRequest struct {
+	PackageID    uint64 `form:"package_id"`
 	ChannelID    uint64 `form:"channel_id"`
 	System       string `form:"system" binding:"max=32"`
 	UserType     int    `form:"user_type" binding:"omitempty,oneof=1 2"`
@@ -40,6 +43,7 @@ type ListPointsPackageRequest struct {
 type PointsPackagePayload struct {
 	ProductID     string   `json:"product_id" binding:"required,max=191"`
 	Name          string   `json:"name" binding:"required,max=128"`
+	PackageID     uint64   `json:"package_id" binding:"required"`
 	Systems       []string `json:"systems" binding:"required,min=1,max=10,dive,required,max=32"`
 	UserTypes     []int    `json:"user_types" binding:"required,min=1,max=2,dive,oneof=1 2"`
 	ChannelIDs    []uint64 `json:"channel_ids" binding:"max=100,dive,gt=0"`
@@ -63,7 +67,7 @@ type PointsPackageStatusPayload struct {
 
 func (s *PointsPackageService) List(ctx context.Context, page, pageSize int, req *ListPointsPackageRequest) ([]model.VideoPointsPackage, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.PointsPackageListFilter{
-		ChannelID: req.ChannelID, System: strings.ToLower(strings.TrimSpace(req.System)),
+		PackageID: req.PackageID, ChannelID: req.ChannelID, System: strings.ToLower(strings.TrimSpace(req.System)),
 		UserType: req.UserType, ResourceType: strings.ToLower(strings.TrimSpace(req.ResourceType)),
 		Status: req.Status, Keyword: strings.TrimSpace(req.Keyword),
 	})
@@ -91,11 +95,11 @@ func (s *PointsPackageService) Create(ctx context.Context, req *PointsPackagePay
 		if err := s.repo.Create(ctx, item); err != nil {
 			return err
 		}
-		if err := s.repo.ReplaceChannels(ctx, item, req.ChannelIDs); err != nil {
+		if err := s.repo.ReplaceTargets(ctx, item, req.PackageID, req.ChannelIDs); err != nil {
 			return err
 		}
 		if item.IsDefault {
-			return s.repo.ClearDefaults(ctx, item.ResourceType, item.ID)
+			return s.repo.ClearDefaults(ctx, req.PackageID, item.ResourceType, item.ID)
 		}
 		return nil
 	})
@@ -116,16 +120,19 @@ func (s *PointsPackageService) Update(ctx context.Context, id uint64, req *Point
 	if err := s.prepareAndValidate(ctx, req, id); err != nil {
 		return nil, err
 	}
+	if req.ProductID != item.ProductID {
+		return nil, errors.New("产品 ID 创建后不可修改")
+	}
 	applyPointsPackagePayload(item, req)
 	err = repository.Transaction(ctx, func(ctx context.Context) error {
 		if err := s.repo.UpdateFields(ctx, item); err != nil {
 			return err
 		}
-		if err := s.repo.ReplaceChannels(ctx, item, req.ChannelIDs); err != nil {
+		if err := s.repo.ReplaceTargets(ctx, item, req.PackageID, req.ChannelIDs); err != nil {
 			return err
 		}
 		if item.IsDefault {
-			return s.repo.ClearDefaults(ctx, item.ResourceType, item.ID)
+			return s.repo.ClearDefaults(ctx, req.PackageID, item.ResourceType, item.ID)
 		}
 		return nil
 	})
@@ -142,7 +149,7 @@ func (s *PointsPackageService) Delete(ctx context.Context, id uint64) error {
 	if _, err := s.repo.GetDetail(ctx, id); err != nil {
 		return notFoundOr(err, "积分套餐不存在")
 	}
-	return s.repo.DeleteWithChannels(ctx, id)
+	return s.repo.DeleteWithTargets(ctx, id)
 }
 
 func (s *PointsPackageService) UpdateStatus(ctx context.Context, id uint64, status int8) error {
@@ -178,11 +185,18 @@ func (s *PointsPackageService) prepareAndValidate(ctx context.Context, req *Poin
 		return err
 	}
 	var err error
-	if req.Systems, err = normalizeSystemTypes(req.Systems); err != nil {
-		return err
-	}
+	//if req.Systems, err = normalizeSystemTypes(req.Systems); err != nil {
+	//	return err
+	//}
 	if req.UserTypes, err = normalizeUserTypes(req.UserTypes); err != nil {
 		return err
+	}
+	appPackage, err := s.packageRepo.GetByID(ctx, uint(req.PackageID))
+	if err != nil {
+		return notFoundOr(err, "安装包不存在")
+	}
+	if appPackage.Status != 1 {
+		return errors.New("所选安装包已禁用")
 	}
 	if req.ChannelIDs, err = normalizeTargetIDs(req.ChannelIDs, "渠道"); err != nil {
 		return err

@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"strings"
 
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/i18n"
 )
 
 type CountryRepo struct {
@@ -47,8 +49,20 @@ func (r *CountryRepo) GetEnabledByCode(ctx context.Context, code string) (*model
 	return r.BaseRepo.GetOne(ctx, &QueryOptions{Where: map[string]interface{}{"code": code, "status": int8(1)}})
 }
 
+func (r *CountryRepo) ResolveLanguage(ctx context.Context, countryCode string) (string, error) {
+	countryCode = strings.ToUpper(strings.TrimSpace(countryCode))
+	item, err := r.GetEnabledByCode(ctx, countryCode)
+	if err != nil {
+		return "", err
+	}
+	if language := strings.TrimSpace(item.Language); language != "" {
+		return i18n.NormalizeLocale(language), nil
+	}
+	return i18n.LocaleForCountry(countryCode), nil
+}
+
 func (r *CountryRepo) UpdateFields(ctx context.Context, item *model.VideoCountry) error {
-	return r.BaseRepo.Update(ctx, item, "Code", "NameZh", "Status")
+	return r.BaseRepo.Update(ctx, item, "Code", "NameZh", "Language", "Status")
 }
 
 func (r *CountryRepo) TemplateCount(ctx context.Context, countryID uint64) (int64, error) {

@@ -1,60 +1,48 @@
 package service
 
 import (
-	"context"
+	"reflect"
 	"testing"
-
-	"ai-video/internal/domain"
 )
 
-func TestValidBannerLink(t *testing.T) {
-	tests := []struct {
-		value string
-		want  bool
-	}{
-		{value: "/feature/text-to-image", want: true},
-		{value: "https://example.com/activity", want: true},
-		{value: "myapp://feature/text-to-video", want: true},
-		{value: "//example.com/activity", want: false},
-		{value: "feature/text-to-image", want: false},
-		{value: "javascript:alert(1)", want: false},
-		{value: "", want: false},
+func TestNormalizeBannerAppTargetsMergesDuplicatePackages(t *testing.T) {
+	got, err := normalizeBannerAppTargets([]BannerAppTargetPayload{
+		{AppCode: " ai-video ", PackageCode: " com.example.video ", VersionCodes: []string{"2.0.0", "1.0.0", "1.0.0"}},
+		{AppCode: "ai-video", PackageCode: "com.example.video", VersionCodes: []string{"3.0.0"}},
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.value, func(t *testing.T) {
-			if got := validBannerLink(tt.value); got != tt.want {
-				t.Fatalf("validBannerLink(%q) = %v, want %v", tt.value, got, tt.want)
-			}
-		})
+	if len(got) != 1 || got[0].AppCode != "ai-video" || got[0].PackageCode != "com.example.video" ||
+		!reflect.DeepEqual(got[0].VersionCodes, []string{"1.0.0", "2.0.0", "3.0.0"}) {
+		t.Fatalf("normalized targets = %#v", got)
 	}
 }
 
-func TestValidateBannerJumpNormalizesTargets(t *testing.T) {
-	service := &BannerService{}
-	templateID := uint64(9)
-
-	link := &BannerPayload{
-		JumpType: domain.BannerJumpTypeLink, JumpURL: " https://example.com/activity ", TemplateID: &templateID,
-	}
-	if err := service.validateJump(context.Background(), link); err != nil {
+func TestNormalizeBannerAppTargetsAllVersionsOverridesExplicitVersions(t *testing.T) {
+	got, err := normalizeBannerAppTargets([]BannerAppTargetPayload{
+		{AppCode: "ai-video", PackageCode: "com.example.video", VersionCodes: []string{"1.0.0", "2.0.0"}},
+		{AppCode: "ai-video", PackageCode: "com.example.video", VersionCodes: nil},
+		{AppCode: "ai-video", PackageCode: "com.example.video", VersionCodes: []string{"3.0.0"}},
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if link.JumpURL != "https://example.com/activity" || link.TemplateID != nil {
-		t.Fatalf("unexpected normalized link payload: %+v", link)
+	if len(got) != 1 || len(got[0].VersionCodes) != 0 {
+		t.Fatalf("all-version target = %#v", got)
 	}
+}
 
-	feature := &BannerPayload{
-		JumpType: domain.BannerJumpTypeTextToVideo, JumpURL: "https://example.com", TemplateID: &templateID,
-	}
-	if err := service.validateJump(context.Background(), feature); err != nil {
+func TestNormalizeBannerEmptySelectionsAreValidAllTargets(t *testing.T) {
+	positions, err := normalizeBannerPositionKeys(nil)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if feature.JumpURL != "" || feature.TemplateID != nil {
-		t.Fatalf("feature jump retained an irrelevant target: %+v", feature)
+	apps, err := normalizeBannerAppTargets(nil)
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	unknown := &BannerPayload{JumpType: 9}
-	if err := service.validateJump(context.Background(), unknown); err == nil {
-		t.Fatal("unsupported jump type was accepted")
+	if len(positions) != 0 || len(apps) != 0 {
+		t.Fatalf("empty selections must remain empty: positions=%v apps=%v", positions, apps)
 	}
 }

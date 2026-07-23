@@ -4,6 +4,7 @@ export interface Country {
   id: number
   code: string
   name_zh: string
+  language: string
   status: number
   created_at: string
   updated_at: string
@@ -12,6 +13,7 @@ export interface Country {
 export interface CountryPayload {
   code: string
   name_zh: string
+  language: string
   status: number
 }
 

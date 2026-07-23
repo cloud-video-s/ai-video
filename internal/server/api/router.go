@@ -21,7 +21,7 @@ func (m *Module) Name() string {
 }
 
 func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
-	rg.Use(middleware.APILocalization(repository.NewPackageRepo()))
+	rg.Use(middleware.APILocalization(repository.NewCountryRepo()))
 	healthHandler := handler.NewHealthHandler()
 	configHandler := handler.NewConfigHandler()
 	delayConfigHandler := handler.NewDelayConfigHandler()
@@ -45,7 +45,6 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	))
 
 	rg.GET("/health", healthHandler.Health)
-
 	rg.POST("/auth/login", authHandler.Login)
 	authenticated := rg.Group("", middleware.ApiAuth(repository.NewAppUserRepo()))
 	{
@@ -76,6 +75,9 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 			templates.GET("/by-position", templateHandler.ByPosition)
 			templates.GET("/list", templateHandler.List)
 			templates.GET("/categories", templateHandler.Categories)
+			templates.GET("/category_template_list", templateHandler.CategoryTemplateList)
+			templates.POST("/:id/favorite", templateHandler.Favorite)
+			templates.DELETE("/:id/favorite", templateHandler.Unfavorite)
 		}
 
 		vip := authenticated.Group("/vip")

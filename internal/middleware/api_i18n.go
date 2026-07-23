@@ -9,20 +9,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type PackageLanguageRepo interface {
-	ResolveLanguage(ctx context.Context, packageCode, packageVersion string) (string, error)
+type CountryLanguageRepo interface {
+	ResolveLanguage(ctx context.Context, countryCode string) (string, error)
 }
 
 // APILocalization marks client API requests for generic localized error
-// responses. Package configuration takes precedence over Accept-Language.
-func APILocalization(packageRepo PackageLanguageRepo) gin.HandlerFunc {
+// responses. Country configuration takes precedence over Accept-Language.
+func APILocalization(countryRepo CountryLanguageRepo) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		locale := c.GetHeader("Accept-Language")
-		packageCode := strings.TrimSpace(c.GetHeader(HeaderAppPackage))
-		packageVersion := strings.TrimSpace(c.GetHeader(HeaderAppVersion))
-		if packageRepo != nil && packageCode != "" {
-			if configured, err := packageRepo.ResolveLanguage(c.Request.Context(), packageCode, packageVersion); err == nil && strings.TrimSpace(configured) != "" {
+		countryCode := strings.TrimSpace(c.GetHeader(HeaderDeviceCountry))
+		if countryRepo != nil && countryCode != "" {
+			if configured, err := countryRepo.ResolveLanguage(c.Request.Context(), countryCode); err == nil && strings.TrimSpace(configured) != "" {
 				locale = configured
+			}
+			if strings.TrimSpace(locale) == "" {
+				locale = i18n.LocaleForCountry(countryCode)
 			}
 		}
 		i18n.MarkAPI(c, locale)

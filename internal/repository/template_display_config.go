@@ -106,8 +106,9 @@ func (r *TemplateDisplayConfigRepo) UpdateFields(ctx context.Context, item *mode
 type ClientTemplateDisplayTargets struct {
 	PositionKey       string
 	CountryID         uint64
-	ChannelIDs        []uint64
-	PackageIDs        []uint64
+	AppCode           string
+	PackageCode       string
+	VersionCode       string
 	UserType          uint32
 	SubscriptionState string
 }
@@ -119,58 +120,32 @@ func (r *TemplateDisplayConfigRepo) ListForClient(ctx context.Context, targets C
 		Joins("JOIN video_display_position vdp ON vdp.position_key = video_template_display_config.position_key AND vdp.deleted_at IS NULL").
 		Where("video_template_display_config.position_key = ?", targets.PositionKey).
 		Where("video_template_display_config.status = ? AND vt.status = ? AND vtt.status = ? AND vdp.status = ?", 1, 1, 1, 1)
+	db = db.Where(`(NOT EXISTS (
+		SELECT 1 FROM video_template_type_display_position all_positions
+		WHERE all_positions.template_type_id = vtt.id AND all_positions.deleted_at IS NULL
+	) OR EXISTS (
+		SELECT 1 FROM video_template_type_display_position vttdp
+		WHERE vttdp.template_type_id = vtt.id AND vttdp.position_key = ? AND vttdp.deleted_at IS NULL
+	))`, targets.PositionKey)
 
 	if targets.CountryID != 0 {
 		db = db.Where(`(NOT EXISTS (
-			SELECT 1 FROM video_template_country vtc WHERE vtc.template_id = vt.id AND vtc.deleted_at IS NULL
-		) OR EXISTS (
-			SELECT 1 FROM video_template_country vtc JOIN video_country vc ON vc.code = vtc.country_code
-			WHERE vtc.template_id = vt.id AND vc.id = ? AND vtc.deleted_at IS NULL
-		))`, targets.CountryID).
-			Where(`(NOT EXISTS (
 				SELECT 1 FROM video_template_type_country vttc WHERE vttc.template_type_id = vtt.id AND vttc.deleted_at IS NULL
 			) OR EXISTS (
 				SELECT 1 FROM video_template_type_country vttc JOIN video_country vc ON vc.code = vttc.country_code
 				WHERE vttc.template_type_id = vtt.id AND vc.id = ? AND vttc.deleted_at IS NULL
 			))`, targets.CountryID)
 	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_country vtc WHERE vtc.template_id = vt.id AND vtc.deleted_at IS NULL)").
-			Where("NOT EXISTS (SELECT 1 FROM video_template_type_country vttc WHERE vttc.template_type_id = vtt.id AND vttc.deleted_at IS NULL)")
+		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_type_country vttc WHERE vttc.template_type_id = vtt.id AND vttc.deleted_at IS NULL)")
 	}
-	if len(targets.ChannelIDs) > 0 {
-		db = db.Where(`(NOT EXISTS (
-			SELECT 1 FROM video_template_channel vtc WHERE vtc.template_id = vt.id AND vtc.deleted_at IS NULL
-		) OR EXISTS (
-			SELECT 1 FROM video_template_channel vtc JOIN video_channel vc ON vc.channel_code = vtc.channel_code
-			WHERE vtc.template_id = vt.id AND vc.channel_id IN ? AND vtc.deleted_at IS NULL
-		))`, targets.ChannelIDs).
-			Where(`(NOT EXISTS (
-				SELECT 1 FROM video_template_type_channel vttc WHERE vttc.template_type_id = vtt.id AND vttc.deleted_at IS NULL
-			) OR EXISTS (
-				SELECT 1 FROM video_template_type_channel vttc JOIN video_channel vc ON vc.channel_code = vttc.channel_code
-				WHERE vttc.template_type_id = vtt.id AND vc.channel_id IN ? AND vttc.deleted_at IS NULL
-			))`, targets.ChannelIDs)
-	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_channel vtc WHERE vtc.template_id = vt.id AND vtc.deleted_at IS NULL)").
-			Where("NOT EXISTS (SELECT 1 FROM video_template_type_channel vttc WHERE vttc.template_type_id = vtt.id AND vttc.deleted_at IS NULL)")
-	}
-	if len(targets.PackageIDs) > 0 {
-		db = db.Where(`(NOT EXISTS (
-			SELECT 1 FROM video_template_package vtp WHERE vtp.template_id = vt.id AND vtp.deleted_at IS NULL
-		) OR EXISTS (
-			SELECT 1 FROM video_template_package vtp JOIN video_package vp ON vp.package_code = vtp.package_code
-			WHERE vtp.template_id = vt.id AND vp.id IN ? AND vtp.deleted_at IS NULL
-		))`, targets.PackageIDs).
-			Where(`(NOT EXISTS (
-				SELECT 1 FROM video_template_type_package vttp WHERE vttp.template_type_id = vtt.id AND vttp.deleted_at IS NULL
-			) OR EXISTS (
-				SELECT 1 FROM video_template_type_package vttp JOIN video_package vp ON vp.package_code = vttp.package_code
-				WHERE vttp.template_type_id = vtt.id AND vp.id IN ? AND vttp.deleted_at IS NULL
-			))`, targets.PackageIDs)
-	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_package vtp WHERE vtp.template_id = vt.id AND vtp.deleted_at IS NULL)").
-			Where("NOT EXISTS (SELECT 1 FROM video_template_type_package vttp WHERE vttp.template_type_id = vtt.id AND vttp.deleted_at IS NULL)")
-	}
+	db = db.Where(`(NOT EXISTS (
+		SELECT 1 FROM video_template_type_app vtta
+		WHERE vtta.template_type_id = vtt.id AND vtta.deleted_at IS NULL
+	) OR EXISTS (
+		SELECT 1 FROM video_template_type_app vtta
+		WHERE vtta.template_type_id = vtt.id AND vtta.deleted_at IS NULL
+			AND vtta.app_code = ? AND vtta.package_code = ? AND vtta.version_code = ?
+	))`, targets.AppCode, targets.PackageCode, targets.VersionCode)
 	if targets.UserType != 0 {
 		pattern := "%" + fmt.Sprint(targets.UserType) + "%"
 		db = db.Where("(COALESCE(vt.user_types, '') IN ('', 'null') OR vt.user_types LIKE ?)", pattern).

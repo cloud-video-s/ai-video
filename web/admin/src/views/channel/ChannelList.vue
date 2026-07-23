@@ -145,7 +145,7 @@
               <el-option
                 v-for="item in packageOptions"
                 :key="item.id"
-                :label="`${item.package_name} · ${item.package_code} · ${item.package_version}`"
+                :label="`${item.package_name} · ${item.package_code}`"
                 :value="item.package_code"
               />
             </el-select>

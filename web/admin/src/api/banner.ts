@@ -1,11 +1,21 @@
 import request from '@/utils/request'
 import type { Country } from '@/api/country'
-import type { Channel } from '@/api/channel'
-import type { AppPackage } from '@/api/package'
 import type { VideoTemplate } from '@/api/template'
 import type { DisplayPosition } from '@/api/displayPosition'
 
 export type BannerJumpType = 1 | 2 | 3 | 4
+
+export interface BannerAppTarget {
+  app_code: string
+  app_name: string
+  package_code: string
+  package_name: string
+  version_codes: string[]
+}
+
+export interface BannerDeliveryVersion { version_code: string }
+export interface BannerDeliveryPackage { package_code: string; package_name: string; versions: BannerDeliveryVersion[] }
+export interface BannerDeliveryApp { app_code: string; app_name: string; packages: BannerDeliveryPackage[] }
 
 export interface VideoBanner {
   id: number
@@ -18,10 +28,10 @@ export interface VideoBanner {
   jump_url: string
   template_id: number | null
   status: number
+  subscription_status: number
   template?: VideoTemplate | null
   countries: Country[]
-  channels: Channel[]
-  packages: AppPackage[]
+  app_targets: BannerAppTarget[]
   created_at: string
   updated_at: string
 }
@@ -31,14 +41,14 @@ export interface VideoBannerPayload {
   cover_image: string
   display_position_keys: string[]
   country_ids: number[]
-  channel_ids: number[]
-  package_ids: number[]
+  app_targets: Array<Pick<BannerAppTarget, 'app_code' | 'package_code' | 'version_codes'>>
   remark: string
   sort: number
   jump_type: BannerJumpType
   jump_url: string
   template_id: number | null
   status: number
+  subscription_status: number
 }
 
 export function getBannerList(params: Record<string, unknown>) {
@@ -47,6 +57,10 @@ export function getBannerList(params: Record<string, unknown>) {
 
 export function getBanner(id: number) {
   return request.get(`/admin/banners/${id}`)
+}
+
+export function getBannerDeliveryOptions() {
+  return request.get('/admin/banners/delivery-options')
 }
 
 export function createBanner(data: VideoBannerPayload) {

@@ -14,6 +14,7 @@ type Config struct {
 	Database       DatabaseConfig       `mapstructure:"database"`
 	Redis          RedisConfig          `mapstructure:"redis"`
 	JWT            JWTConfig            `mapstructure:"jwt"`
+	ApiJwt         JWTConfig            `mapstructure:"api_jwt"`
 	GeoIP          GeoIPConfig          `mapstructure:"geoip"`
 	ThirdPartyAuth ThirdPartyAuthConfig `mapstructure:"third_party_auth"`
 	Upload         UploadConfig         `mapstructure:"upload"`

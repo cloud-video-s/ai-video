@@ -15,8 +15,9 @@ type TemplateTypeService struct {
 	repo         *repository.TemplateTypeRepo
 	positionRepo *repository.DisplayPositionRepo
 	countryRepo  *repository.CountryRepo
-	channelRepo  *repository.ChannelRepo
+	appRepo      *repository.VideoAppRepo
 	packageRepo  *repository.PackageRepo
+	versionRepo  *repository.PackageVersionRepo
 }
 
 func NewTemplateTypeService() *TemplateTypeService {
@@ -24,8 +25,9 @@ func NewTemplateTypeService() *TemplateTypeService {
 		repo:         repository.NewTemplateTypeRepo(),
 		positionRepo: repository.NewDisplayPositionRepo(),
 		countryRepo:  repository.NewCountryRepo(),
-		channelRepo:  repository.NewChannelRepo(),
+		appRepo:      repository.NewVideoAppRepo(),
 		packageRepo:  repository.NewPackageRepo(),
+		versionRepo:  repository.NewPackageVersionRepo(),
 	}
 }
 
@@ -33,32 +35,37 @@ type ListTemplateTypeRequest struct {
 	Status      *int8  `form:"status" binding:"omitempty,oneof=0 1"`
 	PositionKey string `form:"position_key" binding:"omitempty,max=255"`
 	CountryID   uint64 `form:"country_id"`
-	ChannelID   uint64 `form:"channel_id"`
-	PackageID   uint64 `form:"package_id"`
+	AppCode     string `form:"app_code" binding:"omitempty,max=50"`
+	PackageCode string `form:"package_code" binding:"omitempty,max=50"`
+	VersionCode string `form:"version_code" binding:"omitempty,max=50"`
 	Keyword     string `form:"keyword"`
 }
 
+// TemplateTypeAppRulePayload 描述分类可投放的精确 APP、包与版本组合。
+// app_rules 为空表示全部 APP/包/版本，不向关系表写入默认数据。
+type TemplateTypeAppRulePayload struct {
+	AppCode     string `json:"app_code" binding:"required,max=50"`
+	PackageCode string `json:"package_code" binding:"required,max=50"`
+	VersionCode string `json:"version_code" binding:"required,max=50"`
+}
+
 type TemplateTypePayload struct {
-	CategoryName         string   `json:"category_name" binding:"required,max=128"`
-	DisplayPositionKeys  []string `json:"display_position_keys" binding:"required,min=1,max=100,dive,required,max=64"`
-	CountryIDs           []uint64 `json:"country_ids" binding:"max=100,dive,gt=0"`
-	ChannelIDs           []uint64 `json:"channel_ids" binding:"max=100,dive,gt=0"`
-	PackageIDs           []uint64 `json:"package_ids" binding:"max=100,dive,gt=0"`
-	UserTypes            []int    `json:"user_types" binding:"required,min=1,max=2,dive,oneof=1 2"`
-	SubscriptionStatuses []string `json:"subscription_statuses" binding:"required,min=1,max=2,dive,oneof=subscribed unsubscribed"`
-	Sort                 int64    `json:"sort"`
-	Status               int8     `json:"status" binding:"oneof=0 1"`
-	Description          string   `json:"description" binding:"max=500"`
-	legacyCountry        string
-	legacyAppPackage     string
-	legacyChannelID      string
-	legacyPackageID      *uint64
+	CategoryName         string                       `json:"category_name" binding:"required,max=128"`
+	DisplayPositionKeys  []string                     `json:"display_position_keys" binding:"max=100,dive,required,max=64"`
+	CountryIDs           []uint64                     `json:"country_ids" binding:"max=100,dive,gt=0"`
+	AppRules             []TemplateTypeAppRulePayload `json:"app_rules" binding:"max=100,dive"`
+	UserTypes            []int                        `json:"user_types" binding:"required,min=1,max=2,dive,oneof=1 2"`
+	SubscriptionStatuses []string                     `json:"subscription_statuses" binding:"required,min=1,max=2,dive,oneof=subscribed unsubscribed"`
+	Sort                 int64                        `json:"sort"`
+	Status               int8                         `json:"status" binding:"oneof=0 1"`
+	Description          string                       `json:"description" binding:"max=500"`
 }
 
 func (s *TemplateTypeService) List(ctx context.Context, page, pageSize int, req *ListTemplateTypeRequest) ([]model.VideoTemplateType, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateTypeListFilter{
 		Status: req.Status, PositionKey: strings.TrimSpace(req.PositionKey),
-		CountryID: req.CountryID, ChannelID: req.ChannelID, PackageID: req.PackageID,
+		CountryID: req.CountryID, AppCode: strings.TrimSpace(req.AppCode),
+		PackageCode: strings.TrimSpace(req.PackageCode), VersionCode: strings.TrimSpace(req.VersionCode),
 		Keyword: strings.TrimSpace(req.Keyword),
 	})
 }
@@ -76,7 +83,7 @@ func (s *TemplateTypeService) GetByID(ctx context.Context, id uint64) (*model.Vi
 }
 
 func (s *TemplateTypeService) Create(ctx context.Context, req *TemplateTypePayload) (*model.VideoTemplateType, error) {
-	if err := s.preparePositionIDs(ctx, req); err != nil {
+	if err := s.prepareTargets(ctx, req); err != nil {
 		return nil, err
 	}
 	item := &model.VideoTemplateType{}
@@ -97,7 +104,7 @@ func (s *TemplateTypeService) Update(ctx context.Context, id uint64, req *Templa
 	if err != nil {
 		return nil, notFoundOr(err, "模板分类不存在")
 	}
-	if err := s.preparePositionIDs(ctx, req); err != nil {
+	if err := s.prepareTargets(ctx, req); err != nil {
 		return nil, err
 	}
 	applyTemplateTypePayload(item, req)
@@ -131,21 +138,13 @@ func applyTemplateTypePayload(item *model.VideoTemplateType, req *TemplateTypePa
 	item.Sort = req.Sort
 	item.Status = req.Status
 	item.Description = strings.TrimSpace(req.Description)
-	//item.LegacyCountry = req.legacyCountry
-	//item.LegacyAppPackage = req.legacyAppPackage
-	//item.LegacyChannelID = req.legacyChannelID
-	//item.LegacyPackageID = req.legacyPackageID
 	item.UserTypes = append([]int(nil), req.UserTypes...)
 	item.SubscriptionStatuses = append([]string(nil), req.SubscriptionStatuses...)
-	//item.LegacyUserType = uint32(req.UserTypes[0])
-	//item.LegacyIsSubscribed = req.SubscriptionStatuses[0] == "subscribed"
 }
 
-func (s *TemplateTypeService) preparePositionIDs(ctx context.Context, req *TemplateTypePayload) error {
+// prepareTargets 校验分类关系并统一去重。三个关系数组为空都表示“全部”。
+func (s *TemplateTypeService) prepareTargets(ctx context.Context, req *TemplateTypePayload) error {
 	keys := normalizeStringValues(req.DisplayPositionKeys)
-	if len(keys) == 0 {
-		return errors.New("请至少选择一个展示位置")
-	}
 	for _, key := range keys {
 		position, err := s.positionRepo.GetByKey(ctx, key)
 		if err != nil {
@@ -160,13 +159,7 @@ func (s *TemplateTypeService) preparePositionIDs(ctx context.Context, req *Templ
 	if req.CountryIDs, err = normalizeTargetIDs(req.CountryIDs, "国家"); err != nil {
 		return err
 	}
-	if req.ChannelIDs, err = normalizeTargetIDs(req.ChannelIDs, "渠道"); err != nil {
-		return err
-	}
-	if req.PackageIDs, err = normalizeTargetIDs(req.PackageIDs, "安装包"); err != nil {
-		return err
-	}
-	for i, id := range req.CountryIDs {
+	for _, id := range req.CountryIDs {
 		country, lookupErr := s.countryRepo.GetByID(ctx, uint(id))
 		if lookupErr != nil {
 			return notFoundOr(lookupErr, "国家不存在")
@@ -174,36 +167,48 @@ func (s *TemplateTypeService) preparePositionIDs(ctx context.Context, req *Templ
 		if country.Status != 1 {
 			return errors.New("所选国家中包含已禁用项")
 		}
-		if i == 0 {
-			req.legacyCountry = country.Code
-		}
 	}
-	for i, id := range req.ChannelIDs {
-		channel, lookupErr := s.channelRepo.GetByID(ctx, uint(id))
+	normalizedRules := make([]TemplateTypeAppRulePayload, 0, len(req.AppRules))
+	seenRules := make(map[string]struct{}, len(req.AppRules))
+	for _, rule := range req.AppRules {
+		rule.AppCode = strings.TrimSpace(rule.AppCode)
+		rule.PackageCode = strings.TrimSpace(rule.PackageCode)
+		rule.VersionCode = strings.TrimSpace(rule.VersionCode)
+		if rule.AppCode == "" || rule.PackageCode == "" || rule.VersionCode == "" {
+			return errors.New("APP、安装包和版本均不能为空")
+		}
+		key := rule.AppCode + "\x00" + rule.PackageCode + "\x00" + rule.VersionCode
+		if _, exists := seenRules[key]; exists {
+			continue
+		}
+		app, lookupErr := s.appRepo.GetByAppCode(ctx, rule.AppCode)
 		if lookupErr != nil {
-			return notFoundOr(lookupErr, "渠道不存在")
+			return notFoundOr(lookupErr, "APP 不存在")
 		}
-		if channel.Status != 1 {
-			return errors.New("所选渠道中包含已禁用项")
+		if app.Status != 1 {
+			return errors.New("所选 APP 中包含已禁用项")
 		}
-		if i == 0 {
-			req.legacyChannelID = channel.ChannelCode
-		}
-	}
-	for i, id := range req.PackageIDs {
-		appPackage, lookupErr := s.packageRepo.GetByID(ctx, uint(id))
+		appPackage, lookupErr := s.packageRepo.GetByCode(ctx, rule.PackageCode)
 		if lookupErr != nil {
 			return notFoundOr(lookupErr, "安装包不存在")
 		}
 		if appPackage.Status != 1 {
 			return errors.New("所选安装包中包含已禁用项")
 		}
-		if i == 0 {
-			req.legacyAppPackage = appPackage.PackageCode
-			legacyID := id
-			req.legacyPackageID = &legacyID
+		if appPackage.AppCode != rule.AppCode {
+			return errors.New("安装包不属于所选 APP")
 		}
+		version, lookupErr := s.versionRepo.GetByPackageVersion(ctx, rule.PackageCode, rule.VersionCode)
+		if lookupErr != nil {
+			return notFoundOr(lookupErr, "安装包版本不存在")
+		}
+		if version.Status != 1 {
+			return errors.New("所选安装包版本中包含已禁用项")
+		}
+		seenRules[key] = struct{}{}
+		normalizedRules = append(normalizedRules, rule)
 	}
+	req.AppRules = normalizedRules
 	if req.UserTypes, err = normalizeUserTypes(req.UserTypes); err != nil {
 		return err
 	}
@@ -216,7 +221,16 @@ func (s *TemplateTypeService) preparePositionIDs(ctx context.Context, req *Templ
 func templateTypeTargetIDs(req *TemplateTypePayload) repository.TemplateTypeTargetIDs {
 	return repository.TemplateTypeTargetIDs{
 		DisplayPositionKeys: req.DisplayPositionKeys,
-		CountryIDs:          req.CountryIDs, ChannelIDs: req.ChannelIDs, PackageIDs: req.PackageIDs,
+		CountryIDs:          req.CountryIDs,
+		AppRules: func() []repository.TemplateTypeAppRule {
+			rules := make([]repository.TemplateTypeAppRule, 0, len(req.AppRules))
+			for _, rule := range req.AppRules {
+				rules = append(rules, repository.TemplateTypeAppRule{
+					AppCode: rule.AppCode, PackageCode: rule.PackageCode, VersionCode: rule.VersionCode,
+				})
+			}
+			return rules
+		}(),
 	}
 }
 
@@ -238,27 +252,19 @@ func normalizeStringValues(values []string) []string {
 }
 
 type TemplateService struct {
-	repo        *repository.TemplateRepo
-	typeRepo    *repository.TemplateTypeRepo
-	countryRepo *repository.CountryRepo
-	packageRepo *repository.PackageRepo
-	channelRepo *repository.ChannelRepo
+	repo     *repository.TemplateRepo
+	typeRepo *repository.TemplateTypeRepo
 }
 
 func NewTemplateService() *TemplateService {
 	return &TemplateService{
 		repo: repository.NewTemplateRepo(), typeRepo: repository.NewTemplateTypeRepo(),
-		countryRepo: repository.NewCountryRepo(), packageRepo: repository.NewPackageRepo(),
-		channelRepo: repository.NewChannelRepo(),
 	}
 }
 
 type ListTemplateRequest struct {
 	VideoTemplateTypeID uint64 `form:"video_template_type_id"`
 	PositionKey         string `form:"position_key" binding:"omitempty,max=64"`
-	CountryID           uint64 `form:"country_id"`
-	PackageID           uint64 `form:"package_id"`
-	ChannelID           uint64 `form:"channel_id"`
 	UserType            uint8  `form:"user_type" binding:"omitempty,oneof=1 2"`
 	SubscriptionStatus  string `form:"subscription_status" binding:"omitempty,oneof=subscribed unsubscribed"`
 	TemplateType        string `form:"template_type"`
@@ -268,9 +274,6 @@ type ListTemplateRequest struct {
 
 type TemplatePayload struct {
 	VideoTemplateTypeID  uint64   `json:"video_template_type_id" binding:"required"`
-	CountryIDs           []uint64 `json:"country_ids" binding:"max=100,dive,gt=0"`
-	PackageIDs           []uint64 `json:"package_ids" binding:"max=100,dive,gt=0"`
-	ChannelIDs           []uint64 `json:"channel_ids" binding:"max=100,dive,gt=0"`
 	UserTypes            []int    `json:"user_types" binding:"required,min=1,max=2,dive,oneof=1 2"`
 	SubscriptionStatuses []string `json:"subscription_statuses" binding:"required,min=1,max=2,dive,oneof=subscribed unsubscribed"`
 	Name                 string   `json:"name" binding:"required,max=128"`
@@ -288,8 +291,7 @@ func (s *TemplateService) List(ctx context.Context, page, pageSize int, req *Lis
 	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateListFilter{
 		VideoTemplateTypeID: req.VideoTemplateTypeID,
 		PositionKey:         strings.TrimSpace(req.PositionKey),
-		CountryID:           req.CountryID, PackageID: req.PackageID,
-		ChannelID: req.ChannelID, UserType: req.UserType, SubscriptionStatus: req.SubscriptionStatus,
+		UserType:            req.UserType, SubscriptionStatus: req.SubscriptionStatus,
 		TemplateType: strings.TrimSpace(req.TemplateType), Status: req.Status,
 		Keyword: strings.TrimSpace(req.Keyword),
 	})
@@ -311,17 +313,12 @@ func (s *TemplateService) Create(ctx context.Context, req *TemplatePayload) (*mo
 	if err := s.ensureTypeExists(ctx, req.VideoTemplateTypeID); err != nil {
 		return nil, err
 	}
-	if err := s.prepareAndValidateTargets(ctx, req); err != nil {
+	if err := prepareTemplateAudience(req); err != nil {
 		return nil, err
 	}
 	item := &model.VideoTemplate{}
 	applyTemplatePayload(item, req)
-	if err := repository.Transaction(ctx, func(ctx context.Context) error {
-		if err := s.repo.Create(ctx, item); err != nil {
-			return err
-		}
-		return s.repo.ReplaceTargets(ctx, item, targetIDsFromPayload(req))
-	}); err != nil {
+	if err := s.repo.Create(ctx, item); err != nil {
 		return nil, err
 	}
 	return s.repo.GetWithType(ctx, item.ID)
@@ -335,16 +332,11 @@ func (s *TemplateService) Update(ctx context.Context, id uint64, req *TemplatePa
 	if err := s.ensureTypeExists(ctx, req.VideoTemplateTypeID); err != nil {
 		return nil, err
 	}
-	if err := s.prepareAndValidateTargets(ctx, req); err != nil {
+	if err := prepareTemplateAudience(req); err != nil {
 		return nil, err
 	}
 	applyTemplatePayload(item, req)
-	if err := repository.Transaction(ctx, func(ctx context.Context) error {
-		if err := s.repo.UpdateFields(ctx, item); err != nil {
-			return err
-		}
-		return s.repo.ReplaceTargets(ctx, item, targetIDsFromPayload(req))
-	}); err != nil {
+	if err := s.repo.UpdateFields(ctx, item); err != nil {
 		return nil, err
 	}
 	return s.repo.GetWithType(ctx, item.ID)
@@ -380,58 +372,17 @@ func applyTemplatePayload(item *model.VideoTemplate, req *TemplatePayload) {
 	item.Description = strings.TrimSpace(req.Description)
 }
 
-func (s *TemplateService) prepareAndValidateTargets(ctx context.Context, req *TemplatePayload) error {
+// prepareTemplateAudience 仅处理模板自身的用户类型和订阅状态字段。
+// 国家、APP/包/版本由模板分类统一控制，展示位置由独立配置表控制。
+func prepareTemplateAudience(req *TemplatePayload) error {
 	var err error
-	if req.CountryIDs, err = normalizeTargetIDs(req.CountryIDs, "国家"); err != nil {
-		return err
-	}
-	if req.PackageIDs, err = normalizeTargetIDs(req.PackageIDs, "安装包"); err != nil {
-		return err
-	}
-	if req.ChannelIDs, err = normalizeTargetIDs(req.ChannelIDs, "渠道"); err != nil {
-		return err
-	}
 	if req.UserTypes, err = normalizeUserTypes(req.UserTypes); err != nil {
 		return err
 	}
 	if req.SubscriptionStatuses, err = normalizeSubscriptionStatuses(req.SubscriptionStatuses); err != nil {
 		return err
 	}
-	for _, id := range req.CountryIDs {
-		if _, err := s.countryRepo.GetByID(ctx, uint(id)); err != nil {
-			return notFoundOr(err, "国家不存在")
-		}
-	}
-	for _, id := range req.PackageIDs {
-		if _, err := s.packageRepo.GetByID(ctx, uint(id)); err != nil {
-			return notFoundOr(err, "安装包不存在")
-		}
-	}
-	for _, id := range req.ChannelIDs {
-		if _, err := s.channelRepo.GetByID(ctx, uint(id)); err != nil {
-			return notFoundOr(err, "渠道不存在")
-		}
-	}
 	return nil
-}
-
-func normalizeTargetKeys(values []string, label string) ([]string, error) {
-	if len(values) > 100 {
-		return nil, errors.New(label + "最多选择 100 项")
-	}
-	result := make([]string, 0, len(values))
-	seen := make(map[string]struct{}, len(values))
-	for _, id := range values {
-		if id == "" {
-			return nil, errors.New(label + " ID 无效")
-		}
-		if _, exists := seen[id]; exists {
-			continue
-		}
-		seen[id] = struct{}{}
-		result = append(result, id)
-	}
-	return result, nil
 }
 
 func normalizeUserTypes(values []int) ([]int, error) {
@@ -488,10 +439,4 @@ func normalizeSubscriptionStatuses(values []string) ([]string, error) {
 		return nil, errors.New("请至少选择一种订阅状态")
 	}
 	return result, nil
-}
-
-func targetIDsFromPayload(req *TemplatePayload) repository.TemplateTargetIDs {
-	return repository.TemplateTargetIDs{
-		CountryIDs: req.CountryIDs, PackageIDs: req.PackageIDs, ChannelIDs: req.ChannelIDs,
-	}
 }

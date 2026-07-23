@@ -4,16 +4,11 @@ export interface AppPackage {
   id: number
   package_name: string
   package_code: string
-  package_version: string
-  language: string
-  system_types: string[]
-  download_url: string
-  install_count: number
-  download_count: number
-  device_count: number
+  app_code: string
   description: string
   sort: number
   status: number
+  system_type: number
   created_at: string
   updated_at: string
 }

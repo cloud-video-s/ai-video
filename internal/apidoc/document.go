@@ -63,33 +63,33 @@ var delayConfigResponseExample = []repository.DelayConfigValue{
 }
 
 var responseDataExamples = map[string]any{
-	"GET /api/delay-configs":    delayConfigResponseExample,
-	"GET /api/ob-delay-configs": delayConfigResponseExample,
-	"GET /api/ob_delay":         delayConfigResponseExample,
+	"GET /api/ob_delay": delayConfigResponseExample,
+	"POST /api/templates/:id/favorite": apiservice.TemplateFavoriteResponse{
+		TemplateID: 1, Favorited: true, FavoriteCount: 1,
+	},
+	"DELETE /api/templates/:id/favorite": apiservice.TemplateFavoriteResponse{
+		TemplateID: 1, Favorited: false, FavoriteCount: 0,
+	},
 }
 
 var endpointTypes = map[string]endpointType{
 	"GET /api/health":                                  {response: typeOf[map[string]string]()},
-	"GET /api/configs/public":                          {response: typeOf[map[string]string]()},
 	"GET /api/configs/list":                            {response: typeOf[map[string]string]()},
 	"POST /api/auth/login":                             {body: typeOf[apiservice.LoginRequest](), response: typeOf[apiservice.AuthResponse]()},
-	"POST /api/auth/re-register":                       {body: typeOf[apiservice.LoginRequest](), response: typeOf[apiservice.AuthResponse]()},
-	"POST /api/auth/google":                            {body: typeOf[apiservice.ThirdPartyLoginRequest](), response: typeOf[apiservice.AuthResponse]()},
-	"POST /api/auth/apple":                             {body: typeOf[apiservice.ThirdPartyLoginRequest](), response: typeOf[apiservice.AuthResponse]()},
+	"POST /api/third_binding":                          {body: typeOf[apiservice.ThirdPartyLoginRequest](), response: typeOf[apiservice.ThirdAuthResponse]()},
 	"POST /api/auth/logout":                            {},
 	"GET /api/users/me":                                {response: typeOf[apiservice.UserResponse]()},
 	"PUT /api/users/me/country":                        {body: typeOf[apiservice.UpdateCountryRequest](), response: typeOf[apiservice.UserResponse]()},
 	"GET /api/users/me/identities":                     {response: typeOf[[]model.VideoUserIdentity]()},
-	"POST /api/users/me/identities/google":             {body: typeOf[apiservice.BindIdentityRequest](), response: typeOf[model.VideoUserIdentity]()},
-	"POST /api/users/me/identities/apple":              {body: typeOf[apiservice.BindIdentityRequest](), response: typeOf[model.VideoUserIdentity]()},
-	"GET /api/delay-configs":                           {response: typeOf[[]repository.DelayConfigValue]()},
-	"GET /api/ob-delay-configs":                        {response: typeOf[[]repository.DelayConfigValue]()},
 	"GET /api/ob_delay":                                {response: typeOf[[]repository.DelayConfigValue]()},
 	"GET /api/banners/list":                            {query: typeOf[apiservice.ClientBannerRequest](), response: typeOf[[]apiservice.ClientBanner]()},
 	"GET /api/templates/recommend":                     {query: typeOf[apiservice.ClientTemplateRecommendRequest](), response: typeOf[[]apiservice.ClientTemplate]()},
 	"GET /api/templates/by-position":                   {query: typeOf[apiservice.ClientTemplateDisplayRequest](), response: typeOf[[]apiservice.ClientTemplateDisplayItem]()},
 	"GET /api/templates/list":                          {query: typeOf[apiservice.ClientTemplateRequest](), response: typeOf[[]apiservice.ClientTemplateType]()},
 	"GET /api/templates/categories":                    {query: typeOf[apiservice.ClientTemplateRequest](), response: typeOf[[]apiservice.ClientTemplateType]()},
+	"GET /api/templates/category_template_list":        {query: typeOf[apiservice.CategoryTemplateListRequest](), response: typeOf[[]apiservice.ClientTemplate]()},
+	"POST /api/templates/:id/favorite":                 {response: typeOf[apiservice.TemplateFavoriteResponse]()},
+	"DELETE /api/templates/:id/favorite":               {response: typeOf[apiservice.TemplateFavoriteResponse]()},
 	"GET /api/vip/recommend":                           {response: typeOf[map[string]any]()},
 	"POST /api/uploads/images/batches":                 {response: typeOf[uploadBatchResponse]()},
 	"POST /api/uploads/videos/batches":                 {response: typeOf[uploadBatchResponse]()},
@@ -102,31 +102,30 @@ var endpointTypes = map[string]endpointType{
 }
 
 var operationDescriptions = map[string]string{
-	"GET /api/health": "检查 API 服务是否正常运行。", "GET /api/configs/public": "获取无需登录即可使用的公开应用配置。",
+	"GET /api/health":       "检查 API 服务是否正常运行。",
 	"GET /api/configs/list": "获取客户端可见的公开应用配置。", "POST /api/auth/login": "使用设备标识登录或创建游客账号。",
-	"POST /api/auth/re-register": "为当前设备重新创建游客账号。", "POST /api/auth/google": "验证 Google ID Token 并登录。",
-	"POST /api/auth/apple": "验证 Apple Identity Token 并登录。", "POST /api/auth/logout": "注销当前 Bearer Token。",
+	"POST /api/third_binding": "为当前用户绑定或切换 Google、Apple 等第三方身份。", "POST /api/auth/logout": "注销当前 Bearer Token。",
 	"GET /api/users/me": "获取当前登录用户资料。", "PUT /api/users/me/country": "更新当前用户的设备国家或地区。",
-	"GET /api/users/me/identities": "查询当前用户已绑定的第三方身份。", "POST /api/users/me/identities/google": "绑定 Google 身份。",
-	"POST /api/users/me/identities/apple": "绑定 Apple 身份。", "DELETE /api/users/me/identities/:provider": "解绑指定第三方身份。",
-	"GET /api/delay-configs": "获取客户端延迟配置。", "GET /api/ob-delay-configs": "获取 OB 延迟配置（兼容路径）。",
-	"GET /api/ob_delay": "获取 OB 延迟配置（旧版兼容路径）。", "GET /api/banners/list": "按展示位置和当前用户投放条件查询 Banner。",
+	"GET /api/users/me/identities": "查询当前用户已绑定的第三方身份。", "DELETE /api/users/me/identities/:provider": "解绑指定第三方身份。",
+	"GET /api/ob_delay": "获取客户端延迟配置。", "GET /api/banners/list": "按展示位置和当前用户投放条件查询 Banner。",
 	"GET /api/templates/recommend": "查询指定展示位置已配置的推荐模板，仅返回模板数据。", "GET /api/templates/by-position": "查询已配置到指定展示位置的模板。",
 	"GET /api/templates/list": "查询首页分类及其模板。", "GET /api/templates/categories": "查询模板分类及其模板。",
+	"GET /api/templates/category_template_list": "分页查询指定模板分类和展示位置下的模板，仅返回模板数据。",
+	"POST /api/templates/:id/favorite":          "收藏指定模板；重复收藏保持幂等。", "DELETE /api/templates/:id/favorite": "取消收藏指定模板；重复取消保持幂等。",
 	"GET /api/vip/recommend": "查询当前用户适用的推荐 VIP 套餐。",
 }
 
 var operationSummaries = map[string]string{
-	"GET /api/health": "健康检查", "GET /api/configs/public": "获取公开配置", "GET /api/configs/list": "获取客户端配置",
-	"POST /api/auth/login": "游客登录", "POST /api/auth/re-register": "重新注册", "POST /api/auth/google": "Google 登录",
-	"POST /api/auth/apple": "Apple 登录", "POST /api/auth/logout": "退出登录", "GET /api/users/me": "获取当前用户",
+	"GET /api/health": "健康检查", "GET /api/configs/list": "获取客户端配置",
+	"POST /api/auth/login": "游客登录", "POST /api/third_binding": "绑定第三方身份",
+	"POST /api/auth/logout": "退出登录", "GET /api/users/me": "获取当前用户",
 	"PUT /api/users/me/country": "更新用户国家", "GET /api/users/me/identities": "查询绑定身份",
-	"POST /api/users/me/identities/google": "绑定 Google", "POST /api/users/me/identities/apple": "绑定 Apple",
-	"DELETE /api/users/me/identities/:provider": "解绑第三方身份", "GET /api/delay-configs": "获取延迟配置",
-	"GET /api/ob-delay-configs": "获取 OB 延迟配置", "GET /api/ob_delay": "获取 OB 延迟配置",
+	"DELETE /api/users/me/identities/:provider": "解绑第三方身份", "GET /api/ob_delay": "获取延迟配置",
 	"GET /api/banners/list": "查询 Banner", "GET /api/templates/recommend": "查询推荐模板",
 	"GET /api/templates/by-position": "按位置查询模板", "GET /api/templates/list": "查询模板列表",
-	"GET /api/templates/categories": "查询模板分类", "GET /api/vip/recommend": "查询推荐 VIP 套餐",
+	"GET /api/templates/categories": "查询模板分类", "GET /api/templates/category_template_list": "查询分类模板",
+	"POST /api/templates/:id/favorite":   "收藏模板",
+	"DELETE /api/templates/:id/favorite": "取消收藏模板", "GET /api/vip/recommend": "查询推荐 VIP 套餐",
 	"POST /api/uploads/images/batches": "初始化图片上传", "POST /api/uploads/videos/batches": "初始化视频上传",
 	"GET /api/uploads/images/:upload_id": "查询图片上传进度", "GET /api/uploads/videos/:upload_id": "查询视频上传进度",
 	"PUT /api/uploads/images/:upload_id/chunks/:index": "上传图片分片", "PUT /api/uploads/videos/:upload_id/chunks/:index": "上传视频分片",
@@ -153,8 +152,10 @@ var fieldDescriptions = map[string]string{
 	"target_template": "关联的目标模板", "template_id": "目标模板 ID", "sort": "排序值", "category_name": "分类名称",
 	"description": "说明", "position_keys": "支持的展示位置", "user_types": "适用用户类型", "subscription_statuses": "适用订阅状态",
 	"templates": "模板列表", "video_template_type_id": "模板分类 ID", "prompt": "模板提示词", "usage_count": "使用次数",
-	"favorite_count": "收藏次数", "view_count": "浏览次数", "display_config_id": "展示配置 ID", "display_sort": "展示排序",
-	"files": "待上传文件列表", "file_name": "文件名", "size": "文件字节数", "content_type": "MIME 类型", "sha256": "文件 SHA-256",
+	"favorite_count": "收藏次数", "favorited": "当前用户是否已收藏", "view_count": "浏览次数", "display_config_id": "展示配置 ID", "display_sort": "展示排序",
+	"page": "页码，从 1 开始", "pageSize": "每页数量", "template_type_id": "模板分类 ID", "third_type": "第三方身份类型：google 或 apple",
+	"third_code": "第三方平台用户标识",
+	"files":      "待上传文件列表", "file_name": "文件名", "size": "文件字节数", "content_type": "MIME 类型", "sha256": "文件 SHA-256",
 	"uploads": "上传会话列表", "upload_id": "上传会话 ID", "kind": "媒体类型：image 或 video", "original_name": "原始文件名",
 	"extension": "文件扩展名", "total_size": "文件总字节数", "chunk_size": "分片字节数", "total_chunks": "分片总数",
 	"uploaded_chunks": "已上传分片序号", "expected_sha256": "预期文件 SHA-256", "uploader_type": "上传者类型",
@@ -168,9 +169,7 @@ var resourceNames = map[string]string{
 }
 
 var publicRoutes = map[string]bool{
-	"GET /api/health": true, "GET /api/configs/public": true,
-	"POST /api/auth/login": true, "POST /api/auth/re-register": true,
-	"POST /api/auth/google": true, "POST /api/auth/apple": true,
+	"GET /api/health": true, "POST /api/auth/login": true,
 }
 
 var paginatedRoutes = map[string]bool{
@@ -364,9 +363,9 @@ func requestSchemaForType(valueType reflect.Type) map[string]any {
 }
 
 var commonContextFieldNames = map[string]bool{
-	"device_country": true, "client_country": true, "channel_id": true, "app_version": true,
-	"app_name": true, "phone_model": true, "channel_package": true,
-	"app_package": true, "login_type": true,
+	"device_country": true, "client_country": true, "app_code": true, "app_name": true,
+	"app_package_code": true, "app_package": true, "app_version": true,
+	"channel_code": true, "phone_model": true, "login_type": true,
 }
 
 func flattenBodySchema(schema map[string]any, location, prefix string, parentRequired bool) []any {
@@ -735,13 +734,13 @@ func clientHeaderParameters() []any {
 		name, description string
 		required          bool
 	}{
-		{"Video_Channel_ID", "渠道标识", true},
+		{"Video_App_Code", "应用代码，对应应用配置中的 app_code", true},
+		{"Video_App_Package_Code", "应用包代码，对应安装包配置中的 package_code", true},
 		{"Video_App_Version", "应用版本号", true},
 		{"Video_Phone_Model", "设备型号", true},
-		{"Video_App_Package", "应用包名", true},
-		{"Video_Channel_Package", "渠道包标识", false},
-		{"Video_Device_Country", "设备国家或地区代码；未传时根据客户端 IP 推断", false},
-		{"Accept-Language", "响应语言，例如 zh-CN、en-US", false},
+		{"Video_Channel_Code", "渠道代码，对应渠道配置中的 channel_code", true},
+		{"Video_Device_Country", "ISO 3166-1 alpha-2 国家或地区代码；用于投放条件和国家语言配置，未传时根据客户端 IP 推断", false},
+		{"Accept-Language", "国家未配置语言时的响应语言回退值，例如 zh-CN、en-US；最终语言见响应头 Content-Language", false},
 	}
 	parameters := make([]any, 0, len(headers))
 	for _, header := range headers {

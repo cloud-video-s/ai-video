@@ -12,13 +12,13 @@ import (
 
 const (
 	HeaderUserIDKey      = "Video_user_id"
-	HeaderPhoneModel     = "Video_Phone_Model"
-	HeaderChannelID      = "Video_Channel_ID"
-	HeaderChannelPackage = "Video_Channel_Package"
-	HeaderAppVersion     = "Video_App_Version"
 	HeaderDeviceCountry  = "Video_Device_Country"
+	HeaderPhoneModel     = "Video_Phone_Model"
+	HeaderAPPCode        = "Video_App_Code"
+	HeaderAppPackageCode = "Video_App_Package_Code"
+	HeaderAppVersion     = "Video_App_Version"
+	HeaderChannelCode    = "Video_Channel_Code"
 	HeaderTokenVersion   = "Video_Token_Version"
-	HeaderAppPackage     = "Video_App_Package"
 	HeaderLoginType      = "Video_Login_Type"
 )
 
@@ -29,26 +29,31 @@ func ApiAuth(userRepo UserRepo) gin.HandlerFunc {
 			response.Unauthorized(c, "缺少 Authorization 头")
 			return
 		}
-		headerChannelID := c.GetHeader(HeaderChannelID)
-		if headerChannelID == "" {
-			response.Unauthorized(c, "缺少 Channel_ID 头")
+		headerAppCode := c.GetHeader(HeaderAPPCode)
+		if headerAppCode == "" {
+			response.Unauthorized(c, "缺少 Video_App_Code 头")
 			return
 		}
-
+		headerAppPackageCode := c.GetHeader(HeaderAppPackageCode)
+		if headerAppPackageCode == "" {
+			response.Unauthorized(c, "缺少 Video_App_Package_Code 头")
+			return
+		}
 		headerAppVersion := c.GetHeader(HeaderAppVersion)
 		if headerAppVersion == "" {
-			response.Unauthorized(c, "缺少 App_Version 头")
+			response.Unauthorized(c, "缺少 Video_App_Version 头")
 			return
 		}
 
 		headerPhoneModel := c.GetHeader(HeaderPhoneModel)
 		if headerPhoneModel == "" {
-			response.Unauthorized(c, "缺少 Phone_Model 头")
+			response.Unauthorized(c, "缺少 Video_Phone_Model 头")
 			return
 		}
-		headerAppPackage := c.GetHeader(HeaderAppPackage)
-		if headerAppPackage == "" {
-			response.Unauthorized(c, "缺少 App_Package 头")
+
+		headerChannelCode := c.GetHeader(HeaderChannelCode)
+		if headerChannelCode == "" {
+			response.Unauthorized(c, "缺少 Video_Channel_Code 头")
 			return
 		}
 
@@ -80,12 +85,12 @@ func ApiAuth(userRepo UserRepo) gin.HandlerFunc {
 		c.Set(HeaderUserIDKey, claims.UserID)
 		c.Set(HeaderTokenVersion, claims.TokenVersion)
 		c.Set(HeaderLoginType, claims.LoginType)
-		c.Set(HeaderChannelID, headerChannelID)
-		c.Set(HeaderChannelPackage, c.GetHeader(HeaderChannelPackage))
+		c.Set(HeaderAPPCode, headerAppCode)
+		c.Set(HeaderAppPackageCode, headerAppPackageCode)
 		c.Set(HeaderAppVersion, headerAppVersion)
+		c.Set(HeaderChannelCode, headerChannelCode)
 		c.Set(HeaderDeviceCountry, headerDeviceCountry)
 		c.Set(HeaderPhoneModel, headerPhoneModel)
-		c.Set(HeaderAppPackage, headerAppPackage)
 		c.Next()
 	}
 }
@@ -122,28 +127,28 @@ func GetAPITokenVersion(c *gin.Context) int64 {
 	return version
 }
 
-func GetAPIChannelID(c *gin.Context) string {
-	value, ok := c.Get(HeaderChannelID)
+func GetAPIAPPCode(c *gin.Context) string {
+	value, ok := c.Get(HeaderAPPCode)
 	if !ok {
 		return ""
 	}
-	channelID, ok := value.(string)
+	aPPCode, ok := value.(string)
 	if !ok {
 		return ""
 	}
-	return channelID
+	return aPPCode
 }
 
-func GetAPIChannelPackage(c *gin.Context) string {
-	value, ok := c.Get(HeaderChannelPackage)
+func GetAPIAppPackageCode(c *gin.Context) string {
+	value, ok := c.Get(HeaderAppPackageCode)
 	if !ok {
 		return ""
 	}
-	channelPackage, ok := value.(string)
+	appPackageCode, ok := value.(string)
 	if !ok {
 		return ""
 	}
-	return channelPackage
+	return appPackageCode
 }
 
 func GetAPIAppVersion(c *gin.Context) string {
@@ -156,6 +161,18 @@ func GetAPIAppVersion(c *gin.Context) string {
 		return ""
 	}
 	return appVersion
+}
+
+func GetAPIChannelCode(c *gin.Context) string {
+	value, ok := c.Get(HeaderChannelCode)
+	if !ok {
+		return ""
+	}
+	channelCode, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return channelCode
 }
 
 func GetAPIDeviceCountry(c *gin.Context) string {
@@ -180,18 +197,6 @@ func GetAPIPhoneModel(c *gin.Context) string {
 		return ""
 	}
 	return phoneModel
-}
-
-func GetAPIAppPackage(c *gin.Context) string {
-	value, ok := c.Get(HeaderAppPackage)
-	if !ok {
-		return ""
-	}
-	appPackage, ok := value.(string)
-	if !ok {
-		return ""
-	}
-	return appPackage
 }
 
 func GetAPILoginType(c *gin.Context) uint32 {

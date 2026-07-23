@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/i18n"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -28,9 +29,10 @@ type ListCountryRequest struct {
 }
 
 type CountryPayload struct {
-	Code   string `json:"code" binding:"required,len=2"`
-	NameZh string `json:"name_zh" binding:"required,max=100"`
-	Status int8   `json:"status" binding:"oneof=0 1"`
+	Code     string `json:"code" binding:"required,len=2"`
+	NameZh   string `json:"name_zh" binding:"required,max=100"`
+	Language string `json:"language" binding:"omitempty,oneof=zh-CN en-US ja-JP ko-KR es-ES"`
+	Status   int8   `json:"status" binding:"oneof=0 1"`
 }
 
 type CountryStatusPayload struct {
@@ -121,6 +123,12 @@ func applyCountryPayload(item *model.VideoCountry, req *CountryPayload) error {
 	}
 	item.Code = code
 	item.NameZh = nameZh
+	item.Language = strings.TrimSpace(req.Language)
+	if item.Language == "" {
+		item.Language = i18n.LocaleForCountry(code)
+	} else {
+		item.Language = i18n.NormalizeLocale(item.Language)
+	}
 	item.Status = req.Status
 	return nil
 }

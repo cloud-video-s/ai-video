@@ -41,6 +41,9 @@
         <el-table-column prop="name_zh" label="中文名称" min-width="240">
           <template #default="{ row }"><span class="country-name">{{ row.name_zh }}</span></template>
         </el-table-column>
+        <el-table-column label="接口语言" width="130" align="center">
+          <template #default="{ row }">{{ languageLabel(row.language) }}</template>
+        </el-table-column>
         <el-table-column label="状态" width="150" align="center">
           <template #default="{ row }">
             <el-switch
@@ -113,6 +116,11 @@
         <el-form-item label="中文名称" prop="name_zh">
           <el-input v-model="form.name_zh" maxlength="100" placeholder="例如：中国、美国" />
         </el-form-item>
+        <el-form-item label="接口语言" prop="language">
+          <el-select v-model="form.language" placeholder="请选择接口语言" style="width: 100%">
+            <el-option v-for="item in languageOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="form.status">
             <el-radio :value="1">启用</el-radio>
@@ -158,8 +166,15 @@ const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive<{ keyword: string; status: '' | number }>({ keyword: '', status: '' })
+const languageOptions = [
+  { value: 'zh-CN', label: '简体中文' },
+  { value: 'en-US', label: 'English' },
+  { value: 'ja-JP', label: '日本語' },
+  { value: 'ko-KR', label: '한국어' },
+  { value: 'es-ES', label: 'Español' },
+]
 
-const defaultForm: CountryPayload & { id: number } = { id: 0, code: '', name_zh: '', status: 1 }
+const defaultForm: CountryPayload & { id: number } = { id: 0, code: '', name_zh: '', language: 'zh-CN', status: 1 }
 const form = reactive({ ...defaultForm })
 const rules: FormRules = {
   code: [
@@ -167,6 +182,7 @@ const rules: FormRules = {
     { pattern: /^[A-Z]{2}$/, message: '请输入 2 位大写英文字母', trigger: 'blur' },
   ],
   name_zh: [{ required: true, message: '请输入中文名称', trigger: 'blur' }],
+  language: [{ required: true, message: '请选择接口语言', trigger: 'change' }],
 }
 
 async function fetchData() {
@@ -205,7 +221,7 @@ function openCreate() {
 }
 
 function openEdit(row: Country) {
-  Object.assign(form, { id: row.id, code: row.code, name_zh: row.name_zh, status: row.status })
+  Object.assign(form, { id: row.id, code: row.code, name_zh: row.name_zh, language: row.language || 'zh-CN', status: row.status })
   dialogVisible.value = true
 }
 
@@ -220,6 +236,7 @@ async function handleSubmit() {
     const payload: CountryPayload = {
       code: form.code.trim().toUpperCase(),
       name_zh: form.name_zh.trim(),
+      language: form.language,
       status: form.status,
     }
     if (form.id) await updateCountry(form.id, payload)
@@ -230,6 +247,10 @@ async function handleSubmit() {
   } finally {
     submitting.value = false
   }
+}
+
+function languageLabel(value: string) {
+  return languageOptions.find((item) => item.value === value)?.label || value || '-'
 }
 
 async function handleStatusChange(row: Country) {

@@ -59,6 +59,25 @@ func SupportedLocales() []string {
 	return []string{LocaleZhCN, LocaleEnUS, LocaleJaJP, LocaleKoKR, LocaleEsES}
 }
 
+// LocaleForCountry returns the API locale associated with an ISO 3166-1
+// alpha-2 country code. Countries without a dedicated translation use English.
+func LocaleForCountry(countryCode string) string {
+	switch strings.ToUpper(strings.TrimSpace(countryCode)) {
+	case "":
+		return ""
+	case "CN", "HK", "MO", "TW":
+		return LocaleZhCN
+	case "JP":
+		return LocaleJaJP
+	case "KR", "KP":
+		return LocaleKoKR
+	case "AR", "BO", "CL", "CO", "CR", "CU", "DO", "EC", "ES", "GQ", "GT", "HN", "MX", "NI", "PA", "PE", "PR", "PY", "SV", "UY", "VE":
+		return LocaleEsES
+	default:
+		return LocaleEnUS
+	}
+}
+
 func NormalizeLocale(value string) string {
 	value = strings.ToLower(strings.TrimSpace(strings.ReplaceAll(value, "_", "-")))
 	if index := strings.Index(value, ","); index >= 0 {

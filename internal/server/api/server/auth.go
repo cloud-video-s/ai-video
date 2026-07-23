@@ -111,8 +111,8 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 				DeviceCode: req.DeviceCode,
 				Username:   newGuestUsername(), LoginType: domain.AppUserLoginGuest,
 				UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
-				ClientCountry: req.ClientCountry, ChannelID: req.ChannelID,
-				AppVersion: req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
+				ClientCountry: req.ClientCountry,
+				AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 				FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
 				AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
 				Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
@@ -149,8 +149,8 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 			DeviceCode: req.DeviceCode,
 			Username:   newGuestUsername(), LoginType: domain.AppUserLoginGuest,
 			UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
-			ClientCountry: req.ClientCountry, ChannelID: req.ChannelID,
-			AppVersion: req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
+			ClientCountry: req.ClientCountry,
+			AppVersion:    req.AppVersion, AppName: req.AppPackage, PhoneModel: req.PhoneModel,
 			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
 			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
 			Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
@@ -208,8 +208,8 @@ func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, 
 			DeviceCode: req.DeviceCode,
 			Username:   newGuestUsername(), LoginType: domain.AppUserLoginGuest,
 			UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
-			ClientCountry: req.ClientCountry, ChannelID: req.ChannelID,
-			AppVersion: req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
+			ClientCountry: req.ClientCountry,
+			AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
 			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
 			Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
@@ -325,9 +325,6 @@ func baseTrackingUpdates(loginType int, req *AccountBaseRequest, clientIP string
 
 func attributionTrackingUpdates(req *AccountBaseRequest, clientIP, userAgent string) map[string]interface{} {
 	updates := map[string]interface{}{}
-	if value := strings.TrimSpace(req.ChannelID); value != "" {
-		updates["channel_code"] = value
-	}
 	if value := strings.TrimSpace(clientIP); value != "" {
 		updates["ip"] = value
 	}

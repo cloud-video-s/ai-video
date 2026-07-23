@@ -41,9 +41,28 @@ const (
 	PointsDirectionIncome  int32 = 1
 	PointsDirectionExpense int32 = 2
 
+	OrderProductVIPSubscription = "vip_subscription"
+	OrderProductPointsPackage   = "points_package"
+
+	OrderStatusPending   = "pending"
+	OrderStatusPaid      = "paid"
+	OrderStatusCancelled = "cancelled"
+	OrderStatusFailed    = "failed"
+	OrderStatusRefunded  = "refunded"
+
+	PaymentMethodAppleIAP = "apple_iap"
+
+	PointsSourcePurchase = "purchase"
+	PointsSourceConsume  = "consume"
+	PointsSourceReward   = "reward"
+	PointsSourceRefund   = "refund"
+
 	VIPPlanTypeNormal          = "normal"
 	VIPPlanTypeTrial           = "trial"
 	VIPPlanTypePaywall         = "paywall"
 	VIPDisplayModeHidden int32 = 0
 	VIPDisplayModeNormal int32 = 1
+
+	SystemTypeIos int = 1
+	SystemTypeA   int = 2
 )

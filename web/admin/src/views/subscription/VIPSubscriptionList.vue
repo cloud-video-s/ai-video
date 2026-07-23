@@ -19,6 +19,7 @@
         <el-select v-model="query.is_subscription" clearable placeholder="是否订阅"><el-option label="订阅" value="true" /><el-option label="非订阅" value="false" /></el-select>
         <el-select v-model="query.platform" clearable placeholder="平台"><el-option v-for="item in platformOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         <el-select v-model="query.channel_id" clearable filterable placeholder="渠道"><el-option v-for="item in channelOptions" :key="item.channel_id" :label="channelLabel(item)" :value="String(item.channel_id)" /></el-select>
+        <el-select v-model="query.excluded_channel_id" clearable filterable placeholder="排除渠道"><el-option v-for="item in channelOptions" :key="item.channel_id" :label="channelLabel(item)" :value="String(item.channel_id)" /></el-select>
         <el-input v-model="query.keyword" clearable placeholder="产品ID、名称、VIP等级" @keyup.enter="handleSearch" />
         <el-button type="primary" plain @click="handleSearch">查询</el-button>
         <el-button @click="handleReset">重置</el-button>
@@ -67,8 +68,20 @@
               <el-form-item label="目标版本"><el-input v-model="form.app_version" maxlength="32" placeholder="留空表示全部版本" /></el-form-item>
               <el-form-item label="排序"><el-input-number v-model="form.sort" :min="0" :max="999999" controls-position="right" /></el-form-item>
             </div>
-            <el-form-item label="展示区域"><el-select v-model="form.display_position_ids" multiple filterable clearable placeholder="不选表示全部展示区域" style="width: 100%"><el-option v-for="item in positionOptions" :key="item.id" :label="`${item.position_name} · ${item.position_key}`" :value="item.id" /></el-select></el-form-item>
-            <el-form-item label="渠道"><el-select v-model="form.channel_ids" multiple filterable clearable placeholder="不选表示全部渠道" style="width: 100%"><el-option v-for="item in channelOptions" :key="item.channel_id" :label="channelLabel(item)" :value="item.channel_id" /></el-select></el-form-item>
+            <el-form-item label="展示区域">
+              <div class="position-field">
+                <el-checkbox-group v-model="form.display_position_ids" class="position-grid">
+                  <el-checkbox v-for="item in positionOptions" :key="item.id" :value="item.id" class="position-card">
+                    <el-image v-if="item.cover_image" :src="item.cover_image" fit="cover" class="position-cover" lazy />
+                    <div v-else class="position-cover position-cover-empty">无封面</div>
+                    <span class="position-name">{{ item.position_name }}</span>
+                    <span class="position-key mono">{{ item.position_key }}</span>
+                  </el-checkbox>
+                </el-checkbox-group>
+                <div class="form-tip position-tip">不选表示适用于全部展示区域</div>
+              </div>
+            </el-form-item>
+            <el-form-item label="渠道"><el-select v-model="form.channel_ids" multiple filterable clearable placeholder="不选表示全部渠道" style="width: 100%" @change="handleChannelsChange"><el-option v-for="item in channelOptions" :key="item.channel_id" :label="channelLabel(item)" :value="item.channel_id" /></el-select></el-form-item>
             <el-form-item label="排除渠道"><el-select v-model="form.excluded_channel_ids" multiple filterable clearable placeholder="选择明确排除的渠道" style="width: 100%"><el-option v-for="item in channelOptions" :key="item.channel_id" :label="channelLabel(item)" :value="item.channel_id" :disabled="form.channel_ids.includes(item.channel_id)" /></el-select></el-form-item>
             <el-form-item label="套餐描述"><el-input v-model="form.description" type="textarea" :rows="3" maxlength="1000" show-word-limit /></el-form-item>
           </el-tab-pane>
@@ -129,28 +142,42 @@ const loading = ref(false), submitting = ref(false), dialogVisible = ref(false)
 const updatingIds = ref<number[]>([]), formRef = ref<FormInstance>(), formTab = ref('base')
 const tableData = ref<VIPSubscription[]>([]), packageOptions = ref<AppPackage[]>([]), positionOptions = ref<DisplayPosition[]>([]), channelOptions = ref<Channel[]>([])
 const page = ref(1), pageSize = ref(20), total = ref(0)
-const query = reactive({ plan_type: '', status: '', package_id: '', display_mode: '', is_subscription: '', platform: '', channel_id: '', keyword: '' })
+const query = reactive({ plan_type: '', status: '', package_id: '', display_mode: '', is_subscription: '', platform: '', channel_id: '', excluded_channel_id: '', keyword: '' })
 const defaultForm: VIPSubscriptionPayload & { id: number } = { id: 0, package_id: 0, platform: '', product_id: '', name: '', vip_level: '', plan_type: 'normal', display_position_ids: [], channel_ids: [], excluded_channel_ids: [], app_version: '', currency: 'USD', first_subscription_price: 0, first_subscription_revenue: 0, first_bonus_points: 0, original_price: 0, vip_duration_days: 30, trial_days: 0, renewal_text: '', badge_text: '', agreement_default_checked: true, display_mode: 1, status: 1, free_trial: false, is_subscription: true, is_default: false, subscription_description: '', subscription_price: 0, subscription_revenue: 0, subscription_points: 0, subscription_period: 'P1M', sort: 0, description: '', remark: '' }
 const form = reactive({ ...defaultForm })
 const rules: FormRules = { product_id: [{ required: true, message: '请输入产品 ID', trigger: 'blur' }], name: [{ required: true, message: '请输入 VIP 名称', trigger: 'blur' }], vip_level: [{ required: true, message: '请输入 VIP 等级', trigger: 'blur' }], plan_type: [{ required: true, message: '请选择套餐类型', trigger: 'change' }], package_id: [{ required: true, message: '请选择应用包', trigger: 'change' }], platform: [{ required: true, message: '请选择平台', trigger: 'change' }], currency: [{ required: true, pattern: /^[A-Za-z]{3}$/, message: '请输入三位币种代码', trigger: 'blur' }] }
 const selectedPackage = computed(() => packageOptions.value.find((item) => item.id === form.package_id))
-const availablePlatforms = computed(() => { const types = selectedPackage.value?.system_types || []; return types.length ? platformOptions.filter((item) => types.includes(item.value)) : platformOptions })
+const availablePlatforms = computed(() => {
+  const systemType = selectedPackage.value?.system_type
+  const platform = systemType === 1 ? 'ios' : systemType === 2 ? 'android' : ''
+  return platform ? platformOptions.filter((item) => item.value === platform) : platformOptions
+})
 
 async function fetchOptions() { const [packages, positions, channels]: any[] = await Promise.all([getPackageOptions(), getDisplayPositionOptions(), getChannelOptions()]); packageOptions.value = packages.data || []; positionOptions.value = positions.data || []; channelOptions.value = channels.data || [] }
 async function fetchData() { loading.value = true; try { const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }; for (const [key, value] of Object.entries(query)) if (value !== '') params[key] = value; const res: any = await getVIPSubscriptionList(params); tableData.value = res.data.list || []; total.value = res.data.total || 0 } finally { loading.value = false } }
 function handleSearch() { page.value = 1; fetchData() }
-function handleReset() { Object.assign(query, { plan_type: '', status: '', package_id: '', display_mode: '', is_subscription: '', platform: '', channel_id: '', keyword: '' }); page.value = 1; fetchData() }
+function handleReset() { Object.assign(query, { plan_type: '', status: '', package_id: '', display_mode: '', is_subscription: '', platform: '', channel_id: '', excluded_channel_id: '', keyword: '' }); page.value = 1; fetchData() }
 function handlePageSizeChange() { page.value = 1; fetchData() }
 function openCreate() { Object.assign(form, defaultForm, { display_position_ids: [], channel_ids: [], excluded_channel_ids: [], package_id: packageOptions.value.find((item) => item.status === 1)?.id || 0 }); handlePackageChange(); formTab.value = 'base'; dialogVisible.value = true }
-function openEdit(row: VIPSubscription) { Object.assign(form, defaultForm, row, { display_position_ids: (row.display_positions || []).map((item) => item.id), channel_ids: (row.channels || []).map((item) => item.channel_id), excluded_channel_ids: (row.excluded_channels || []).map((item) => item.channel_id) }); formTab.value = 'base'; dialogVisible.value = true }
+function openEdit(row: VIPSubscription) {
+  const values = Object.fromEntries(Object.keys(defaultForm).map((key) => [key, (row as unknown as Record<string, unknown>)[key] ?? (defaultForm as unknown as Record<string, unknown>)[key]]))
+  Object.assign(form, values, {
+    package_id: row.package_id || row.package?.id || row.packages?.[0]?.id || 0,
+    display_position_ids: (row.display_positions || []).map((item) => item.id),
+    channel_ids: (row.channels || []).map((item) => item.channel_id),
+    excluded_channel_ids: (row.excluded_channels || []).map((item) => item.channel_id),
+  })
+  handlePackageChange(); formTab.value = 'base'; dialogVisible.value = true
+}
 function handlePackageChange() { if (form.platform && !availablePlatforms.value.some((item) => item.value === form.platform)) form.platform = ''; if (!form.platform && availablePlatforms.value.length) form.platform = availablePlatforms.value[0].value }
-async function handleSubmit() { await formRef.value?.validate(); submitting.value = true; try { const { id, ...payload } = form; if (id) await updateVIPSubscription(id, payload); else await createVIPSubscription(payload); ElMessage.success('VIP 订阅套餐已保存'); dialogVisible.value = false; await fetchData() } finally { submitting.value = false } }
+function handleChannelsChange() { form.excluded_channel_ids = form.excluded_channel_ids.filter((id) => !form.channel_ids.includes(id)) }
+async function handleSubmit() { await formRef.value?.validate(); submitting.value = true; try { const payload = Object.fromEntries(Object.keys(defaultForm).filter((key) => key !== 'id').map((key) => [key, (form as unknown as Record<string, unknown>)[key]])) as unknown as VIPSubscriptionPayload; if (form.id) await updateVIPSubscription(form.id, payload); else await createVIPSubscription(payload); ElMessage.success('VIP 订阅套餐已保存'); dialogVisible.value = false; await fetchData() } finally { submitting.value = false } }
 async function handleStatusChange(row: VIPSubscription) { updatingIds.value.push(row.id); try { await updateVIPSubscriptionStatus(row.id, row.status); ElMessage.success(`套餐已${row.status === 1 ? '启用' : '禁用'}`) } catch { row.status = row.status === 1 ? 0 : 1 } finally { updatingIds.value = updatingIds.value.filter((id) => id !== row.id) } }
 async function toggleDisplay(row: VIPSubscription) { const mode = row.display_mode === 1 ? 0 : 1; await updateVIPSubscriptionDisplay(row.id, mode); row.display_mode = mode; ElMessage.success(mode === 1 ? '套餐已显示' : '套餐已隐藏') }
 async function setDefault(row: VIPSubscription) { await setDefaultVIPSubscription(row.id); ElMessage.success('已设为默认套餐'); await fetchData() }
 async function clonePlan(row: VIPSubscription) { const { value } = await ElMessageBox.prompt('请输入复制后套餐的新产品 ID（SKU）', '复制 VIP 套餐', { inputPlaceholder: `${row.product_id}_copy`, inputPattern: /\S+/, inputErrorMessage: '产品 ID 不能为空' }); await cloneVIPSubscription(row.id, value.trim()); ElMessage.success('套餐已复制'); await fetchData() }
 async function handleDelete(id: number) { await deleteVIPSubscription(id); ElMessage.success('VIP 套餐已删除'); if (tableData.value.length === 1 && page.value > 1) page.value--; await fetchData() }
-function packageLabel(item: AppPackage) { return `${item.package_name} · ${item.package_code} · ${item.package_version}` }
+function packageLabel(item: AppPackage) { return `${item.package_name} · ${item.package_code}` }
 function channelLabel(item: Channel) { return `${item.channel_name} · ${item.channel_code}` }
 function channelNames(items?: Channel[]) { return items?.length ? items.map((item) => item.channel_name).join('、') : '全部' }
 function planTypeLabel(value: string) { return planTypeOptions.find((item) => item.value === value)?.label || value }
@@ -161,6 +188,7 @@ onMounted(() => Promise.all([fetchOptions(), fetchData()]))
 
 <style scoped>
 .page-wrap { min-width: 0; }.page-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }.page-title { color: #303133; font-size: 17px; font-weight: 600; }.page-subtitle { margin-top: 4px; color: #909399; font-size: 12px; }
-.filters { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)) repeat(4, minmax(130px, 1fr)) auto auto; gap: 10px; margin-bottom: 16px; }.primary-text { color: #303133; font-weight: 600; }.secondary-text { margin-top: 4px; color: #909399; font-size: 12px; }.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }.tag-row,.target-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }.danger-text { color: #e6a23c; }.price { color: #f56c6c; font-size: 15px; font-weight: 600; }.original-price { color: #909399; font-size: 12px; text-decoration: line-through; }.display-state { margin-top: 6px; color: #909399; font-size: 12px; }.pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; overflow-x: auto; }.form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; padding-top: 8px; }.form-grid :deep(.el-input-number) { width: 100%; }.form-tip { margin-left: 10px; color: #909399; font-size: 12px; }
-@media (max-width: 1200px) { .filters { grid-template-columns: repeat(4, minmax(130px, 1fr)); } } @media (max-width: 700px) { .page-header { align-items: stretch; flex-direction: column; }.filters,.form-grid { grid-template-columns: 1fr; }.page-wrap :deep(.el-card__header),.page-wrap :deep(.el-card__body) { padding: 14px; } }
+.filters { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)) repeat(4, minmax(130px, 1fr)) auto auto auto; gap: 10px; margin-bottom: 16px; }.primary-text { color: #303133; font-weight: 600; }.secondary-text { margin-top: 4px; color: #909399; font-size: 12px; }.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }.tag-row,.target-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }.danger-text { color: #e6a23c; }.price { color: #f56c6c; font-size: 15px; font-weight: 600; }.original-price { color: #909399; font-size: 12px; text-decoration: line-through; }.display-state { margin-top: 6px; color: #909399; font-size: 12px; }.pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; overflow-x: auto; }.form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; padding-top: 8px; }.form-grid :deep(.el-input-number) { width: 100%; }.form-tip { margin-left: 10px; color: #909399; font-size: 12px; }
+.position-field { width: 100%; }.position-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; width: 100%; }.position-card { box-sizing: border-box; display: flex; height: auto; margin: 0; padding: 8px; border: 1px solid var(--el-border-color); border-radius: 6px; background: var(--el-fill-color-blank); }.position-card.is-checked { border-color: var(--el-color-primary); background: var(--el-color-primary-light-9); }.position-card :deep(.el-checkbox__label) { display: grid; min-width: 0; padding-left: 7px; }.position-cover { width: 100%; height: 62px; margin-bottom: 6px; border-radius: 4px; background: var(--el-fill-color-light); }.position-cover-empty { display: flex; align-items: center; justify-content: center; color: var(--el-text-color-placeholder); font-size: 12px; }.position-name,.position-key { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.position-name { color: var(--el-text-color-primary); font-size: 12px; }.position-key { margin-top: 2px; color: var(--el-text-color-secondary); font-size: 10px; }.position-tip { margin: 8px 0 0; }
+@media (max-width: 1200px) { .filters { grid-template-columns: repeat(4, minmax(130px, 1fr)); }.position-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } } @media (max-width: 700px) { .page-header { align-items: stretch; flex-direction: column; }.filters,.form-grid { grid-template-columns: 1fr; }.position-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.page-wrap :deep(.el-card__header),.page-wrap :deep(.el-card__body) { padding: 14px; } }
 </style>

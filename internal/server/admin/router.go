@@ -38,6 +38,8 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	templateDisplayConfigHandler := handler.NewTemplateDisplayConfigHandler()
 	displayPositionHandler := handler.NewDisplayPositionHandler()
 	packageHandler := handler.NewPackageHandler()
+	packageVersionHandler := handler.NewPackageVersionHandler()
+	videoAppHandler := handler.NewVideoAppHandler()
 	vipSubscriptionHandler := handler.NewVIPSubscriptionHandler()
 	pointsPackageHandler := handler.NewPointsPackageHandler()
 	userPointsLedgerHandler := handler.NewUserPointsLedgerHandler()
@@ -78,7 +80,9 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		authenticated.GET("/templates/options", templateHandler.ListOptions)
 		authenticated.GET("/display-positions/options", displayPositionHandler.ListOptions)
 		authenticated.GET("/packages/options", packageHandler.ListOptions)
+		authenticated.GET("/apps/options", videoAppHandler.ListOptions)
 		authenticated.GET("/points-packages/options", pointsPackageHandler.ListOptions)
+		authenticated.GET("/banners/delivery-options", bannerHandler.DeliveryOptions)
 	}
 
 	// Protected routes (JWT + Casbin RBAC)
@@ -208,12 +212,26 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.PUT("/display-positions/:id", displayPositionHandler.Update)
 		auth.DELETE("/display-positions/:id", displayPositionHandler.Delete)
 
+		// Applications
+		auth.GET("/apps", videoAppHandler.List)
+		auth.POST("/apps", videoAppHandler.Create)
+		auth.GET("/apps/:id", videoAppHandler.GetByID)
+		auth.PUT("/apps/:id", videoAppHandler.Update)
+		auth.DELETE("/apps/:id", videoAppHandler.Delete)
+
 		// Downloadable application packages
 		auth.GET("/packages", packageHandler.List)
 		auth.POST("/packages", packageHandler.Create)
 		auth.GET("/packages/:id", packageHandler.GetByID)
 		auth.PUT("/packages/:id", packageHandler.Update)
 		auth.DELETE("/packages/:id", packageHandler.Delete)
+
+		// Downloadable application package versions
+		auth.GET("/package-versions", packageVersionHandler.List)
+		auth.POST("/package-versions", packageVersionHandler.Create)
+		auth.GET("/package-versions/:id", packageVersionHandler.GetByID)
+		auth.PUT("/package-versions/:id", packageVersionHandler.Update)
+		auth.DELETE("/package-versions/:id", packageVersionHandler.Delete)
 
 		// VIP subscription plans
 		auth.GET("/vip-subscriptions", vipSubscriptionHandler.List)

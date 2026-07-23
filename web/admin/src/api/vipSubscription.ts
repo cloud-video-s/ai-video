@@ -36,6 +36,7 @@ export interface VIPSubscription {
   description: string
   remark: string
   package?: AppPackage
+  packages?: AppPackage[]
   display_positions?: DisplayPosition[]
   channels?: Channel[]
   excluded_channels?: Channel[]

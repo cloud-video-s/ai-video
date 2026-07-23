@@ -29,6 +29,7 @@ type ListVIPSubscriptionRequest struct {
 	PackageID         uint64 `form:"package_id"`
 	DisplayPositionID uint64 `form:"display_position_id"`
 	ChannelID         uint64 `form:"channel_id"`
+	ExcludedChannelID uint64 `form:"excluded_channel_id"`
 	PlanType          string `form:"plan_type" binding:"omitempty,oneof=normal trial paywall"`
 	Platform          string `form:"platform" binding:"omitempty,oneof=android ios pc web"`
 	DisplayMode       *int8  `form:"display_mode" binding:"omitempty,oneof=0 1"`
@@ -39,7 +40,7 @@ type ListVIPSubscriptionRequest struct {
 
 type VIPSubscriptionPayload struct {
 	PackageID                uint64   `json:"package_id" binding:"required"`
-	Platform                 string   `json:"platform" binding:"required,oneof=android ios pc web"`
+	Platform                 string   `json:"platform" binding:"required,oneof=android ios"`
 	ProductID                string   `json:"product_id" binding:"required,max=191"`
 	Name                     string   `json:"name" binding:"required,max=128"`
 	VIPLevel                 string   `json:"vip_level" binding:"required,max=64"`
@@ -84,23 +85,40 @@ type CloneVIPSubscriptionRequest struct {
 	Name      string `json:"name" binding:"omitempty,max=128"`
 }
 
-func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]model.VideoVipSubscription, int64, error) {
-	return s.repo.PageList(ctx, page, pageSize, &repository.VIPSubscriptionListFilter{
-		PackageID: req.PackageID, DisplayPositionID: req.DisplayPositionID, ChannelID: req.ChannelID,
-		PlanType: strings.TrimSpace(req.PlanType), Platform: strings.TrimSpace(req.Platform), DisplayMode: req.DisplayMode,
-		Status: req.Status, IsSubscription: req.IsSubscription, Keyword: strings.TrimSpace(req.Keyword),
-	})
+// VIPSubscriptionView exposes the one application package managed by the
+// admin UI while retaining the database's business-code associations.
+type VIPSubscriptionView struct {
+	*model.VideoVipSubscription
+	PackageID uint64              `json:"package_id"`
+	Package   *model.VideoPackage `json:"package"`
 }
 
-func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]VIPSubscriptionView, int64, error) {
+	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.VIPSubscriptionListFilter{
+		PackageID: req.PackageID, DisplayPositionID: req.DisplayPositionID, ChannelID: req.ChannelID,
+		ExcludedChannelID: req.ExcludedChannelID,
+		PlanType:          strings.TrimSpace(req.PlanType), Platform: strings.TrimSpace(req.Platform), DisplayMode: req.DisplayMode,
+		Status: req.Status, IsSubscription: req.IsSubscription, Keyword: strings.TrimSpace(req.Keyword),
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	result := make([]VIPSubscriptionView, len(items))
+	for i := range items {
+		result[i] = *vipSubscriptionView(&items[i])
+	}
+	return result, total, nil
+}
+
+func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*VIPSubscriptionView, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
 	}
-	return item, nil
+	return vipSubscriptionView(item), nil
 }
 
-func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptionPayload) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptionPayload) (*VIPSubscriptionView, error) {
 	if err := s.prepareAndValidate(ctx, req); err != nil {
 		return nil, err
 	}
@@ -114,20 +132,24 @@ func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptio
 			return err
 		}
 		if item.IsDefault {
-			return s.repo.ClearDefaults(ctx, item.Platform, item.ID)
+			return s.repo.ClearDefaults(ctx, req.PackageID, item.Platform, item.ID)
 		}
 		return nil
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, errors.New("该应用包和平台下的产品 ID 已存在")
+			return nil, errors.New("该平台下的产品 ID 已存在")
 		}
 		return nil, err
 	}
-	return s.repo.GetDetail(ctx, item.ID)
+	item, err = s.repo.GetDetail(ctx, item.ID)
+	if err != nil {
+		return nil, err
+	}
+	return vipSubscriptionView(item), nil
 }
 
-func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIPSubscriptionPayload) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIPSubscriptionPayload) (*VIPSubscriptionView, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -144,17 +166,21 @@ func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIP
 			return err
 		}
 		if item.IsDefault {
-			return s.repo.ClearDefaults(ctx, item.Platform, item.ID)
+			return s.repo.ClearDefaults(ctx, req.PackageID, item.Platform, item.ID)
 		}
 		return nil
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, errors.New("该应用包和平台下的产品 ID 已存在")
+			return nil, errors.New("该平台下的产品 ID 已存在")
 		}
 		return nil, err
 	}
-	return s.repo.GetDetail(ctx, item.ID)
+	item, err = s.repo.GetDetail(ctx, item.ID)
+	if err != nil {
+		return nil, err
+	}
+	return vipSubscriptionView(item), nil
 }
 
 func (s *VIPSubscriptionService) Delete(ctx context.Context, id uint64) error {
@@ -186,7 +212,7 @@ func (s *VIPSubscriptionService) SetDefault(ctx context.Context, id uint64) erro
 	return s.repo.SetDefault(ctx, item)
 }
 
-func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *CloneVIPSubscriptionRequest) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *CloneVIPSubscriptionRequest) (*VIPSubscriptionView, error) {
 	source, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -221,7 +247,7 @@ func (s *VIPSubscriptionService) prepareAndValidate(ctx context.Context, req *VI
 		return notFoundOr(err, "应用包不存在")
 	}
 	req.Platform = strings.ToLower(strings.TrimSpace(req.Platform))
-	if len(packageItem.SystemTypes) > 0 && !containsString(packageItem.SystemTypes, req.Platform) {
+	if packageSystemPlatform(packageItem.SystemType) != req.Platform {
 		return errors.New("所选应用包不支持该平台")
 	}
 	for _, id := range req.DisplayPositionIDs {
@@ -250,11 +276,21 @@ func (s *VIPSubscriptionService) prepareAndValidate(ctx context.Context, req *VI
 	req.PlanType = strings.ToLower(strings.TrimSpace(req.PlanType))
 	req.AppVersion = strings.TrimSpace(req.AppVersion)
 	req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
+	req.SubscriptionPeriod = strings.TrimSpace(req.SubscriptionPeriod)
+	if req.ProductID == "" || req.Name == "" || req.VIPLevel == "" {
+		return errors.New("产品 ID、VIP 名称和 VIP 等级不能为空")
+	}
 	if req.FirstSubscriptionRevenue > req.FirstSubscriptionPrice && req.FirstSubscriptionPrice > 0 {
 		return errors.New("首次订阅实际收入不能高于首次订阅金额")
 	}
 	if req.SubscriptionRevenue > req.SubscriptionPrice && req.SubscriptionPrice > 0 {
 		return errors.New("续订实际收入不能高于续订金额")
+	}
+	if req.OriginalPrice > 0 && req.OriginalPrice < req.FirstSubscriptionPrice {
+		return errors.New("划线金额不能低于首次订阅金额")
+	}
+	if req.FreeTrial && req.TrialDays == 0 {
+		return errors.New("开启免费体验时，试用天数必须大于 0")
 	}
 	return nil
 }
@@ -319,6 +355,17 @@ func vipSubscriptionPayloadFromModel(item *model.VideoVipSubscription) *VIPSubsc
 	return payload
 }
 
+func packageSystemPlatform(systemType uint32) string {
+	switch systemType {
+	case 1:
+		return "ios"
+	case 2:
+		return "android"
+	default:
+		return ""
+	}
+}
+
 func positionIDs(items []model.VideoDisplayPosition) []uint64 {
 	result := make([]uint64, len(items))
 	for i := range items {
@@ -340,4 +387,14 @@ func containsString(values []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func vipSubscriptionView(item *model.VideoVipSubscription) *VIPSubscriptionView {
+	view := &VIPSubscriptionView{VideoVipSubscription: item}
+	if len(item.Packages) > 0 {
+		packageItem := item.Packages[0]
+		view.PackageID = packageItem.ID
+		view.Package = &packageItem
+	}
+	return view
 }

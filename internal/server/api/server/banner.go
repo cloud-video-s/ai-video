@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -10,32 +9,22 @@ import (
 	"ai-video/internal/repository"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type ClientBannerService struct {
-	bannerRepo  *repository.BannerRepo
-	userRepo    *repository.AppUserRepo
-	countryRepo *repository.CountryRepo
-	channelRepo *repository.ChannelRepo
-	packageRepo *repository.PackageRepo
+	bannerRepo *repository.BannerRepo
+	userRepo   *repository.AppUserRepo
 }
 
 func NewClientBannerService() *ClientBannerService {
 	return &ClientBannerService{
 		bannerRepo: repository.NewBannerRepo(), userRepo: repository.NewAppUserRepo(),
-		countryRepo: repository.NewCountryRepo(), channelRepo: repository.NewChannelRepo(),
-		packageRepo: repository.NewPackageRepo(),
 	}
 }
 
 type ClientBannerRequest struct {
-	Country        string `form:"country"`
-	Channel        string `form:"channel"`
-	ChannelPackage string `form:"channel_package"`
-	PackageCode    string `form:"package_code"`
-	PackageVersion string `form:"package_version"`
-	PositionKey    string `form:"position_key" binding:"required,max=100"`
+	PositionKey string `form:"position_key" binding:"required,max=100"`
+	AccountBaseRequest
 }
 
 type ClientBannerTemplate struct {
@@ -62,41 +51,25 @@ type ClientBanner struct {
 }
 
 func (s *ClientBannerService) List(ctx *gin.Context, userID uint64, req *ClientBannerRequest) ([]ClientBanner, error) {
+	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	countryCode := req.Country
+	countryCode := req.ClientCountry
 	if countryCode == "" {
 		countryCode = strings.ToUpper(strings.TrimSpace(user.ClientCountry))
 	}
-	var countryID uint64
-	if countryCode != "" {
-		country, lookupErr := s.countryRepo.GetEnabledByCode(ctx, countryCode)
-		if lookupErr == nil {
-			countryID = country.ID
-		} else if !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
-			return nil, lookupErr
-		}
-	}
 
-	channelValue := req.Channel
-	if channelValue == "" {
-		channelValue = strings.TrimSpace(user.ChannelID)
+	membershipStatus := uint8(1)
+	if user.SubscriptionStatus == 2 {
+		membershipStatus = 2
 	}
-	channels, err := s.channelRepo.ResolveEnabledTargets(ctx, channelValue, strings.TrimSpace(req.ChannelPackage))
-	if err != nil {
-		return nil, err
-	}
-
-	packages, err := s.packageRepo.ResolveEnabledTargets(ctx, req.PackageCode, req.PackageVersion)
-	if err != nil {
-		return nil, err
-	}
-
 	rows, err := s.bannerRepo.ListForClient(ctx, repository.ClientBannerTargets{
-		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
-		ChannelIDs: clientChannelIDs(channels), PackageIDs: clientPackageIDs(packages),
+		PositionKey: strings.TrimSpace(req.PositionKey), CountryCode: countryCode,
+		AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
+		VersionCode:        strings.TrimSpace(req.AppVersion),
+		SubscriptionStatus: membershipStatus,
 	})
 	if err != nil {
 		return nil, err
