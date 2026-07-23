@@ -48,6 +48,65 @@ func newVideoPointsPackage(db *gorm.DB, opts ...gen.DOOption) videoPointsPackage
 	_videoPointsPackage.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoPointsPackage.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoPointsPackage.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoPointsPackage.Packages = videoPointsPackageManyToManyPackages{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Packages", "model.VideoPackage"),
+		App: struct {
+			field.RelationField
+			Packages struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Packages.App", "model.VideoApp"),
+			Packages: struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}{
+				RelationField: field.NewRelation("Packages.App.Packages", "model.VideoPackage"),
+				App: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Packages.App.Packages.App", "model.VideoApp"),
+				},
+			},
+		},
+		Versions: struct {
+			field.RelationField
+			Package struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Packages.Versions", "model.VideoPackageVersion"),
+			Package: struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}{
+				RelationField: field.NewRelation("Packages.Versions.Package", "model.VideoPackage"),
+				App: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Packages.Versions.Package.App", "model.VideoApp"),
+				},
+			},
+		},
+	}
+
+	_videoPointsPackage.Channels = videoPointsPackageManyToManyChannels{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Channels", "model.VideoChannel"),
+	}
 
 	_videoPointsPackage.fillFieldMap()
 
@@ -78,6 +137,9 @@ type videoPointsPackage struct {
 	CreatedAt     field.Time
 	UpdatedAt     field.Time
 	DeletedAt     field.Field
+	Packages      videoPointsPackageManyToManyPackages
+
+	Channels videoPointsPackageManyToManyChannels
 
 	fieldMap map[string]field.Expr
 }
@@ -142,7 +204,7 @@ func (v *videoPointsPackage) GetFieldByName(fieldName string) (field.OrderExpr, 
 }
 
 func (v *videoPointsPackage) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 20)
+	v.fieldMap = make(map[string]field.Expr, 22)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["product_code"] = v.ProductCode
 	v.fieldMap["name"] = v.Name
@@ -163,16 +225,204 @@ func (v *videoPointsPackage) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoPointsPackage) clone(db *gorm.DB) videoPointsPackage {
 	v.videoPointsPackageDo.ReplaceConnPool(db.Statement.ConnPool)
+	v.Packages.db = db.Session(&gorm.Session{Initialized: true})
+	v.Packages.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Channels.db = db.Session(&gorm.Session{Initialized: true})
+	v.Channels.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoPointsPackage) replaceDB(db *gorm.DB) videoPointsPackage {
 	v.videoPointsPackageDo.ReplaceDB(db)
+	v.Packages.db = db.Session(&gorm.Session{})
+	v.Channels.db = db.Session(&gorm.Session{})
 	return v
+}
+
+type videoPointsPackageManyToManyPackages struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	App struct {
+		field.RelationField
+		Packages struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+			}
+		}
+	}
+	Versions struct {
+		field.RelationField
+		Package struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+			}
+		}
+	}
+}
+
+func (a videoPointsPackageManyToManyPackages) Where(conds ...field.Expr) *videoPointsPackageManyToManyPackages {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoPointsPackageManyToManyPackages) WithContext(ctx context.Context) *videoPointsPackageManyToManyPackages {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoPointsPackageManyToManyPackages) Session(session *gorm.Session) *videoPointsPackageManyToManyPackages {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoPointsPackageManyToManyPackages) Model(m *model.VideoPointsPackage) *videoPointsPackageManyToManyPackagesTx {
+	return &videoPointsPackageManyToManyPackagesTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoPointsPackageManyToManyPackages) Unscoped() *videoPointsPackageManyToManyPackages {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoPointsPackageManyToManyPackagesTx struct{ tx *gorm.Association }
+
+func (a videoPointsPackageManyToManyPackagesTx) Find() (result []*model.VideoPackage, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoPointsPackageManyToManyPackagesTx) Append(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoPointsPackageManyToManyPackagesTx) Replace(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoPointsPackageManyToManyPackagesTx) Delete(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoPointsPackageManyToManyPackagesTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoPointsPackageManyToManyPackagesTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoPointsPackageManyToManyPackagesTx) Unscoped() *videoPointsPackageManyToManyPackagesTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoPointsPackageManyToManyChannels struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoPointsPackageManyToManyChannels) Where(conds ...field.Expr) *videoPointsPackageManyToManyChannels {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoPointsPackageManyToManyChannels) WithContext(ctx context.Context) *videoPointsPackageManyToManyChannels {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoPointsPackageManyToManyChannels) Session(session *gorm.Session) *videoPointsPackageManyToManyChannels {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoPointsPackageManyToManyChannels) Model(m *model.VideoPointsPackage) *videoPointsPackageManyToManyChannelsTx {
+	return &videoPointsPackageManyToManyChannelsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoPointsPackageManyToManyChannels) Unscoped() *videoPointsPackageManyToManyChannels {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoPointsPackageManyToManyChannelsTx struct{ tx *gorm.Association }
+
+func (a videoPointsPackageManyToManyChannelsTx) Find() (result []*model.VideoChannel, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoPointsPackageManyToManyChannelsTx) Append(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoPointsPackageManyToManyChannelsTx) Replace(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoPointsPackageManyToManyChannelsTx) Delete(values ...*model.VideoChannel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoPointsPackageManyToManyChannelsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoPointsPackageManyToManyChannelsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoPointsPackageManyToManyChannelsTx) Unscoped() *videoPointsPackageManyToManyChannelsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type videoPointsPackageDo struct{ gen.DO }

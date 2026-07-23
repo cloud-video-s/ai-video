@@ -6,7 +6,7 @@ import (
 
 	"ai-video/internal/gen/model"
 
-	"gorm.io/gorm"
+	"gorm.io/gen/field"
 )
 
 type UserPointsLedgerRepo struct{}
@@ -30,67 +30,73 @@ type UserPointsLedgerSummary struct {
 }
 
 func (r *UserPointsLedgerRepo) Create(ctx context.Context, item *model.VideoUserPointsLedger) error {
-	return dbFrom(ctx).Create(item).Error
+	return qFrom(ctx).VideoUserPointsLedger.WithContext(ctx).Create(item)
 }
 
 func (r *UserPointsLedgerRepo) PageList(ctx context.Context, page, pageSize int, filter *UserPointsLedgerFilter) ([]model.VideoUserPointsLedger, int64, UserPointsLedgerSummary, error) {
-	buildQuery := func() *gorm.DB {
-		db := dbFrom(ctx).Model(&model.VideoUserPointsLedger{})
-		if filter == nil {
-			return db
-		}
+	q := qFrom(ctx)
+	ledger := q.VideoUserPointsLedger
+	user := q.VideoUser
+	dao := ledger.WithContext(ctx).LeftJoin(user, user.ID.EqCol(ledger.UserID))
+	if filter != nil {
 		if filter.UserID != 0 {
-			db = db.Where("user_id = ?", filter.UserID)
+			dao = dao.Where(ledger.UserID.Eq(filter.UserID))
 		}
 		if filter.Direction != 0 {
-			db = db.Where("direction = ?", filter.Direction)
+			dao = dao.Where(ledger.Direction.Eq(filter.Direction))
 		}
 		if filter.SourceType != "" {
-			db = db.Where("source_type = ?", filter.SourceType)
+			dao = dao.Where(ledger.SourceType.Eq(filter.SourceType))
 		}
 		if filter.PointsPackageID != 0 {
-			db = db.Where("points_package_id = ?", filter.PointsPackageID)
+			dao = dao.Where(ledger.PointsPackageID.Eq(filter.PointsPackageID))
 		}
 		if filter.BusinessID != "" {
-			db = db.Where("business_id = ?", filter.BusinessID)
+			dao = dao.Where(ledger.BusinessID.Eq(filter.BusinessID))
 		}
 		if filter.OccurredFrom != nil {
-			db = db.Where("occurred_at >= ?", *filter.OccurredFrom)
+			dao = dao.Where(ledger.OccurredAt.Gte(*filter.OccurredFrom))
 		}
 		if filter.OccurredTo != nil {
-			db = db.Where("occurred_at < ?", *filter.OccurredTo)
+			dao = dao.Where(ledger.OccurredAt.Lt(*filter.OccurredTo))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			db = db.Where(`business_id LIKE ? OR description LIKE ? OR EXISTS (
-				SELECT 1 FROM video_user vu WHERE vu.id = video_user_points_ledger.user_id
-				AND (vu.username LIKE ? OR vu.imei LIKE ? OR vu.login_account LIKE ? OR vu.google_email LIKE ? OR vu.appid_email LIKE ?)
-			)`, keyword, keyword, keyword, keyword, keyword, keyword, keyword)
+			conditions := []field.Expr{
+				ledger.BusinessID.Like(keyword), ledger.Description.Like(keyword),
+				user.Username.Like(keyword), user.IMEI.Like(keyword),
+				user.LoginAccount.Like(keyword), user.Email.Like(keyword),
+			}
+			identity := q.VideoUserIdentity
+			var identityUserIDs []uint64
+			if err := identity.WithContext(ctx).Where(identity.Email.Like(keyword)).
+				Pluck(identity.UserID, &identityUserIDs); err != nil {
+				return nil, 0, UserPointsLedgerSummary{}, err
+			}
+			if len(identityUserIDs) > 0 {
+				conditions = append(conditions, ledger.UserID.In(identityUserIDs...))
+			}
+			dao = dao.Where(field.Or(conditions...))
 		}
-		return db
 	}
 
-	var total int64
-	if err := buildQuery().Count(&total).Error; err != nil {
+	total, err := dao.Count()
+	if err != nil {
 		return nil, 0, UserPointsLedgerSummary{}, err
 	}
 	var summary UserPointsLedgerSummary
-	if err := buildQuery().Select(
-		"COALESCE(SUM(CASE WHEN points_change > 0 THEN points_change ELSE 0 END), 0) AS income_total, " +
-			"COALESCE(SUM(CASE WHEN points_change < 0 THEN -points_change ELSE 0 END), 0) AS expense_total",
-	).Scan(&summary).Error; err != nil {
+	if err := dao.Select(
+		field.NewUnsafeFieldRaw("COALESCE(SUM(CASE WHEN video_user_points_ledger.points_change > 0 THEN video_user_points_ledger.points_change ELSE 0 END), 0)").As("income_total"),
+		field.NewUnsafeFieldRaw("COALESCE(SUM(CASE WHEN video_user_points_ledger.points_change < 0 THEN -video_user_points_ledger.points_change ELSE 0 END), 0)").As("expense_total"),
+	).Scan(&summary); err != nil {
 		return nil, 0, UserPointsLedgerSummary{}, err
 	}
-	var list []model.VideoUserPointsLedger
-	err := buildQuery().Preload("User").Preload("PointsPackage").Order("occurred_at DESC, id DESC").
-		Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error
-	return list, total, summary, err
+	rows, err := dao.Preload(ledger.User, ledger.PointsPackage).
+		Order(ledger.OccurredAt.Desc(), ledger.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	return valuesOf(rows), total, summary, err
 }
 
 func (r *UserPointsLedgerRepo) GetDetail(ctx context.Context, id uint64) (*model.VideoUserPointsLedger, error) {
-	var item model.VideoUserPointsLedger
-	if err := dbFrom(ctx).Preload("User").Preload("PointsPackage").First(&item, id).Error; err != nil {
-		return nil, err
-	}
-	return &item, nil
+	q := qFrom(ctx).VideoUserPointsLedger
+	return q.WithContext(ctx).Preload(q.User, q.PointsPackage).Where(q.ID.Eq(id)).First()
 }

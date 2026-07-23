@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 
-	"gorm.io/gorm"
+	"gorm.io/gen"
+	"gorm.io/gen/field"
 )
 
 type BannerRepo struct {
@@ -32,67 +32,100 @@ type BannerListFilter struct {
 }
 
 func (r *BannerRepo) PageList(ctx context.Context, page, pageSize int, filter *BannerListFilter) ([]model.VideoBanner, int64, error) {
-	dao := dbFrom(ctx).Model(&model.VideoBanner{})
+	q := qFrom(ctx).VideoBanner
+	dao := q.WithContext(ctx)
 	if filter != nil {
 		if filter.PositionKey != "" {
-			dao = dao.Where("EXISTS (SELECT 1 FROM video_banner_display_position vbdp JOIN video_display_position vdp ON vdp.position_key = vbdp.position_key WHERE vbdp.banner_id = video_banner.id AND vbdp.position_key = ? AND vdp.deleted_at IS NULL)", filter.PositionKey)
+			dao = dao.Where(bannerSQLCondition(`EXISTS (
+				SELECT 1 FROM video_banner_placement_association relation
+				WHERE relation.banner_id = video_banner.id
+					AND relation.placement_key = ? AND relation.deleted_at IS NULL
+			)`, filter.PositionKey)...)
 		}
 		if filter.CountryCode != "" {
-			dao = dao.Where(`EXISTS (
+			dao = dao.Where(bannerSQLCondition(`EXISTS (
 				SELECT 1 FROM video_banner_country vbc
 				WHERE vbc.banner_id = video_banner.id AND vbc.country_code = ? AND vbc.deleted_at IS NULL
-			)`, filter.CountryCode)
+			)`, filter.CountryCode)...)
 		}
 		if filter.AppCode != "" {
-			dao = dao.Where(`EXISTS (
+			dao = dao.Where(bannerSQLCondition(`EXISTS (
 				SELECT 1 FROM video_banner_app vba
-				WHERE vba.banner_id = video_banner.id AND vba.app_code = ?
-					AND vba.deleted_at IS NULL
-			)`, filter.AppCode)
+				JOIN video_app app ON app.id = vba.app_id AND app.deleted_at IS NULL
+				WHERE vba.banner_id = video_banner.id AND app.app_code = ? AND vba.deleted_at IS NULL
+			)`, filter.AppCode)...)
 		}
 		if filter.PackageCode != "" {
-			dao = dao.Where("EXISTS (SELECT 1 FROM video_banner_app vba WHERE vba.banner_id = video_banner.id AND vba.package_code = ? AND vba.deleted_at IS NULL)", filter.PackageCode)
+			dao = dao.Where(bannerSQLCondition(`EXISTS (
+				SELECT 1 FROM video_banner_package vbp
+				JOIN video_package package_item ON package_item.id = vbp.package_id AND package_item.deleted_at IS NULL
+				WHERE vbp.banner_id = video_banner.id AND package_item.package_code = ? AND vbp.deleted_at IS NULL
+			)`, filter.PackageCode)...)
 		}
 		if filter.VersionCode != "" {
-			dao = dao.Where("EXISTS (SELECT 1 FROM video_banner_app vba WHERE vba.banner_id = video_banner.id AND (vba.version_code = '' OR vba.version_code = ?) AND vba.deleted_at IS NULL)", filter.VersionCode)
+			dao = dao.Where(bannerSQLCondition(`(
+				NOT EXISTS (SELECT 1 FROM video_banner_version vbv WHERE vbv.banner_id = video_banner.id AND vbv.deleted_at IS NULL)
+				OR EXISTS (
+					SELECT 1 FROM video_banner_version vbv
+					JOIN video_package_version version_item ON version_item.id = vbv.version_id AND version_item.deleted_at IS NULL
+					WHERE vbv.banner_id = video_banner.id AND version_item.version_code = ? AND vbv.deleted_at IS NULL
+				)
+			)`, filter.VersionCode)...)
 		}
 		if filter.JumpType != 0 {
-			dao = dao.Where("jump_type = ?", filter.JumpType)
+			dao = dao.Where(q.JumpType.Eq(filter.JumpType))
 		}
 		if filter.Status != nil {
-			dao = dao.Where("status = ?", *filter.Status)
+			dao = dao.Where(q.Status.Eq(*filter.Status))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			dao = dao.Where("name LIKE ? OR remark LIKE ?", keyword, keyword)
+			dao = dao.Where(bannerSQLCondition(
+				"(video_banner.name LIKE ? OR video_banner.remark LIKE ?)", keyword, keyword,
+			)...)
 		}
 	}
-	var total int64
-	if err := dao.Count(&total).Error; err != nil {
+	total, err := dao.Count()
+	if err != nil {
 		return nil, 0, err
 	}
-	var list []model.VideoBanner
-	err := preloadBannerTargets(dao).Order("sort ASC, id DESC").
-		Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error
-	return list, total, err
+	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).
+		Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	if err != nil {
+		return nil, 0, err
+	}
+	return bannerValues(rows), total, nil
 }
 
 func (r *BannerRepo) GetDetail(ctx context.Context, id uint64) (*model.VideoBanner, error) {
-	var item model.VideoBanner
-	if err := preloadBannerTargets(dbFrom(ctx)).First(&item, id).Error; err != nil {
-		return nil, err
-	}
-	return &item, nil
+	q := qFrom(ctx).VideoBanner
+	return q.WithContext(ctx).Where(q.ID.Eq(id)).First()
 }
 
-func preloadBannerTargets(db *gorm.DB) *gorm.DB {
-	return db.Preload("Template").Preload("DisplayPositions").Preload("Countries")
+func (r *BannerRepo) Create(ctx context.Context, item *model.VideoBanner) error {
+	return qFrom(ctx).VideoBanner.WithContext(ctx).Create(item)
 }
 
 func (r *BannerRepo) UpdateFields(ctx context.Context, item *model.VideoBanner) error {
-	return r.BaseRepo.Update(ctx, item,
-		"Name", "CoverImage", "Remark", "Sort", "JumpType", "JumpURL", "TemplateID", "Status", "SubscriptionStatus",
-	)
+	q := qFrom(ctx).VideoBanner
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID)).
+		Select(q.Name, q.CoverImage, q.Remark, q.Sort, q.JumpType, q.JumpURL, q.TemplateID, q.Status, q.SubscriptionStatus).
+		Updates(item)
+	return err
+}
+
+func bannerSQLCondition(sql string, args ...interface{}) []gen.Condition {
+	return []gen.Condition{field.NewUnsafeFieldRaw(sql, args...)}
+}
+
+func bannerValues(rows []*model.VideoBanner) []model.VideoBanner {
+	result := make([]model.VideoBanner, 0, len(rows))
+	for _, row := range rows {
+		if row != nil {
+			result = append(result, *row)
+		}
+	}
+	return result
 }
 
 type BannerAppTargetInput struct {
@@ -140,180 +173,389 @@ type ClientBannerTargets struct {
 	SubscriptionStatus uint8
 }
 
-// ListForClient applies delivery targeting. An empty association means the
-// banner is global for that dimension; otherwise the client must match.
 func (r *BannerRepo) ListForClient(ctx context.Context, targets ClientBannerTargets) ([]model.VideoBanner, error) {
-	db := dbFrom(ctx).Model(&model.VideoBanner{}).
-		Where("video_banner.status = ?", 1).
-		Where(`(NOT EXISTS (
-			SELECT 1 FROM video_banner_display_position vbdp
-			WHERE vbdp.banner_id = video_banner.id AND vbdp.deleted_at IS NULL
-		) OR EXISTS (
-			SELECT 1 FROM video_banner_display_position vbdp
-			JOIN video_display_position vdp ON vdp.position_key = vbdp.position_key
-			WHERE vbdp.banner_id = video_banner.id AND vbdp.position_key = ?
-				AND vdp.status = ? AND vbdp.deleted_at IS NULL AND vdp.deleted_at IS NULL
-		))`, targets.PositionKey, 1).
-		Where("video_banner.subscription_status IN (?, ?)", 3, targets.SubscriptionStatus)
-	if targets.CountryCode != "" {
-		db = db.Where(`(NOT EXISTS (
-			SELECT 1 FROM video_banner_country vbc WHERE vbc.banner_id = video_banner.id AND vbc.deleted_at IS NULL
-		) OR EXISTS (
-			SELECT 1 FROM video_banner_country vbc JOIN video_country vc ON vc.code = vbc.country_code
-			WHERE vbc.banner_id = video_banner.id AND vc.code = ? AND vbc.deleted_at IS NULL
-		))`, targets.CountryCode)
-	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_banner_country vbc WHERE vbc.banner_id = video_banner.id AND vbc.deleted_at IS NULL)")
+	q := qFrom(ctx).VideoBanner
+	dao := q.WithContext(ctx).Where(q.Status.Eq(1))
+	if targets.SubscriptionStatus != 0 {
+		dao = dao.Where(q.SubscriptionStatus.In(3, targets.SubscriptionStatus))
 	}
-	if targets.AppCode != "" {
-		db = db.Where(`(NOT EXISTS (
-			SELECT 1 FROM video_banner_app vba
-			WHERE vba.banner_id = video_banner.id AND vba.app_code <> '' AND vba.deleted_at IS NULL
-		) OR EXISTS (
-			SELECT 1 FROM video_banner_app vba
-			WHERE vba.banner_id = video_banner.id AND vba.app_code = ?
-				AND (vba.package_code IS NULL OR vba.package_code = '' OR vba.package_code = ?)
-				AND (vba.version_code = '' OR vba.version_code = ?)
-				AND vba.deleted_at IS NULL
-		))`, targets.AppCode, targets.PackageCode, targets.VersionCode)
+	if targets.PositionKey == "" {
+		dao = dao.Where(bannerSQLCondition(`NOT EXISTS (
+        SELECT 1 FROM video_banner_placement_association relation
+        WHERE relation.banner_id = video_banner.id AND relation.deleted_at IS NULL
+    )`)...)
 	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_banner_app vba WHERE vba.banner_id = video_banner.id AND vba.app_code <> '' AND vba.deleted_at IS NULL)")
+		dao = dao.Where(bannerSQLCondition(`(
+        NOT EXISTS (
+            SELECT 1 FROM video_banner_placement_association relation
+            WHERE relation.banner_id = video_banner.id AND relation.deleted_at IS NULL
+        )
+        OR EXISTS (
+            SELECT 1 FROM video_banner_placement_association relation
+            WHERE relation.banner_id = video_banner.id
+                AND relation.placement_key = ? AND relation.deleted_at IS NULL
+        )
+    )`, targets.PositionKey)...)
 	}
-	db = db.Where("(video_banner.jump_type <> ? OR EXISTS (SELECT 1 FROM video_template vt WHERE vt.id = video_banner.template_id AND vt.status = ? AND vt.deleted_at IS NULL))", domain.BannerJumpTypeTemplate, 1)
-	var list []model.VideoBanner
-	err := db.Preload("Template").Preload("DisplayPositions", "status = ?", 1).
-		Order("video_banner.sort ASC, video_banner.id DESC").Find(&list).Error
-	return list, err
+	if targets.CountryCode == "" {
+		dao = dao.Where(bannerSQLCondition(`NOT EXISTS (
+			SELECT 1 FROM video_banner_country relation
+			WHERE relation.banner_id = video_banner.id AND relation.deleted_at IS NULL
+		)`)...)
+	} else {
+		dao = dao.Where(bannerSQLCondition(`(
+			NOT EXISTS (
+				SELECT 1 FROM video_banner_country relation
+				WHERE relation.banner_id = video_banner.id AND relation.deleted_at IS NULL
+			)
+			OR EXISTS (
+				SELECT 1 FROM video_banner_country relation
+				WHERE relation.banner_id = video_banner.id
+					AND relation.country_code = ? AND relation.deleted_at IS NULL
+			)
+		)`, targets.CountryCode)...)
+	}
+	if targets.AppCode == "" {
+		dao = dao.Where(bannerSQLCondition(`NOT EXISTS (
+			SELECT 1 FROM video_banner_app relation
+			WHERE relation.banner_id = video_banner.id AND relation.deleted_at IS NULL
+		)`)...)
+	} else {
+		dao = dao.Where(bannerSQLCondition(`(
+			NOT EXISTS (
+				SELECT 1 FROM video_banner_app relation
+				WHERE relation.banner_id = video_banner.id AND relation.deleted_at IS NULL
+			)
+			OR EXISTS (
+				SELECT 1 FROM video_banner_app relation
+				JOIN video_app app ON app.id = relation.app_id AND app.deleted_at IS NULL
+				WHERE relation.banner_id = video_banner.id
+					AND app.app_code = ? AND relation.deleted_at IS NULL
+			)
+		)`, targets.AppCode)...)
+	}
+	if targets.PackageCode == "" {
+		dao = dao.Where(bannerSQLCondition(`NOT EXISTS (
+			SELECT 1 FROM video_banner_package relation
+			WHERE relation.banner_id = video_banner.id AND relation.deleted_at IS NULL
+		)`)...)
+	} else {
+		dao = dao.Where(bannerSQLCondition(`(
+			NOT EXISTS (
+				SELECT 1 FROM video_banner_package relation
+				WHERE relation.banner_id = video_banner.id AND relation.deleted_at IS NULL
+			)
+			OR EXISTS (
+				SELECT 1 FROM video_banner_package relation
+				JOIN video_package package_item ON package_item.id = relation.package_id AND package_item.deleted_at IS NULL
+				WHERE relation.banner_id = video_banner.id
+					AND package_item.package_code = ? AND relation.deleted_at IS NULL
+			)
+		)`, targets.PackageCode)...)
+	}
+	if targets.VersionCode == "" {
+		dao = dao.Where(bannerSQLCondition(`NOT EXISTS (
+			SELECT 1 FROM video_banner_version relation
+			WHERE relation.banner_id = video_banner.id AND relation.deleted_at IS NULL
+		)`)...)
+	} else {
+		dao = dao.Where(bannerSQLCondition(`(
+			NOT EXISTS (
+				SELECT 1 FROM video_banner_version relation
+				WHERE relation.banner_id = video_banner.id AND relation.deleted_at IS NULL
+			)
+			OR EXISTS (
+				SELECT 1 FROM video_banner_version relation
+				JOIN video_package_version version_item ON version_item.id = relation.version_id AND version_item.deleted_at IS NULL
+				WHERE relation.banner_id = video_banner.id
+					AND version_item.version_code = ? AND relation.deleted_at IS NULL
+			)
+		)`, targets.VersionCode)...)
+	}
+	rows, err := dao.Preload(q.Template).Order(q.Sort.Asc(), q.ID.Desc()).Find()
+	if err != nil {
+		return nil, err
+	}
+	return bannerValues(rows), nil
 }
 
 func (r *BannerRepo) ReplaceTargets(ctx context.Context, item *model.VideoBanner, targets BannerTargetIDs) error {
-	db := dbFrom(ctx)
-	countries, err := loadCountriesByIDs(db, targets.CountryIDs)
-	if err != nil {
+	if err := deleteBannerTargetRows(ctx, item.ID); err != nil {
 		return err
 	}
-	positionKeys := targets.DisplayPositionKeys
-	if err := db.Where("banner_id = ?", item.ID).Delete(&model.VideoBannerDisplayPosition{}).Error; err != nil {
-		return err
+	q := qFrom(ctx)
+	placementRows := make([]*model.VideoBannerPlacementAssociation, 0, len(targets.DisplayPositionKeys))
+	for _, key := range sortedUniqueStrings(targets.DisplayPositionKeys) {
+		placementRows = append(placementRows, &model.VideoBannerPlacementAssociation{BannerID: item.ID, PlacementKey: key})
 	}
-	if len(positionKeys) > 0 {
-		rows := make([]model.VideoBannerDisplayPosition, 0, len(positionKeys))
-		for _, key := range positionKeys {
-			rows = append(rows, model.VideoBannerDisplayPosition{BannerID: item.ID, PositionKey: key})
-		}
-		if err := db.Create(&rows).Error; err != nil {
+	if len(placementRows) > 0 {
+		if err := q.VideoBannerPlacementAssociation.WithContext(ctx).Create(placementRows...); err != nil {
 			return err
 		}
 	}
-	if err := db.Model(item).Association("Countries").Replace(countries); err != nil {
-		return err
+	countryIDs := uniqueUint64s(targets.CountryIDs)
+	if len(countryIDs) > 0 {
+		countryDAO := q.VideoCountry
+		countries, err := countryDAO.WithContext(ctx).Where(countryDAO.ID.In(countryIDs...)).Find()
+		if err != nil {
+			return err
+		}
+		if len(countries) != len(countryIDs) {
+			return fmt.Errorf("one or more countries do not exist")
+		}
+		rows := make([]*model.VideoBannerCountry, 0, len(countries))
+		for _, country := range countries {
+			rows = append(rows, &model.VideoBannerCountry{BannerID: item.ID, CountryCode: country.Code})
+		}
+		if err := q.VideoBannerCountry.WithContext(ctx).Create(rows...); err != nil {
+			return err
+		}
 	}
-	return replaceBannerAppTargets(db, item.ID, targets.AppTargets)
+	return createBannerAppTargets(ctx, item.ID, targets.AppTargets)
 }
 
 func (r *BannerRepo) DeleteWithTargets(ctx context.Context, id uint64) error {
-	db := dbFrom(ctx)
-	return db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("banner_id = ?", id).Delete(&model.VideoBannerDisplayPosition{}).Error; err != nil {
+	return Transaction(ctx, func(ctx context.Context) error {
+		if err := deleteBannerTargetRows(ctx, id); err != nil {
 			return err
 		}
-		if err := tx.Where("banner_id = ?", id).Delete(&model.VideoBannerApp{}).Error; err != nil {
-			return err
-		}
-		return tx.Select("Countries").Delete(&model.VideoBanner{ID: id}).Error
+		q := qFrom(ctx).VideoBanner
+		_, err := q.WithContext(ctx).Where(q.ID.Eq(id)).Delete()
+		return err
 	})
 }
 
-func replaceBannerAppTargets(db *gorm.DB, bannerID uint64, targets []BannerAppTargetInput) error {
-	if err := db.Where("banner_id = ?", bannerID).Delete(&model.VideoBannerApp{}).Error; err != nil {
-		return err
-	}
-	rows := make([]model.VideoBannerApp, 0)
+func createBannerAppTargets(ctx context.Context, bannerID uint64, targets []BannerAppTargetInput) error {
+	q := qFrom(ctx)
+	appRows := make([]*model.VideoBannerApp, 0, len(targets))
+	packageRows := make([]*model.VideoBannerPackage, 0, len(targets))
+	versionRows := make([]*model.VideoBannerVersion, 0)
+	seenApps := make(map[uint64]struct{}, len(targets))
+	seenPackages := make(map[uint64]struct{}, len(targets))
+	seenVersions := make(map[uint64]struct{})
 	for _, target := range targets {
-		if len(target.VersionCodes) == 0 {
-			rows = append(rows, model.VideoBannerApp{
-				BannerID: bannerID, AppCode: target.AppCode, PackageCode: target.PackageCode, VersionCode: "",
-			})
+		appDAO := q.VideoApp
+		app, err := appDAO.WithContext(ctx).
+			Where(appDAO.AppCode.Eq(strings.TrimSpace(target.AppCode)), appDAO.Status.Eq(1)).First()
+		if err != nil {
+			return err
+		}
+		if _, exists := seenApps[app.ID]; !exists {
+			seenApps[app.ID] = struct{}{}
+			appRows = append(appRows, &model.VideoBannerApp{BannerID: bannerID, AppID: app.ID})
+		}
+		packageDAO := q.VideoPackage
+		packageItem, err := packageDAO.WithContext(ctx).Where(
+			packageDAO.PackageCode.Eq(strings.TrimSpace(target.PackageCode)),
+			packageDAO.AppCode.Eq(app.AppCode), packageDAO.Status.Eq(1),
+		).First()
+		if err != nil {
+			return err
+		}
+		if _, exists := seenPackages[packageItem.ID]; !exists {
+			seenPackages[packageItem.ID] = struct{}{}
+			packageRows = append(packageRows, &model.VideoBannerPackage{BannerID: bannerID, PackageID: packageItem.ID})
+		}
+		versionCodes := sortedUniqueStrings(target.VersionCodes)
+		if len(versionCodes) == 0 {
 			continue
 		}
-		for _, versionCode := range target.VersionCodes {
-			rows = append(rows, model.VideoBannerApp{
-				BannerID: bannerID, AppCode: target.AppCode, PackageCode: target.PackageCode, VersionCode: versionCode,
-			})
+		versionDAO := q.VideoPackageVersion
+		versions, err := versionDAO.WithContext(ctx).Where(
+			versionDAO.PackageCode.Eq(packageItem.PackageCode),
+			versionDAO.VersionCode.In(versionCodes...), versionDAO.Status.Eq(1),
+		).Find()
+		if err != nil {
+			return err
+		}
+		if len(versions) != len(versionCodes) {
+			return fmt.Errorf("one or more package versions do not exist")
+		}
+		for _, version := range versions {
+			if _, exists := seenVersions[version.ID]; exists {
+				continue
+			}
+			seenVersions[version.ID] = struct{}{}
+			versionRows = append(versionRows, &model.VideoBannerVersion{BannerID: bannerID, VersionID: version.ID})
 		}
 	}
-	if len(rows) == 0 {
-		return nil
+	if len(appRows) > 0 {
+		if err := q.VideoBannerApp.WithContext(ctx).Create(appRows...); err != nil {
+			return err
+		}
 	}
-	return db.Create(&rows).Error
+	if len(packageRows) > 0 {
+		if err := q.VideoBannerPackage.WithContext(ctx).Create(packageRows...); err != nil {
+			return err
+		}
+	}
+	if len(versionRows) > 0 {
+		if err := q.VideoBannerVersion.WithContext(ctx).Create(versionRows...); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-type bannerAppTargetRow struct {
-	BannerID    uint64
-	AppCode     string
-	AppName     string
-	PackageCode string
-	PackageName string
-	VersionCode string
+func deleteBannerTargetRows(ctx context.Context, bannerID uint64) error {
+	q := qFrom(ctx)
+	placementDAO := q.VideoBannerPlacementAssociation
+	if _, err := placementDAO.WithContext(ctx).Where(placementDAO.BannerID.Eq(bannerID)).Delete(); err != nil {
+		return err
+	}
+	countryDAO := q.VideoBannerCountry
+	if _, err := countryDAO.WithContext(ctx).Where(countryDAO.BannerID.Eq(bannerID)).Delete(); err != nil {
+		return err
+	}
+	appDAO := q.VideoBannerApp
+	if _, err := appDAO.WithContext(ctx).Where(appDAO.BannerID.Eq(bannerID)).Delete(); err != nil {
+		return err
+	}
+	packageDAO := q.VideoBannerPackage
+	if _, err := packageDAO.WithContext(ctx).Where(packageDAO.BannerID.Eq(bannerID)).Delete(); err != nil {
+		return err
+	}
+	versionDAO := q.VideoBannerVersion
+	_, err := versionDAO.WithContext(ctx).Where(versionDAO.BannerID.Eq(bannerID)).Delete()
+	return err
 }
 
 func (r *BannerRepo) LoadAppTargets(ctx context.Context, bannerIDs []uint64) (map[uint64][]BannerAppTarget, error) {
 	result := make(map[uint64][]BannerAppTarget, len(bannerIDs))
+	bannerIDs = uniqueUint64s(bannerIDs)
 	if len(bannerIDs) == 0 {
 		return result, nil
 	}
-	var rows []bannerAppTargetRow
-	err := dbFrom(ctx).Table("video_banner_app AS vba").
-		Select(`vba.banner_id, vba.app_code, COALESCE(va.name, '') AS app_name,
-			COALESCE(vba.package_code, '') AS package_code, COALESCE(vp.package_name, '') AS package_name, vba.version_code`).
-		Joins("LEFT JOIN video_app va ON va.app_code = vba.app_code AND va.deleted_at IS NULL").
-		Joins("LEFT JOIN video_package vp ON vp.app_code = vba.app_code AND vp.package_code = vba.package_code AND vp.deleted_at IS NULL").
-		Where("vba.banner_id IN ? AND vba.app_code <> '' AND vba.deleted_at IS NULL", bannerIDs).
-		Order("vba.banner_id ASC, va.sort ASC, vp.sort ASC, vba.version_code ASC").
-		Scan(&rows).Error
+	q := qFrom(ctx)
+	appRelationDAO := q.VideoBannerApp
+	appRelations, err := appRelationDAO.WithContext(ctx).
+		Where(appRelationDAO.BannerID.In(bannerIDs...)).
+		Order(appRelationDAO.BannerID.Asc(), appRelationDAO.AppID.Asc()).Find()
 	if err != nil {
 		return nil, err
 	}
-	type targetKey struct {
-		bannerID    uint64
-		packageCode string
+	packageRelationDAO := q.VideoBannerPackage
+	packageRelations, err := packageRelationDAO.WithContext(ctx).
+		Where(packageRelationDAO.BannerID.In(bannerIDs...)).
+		Order(packageRelationDAO.BannerID.Asc(), packageRelationDAO.PackageID.Asc()).Find()
+	if err != nil {
+		return nil, err
 	}
-	indexes := make(map[targetKey]int)
-	allVersions := make(map[targetKey]bool)
-	for _, row := range rows {
-		key := targetKey{bannerID: row.BannerID, packageCode: row.PackageCode}
-		index, exists := indexes[key]
-		if !exists {
-			index = len(result[row.BannerID])
-			indexes[key] = index
-			result[row.BannerID] = append(result[row.BannerID], BannerAppTarget{
-				AppCode: row.AppCode, AppName: row.AppName, PackageCode: row.PackageCode,
-				PackageName: row.PackageName, VersionCodes: []string{},
-			})
+	versionRelationDAO := q.VideoBannerVersion
+	versionRelations, err := versionRelationDAO.WithContext(ctx).
+		Where(versionRelationDAO.BannerID.In(bannerIDs...)).
+		Order(versionRelationDAO.BannerID.Asc(), versionRelationDAO.VersionID.Asc()).Find()
+	if err != nil {
+		return nil, err
+	}
+	appIDs := make([]uint64, 0, len(appRelations))
+	for _, relation := range appRelations {
+		appIDs = append(appIDs, relation.AppID)
+	}
+	packageIDs := make([]uint64, 0, len(packageRelations))
+	for _, relation := range packageRelations {
+		packageIDs = append(packageIDs, relation.PackageID)
+	}
+	versionIDs := make([]uint64, 0, len(versionRelations))
+	for _, relation := range versionRelations {
+		if relation.VersionID > 0 {
+			versionIDs = append(versionIDs, uint64(relation.VersionID))
 		}
-		if row.VersionCode == "" {
-			allVersions[key] = true
-			result[row.BannerID][index].VersionCodes = []string{}
-			continue
+	}
+	appsByID := make(map[uint64]*model.VideoApp)
+	if appIDs = uniqueUint64s(appIDs); len(appIDs) > 0 {
+		appDAO := q.VideoApp
+		apps, err := appDAO.WithContext(ctx).Where(appDAO.ID.In(appIDs...)).Find()
+		if err != nil {
+			return nil, err
 		}
-		if !allVersions[key] {
-			result[row.BannerID][index].VersionCodes = append(result[row.BannerID][index].VersionCodes, row.VersionCode)
+		for _, app := range apps {
+			appsByID[app.ID] = app
+		}
+	}
+	packagesByID := make(map[uint64]*model.VideoPackage)
+	if packageIDs = uniqueUint64s(packageIDs); len(packageIDs) > 0 {
+		packageDAO := q.VideoPackage
+		packages, err := packageDAO.WithContext(ctx).Where(packageDAO.ID.In(packageIDs...)).Find()
+		if err != nil {
+			return nil, err
+		}
+		for _, packageItem := range packages {
+			packagesByID[packageItem.ID] = packageItem
+		}
+	}
+	versionsByID := make(map[uint64]*model.VideoPackageVersion)
+	if versionIDs = uniqueUint64s(versionIDs); len(versionIDs) > 0 {
+		versionDAO := q.VideoPackageVersion
+		versions, err := versionDAO.WithContext(ctx).Where(versionDAO.ID.In(versionIDs...)).Find()
+		if err != nil {
+			return nil, err
+		}
+		for _, version := range versions {
+			versionsByID[version.ID] = version
+		}
+	}
+	appsByBanner := make(map[uint64][]uint64)
+	for _, relation := range appRelations {
+		appsByBanner[relation.BannerID] = append(appsByBanner[relation.BannerID], relation.AppID)
+	}
+	packagesByBanner := make(map[uint64][]uint64)
+	for _, relation := range packageRelations {
+		packagesByBanner[relation.BannerID] = append(packagesByBanner[relation.BannerID], relation.PackageID)
+	}
+	versionsByBanner := make(map[uint64][]uint64)
+	for _, relation := range versionRelations {
+		if relation.VersionID > 0 {
+			versionsByBanner[relation.BannerID] = append(versionsByBanner[relation.BannerID], uint64(relation.VersionID))
+		}
+	}
+	for _, bannerID := range bannerIDs {
+		for _, appID := range uniqueUint64s(appsByBanner[bannerID]) {
+			app := appsByID[appID]
+			if app == nil {
+				continue
+			}
+			for _, packageID := range uniqueUint64s(packagesByBanner[bannerID]) {
+				packageItem := packagesByID[packageID]
+				if packageItem == nil || packageItem.AppCode != app.AppCode {
+					continue
+				}
+				versionCodes := make([]string, 0)
+				for _, versionID := range uniqueUint64s(versionsByBanner[bannerID]) {
+					version := versionsByID[versionID]
+					if version != nil && version.PackageCode == packageItem.PackageCode {
+						versionCodes = append(versionCodes, version.VersionCode)
+					}
+				}
+				result[bannerID] = append(result[bannerID], BannerAppTarget{
+					AppCode: app.AppCode, AppName: app.Name,
+					PackageCode: packageItem.PackageCode, PackageName: packageItem.PackageName,
+					VersionCodes: sortedUniqueStrings(versionCodes),
+				})
+			}
 		}
 	}
 	return result, nil
 }
 
 func (r *BannerRepo) ListDeliveryOptions(ctx context.Context) ([]BannerDeliveryApp, error) {
-	var apps []model.VideoApp
-	if err := dbFrom(ctx).Where("status = ?", 1).Order("sort ASC, id ASC").Find(&apps).Error; err != nil {
+	q := qFrom(ctx)
+	appDAO := q.VideoApp
+	apps, err := appDAO.WithContext(ctx).Where(appDAO.Status.Eq(1)).
+		Order(appDAO.Sort.Asc(), appDAO.ID.Asc()).Find()
+	if err != nil {
 		return nil, err
 	}
-	var packages []model.VideoPackage
-	if err := dbFrom(ctx).Where("status = ?", 1).Order("sort ASC, id ASC").Find(&packages).Error; err != nil {
+	packageDAO := q.VideoPackage
+	packages, err := packageDAO.WithContext(ctx).Where(packageDAO.Status.Eq(1)).
+		Order(packageDAO.Sort.Asc(), packageDAO.ID.Asc()).Find()
+	if err != nil {
 		return nil, err
 	}
-	var versions []model.VideoPackageVersion
-	if err := dbFrom(ctx).Where("status = ?", 1).Order("version_code ASC, id ASC").Find(&versions).Error; err != nil {
+	versionDAO := q.VideoPackageVersion
+	versions, err := versionDAO.WithContext(ctx).Where(versionDAO.Status.Eq(1)).
+		Order(versionDAO.VersionCode.Asc(), versionDAO.ID.Asc()).Find()
+	if err != nil {
 		return nil, err
 	}
 	result := make([]BannerDeliveryApp, 0, len(apps))
@@ -342,30 +584,36 @@ func (r *BannerRepo) ListDeliveryOptions(ctx context.Context) ([]BannerDeliveryA
 func (r *BannerRepo) ValidateAppTarget(ctx context.Context, target BannerAppTargetInput) error {
 	target.AppCode = strings.TrimSpace(target.AppCode)
 	target.PackageCode = strings.TrimSpace(target.PackageCode)
-	var appCount int64
-	if err := dbFrom(ctx).Model(&model.VideoApp{}).
-		Where("app_code = ? AND status = ?", target.AppCode, 1).Count(&appCount).Error; err != nil {
+	q := qFrom(ctx)
+	appDAO := q.VideoApp
+	appCount, err := appDAO.WithContext(ctx).
+		Where(appDAO.AppCode.Eq(target.AppCode), appDAO.Status.Eq(1)).Count()
+	if err != nil {
 		return err
 	}
 	if appCount == 0 {
 		return fmt.Errorf("应用 %s 不存在或已禁用", target.AppCode)
 	}
-	var packageCount int64
-	if err := dbFrom(ctx).Model(&model.VideoPackage{}).
-		Where("package_code = ? AND status = ? AND (app_code = ? OR app_code = '')", target.PackageCode, 1, target.AppCode).
-		Count(&packageCount).Error; err != nil {
+	packageDAO := q.VideoPackage
+	packageCount, err := packageDAO.WithContext(ctx).Where(
+		packageDAO.PackageCode.Eq(target.PackageCode), packageDAO.Status.Eq(1), packageDAO.AppCode.Eq(target.AppCode),
+	).Count()
+	if err != nil {
 		return err
 	}
 	if packageCount == 0 {
 		return fmt.Errorf("包 %s 不属于所选应用或已禁用", target.PackageCode)
 	}
+	target.VersionCodes = sortedUniqueStrings(target.VersionCodes)
 	if len(target.VersionCodes) == 0 {
 		return nil
 	}
-	var count int64
-	if err := dbFrom(ctx).Model(&model.VideoPackageVersion{}).
-		Where("version_code IN ? AND status = ? AND (package_code = ? OR package_code = '')", target.VersionCodes, 1, target.PackageCode).
-		Distinct("version_code").Count(&count).Error; err != nil {
+	versionDAO := q.VideoPackageVersion
+	count, err := versionDAO.WithContext(ctx).Where(
+		versionDAO.VersionCode.In(target.VersionCodes...), versionDAO.Status.Eq(1),
+		versionDAO.PackageCode.Eq(target.PackageCode),
+	).Distinct(versionDAO.VersionCode).Count()
+	if err != nil {
 		return err
 	}
 	if count != int64(len(target.VersionCodes)) {
@@ -389,5 +637,22 @@ func sortedUniqueStrings(values []string) []string {
 		result = append(result, value)
 	}
 	sort.Strings(result)
+	return result
+}
+
+func uniqueUint64s(values []uint64) []uint64 {
+	seen := make(map[uint64]struct{}, len(values))
+	result := make([]uint64, 0, len(values))
+	for _, value := range values {
+		if value == 0 {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
 	return result
 }

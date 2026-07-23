@@ -114,7 +114,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 				ClientCountry: req.ClientCountry,
 				AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 				FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
-				AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: 1,
+				AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: true,
 				Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
 			}
 			if err := s.userRepo.Create(ctx, user); err != nil {
@@ -128,7 +128,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 			return errors.New("账号异常，请稍后重试")
 		}
 		if latest != nil {
-			if latest.Status != 1 || latest.IsFrozen == 1 || latest.IsBlacklisted == 1 {
+			if latest.Status != 1 || latest.IsFrozen || latest.IsBlacklisted {
 				return errors.New("当前设备账号已停用")
 			}
 			updates := baseTrackingUpdates(1, &req.AccountBaseRequest, clientIP, now)
@@ -152,7 +152,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 			ClientCountry: req.ClientCountry,
 			AppVersion:    req.AppVersion, AppName: req.AppPackage, PhoneModel: req.PhoneModel,
 			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
-			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: 0,
+			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
 			Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
 		}
 		if err = s.userRepo.Create(ctx, user); err != nil {
@@ -215,7 +215,7 @@ func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, 
 			ClientCountry: req.ClientCountry,
 			AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
-			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: 0,
+			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
 			Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
 		}
 		if err := s.userRepo.Create(ctx, user); err != nil {

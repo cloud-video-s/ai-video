@@ -28,8 +28,12 @@ func newVideoRoleMenu(db *gorm.DB, opts ...gen.DOOption) videoRoleMenu {
 
 	tableName := _videoRoleMenu.videoRoleMenuDo.TableName()
 	_videoRoleMenu.ALL = field.NewAsterisk(tableName)
+	_videoRoleMenu.ID = field.NewUint64(tableName, "id")
 	_videoRoleMenu.VideoRoleID = field.NewUint64(tableName, "video_role_id")
 	_videoRoleMenu.VideoMenuID = field.NewUint64(tableName, "video_menu_id")
+	_videoRoleMenu.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoRoleMenu.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoRoleMenu.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_videoRoleMenu.fillFieldMap()
 
@@ -40,8 +44,12 @@ type videoRoleMenu struct {
 	videoRoleMenuDo videoRoleMenuDo
 
 	ALL         field.Asterisk
+	ID          field.Uint64
 	VideoRoleID field.Uint64
 	VideoMenuID field.Uint64
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -58,8 +66,12 @@ func (v videoRoleMenu) As(alias string) *videoRoleMenu {
 
 func (v *videoRoleMenu) updateTableName(table string) *videoRoleMenu {
 	v.ALL = field.NewAsterisk(table)
+	v.ID = field.NewUint64(table, "id")
 	v.VideoRoleID = field.NewUint64(table, "video_role_id")
 	v.VideoMenuID = field.NewUint64(table, "video_menu_id")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -88,9 +100,13 @@ func (v *videoRoleMenu) GetFieldByName(fieldName string) (field.OrderExpr, bool)
 }
 
 func (v *videoRoleMenu) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 2)
+	v.fieldMap = make(map[string]field.Expr, 6)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["video_role_id"] = v.VideoRoleID
 	v.fieldMap["video_menu_id"] = v.VideoMenuID
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 }
 
 func (v videoRoleMenu) clone(db *gorm.DB) videoRoleMenu {

@@ -16,12 +16,12 @@ func NewDelayConfigHandler() *DelayConfigHandler {
 	return &DelayConfigHandler{repo: repository.NewDelayConfigRepo()}
 }
 
-// All returns only the config key and value in stable display order.
+// All returns the client configuration as a flat key-value object.
 func (h *DelayConfigHandler) All(c *gin.Context) {
-	list, err := h.repo.ListValues(c.Request.Context())
+	values, err := h.repo.ListValues(c.Request.Context())
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}
-	response.OK(c, list)
+	response.OK(c, values)
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"ai-video/internal/gen/model"
+
+	"gorm.io/gen/field"
 )
 
 type PackageVersionRepo struct {
@@ -20,38 +22,41 @@ type PackageVersionListFilter struct {
 }
 
 func (r *PackageVersionRepo) PageList(ctx context.Context, page, pageSize int, filter *PackageVersionListFilter) ([]model.VideoPackageVersion, int64, error) {
-	q := &QueryOptions{Where: map[string]interface{}{}, Order: []string{"id DESC"}}
+	q := qFrom(ctx).VideoPackageVersion
+	dao := q.WithContext(ctx)
 	if filter != nil {
 		if filter.PackageCode != "" {
-			q.Where["package_code"] = filter.PackageCode
+			dao = dao.Where(q.PackageCode.Eq(filter.PackageCode))
 		}
 		if filter.VersionCode != "" {
-			q.Where["version_code"] = filter.VersionCode
+			dao = dao.Where(q.VersionCode.Eq(filter.VersionCode))
 		}
 		if filter.Status != nil {
-			q.Where["status"] = *filter.Status
+			dao = dao.Where(q.Status.Eq(uint8(*filter.Status)))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			q.Conds = append(q.Conds, Cond{
-				Query: "package_code LIKE ? OR version_code LIKE ? OR description LIKE ?",
-				Args:  []interface{}{keyword, keyword, keyword},
-			})
+			dao = dao.Where(field.Or(q.PackageCode.Like(keyword), q.VersionCode.Like(keyword), q.Description.Like(keyword)))
 		}
 	}
-	return r.BaseRepo.PageList(ctx, page, pageSize, q)
+	total, err := dao.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, err := dao.Order(q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	return valuesOf(rows), total, err
 }
 
 func (r *PackageVersionRepo) GetByPackageVersion(ctx context.Context, packageCode, versionCode string) (*model.VideoPackageVersion, error) {
-	return r.BaseRepo.GetOne(ctx, &QueryOptions{Where: map[string]interface{}{
-		"package_code": packageCode,
-		"version_code": versionCode,
-	}})
+	q := qFrom(ctx).VideoPackageVersion
+	return q.WithContext(ctx).Where(q.PackageCode.Eq(packageCode), q.VersionCode.Eq(versionCode)).First()
 }
 
 func (r *PackageVersionRepo) UpdateFields(ctx context.Context, item *model.VideoPackageVersion) error {
-	return r.BaseRepo.Update(ctx, item,
-		"PackageCode", "VersionCode", "DownloadURL", "InstallCount", "DownloadCount",
-		"DeviceCount", "Description", "Status",
-	)
+	q := qFrom(ctx).VideoPackageVersion
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID)).Select(
+		q.PackageCode, q.VersionCode, q.DownloadURL, q.InstallCount, q.DownloadCount,
+		q.DeviceCount, q.Description, q.Status,
+	).Updates(item)
+	return err
 }

@@ -38,7 +38,7 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.LastOpenedAt = field.NewTime(tableName, "last_opened_at")
 	_videoUser.LoginType = field.NewUint8(tableName, "login_type")
 	_videoUser.UserType = field.NewUint8(tableName, "user_type")
-	_videoUser.ActiveDays = field.NewUint(tableName, "active_days")
+	_videoUser.ActiveDays = field.NewUint32(tableName, "active_days")
 	_videoUser.AvgDailyUsageSeconds = field.NewUint64(tableName, "avg_daily_usage_seconds")
 	_videoUser.VipExpiresAt = field.NewTime(tableName, "vip_expires_at")
 	_videoUser.PointsBalance = field.NewUint64(tableName, "points_balance")
@@ -53,13 +53,13 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.ActualAmountMoney = field.NewFloat64(tableName, "actual_amount_money")
 	_videoUser.LastPaidAt = field.NewTime(tableName, "last_paid_at")
 	_videoUser.RefundAmountMoney = field.NewFloat64(tableName, "refund_amount_money")
-	_videoUser.PointsMoney = field.NewUint64(tableName, "points_money")
+	_videoUser.PointsMoney = field.NewFloat64(tableName, "points_money")
 	_videoUser.AiCotsMoney = field.NewFloat64(tableName, "ai_cots_money")
-	_videoUser.Activated = field.NewUint(tableName, "activated")
-	_videoUser.KeyBehaviorMet = field.NewUint(tableName, "key_behavior_met")
-	_videoUser.PaymentMet = field.NewInt8(tableName, "payment_met")
-	_videoUser.FirstPaymentMet = field.NewInt8(tableName, "first_payment_met")
-	_videoUser.Registered = field.NewInt8(tableName, "registered")
+	_videoUser.Activated = field.NewUint32(tableName, "activated")
+	_videoUser.KeyBehaviorMet = field.NewUint32(tableName, "key_behavior_met")
+	_videoUser.PaymentMet = field.NewBool(tableName, "payment_met")
+	_videoUser.FirstPaymentMet = field.NewBool(tableName, "first_payment_met")
+	_videoUser.Registered = field.NewBool(tableName, "registered")
 	_videoUser.AttributionClickedAt = field.NewTime(tableName, "attribution_clicked_at")
 	_videoUser.PhoneModel = field.NewString(tableName, "phone_model")
 	_videoUser.ReRegisteredFromID = field.NewUint64(tableName, "re_registered_from_id")
@@ -78,10 +78,10 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUser.DeletedAt = field.NewField(tableName, "deleted_at")
 	_videoUser.Phone = field.NewString(tableName, "phone")
-	_videoUser.VIPLevel = field.NewUint(tableName, "vip_level")
+	_videoUser.VIPLevel = field.NewUint32(tableName, "vip_level")
 	_videoUser.VIPStartedAt = field.NewTime(tableName, "vip_started_at")
-	_videoUser.IsFrozen = field.NewInt8(tableName, "is_frozen")
-	_videoUser.IsBlacklisted = field.NewInt8(tableName, "is_blacklisted")
+	_videoUser.IsFrozen = field.NewBool(tableName, "is_frozen")
+	_videoUser.IsBlacklisted = field.NewBool(tableName, "is_blacklisted")
 	_videoUser.Channel = videoUserBelongsToChannel{
 		db: db.Session(&gorm.Session{}),
 
@@ -107,7 +107,7 @@ type videoUser struct {
 	LastOpenedAt             field.Time    // 上次打开时间
 	LoginType                field.Uint8   // 登录方式 1=未登录 2=google 3=appid
 	UserType                 field.Uint8   // 用户类型 1=免费 2=付费
-	ActiveDays               field.Uint    // 活跃天数
+	ActiveDays               field.Uint32  // 活跃天数
 	AvgDailyUsageSeconds     field.Uint64  // 平均日使用时长
 	VipExpiresAt             field.Time    // vip 到期时间
 	PointsBalance            field.Uint64  // 积分
@@ -122,13 +122,13 @@ type videoUser struct {
 	ActualAmountMoney        field.Float64 // 累计税后金额
 	LastPaidAt               field.Time    // 最后付费时间
 	RefundAmountMoney        field.Float64 // 累计退款金额
-	PointsMoney              field.Uint64  // 累计积分成本
+	PointsMoney              field.Float64 // 累计积分成本
 	AiCotsMoney              field.Float64 // 累计ai成本
-	Activated                field.Uint    // 是否激活达标 1 是 0否
-	KeyBehaviorMet           field.Uint    // 关键行为是否达标 1 是 0否
-	PaymentMet               field.Int8    // 付费是否达标 1 是 0否
-	FirstPaymentMet          field.Int8    // 首次付费是否达标 1 是 0否
-	Registered               field.Int8    // 注册达标 1 是 0否
+	Activated                field.Uint32  // 是否激活达标 1 是 0否
+	KeyBehaviorMet           field.Uint32  // 关键行为是否达标 1 是 0否
+	PaymentMet               field.Bool    // 付费是否达标 1 是 0否
+	FirstPaymentMet          field.Bool    // 首次付费是否达标 1 是 0否
+	Registered               field.Bool    // 注册达标 1 是 0否
 	AttributionClickedAt     field.Time    // 归因点击时间
 	PhoneModel               field.String  // 手机品牌、型号
 	ReRegisteredFromID       field.Uint64  // 原用户ID
@@ -147,10 +147,10 @@ type videoUser struct {
 	UpdatedAt                field.Time
 	DeletedAt                field.Field
 	Phone                    field.String
-	VIPLevel                 field.Uint
+	VIPLevel                 field.Uint32
 	VIPStartedAt             field.Time
-	IsFrozen                 field.Int8
-	IsBlacklisted            field.Int8
+	IsFrozen                 field.Bool
+	IsBlacklisted            field.Bool
 	Channel                  videoUserBelongsToChannel
 
 	fieldMap map[string]field.Expr
@@ -178,7 +178,7 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.LastOpenedAt = field.NewTime(table, "last_opened_at")
 	v.LoginType = field.NewUint8(table, "login_type")
 	v.UserType = field.NewUint8(table, "user_type")
-	v.ActiveDays = field.NewUint(table, "active_days")
+	v.ActiveDays = field.NewUint32(table, "active_days")
 	v.AvgDailyUsageSeconds = field.NewUint64(table, "avg_daily_usage_seconds")
 	v.VipExpiresAt = field.NewTime(table, "vip_expires_at")
 	v.PointsBalance = field.NewUint64(table, "points_balance")
@@ -193,13 +193,13 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.ActualAmountMoney = field.NewFloat64(table, "actual_amount_money")
 	v.LastPaidAt = field.NewTime(table, "last_paid_at")
 	v.RefundAmountMoney = field.NewFloat64(table, "refund_amount_money")
-	v.PointsMoney = field.NewUint64(table, "points_money")
+	v.PointsMoney = field.NewFloat64(table, "points_money")
 	v.AiCotsMoney = field.NewFloat64(table, "ai_cots_money")
-	v.Activated = field.NewUint(table, "activated")
-	v.KeyBehaviorMet = field.NewUint(table, "key_behavior_met")
-	v.PaymentMet = field.NewInt8(table, "payment_met")
-	v.FirstPaymentMet = field.NewInt8(table, "first_payment_met")
-	v.Registered = field.NewInt8(table, "registered")
+	v.Activated = field.NewUint32(table, "activated")
+	v.KeyBehaviorMet = field.NewUint32(table, "key_behavior_met")
+	v.PaymentMet = field.NewBool(table, "payment_met")
+	v.FirstPaymentMet = field.NewBool(table, "first_payment_met")
+	v.Registered = field.NewBool(table, "registered")
 	v.AttributionClickedAt = field.NewTime(table, "attribution_clicked_at")
 	v.PhoneModel = field.NewString(table, "phone_model")
 	v.ReRegisteredFromID = field.NewUint64(table, "re_registered_from_id")
@@ -218,10 +218,10 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
 	v.Phone = field.NewString(table, "phone")
-	v.VIPLevel = field.NewUint(table, "vip_level")
+	v.VIPLevel = field.NewUint32(table, "vip_level")
 	v.VIPStartedAt = field.NewTime(table, "vip_started_at")
-	v.IsFrozen = field.NewInt8(table, "is_frozen")
-	v.IsBlacklisted = field.NewInt8(table, "is_blacklisted")
+	v.IsFrozen = field.NewBool(table, "is_frozen")
+	v.IsBlacklisted = field.NewBool(table, "is_blacklisted")
 
 	v.fillFieldMap()
 

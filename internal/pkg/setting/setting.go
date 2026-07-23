@@ -79,7 +79,7 @@ func RefreshAll(ctx context.Context) error {
 }
 
 // Init seeds any missing default configs into DB and warms the cache. Call from
-// main after AutoMigrate (the sys_config table must exist).
+// main after the reviewed schema scripts have been applied (the sys_config table must exist).
 func Init(ctx context.Context) error {
 	if err := seedDefaults(ctx); err != nil {
 		return err

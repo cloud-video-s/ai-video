@@ -38,7 +38,7 @@ type ListPackageRequest struct {
 type PackagePayload struct {
 	PackageName string `json:"package_name" binding:"required,max=128"`
 	PackageCode string `json:"package_code" binding:"required,max=128"`
-	AppCode     string `json:"app_code" binding:"required,max=50"`
+	AppID       uint64 `json:"app_id" binding:"required,max=50"`
 	Description string `json:"description" binding:"max=10000"`
 	Sort        int64  `json:"sort" binding:"min=0,max=999999"`
 	Status      uint8  `json:"status" binding:"oneof=0 1"`
@@ -138,14 +138,13 @@ func (s *PackageService) Delete(ctx context.Context, id uint64) error {
 func (s *PackageService) validatePayload(ctx context.Context, req *PackagePayload, currentID uint64) error {
 	name := strings.TrimSpace(req.PackageName)
 	code := strings.TrimSpace(req.PackageCode)
-	appCode := strings.TrimSpace(req.AppCode)
-	if name == "" || code == "" || appCode == "" {
+	if name == "" || code == "" || req.AppID == 0 {
 		return errors.New("包名称、包标识码和所属应用不能为空")
 	}
 	if !packageCodePattern.MatchString(code) {
 		return errors.New("包标识码只能包含字母、数字、点、下划线和中划线")
 	}
-	if _, err := s.appRepo.GetByAppCode(ctx, appCode); err != nil {
+	if _, err := s.appRepo.GetByAppCode(ctx, req.AppID); err != nil {
 		return notFoundOr(err, "所属应用不存在")
 	}
 	existing, err := s.repo.GetByCode(ctx, code)
@@ -164,9 +163,9 @@ func (s *PackageService) validatePayload(ctx context.Context, req *PackagePayloa
 func applyPackagePayload(item *model.VideoPackage, req *PackagePayload) {
 	item.PackageName = strings.TrimSpace(req.PackageName)
 	item.PackageCode = strings.TrimSpace(req.PackageCode)
-	item.AppCode = strings.TrimSpace(req.AppCode)
+	//item.AppCode = strings.TrimSpace(req.AppCode)
 	item.Description = strings.TrimSpace(req.Description)
 	item.Sort = req.Sort
-	item.Status = req.Status
+	item.Status = int8(req.Status)
 	item.SystemType = req.SystemType
 }

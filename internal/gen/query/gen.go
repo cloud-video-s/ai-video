@@ -16,49 +16,58 @@ import (
 )
 
 var (
-	Q                                   = new(Query)
-	CasbinRule                          *casbinRule
-	VideoAPI                            *videoAPI
-	VideoAdmin                          *videoAdmin
-	VideoAdminRole                      *videoAdminRole
-	VideoApp                            *videoApp
-	VideoBanner                         *videoBanner
-	VideoBannerApp                      *videoBannerApp
-	VideoBannerCountry                  *videoBannerCountry
-	VideoBannerDisplayPosition          *videoBannerDisplayPosition
-	VideoChannel                        *videoChannel
-	VideoConfig                         *videoConfig
-	VideoCountry                        *videoCountry
-	VideoDelayConfig                    *videoDelayConfig
-	VideoDisplayPosition                *videoDisplayPosition
-	VideoMenu                           *videoMenu
-	VideoMenuAPI                        *videoMenuAPI
-	VideoOperationLog                   *videoOperationLog
-	VideoOrder                          *videoOrder
-	VideoPackage                        *videoPackage
-	VideoPackageVersion                 *videoPackageVersion
-	VideoPointsPackage                  *videoPointsPackage
-	VideoPointsPackageChannel           *videoPointsPackageChannel
-	VideoPointsPackagePackage           *videoPointsPackagePackage
-	VideoRole                           *videoRole
-	VideoRoleMenu                       *videoRoleMenu
-	VideoTemplate                       *videoTemplate
-	VideoTemplateDisplayConfig          *videoTemplateDisplayConfig
-	VideoTemplateType                   *videoTemplateType
-	VideoTemplateTypeApp                *videoTemplateTypeApp
-	VideoTemplateTypeCountry            *videoTemplateTypeCountry
-	VideoTemplateTypeDisplayPosition    *videoTemplateTypeDisplayPosition
-	VideoUpload                         *videoUpload
-	VideoUser                           *videoUser
-	VideoUserAttribution                *videoUserAttribution
-	VideoUserIdentity                   *videoUserIdentity
-	VideoUserPointsLedger               *videoUserPointsLedger
-	VideoUserTemplateFavorite           *videoUserTemplateFavorite
-	VideoVipSubscription                *videoVipSubscription
-	VideoVipSubscriptionChannel         *videoVipSubscriptionChannel
-	VideoVipSubscriptionExcludedChannel *videoVipSubscriptionExcludedChannel
-	VideoVipSubscriptionPackage         *videoVipSubscriptionPackage
-	VideoVipSubscriptionPosition        *videoVipSubscriptionPosition
+	Q                                = new(Query)
+	CasbinRule                       *casbinRule
+	VideoAPI                         *videoAPI
+	VideoAdmin                       *videoAdmin
+	VideoAdminRole                   *videoAdminRole
+	VideoAiModel                     *videoAiModel
+	VideoApp                         *videoApp
+	VideoBanner                      *videoBanner
+	VideoBannerApp                   *videoBannerApp
+	VideoBannerCountry               *videoBannerCountry
+	VideoBannerPackage               *videoBannerPackage
+	VideoBannerPlacementAssociation  *videoBannerPlacementAssociation
+	VideoBannerVersion               *videoBannerVersion
+	VideoChannel                     *videoChannel
+	VideoConfig                      *videoConfig
+	VideoCountry                     *videoCountry
+	VideoDelayConfig                 *videoDelayConfig
+	VideoDisplayPosition             *videoDisplayPosition
+	VideoGenerationTask              *videoGenerationTask
+	VideoMenu                        *videoMenu
+	VideoMenuAPI                     *videoMenuAPI
+	VideoOperationLog                *videoOperationLog
+	VideoOrder                       *videoOrder
+	VideoPackage                     *videoPackage
+	VideoPackageVersion              *videoPackageVersion
+	VideoPointsPackage               *videoPointsPackage
+	VideoPointsPackageChannel        *videoPointsPackageChannel
+	VideoPointsPackagePackage        *videoPointsPackagePackage
+	VideoRole                        *videoRole
+	VideoRoleMenu                    *videoRoleMenu
+	VideoTemplate                    *videoTemplate
+	VideoTemplatePlacement           *videoTemplatePlacement
+	VideoTemplatePlacementConfig     *videoTemplatePlacementConfig
+	VideoTemplateType                *videoTemplateType
+	VideoTemplateTypeApp             *videoTemplateTypeApp
+	VideoTemplateTypeCountry         *videoTemplateTypeCountry
+	VideoTemplateTypeDisplayPosition *videoTemplateTypeDisplayPosition
+	VideoTemplateTypePackage         *videoTemplateTypePackage
+	VideoTemplateTypeVersion         *videoTemplateTypeVersion
+	VideoUpload                      *videoUpload
+	VideoUser                        *videoUser
+	VideoUserAttribution             *videoUserAttribution
+	VideoUserIdentity                *videoUserIdentity
+	VideoUserPointsLedger            *videoUserPointsLedger
+	VideoUserTemplateFavorite        *videoUserTemplateFavorite
+	VideoVipPlacement                *videoVipPlacement
+	VideoVipSubscription             *videoVipSubscription
+	VideoVipSubscriptionApp          *videoVipSubscriptionApp
+	VideoVipSubscriptionCountry      *videoVipSubscriptionCountry
+	VideoVipSubscriptionLevel        *videoVipSubscriptionLevel
+	VideoVipSubscriptionPackage      *videoVipSubscriptionPackage
+	VideoVipSubscriptionVersion      *videoVipSubscriptionVersion
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
@@ -67,16 +76,20 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoAPI = &Q.VideoAPI
 	VideoAdmin = &Q.VideoAdmin
 	VideoAdminRole = &Q.VideoAdminRole
+	VideoAiModel = &Q.VideoAiModel
 	VideoApp = &Q.VideoApp
 	VideoBanner = &Q.VideoBanner
 	VideoBannerApp = &Q.VideoBannerApp
 	VideoBannerCountry = &Q.VideoBannerCountry
-	VideoBannerDisplayPosition = &Q.VideoBannerDisplayPosition
+	VideoBannerPackage = &Q.VideoBannerPackage
+	VideoBannerPlacementAssociation = &Q.VideoBannerPlacementAssociation
+	VideoBannerVersion = &Q.VideoBannerVersion
 	VideoChannel = &Q.VideoChannel
 	VideoConfig = &Q.VideoConfig
 	VideoCountry = &Q.VideoCountry
 	VideoDelayConfig = &Q.VideoDelayConfig
 	VideoDisplayPosition = &Q.VideoDisplayPosition
+	VideoGenerationTask = &Q.VideoGenerationTask
 	VideoMenu = &Q.VideoMenu
 	VideoMenuAPI = &Q.VideoMenuAPI
 	VideoOperationLog = &Q.VideoOperationLog
@@ -89,117 +102,140 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoRole = &Q.VideoRole
 	VideoRoleMenu = &Q.VideoRoleMenu
 	VideoTemplate = &Q.VideoTemplate
-	VideoTemplateDisplayConfig = &Q.VideoTemplateDisplayConfig
+	VideoTemplatePlacement = &Q.VideoTemplatePlacement
+	VideoTemplatePlacementConfig = &Q.VideoTemplatePlacementConfig
 	VideoTemplateType = &Q.VideoTemplateType
 	VideoTemplateTypeApp = &Q.VideoTemplateTypeApp
 	VideoTemplateTypeCountry = &Q.VideoTemplateTypeCountry
 	VideoTemplateTypeDisplayPosition = &Q.VideoTemplateTypeDisplayPosition
+	VideoTemplateTypePackage = &Q.VideoTemplateTypePackage
+	VideoTemplateTypeVersion = &Q.VideoTemplateTypeVersion
 	VideoUpload = &Q.VideoUpload
 	VideoUser = &Q.VideoUser
 	VideoUserAttribution = &Q.VideoUserAttribution
 	VideoUserIdentity = &Q.VideoUserIdentity
 	VideoUserPointsLedger = &Q.VideoUserPointsLedger
 	VideoUserTemplateFavorite = &Q.VideoUserTemplateFavorite
+	VideoVipPlacement = &Q.VideoVipPlacement
 	VideoVipSubscription = &Q.VideoVipSubscription
-	VideoVipSubscriptionChannel = &Q.VideoVipSubscriptionChannel
-	VideoVipSubscriptionExcludedChannel = &Q.VideoVipSubscriptionExcludedChannel
+	VideoVipSubscriptionApp = &Q.VideoVipSubscriptionApp
+	VideoVipSubscriptionCountry = &Q.VideoVipSubscriptionCountry
+	VideoVipSubscriptionLevel = &Q.VideoVipSubscriptionLevel
 	VideoVipSubscriptionPackage = &Q.VideoVipSubscriptionPackage
-	VideoVipSubscriptionPosition = &Q.VideoVipSubscriptionPosition
+	VideoVipSubscriptionVersion = &Q.VideoVipSubscriptionVersion
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:                                  db,
-		CasbinRule:                          newCasbinRule(db, opts...),
-		VideoAPI:                            newVideoAPI(db, opts...),
-		VideoAdmin:                          newVideoAdmin(db, opts...),
-		VideoAdminRole:                      newVideoAdminRole(db, opts...),
-		VideoApp:                            newVideoApp(db, opts...),
-		VideoBanner:                         newVideoBanner(db, opts...),
-		VideoBannerApp:                      newVideoBannerApp(db, opts...),
-		VideoBannerCountry:                  newVideoBannerCountry(db, opts...),
-		VideoBannerDisplayPosition:          newVideoBannerDisplayPosition(db, opts...),
-		VideoChannel:                        newVideoChannel(db, opts...),
-		VideoConfig:                         newVideoConfig(db, opts...),
-		VideoCountry:                        newVideoCountry(db, opts...),
-		VideoDelayConfig:                    newVideoDelayConfig(db, opts...),
-		VideoDisplayPosition:                newVideoDisplayPosition(db, opts...),
-		VideoMenu:                           newVideoMenu(db, opts...),
-		VideoMenuAPI:                        newVideoMenuAPI(db, opts...),
-		VideoOperationLog:                   newVideoOperationLog(db, opts...),
-		VideoOrder:                          newVideoOrder(db, opts...),
-		VideoPackage:                        newVideoPackage(db, opts...),
-		VideoPackageVersion:                 newVideoPackageVersion(db, opts...),
-		VideoPointsPackage:                  newVideoPointsPackage(db, opts...),
-		VideoPointsPackageChannel:           newVideoPointsPackageChannel(db, opts...),
-		VideoPointsPackagePackage:           newVideoPointsPackagePackage(db, opts...),
-		VideoRole:                           newVideoRole(db, opts...),
-		VideoRoleMenu:                       newVideoRoleMenu(db, opts...),
-		VideoTemplate:                       newVideoTemplate(db, opts...),
-		VideoTemplateDisplayConfig:          newVideoTemplateDisplayConfig(db, opts...),
-		VideoTemplateType:                   newVideoTemplateType(db, opts...),
-		VideoTemplateTypeApp:                newVideoTemplateTypeApp(db, opts...),
-		VideoTemplateTypeCountry:            newVideoTemplateTypeCountry(db, opts...),
-		VideoTemplateTypeDisplayPosition:    newVideoTemplateTypeDisplayPosition(db, opts...),
-		VideoUpload:                         newVideoUpload(db, opts...),
-		VideoUser:                           newVideoUser(db, opts...),
-		VideoUserAttribution:                newVideoUserAttribution(db, opts...),
-		VideoUserIdentity:                   newVideoUserIdentity(db, opts...),
-		VideoUserPointsLedger:               newVideoUserPointsLedger(db, opts...),
-		VideoUserTemplateFavorite:           newVideoUserTemplateFavorite(db, opts...),
-		VideoVipSubscription:                newVideoVipSubscription(db, opts...),
-		VideoVipSubscriptionChannel:         newVideoVipSubscriptionChannel(db, opts...),
-		VideoVipSubscriptionExcludedChannel: newVideoVipSubscriptionExcludedChannel(db, opts...),
-		VideoVipSubscriptionPackage:         newVideoVipSubscriptionPackage(db, opts...),
-		VideoVipSubscriptionPosition:        newVideoVipSubscriptionPosition(db, opts...),
+		db:                               db,
+		CasbinRule:                       newCasbinRule(db, opts...),
+		VideoAPI:                         newVideoAPI(db, opts...),
+		VideoAdmin:                       newVideoAdmin(db, opts...),
+		VideoAdminRole:                   newVideoAdminRole(db, opts...),
+		VideoAiModel:                     newVideoAiModel(db, opts...),
+		VideoApp:                         newVideoApp(db, opts...),
+		VideoBanner:                      newVideoBanner(db, opts...),
+		VideoBannerApp:                   newVideoBannerApp(db, opts...),
+		VideoBannerCountry:               newVideoBannerCountry(db, opts...),
+		VideoBannerPackage:               newVideoBannerPackage(db, opts...),
+		VideoBannerPlacementAssociation:  newVideoBannerPlacementAssociation(db, opts...),
+		VideoBannerVersion:               newVideoBannerVersion(db, opts...),
+		VideoChannel:                     newVideoChannel(db, opts...),
+		VideoConfig:                      newVideoConfig(db, opts...),
+		VideoCountry:                     newVideoCountry(db, opts...),
+		VideoDelayConfig:                 newVideoDelayConfig(db, opts...),
+		VideoDisplayPosition:             newVideoDisplayPosition(db, opts...),
+		VideoGenerationTask:              newVideoGenerationTask(db, opts...),
+		VideoMenu:                        newVideoMenu(db, opts...),
+		VideoMenuAPI:                     newVideoMenuAPI(db, opts...),
+		VideoOperationLog:                newVideoOperationLog(db, opts...),
+		VideoOrder:                       newVideoOrder(db, opts...),
+		VideoPackage:                     newVideoPackage(db, opts...),
+		VideoPackageVersion:              newVideoPackageVersion(db, opts...),
+		VideoPointsPackage:               newVideoPointsPackage(db, opts...),
+		VideoPointsPackageChannel:        newVideoPointsPackageChannel(db, opts...),
+		VideoPointsPackagePackage:        newVideoPointsPackagePackage(db, opts...),
+		VideoRole:                        newVideoRole(db, opts...),
+		VideoRoleMenu:                    newVideoRoleMenu(db, opts...),
+		VideoTemplate:                    newVideoTemplate(db, opts...),
+		VideoTemplatePlacement:           newVideoTemplatePlacement(db, opts...),
+		VideoTemplatePlacementConfig:     newVideoTemplatePlacementConfig(db, opts...),
+		VideoTemplateType:                newVideoTemplateType(db, opts...),
+		VideoTemplateTypeApp:             newVideoTemplateTypeApp(db, opts...),
+		VideoTemplateTypeCountry:         newVideoTemplateTypeCountry(db, opts...),
+		VideoTemplateTypeDisplayPosition: newVideoTemplateTypeDisplayPosition(db, opts...),
+		VideoTemplateTypePackage:         newVideoTemplateTypePackage(db, opts...),
+		VideoTemplateTypeVersion:         newVideoTemplateTypeVersion(db, opts...),
+		VideoUpload:                      newVideoUpload(db, opts...),
+		VideoUser:                        newVideoUser(db, opts...),
+		VideoUserAttribution:             newVideoUserAttribution(db, opts...),
+		VideoUserIdentity:                newVideoUserIdentity(db, opts...),
+		VideoUserPointsLedger:            newVideoUserPointsLedger(db, opts...),
+		VideoUserTemplateFavorite:        newVideoUserTemplateFavorite(db, opts...),
+		VideoVipPlacement:                newVideoVipPlacement(db, opts...),
+		VideoVipSubscription:             newVideoVipSubscription(db, opts...),
+		VideoVipSubscriptionApp:          newVideoVipSubscriptionApp(db, opts...),
+		VideoVipSubscriptionCountry:      newVideoVipSubscriptionCountry(db, opts...),
+		VideoVipSubscriptionLevel:        newVideoVipSubscriptionLevel(db, opts...),
+		VideoVipSubscriptionPackage:      newVideoVipSubscriptionPackage(db, opts...),
+		VideoVipSubscriptionVersion:      newVideoVipSubscriptionVersion(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	CasbinRule                          casbinRule
-	VideoAPI                            videoAPI
-	VideoAdmin                          videoAdmin
-	VideoAdminRole                      videoAdminRole
-	VideoApp                            videoApp
-	VideoBanner                         videoBanner
-	VideoBannerApp                      videoBannerApp
-	VideoBannerCountry                  videoBannerCountry
-	VideoBannerDisplayPosition          videoBannerDisplayPosition
-	VideoChannel                        videoChannel
-	VideoConfig                         videoConfig
-	VideoCountry                        videoCountry
-	VideoDelayConfig                    videoDelayConfig
-	VideoDisplayPosition                videoDisplayPosition
-	VideoMenu                           videoMenu
-	VideoMenuAPI                        videoMenuAPI
-	VideoOperationLog                   videoOperationLog
-	VideoOrder                          videoOrder
-	VideoPackage                        videoPackage
-	VideoPackageVersion                 videoPackageVersion
-	VideoPointsPackage                  videoPointsPackage
-	VideoPointsPackageChannel           videoPointsPackageChannel
-	VideoPointsPackagePackage           videoPointsPackagePackage
-	VideoRole                           videoRole
-	VideoRoleMenu                       videoRoleMenu
-	VideoTemplate                       videoTemplate
-	VideoTemplateDisplayConfig          videoTemplateDisplayConfig
-	VideoTemplateType                   videoTemplateType
-	VideoTemplateTypeApp                videoTemplateTypeApp
-	VideoTemplateTypeCountry            videoTemplateTypeCountry
-	VideoTemplateTypeDisplayPosition    videoTemplateTypeDisplayPosition
-	VideoUpload                         videoUpload
-	VideoUser                           videoUser
-	VideoUserAttribution                videoUserAttribution
-	VideoUserIdentity                   videoUserIdentity
-	VideoUserPointsLedger               videoUserPointsLedger
-	VideoUserTemplateFavorite           videoUserTemplateFavorite
-	VideoVipSubscription                videoVipSubscription
-	VideoVipSubscriptionChannel         videoVipSubscriptionChannel
-	VideoVipSubscriptionExcludedChannel videoVipSubscriptionExcludedChannel
-	VideoVipSubscriptionPackage         videoVipSubscriptionPackage
-	VideoVipSubscriptionPosition        videoVipSubscriptionPosition
+	CasbinRule                       casbinRule
+	VideoAPI                         videoAPI
+	VideoAdmin                       videoAdmin
+	VideoAdminRole                   videoAdminRole
+	VideoAiModel                     videoAiModel
+	VideoApp                         videoApp
+	VideoBanner                      videoBanner
+	VideoBannerApp                   videoBannerApp
+	VideoBannerCountry               videoBannerCountry
+	VideoBannerPackage               videoBannerPackage
+	VideoBannerPlacementAssociation  videoBannerPlacementAssociation
+	VideoBannerVersion               videoBannerVersion
+	VideoChannel                     videoChannel
+	VideoConfig                      videoConfig
+	VideoCountry                     videoCountry
+	VideoDelayConfig                 videoDelayConfig
+	VideoDisplayPosition             videoDisplayPosition
+	VideoGenerationTask              videoGenerationTask
+	VideoMenu                        videoMenu
+	VideoMenuAPI                     videoMenuAPI
+	VideoOperationLog                videoOperationLog
+	VideoOrder                       videoOrder
+	VideoPackage                     videoPackage
+	VideoPackageVersion              videoPackageVersion
+	VideoPointsPackage               videoPointsPackage
+	VideoPointsPackageChannel        videoPointsPackageChannel
+	VideoPointsPackagePackage        videoPointsPackagePackage
+	VideoRole                        videoRole
+	VideoRoleMenu                    videoRoleMenu
+	VideoTemplate                    videoTemplate
+	VideoTemplatePlacement           videoTemplatePlacement
+	VideoTemplatePlacementConfig     videoTemplatePlacementConfig
+	VideoTemplateType                videoTemplateType
+	VideoTemplateTypeApp             videoTemplateTypeApp
+	VideoTemplateTypeCountry         videoTemplateTypeCountry
+	VideoTemplateTypeDisplayPosition videoTemplateTypeDisplayPosition
+	VideoTemplateTypePackage         videoTemplateTypePackage
+	VideoTemplateTypeVersion         videoTemplateTypeVersion
+	VideoUpload                      videoUpload
+	VideoUser                        videoUser
+	VideoUserAttribution             videoUserAttribution
+	VideoUserIdentity                videoUserIdentity
+	VideoUserPointsLedger            videoUserPointsLedger
+	VideoUserTemplateFavorite        videoUserTemplateFavorite
+	VideoVipPlacement                videoVipPlacement
+	VideoVipSubscription             videoVipSubscription
+	VideoVipSubscriptionApp          videoVipSubscriptionApp
+	VideoVipSubscriptionCountry      videoVipSubscriptionCountry
+	VideoVipSubscriptionLevel        videoVipSubscriptionLevel
+	VideoVipSubscriptionPackage      videoVipSubscriptionPackage
+	VideoVipSubscriptionVersion      videoVipSubscriptionVersion
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -208,49 +244,58 @@ func (q *Query) UnderlyingDB() *gorm.DB { return q.db }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:                                  db,
-		CasbinRule:                          q.CasbinRule.clone(db),
-		VideoAPI:                            q.VideoAPI.clone(db),
-		VideoAdmin:                          q.VideoAdmin.clone(db),
-		VideoAdminRole:                      q.VideoAdminRole.clone(db),
-		VideoApp:                            q.VideoApp.clone(db),
-		VideoBanner:                         q.VideoBanner.clone(db),
-		VideoBannerApp:                      q.VideoBannerApp.clone(db),
-		VideoBannerCountry:                  q.VideoBannerCountry.clone(db),
-		VideoBannerDisplayPosition:          q.VideoBannerDisplayPosition.clone(db),
-		VideoChannel:                        q.VideoChannel.clone(db),
-		VideoConfig:                         q.VideoConfig.clone(db),
-		VideoCountry:                        q.VideoCountry.clone(db),
-		VideoDelayConfig:                    q.VideoDelayConfig.clone(db),
-		VideoDisplayPosition:                q.VideoDisplayPosition.clone(db),
-		VideoMenu:                           q.VideoMenu.clone(db),
-		VideoMenuAPI:                        q.VideoMenuAPI.clone(db),
-		VideoOperationLog:                   q.VideoOperationLog.clone(db),
-		VideoOrder:                          q.VideoOrder.clone(db),
-		VideoPackage:                        q.VideoPackage.clone(db),
-		VideoPackageVersion:                 q.VideoPackageVersion.clone(db),
-		VideoPointsPackage:                  q.VideoPointsPackage.clone(db),
-		VideoPointsPackageChannel:           q.VideoPointsPackageChannel.clone(db),
-		VideoPointsPackagePackage:           q.VideoPointsPackagePackage.clone(db),
-		VideoRole:                           q.VideoRole.clone(db),
-		VideoRoleMenu:                       q.VideoRoleMenu.clone(db),
-		VideoTemplate:                       q.VideoTemplate.clone(db),
-		VideoTemplateDisplayConfig:          q.VideoTemplateDisplayConfig.clone(db),
-		VideoTemplateType:                   q.VideoTemplateType.clone(db),
-		VideoTemplateTypeApp:                q.VideoTemplateTypeApp.clone(db),
-		VideoTemplateTypeCountry:            q.VideoTemplateTypeCountry.clone(db),
-		VideoTemplateTypeDisplayPosition:    q.VideoTemplateTypeDisplayPosition.clone(db),
-		VideoUpload:                         q.VideoUpload.clone(db),
-		VideoUser:                           q.VideoUser.clone(db),
-		VideoUserAttribution:                q.VideoUserAttribution.clone(db),
-		VideoUserIdentity:                   q.VideoUserIdentity.clone(db),
-		VideoUserPointsLedger:               q.VideoUserPointsLedger.clone(db),
-		VideoUserTemplateFavorite:           q.VideoUserTemplateFavorite.clone(db),
-		VideoVipSubscription:                q.VideoVipSubscription.clone(db),
-		VideoVipSubscriptionChannel:         q.VideoVipSubscriptionChannel.clone(db),
-		VideoVipSubscriptionExcludedChannel: q.VideoVipSubscriptionExcludedChannel.clone(db),
-		VideoVipSubscriptionPackage:         q.VideoVipSubscriptionPackage.clone(db),
-		VideoVipSubscriptionPosition:        q.VideoVipSubscriptionPosition.clone(db),
+		db:                               db,
+		CasbinRule:                       q.CasbinRule.clone(db),
+		VideoAPI:                         q.VideoAPI.clone(db),
+		VideoAdmin:                       q.VideoAdmin.clone(db),
+		VideoAdminRole:                   q.VideoAdminRole.clone(db),
+		VideoAiModel:                     q.VideoAiModel.clone(db),
+		VideoApp:                         q.VideoApp.clone(db),
+		VideoBanner:                      q.VideoBanner.clone(db),
+		VideoBannerApp:                   q.VideoBannerApp.clone(db),
+		VideoBannerCountry:               q.VideoBannerCountry.clone(db),
+		VideoBannerPackage:               q.VideoBannerPackage.clone(db),
+		VideoBannerPlacementAssociation:  q.VideoBannerPlacementAssociation.clone(db),
+		VideoBannerVersion:               q.VideoBannerVersion.clone(db),
+		VideoChannel:                     q.VideoChannel.clone(db),
+		VideoConfig:                      q.VideoConfig.clone(db),
+		VideoCountry:                     q.VideoCountry.clone(db),
+		VideoDelayConfig:                 q.VideoDelayConfig.clone(db),
+		VideoDisplayPosition:             q.VideoDisplayPosition.clone(db),
+		VideoGenerationTask:              q.VideoGenerationTask.clone(db),
+		VideoMenu:                        q.VideoMenu.clone(db),
+		VideoMenuAPI:                     q.VideoMenuAPI.clone(db),
+		VideoOperationLog:                q.VideoOperationLog.clone(db),
+		VideoOrder:                       q.VideoOrder.clone(db),
+		VideoPackage:                     q.VideoPackage.clone(db),
+		VideoPackageVersion:              q.VideoPackageVersion.clone(db),
+		VideoPointsPackage:               q.VideoPointsPackage.clone(db),
+		VideoPointsPackageChannel:        q.VideoPointsPackageChannel.clone(db),
+		VideoPointsPackagePackage:        q.VideoPointsPackagePackage.clone(db),
+		VideoRole:                        q.VideoRole.clone(db),
+		VideoRoleMenu:                    q.VideoRoleMenu.clone(db),
+		VideoTemplate:                    q.VideoTemplate.clone(db),
+		VideoTemplatePlacement:           q.VideoTemplatePlacement.clone(db),
+		VideoTemplatePlacementConfig:     q.VideoTemplatePlacementConfig.clone(db),
+		VideoTemplateType:                q.VideoTemplateType.clone(db),
+		VideoTemplateTypeApp:             q.VideoTemplateTypeApp.clone(db),
+		VideoTemplateTypeCountry:         q.VideoTemplateTypeCountry.clone(db),
+		VideoTemplateTypeDisplayPosition: q.VideoTemplateTypeDisplayPosition.clone(db),
+		VideoTemplateTypePackage:         q.VideoTemplateTypePackage.clone(db),
+		VideoTemplateTypeVersion:         q.VideoTemplateTypeVersion.clone(db),
+		VideoUpload:                      q.VideoUpload.clone(db),
+		VideoUser:                        q.VideoUser.clone(db),
+		VideoUserAttribution:             q.VideoUserAttribution.clone(db),
+		VideoUserIdentity:                q.VideoUserIdentity.clone(db),
+		VideoUserPointsLedger:            q.VideoUserPointsLedger.clone(db),
+		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.clone(db),
+		VideoVipPlacement:                q.VideoVipPlacement.clone(db),
+		VideoVipSubscription:             q.VideoVipSubscription.clone(db),
+		VideoVipSubscriptionApp:          q.VideoVipSubscriptionApp.clone(db),
+		VideoVipSubscriptionCountry:      q.VideoVipSubscriptionCountry.clone(db),
+		VideoVipSubscriptionLevel:        q.VideoVipSubscriptionLevel.clone(db),
+		VideoVipSubscriptionPackage:      q.VideoVipSubscriptionPackage.clone(db),
+		VideoVipSubscriptionVersion:      q.VideoVipSubscriptionVersion.clone(db),
 	}
 }
 
@@ -264,141 +309,168 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:                                  db,
-		CasbinRule:                          q.CasbinRule.replaceDB(db),
-		VideoAPI:                            q.VideoAPI.replaceDB(db),
-		VideoAdmin:                          q.VideoAdmin.replaceDB(db),
-		VideoAdminRole:                      q.VideoAdminRole.replaceDB(db),
-		VideoApp:                            q.VideoApp.replaceDB(db),
-		VideoBanner:                         q.VideoBanner.replaceDB(db),
-		VideoBannerApp:                      q.VideoBannerApp.replaceDB(db),
-		VideoBannerCountry:                  q.VideoBannerCountry.replaceDB(db),
-		VideoBannerDisplayPosition:          q.VideoBannerDisplayPosition.replaceDB(db),
-		VideoChannel:                        q.VideoChannel.replaceDB(db),
-		VideoConfig:                         q.VideoConfig.replaceDB(db),
-		VideoCountry:                        q.VideoCountry.replaceDB(db),
-		VideoDelayConfig:                    q.VideoDelayConfig.replaceDB(db),
-		VideoDisplayPosition:                q.VideoDisplayPosition.replaceDB(db),
-		VideoMenu:                           q.VideoMenu.replaceDB(db),
-		VideoMenuAPI:                        q.VideoMenuAPI.replaceDB(db),
-		VideoOperationLog:                   q.VideoOperationLog.replaceDB(db),
-		VideoOrder:                          q.VideoOrder.replaceDB(db),
-		VideoPackage:                        q.VideoPackage.replaceDB(db),
-		VideoPackageVersion:                 q.VideoPackageVersion.replaceDB(db),
-		VideoPointsPackage:                  q.VideoPointsPackage.replaceDB(db),
-		VideoPointsPackageChannel:           q.VideoPointsPackageChannel.replaceDB(db),
-		VideoPointsPackagePackage:           q.VideoPointsPackagePackage.replaceDB(db),
-		VideoRole:                           q.VideoRole.replaceDB(db),
-		VideoRoleMenu:                       q.VideoRoleMenu.replaceDB(db),
-		VideoTemplate:                       q.VideoTemplate.replaceDB(db),
-		VideoTemplateDisplayConfig:          q.VideoTemplateDisplayConfig.replaceDB(db),
-		VideoTemplateType:                   q.VideoTemplateType.replaceDB(db),
-		VideoTemplateTypeApp:                q.VideoTemplateTypeApp.replaceDB(db),
-		VideoTemplateTypeCountry:            q.VideoTemplateTypeCountry.replaceDB(db),
-		VideoTemplateTypeDisplayPosition:    q.VideoTemplateTypeDisplayPosition.replaceDB(db),
-		VideoUpload:                         q.VideoUpload.replaceDB(db),
-		VideoUser:                           q.VideoUser.replaceDB(db),
-		VideoUserAttribution:                q.VideoUserAttribution.replaceDB(db),
-		VideoUserIdentity:                   q.VideoUserIdentity.replaceDB(db),
-		VideoUserPointsLedger:               q.VideoUserPointsLedger.replaceDB(db),
-		VideoUserTemplateFavorite:           q.VideoUserTemplateFavorite.replaceDB(db),
-		VideoVipSubscription:                q.VideoVipSubscription.replaceDB(db),
-		VideoVipSubscriptionChannel:         q.VideoVipSubscriptionChannel.replaceDB(db),
-		VideoVipSubscriptionExcludedChannel: q.VideoVipSubscriptionExcludedChannel.replaceDB(db),
-		VideoVipSubscriptionPackage:         q.VideoVipSubscriptionPackage.replaceDB(db),
-		VideoVipSubscriptionPosition:        q.VideoVipSubscriptionPosition.replaceDB(db),
+		db:                               db,
+		CasbinRule:                       q.CasbinRule.replaceDB(db),
+		VideoAPI:                         q.VideoAPI.replaceDB(db),
+		VideoAdmin:                       q.VideoAdmin.replaceDB(db),
+		VideoAdminRole:                   q.VideoAdminRole.replaceDB(db),
+		VideoAiModel:                     q.VideoAiModel.replaceDB(db),
+		VideoApp:                         q.VideoApp.replaceDB(db),
+		VideoBanner:                      q.VideoBanner.replaceDB(db),
+		VideoBannerApp:                   q.VideoBannerApp.replaceDB(db),
+		VideoBannerCountry:               q.VideoBannerCountry.replaceDB(db),
+		VideoBannerPackage:               q.VideoBannerPackage.replaceDB(db),
+		VideoBannerPlacementAssociation:  q.VideoBannerPlacementAssociation.replaceDB(db),
+		VideoBannerVersion:               q.VideoBannerVersion.replaceDB(db),
+		VideoChannel:                     q.VideoChannel.replaceDB(db),
+		VideoConfig:                      q.VideoConfig.replaceDB(db),
+		VideoCountry:                     q.VideoCountry.replaceDB(db),
+		VideoDelayConfig:                 q.VideoDelayConfig.replaceDB(db),
+		VideoDisplayPosition:             q.VideoDisplayPosition.replaceDB(db),
+		VideoGenerationTask:              q.VideoGenerationTask.replaceDB(db),
+		VideoMenu:                        q.VideoMenu.replaceDB(db),
+		VideoMenuAPI:                     q.VideoMenuAPI.replaceDB(db),
+		VideoOperationLog:                q.VideoOperationLog.replaceDB(db),
+		VideoOrder:                       q.VideoOrder.replaceDB(db),
+		VideoPackage:                     q.VideoPackage.replaceDB(db),
+		VideoPackageVersion:              q.VideoPackageVersion.replaceDB(db),
+		VideoPointsPackage:               q.VideoPointsPackage.replaceDB(db),
+		VideoPointsPackageChannel:        q.VideoPointsPackageChannel.replaceDB(db),
+		VideoPointsPackagePackage:        q.VideoPointsPackagePackage.replaceDB(db),
+		VideoRole:                        q.VideoRole.replaceDB(db),
+		VideoRoleMenu:                    q.VideoRoleMenu.replaceDB(db),
+		VideoTemplate:                    q.VideoTemplate.replaceDB(db),
+		VideoTemplatePlacement:           q.VideoTemplatePlacement.replaceDB(db),
+		VideoTemplatePlacementConfig:     q.VideoTemplatePlacementConfig.replaceDB(db),
+		VideoTemplateType:                q.VideoTemplateType.replaceDB(db),
+		VideoTemplateTypeApp:             q.VideoTemplateTypeApp.replaceDB(db),
+		VideoTemplateTypeCountry:         q.VideoTemplateTypeCountry.replaceDB(db),
+		VideoTemplateTypeDisplayPosition: q.VideoTemplateTypeDisplayPosition.replaceDB(db),
+		VideoTemplateTypePackage:         q.VideoTemplateTypePackage.replaceDB(db),
+		VideoTemplateTypeVersion:         q.VideoTemplateTypeVersion.replaceDB(db),
+		VideoUpload:                      q.VideoUpload.replaceDB(db),
+		VideoUser:                        q.VideoUser.replaceDB(db),
+		VideoUserAttribution:             q.VideoUserAttribution.replaceDB(db),
+		VideoUserIdentity:                q.VideoUserIdentity.replaceDB(db),
+		VideoUserPointsLedger:            q.VideoUserPointsLedger.replaceDB(db),
+		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.replaceDB(db),
+		VideoVipPlacement:                q.VideoVipPlacement.replaceDB(db),
+		VideoVipSubscription:             q.VideoVipSubscription.replaceDB(db),
+		VideoVipSubscriptionApp:          q.VideoVipSubscriptionApp.replaceDB(db),
+		VideoVipSubscriptionCountry:      q.VideoVipSubscriptionCountry.replaceDB(db),
+		VideoVipSubscriptionLevel:        q.VideoVipSubscriptionLevel.replaceDB(db),
+		VideoVipSubscriptionPackage:      q.VideoVipSubscriptionPackage.replaceDB(db),
+		VideoVipSubscriptionVersion:      q.VideoVipSubscriptionVersion.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	CasbinRule                          ICasbinRuleDo
-	VideoAPI                            IVideoAPIDo
-	VideoAdmin                          IVideoAdminDo
-	VideoAdminRole                      IVideoAdminRoleDo
-	VideoApp                            IVideoAppDo
-	VideoBanner                         IVideoBannerDo
-	VideoBannerApp                      IVideoBannerAppDo
-	VideoBannerCountry                  IVideoBannerCountryDo
-	VideoBannerDisplayPosition          IVideoBannerDisplayPositionDo
-	VideoChannel                        IVideoChannelDo
-	VideoConfig                         IVideoConfigDo
-	VideoCountry                        IVideoCountryDo
-	VideoDelayConfig                    IVideoDelayConfigDo
-	VideoDisplayPosition                IVideoDisplayPositionDo
-	VideoMenu                           IVideoMenuDo
-	VideoMenuAPI                        IVideoMenuAPIDo
-	VideoOperationLog                   IVideoOperationLogDo
-	VideoOrder                          IVideoOrderDo
-	VideoPackage                        IVideoPackageDo
-	VideoPackageVersion                 IVideoPackageVersionDo
-	VideoPointsPackage                  IVideoPointsPackageDo
-	VideoPointsPackageChannel           IVideoPointsPackageChannelDo
-	VideoPointsPackagePackage           IVideoPointsPackagePackageDo
-	VideoRole                           IVideoRoleDo
-	VideoRoleMenu                       IVideoRoleMenuDo
-	VideoTemplate                       IVideoTemplateDo
-	VideoTemplateDisplayConfig          IVideoTemplateDisplayConfigDo
-	VideoTemplateType                   IVideoTemplateTypeDo
-	VideoTemplateTypeApp                IVideoTemplateTypeAppDo
-	VideoTemplateTypeCountry            IVideoTemplateTypeCountryDo
-	VideoTemplateTypeDisplayPosition    IVideoTemplateTypeDisplayPositionDo
-	VideoUpload                         IVideoUploadDo
-	VideoUser                           IVideoUserDo
-	VideoUserAttribution                IVideoUserAttributionDo
-	VideoUserIdentity                   IVideoUserIdentityDo
-	VideoUserPointsLedger               IVideoUserPointsLedgerDo
-	VideoUserTemplateFavorite           IVideoUserTemplateFavoriteDo
-	VideoVipSubscription                IVideoVipSubscriptionDo
-	VideoVipSubscriptionChannel         IVideoVipSubscriptionChannelDo
-	VideoVipSubscriptionExcludedChannel IVideoVipSubscriptionExcludedChannelDo
-	VideoVipSubscriptionPackage         IVideoVipSubscriptionPackageDo
-	VideoVipSubscriptionPosition        IVideoVipSubscriptionPositionDo
+	CasbinRule                       ICasbinRuleDo
+	VideoAPI                         IVideoAPIDo
+	VideoAdmin                       IVideoAdminDo
+	VideoAdminRole                   IVideoAdminRoleDo
+	VideoAiModel                     IVideoAiModelDo
+	VideoApp                         IVideoAppDo
+	VideoBanner                      IVideoBannerDo
+	VideoBannerApp                   IVideoBannerAppDo
+	VideoBannerCountry               IVideoBannerCountryDo
+	VideoBannerPackage               IVideoBannerPackageDo
+	VideoBannerPlacementAssociation  IVideoBannerPlacementAssociationDo
+	VideoBannerVersion               IVideoBannerVersionDo
+	VideoChannel                     IVideoChannelDo
+	VideoConfig                      IVideoConfigDo
+	VideoCountry                     IVideoCountryDo
+	VideoDelayConfig                 IVideoDelayConfigDo
+	VideoDisplayPosition             IVideoDisplayPositionDo
+	VideoGenerationTask              IVideoGenerationTaskDo
+	VideoMenu                        IVideoMenuDo
+	VideoMenuAPI                     IVideoMenuAPIDo
+	VideoOperationLog                IVideoOperationLogDo
+	VideoOrder                       IVideoOrderDo
+	VideoPackage                     IVideoPackageDo
+	VideoPackageVersion              IVideoPackageVersionDo
+	VideoPointsPackage               IVideoPointsPackageDo
+	VideoPointsPackageChannel        IVideoPointsPackageChannelDo
+	VideoPointsPackagePackage        IVideoPointsPackagePackageDo
+	VideoRole                        IVideoRoleDo
+	VideoRoleMenu                    IVideoRoleMenuDo
+	VideoTemplate                    IVideoTemplateDo
+	VideoTemplatePlacement           IVideoTemplatePlacementDo
+	VideoTemplatePlacementConfig     IVideoTemplatePlacementConfigDo
+	VideoTemplateType                IVideoTemplateTypeDo
+	VideoTemplateTypeApp             IVideoTemplateTypeAppDo
+	VideoTemplateTypeCountry         IVideoTemplateTypeCountryDo
+	VideoTemplateTypeDisplayPosition IVideoTemplateTypeDisplayPositionDo
+	VideoTemplateTypePackage         IVideoTemplateTypePackageDo
+	VideoTemplateTypeVersion         IVideoTemplateTypeVersionDo
+	VideoUpload                      IVideoUploadDo
+	VideoUser                        IVideoUserDo
+	VideoUserAttribution             IVideoUserAttributionDo
+	VideoUserIdentity                IVideoUserIdentityDo
+	VideoUserPointsLedger            IVideoUserPointsLedgerDo
+	VideoUserTemplateFavorite        IVideoUserTemplateFavoriteDo
+	VideoVipPlacement                IVideoVipPlacementDo
+	VideoVipSubscription             IVideoVipSubscriptionDo
+	VideoVipSubscriptionApp          IVideoVipSubscriptionAppDo
+	VideoVipSubscriptionCountry      IVideoVipSubscriptionCountryDo
+	VideoVipSubscriptionLevel        IVideoVipSubscriptionLevelDo
+	VideoVipSubscriptionPackage      IVideoVipSubscriptionPackageDo
+	VideoVipSubscriptionVersion      IVideoVipSubscriptionVersionDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		CasbinRule:                          q.CasbinRule.WithContext(ctx),
-		VideoAPI:                            q.VideoAPI.WithContext(ctx),
-		VideoAdmin:                          q.VideoAdmin.WithContext(ctx),
-		VideoAdminRole:                      q.VideoAdminRole.WithContext(ctx),
-		VideoApp:                            q.VideoApp.WithContext(ctx),
-		VideoBanner:                         q.VideoBanner.WithContext(ctx),
-		VideoBannerApp:                      q.VideoBannerApp.WithContext(ctx),
-		VideoBannerCountry:                  q.VideoBannerCountry.WithContext(ctx),
-		VideoBannerDisplayPosition:          q.VideoBannerDisplayPosition.WithContext(ctx),
-		VideoChannel:                        q.VideoChannel.WithContext(ctx),
-		VideoConfig:                         q.VideoConfig.WithContext(ctx),
-		VideoCountry:                        q.VideoCountry.WithContext(ctx),
-		VideoDelayConfig:                    q.VideoDelayConfig.WithContext(ctx),
-		VideoDisplayPosition:                q.VideoDisplayPosition.WithContext(ctx),
-		VideoMenu:                           q.VideoMenu.WithContext(ctx),
-		VideoMenuAPI:                        q.VideoMenuAPI.WithContext(ctx),
-		VideoOperationLog:                   q.VideoOperationLog.WithContext(ctx),
-		VideoOrder:                          q.VideoOrder.WithContext(ctx),
-		VideoPackage:                        q.VideoPackage.WithContext(ctx),
-		VideoPackageVersion:                 q.VideoPackageVersion.WithContext(ctx),
-		VideoPointsPackage:                  q.VideoPointsPackage.WithContext(ctx),
-		VideoPointsPackageChannel:           q.VideoPointsPackageChannel.WithContext(ctx),
-		VideoPointsPackagePackage:           q.VideoPointsPackagePackage.WithContext(ctx),
-		VideoRole:                           q.VideoRole.WithContext(ctx),
-		VideoRoleMenu:                       q.VideoRoleMenu.WithContext(ctx),
-		VideoTemplate:                       q.VideoTemplate.WithContext(ctx),
-		VideoTemplateDisplayConfig:          q.VideoTemplateDisplayConfig.WithContext(ctx),
-		VideoTemplateType:                   q.VideoTemplateType.WithContext(ctx),
-		VideoTemplateTypeApp:                q.VideoTemplateTypeApp.WithContext(ctx),
-		VideoTemplateTypeCountry:            q.VideoTemplateTypeCountry.WithContext(ctx),
-		VideoTemplateTypeDisplayPosition:    q.VideoTemplateTypeDisplayPosition.WithContext(ctx),
-		VideoUpload:                         q.VideoUpload.WithContext(ctx),
-		VideoUser:                           q.VideoUser.WithContext(ctx),
-		VideoUserAttribution:                q.VideoUserAttribution.WithContext(ctx),
-		VideoUserIdentity:                   q.VideoUserIdentity.WithContext(ctx),
-		VideoUserPointsLedger:               q.VideoUserPointsLedger.WithContext(ctx),
-		VideoUserTemplateFavorite:           q.VideoUserTemplateFavorite.WithContext(ctx),
-		VideoVipSubscription:                q.VideoVipSubscription.WithContext(ctx),
-		VideoVipSubscriptionChannel:         q.VideoVipSubscriptionChannel.WithContext(ctx),
-		VideoVipSubscriptionExcludedChannel: q.VideoVipSubscriptionExcludedChannel.WithContext(ctx),
-		VideoVipSubscriptionPackage:         q.VideoVipSubscriptionPackage.WithContext(ctx),
-		VideoVipSubscriptionPosition:        q.VideoVipSubscriptionPosition.WithContext(ctx),
+		CasbinRule:                       q.CasbinRule.WithContext(ctx),
+		VideoAPI:                         q.VideoAPI.WithContext(ctx),
+		VideoAdmin:                       q.VideoAdmin.WithContext(ctx),
+		VideoAdminRole:                   q.VideoAdminRole.WithContext(ctx),
+		VideoAiModel:                     q.VideoAiModel.WithContext(ctx),
+		VideoApp:                         q.VideoApp.WithContext(ctx),
+		VideoBanner:                      q.VideoBanner.WithContext(ctx),
+		VideoBannerApp:                   q.VideoBannerApp.WithContext(ctx),
+		VideoBannerCountry:               q.VideoBannerCountry.WithContext(ctx),
+		VideoBannerPackage:               q.VideoBannerPackage.WithContext(ctx),
+		VideoBannerPlacementAssociation:  q.VideoBannerPlacementAssociation.WithContext(ctx),
+		VideoBannerVersion:               q.VideoBannerVersion.WithContext(ctx),
+		VideoChannel:                     q.VideoChannel.WithContext(ctx),
+		VideoConfig:                      q.VideoConfig.WithContext(ctx),
+		VideoCountry:                     q.VideoCountry.WithContext(ctx),
+		VideoDelayConfig:                 q.VideoDelayConfig.WithContext(ctx),
+		VideoDisplayPosition:             q.VideoDisplayPosition.WithContext(ctx),
+		VideoGenerationTask:              q.VideoGenerationTask.WithContext(ctx),
+		VideoMenu:                        q.VideoMenu.WithContext(ctx),
+		VideoMenuAPI:                     q.VideoMenuAPI.WithContext(ctx),
+		VideoOperationLog:                q.VideoOperationLog.WithContext(ctx),
+		VideoOrder:                       q.VideoOrder.WithContext(ctx),
+		VideoPackage:                     q.VideoPackage.WithContext(ctx),
+		VideoPackageVersion:              q.VideoPackageVersion.WithContext(ctx),
+		VideoPointsPackage:               q.VideoPointsPackage.WithContext(ctx),
+		VideoPointsPackageChannel:        q.VideoPointsPackageChannel.WithContext(ctx),
+		VideoPointsPackagePackage:        q.VideoPointsPackagePackage.WithContext(ctx),
+		VideoRole:                        q.VideoRole.WithContext(ctx),
+		VideoRoleMenu:                    q.VideoRoleMenu.WithContext(ctx),
+		VideoTemplate:                    q.VideoTemplate.WithContext(ctx),
+		VideoTemplatePlacement:           q.VideoTemplatePlacement.WithContext(ctx),
+		VideoTemplatePlacementConfig:     q.VideoTemplatePlacementConfig.WithContext(ctx),
+		VideoTemplateType:                q.VideoTemplateType.WithContext(ctx),
+		VideoTemplateTypeApp:             q.VideoTemplateTypeApp.WithContext(ctx),
+		VideoTemplateTypeCountry:         q.VideoTemplateTypeCountry.WithContext(ctx),
+		VideoTemplateTypeDisplayPosition: q.VideoTemplateTypeDisplayPosition.WithContext(ctx),
+		VideoTemplateTypePackage:         q.VideoTemplateTypePackage.WithContext(ctx),
+		VideoTemplateTypeVersion:         q.VideoTemplateTypeVersion.WithContext(ctx),
+		VideoUpload:                      q.VideoUpload.WithContext(ctx),
+		VideoUser:                        q.VideoUser.WithContext(ctx),
+		VideoUserAttribution:             q.VideoUserAttribution.WithContext(ctx),
+		VideoUserIdentity:                q.VideoUserIdentity.WithContext(ctx),
+		VideoUserPointsLedger:            q.VideoUserPointsLedger.WithContext(ctx),
+		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.WithContext(ctx),
+		VideoVipPlacement:                q.VideoVipPlacement.WithContext(ctx),
+		VideoVipSubscription:             q.VideoVipSubscription.WithContext(ctx),
+		VideoVipSubscriptionApp:          q.VideoVipSubscriptionApp.WithContext(ctx),
+		VideoVipSubscriptionCountry:      q.VideoVipSubscriptionCountry.WithContext(ctx),
+		VideoVipSubscriptionLevel:        q.VideoVipSubscriptionLevel.WithContext(ctx),
+		VideoVipSubscriptionPackage:      q.VideoVipSubscriptionPackage.WithContext(ctx),
+		VideoVipSubscriptionVersion:      q.VideoVipSubscriptionVersion.WithContext(ctx),
 	}
 }
 

@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"ai-video/internal/gen/model"
+
+	"gorm.io/gen/field"
 )
 
 type VideoAppRepo struct{ BaseRepo[model.VideoApp] }
@@ -18,40 +20,46 @@ type VideoAppListFilter struct {
 }
 
 func (r *VideoAppRepo) PageList(ctx context.Context, page, pageSize int, filter *VideoAppListFilter) ([]model.VideoApp, int64, error) {
-	options := &QueryOptions{Order: []string{"sort ASC", "id DESC"}}
+	q := qFrom(ctx).VideoApp
+	dao := q.WithContext(ctx)
 	if filter != nil {
-		options.Where = make(map[string]interface{})
 		if filter.AppCode != "" {
-			options.Where["app_code"] = filter.AppCode
+			dao = dao.Where(q.AppCode.Eq(filter.AppCode))
 		}
 		if filter.Status != nil {
-			options.Where["status"] = *filter.Status
+			dao = dao.Where(q.Status.Eq(uint8(*filter.Status)))
 		}
 		if keyword := strings.TrimSpace(filter.Keyword); keyword != "" {
 			value := "%" + keyword + "%"
-			options.Conds = append(options.Conds, Cond{
-				Query: "name LIKE ? OR app_code LIKE ? OR description LIKE ?",
-				Args:  []interface{}{value, value, value},
-			})
+			dao = dao.Where(field.Or(q.Name.Like(value), q.AppCode.Like(value), q.Description.Like(value)))
 		}
 	}
-	return r.BaseRepo.PageList(ctx, page, pageSize, options)
+	total, err := dao.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	return valuesOf(rows), total, err
 }
 
-func (r *VideoAppRepo) GetByAppCode(ctx context.Context, appCode string) (*model.VideoApp, error) {
-	return r.BaseRepo.GetOne(ctx, &QueryOptions{Where: map[string]interface{}{"app_code": appCode}})
+func (r *VideoAppRepo) GetByAppCode(ctx context.Context, appID uint64) (*model.VideoApp, error) {
+	q := qFrom(ctx).VideoApp
+	return q.WithContext(ctx).Where(q.ID.Eq(appID)).First()
 }
 
 func (r *VideoAppRepo) ListOptions(ctx context.Context) ([]model.VideoApp, error) {
-	return r.BaseRepo.List(ctx, &QueryOptions{Order: []string{"sort ASC", "id ASC"}})
+	q := qFrom(ctx).VideoApp
+	rows, err := q.WithContext(ctx).Order(q.Sort.Asc(), q.ID.Asc()).Find()
+	return valuesOf(rows), err
 }
 
 func (r *VideoAppRepo) PackageCount(ctx context.Context, appCode string) (int64, error) {
-	var count int64
-	err := dbFrom(ctx).Model(&model.VideoPackage{}).Where("app_code = ?", appCode).Count(&count).Error
-	return count, err
+	q := qFrom(ctx).VideoPackage
+	return q.WithContext(ctx).Where(q.AppCode.Eq(appCode)).Count()
 }
 
 func (r *VideoAppRepo) UpdateFields(ctx context.Context, app *model.VideoApp) error {
-	return r.BaseRepo.Update(ctx, app, "Name", "AppCode", "Status", "Sort", "Description")
+	q := qFrom(ctx).VideoApp
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(app.ID)).Select(q.Name, q.AppCode, q.Status, q.Sort, q.Description).Updates(app)
+	return err
 }

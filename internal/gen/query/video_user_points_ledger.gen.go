@@ -49,6 +49,11 @@ func newVideoUserPointsLedger(db *gorm.DB, opts ...gen.DOOption) videoUserPoints
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("User", "model.VideoUser"),
+		Channel: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.Channel", "model.VideoChannel"),
+		},
 	}
 
 	_videoUserPointsLedger.PointsPackage = videoUserPointsLedgerBelongsToPointsPackage{
@@ -188,6 +193,10 @@ type videoUserPointsLedgerBelongsToUser struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	Channel struct {
+		field.RelationField
+	}
 }
 
 func (a videoUserPointsLedgerBelongsToUser) Where(conds ...field.Expr) *videoUserPointsLedgerBelongsToUser {

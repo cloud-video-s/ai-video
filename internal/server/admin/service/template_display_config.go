@@ -33,14 +33,14 @@ type ListTemplateDisplayConfigRequest struct {
 }
 
 type TemplateDisplayConfigPayload struct {
-	TemplateID  uint64 `json:"template_id" binding:"required"`
-	PositionKey string `json:"position_key" binding:"required,max=64"`
-	Sort        int    `json:"sort"`
-	Status      int8   `json:"status" binding:"oneof=0 1"`
-	Description string `json:"description" binding:"max=500"`
+	TemplateID   uint64 `json:"template_id" binding:"required"`
+	PlacementKey string `json:"placement_key" binding:"required,max=64"`
+	Sort         int    `json:"sort"`
+	Status       int8   `json:"status" binding:"oneof=0 1"`
+	Description  string `json:"description" binding:"max=500"`
 }
 
-func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize int, req *ListTemplateDisplayConfigRequest) ([]model.VideoTemplateDisplayConfig, int64, error) {
+func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize int, req *ListTemplateDisplayConfigRequest) ([]model.VideoTemplatePlacementConfig, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateDisplayConfigListFilter{
 		TemplateID: req.TemplateID, VideoTemplateTypeID: req.VideoTemplateTypeID,
 		PositionKey: strings.TrimSpace(req.PositionKey), Status: req.Status,
@@ -48,7 +48,7 @@ func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize 
 	})
 }
 
-func (s *TemplateDisplayConfigService) GetByID(ctx context.Context, id uint64) (*model.VideoTemplateDisplayConfig, error) {
+func (s *TemplateDisplayConfigService) GetByID(ctx context.Context, id uint64) (*model.VideoTemplatePlacementConfig, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "模板展示配置不存在")
@@ -56,11 +56,11 @@ func (s *TemplateDisplayConfigService) GetByID(ctx context.Context, id uint64) (
 	return item, nil
 }
 
-func (s *TemplateDisplayConfigService) Create(ctx context.Context, req *TemplateDisplayConfigPayload) (*model.VideoTemplateDisplayConfig, error) {
+func (s *TemplateDisplayConfigService) Create(ctx context.Context, req *TemplateDisplayConfigPayload) (*model.VideoTemplatePlacementConfig, error) {
 	if err := s.prepare(ctx, req, 0); err != nil {
 		return nil, err
 	}
-	item := &model.VideoTemplateDisplayConfig{}
+	item := &model.VideoTemplatePlacementConfig{}
 	applyTemplateDisplayConfigPayload(item, req)
 	if err := s.repo.Create(ctx, item); err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
@@ -71,7 +71,7 @@ func (s *TemplateDisplayConfigService) Create(ctx context.Context, req *Template
 	return s.repo.GetDetail(ctx, item.ID)
 }
 
-func (s *TemplateDisplayConfigService) Update(ctx context.Context, id uint64, req *TemplateDisplayConfigPayload) (*model.VideoTemplateDisplayConfig, error) {
+func (s *TemplateDisplayConfigService) Update(ctx context.Context, id uint64, req *TemplateDisplayConfigPayload) (*model.VideoTemplatePlacementConfig, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "模板展示配置不存在")
@@ -100,19 +100,19 @@ func (s *TemplateDisplayConfigService) Delete(ctx context.Context, id uint64) er
 }
 
 func (s *TemplateDisplayConfigService) prepare(ctx context.Context, req *TemplateDisplayConfigPayload, currentID uint64) error {
-	req.PositionKey = strings.TrimSpace(req.PositionKey)
+	req.PlacementKey = strings.TrimSpace(req.PlacementKey)
 	req.Description = strings.TrimSpace(req.Description)
 	if _, err := s.templateRepo.GetWithType(ctx, req.TemplateID); err != nil {
 		return notFoundOr(err, "模板不存在")
 	}
-	position, err := s.positionRepo.GetByKey(ctx, req.PositionKey)
+	position, err := s.positionRepo.GetTemplatePlacementByKey(ctx, req.PlacementKey)
 	if err != nil {
 		return notFoundOr(err, "展示位置不存在")
 	}
 	if position.Status != 1 && req.Status == 1 {
 		return errors.New("展示位置已禁用，不能启用该配置")
 	}
-	exists, err := s.repo.PairExists(ctx, req.TemplateID, req.PositionKey, currentID)
+	exists, err := s.repo.PairExists(ctx, req.TemplateID, req.PlacementKey, currentID)
 	if err != nil {
 		return err
 	}
@@ -122,10 +122,10 @@ func (s *TemplateDisplayConfigService) prepare(ctx context.Context, req *Templat
 	return nil
 }
 
-func applyTemplateDisplayConfigPayload(item *model.VideoTemplateDisplayConfig, req *TemplateDisplayConfigPayload) {
+func applyTemplateDisplayConfigPayload(item *model.VideoTemplatePlacementConfig, req *TemplateDisplayConfigPayload) {
 	item.TemplateID = req.TemplateID
-	//item.DisplayPositionKey = req.PositionKey
-	//item.Sort = req.Sort
-	//item.Status = req.Status
-	//item.Remark = req.Description
+	item.PlacementKey = req.PlacementKey
+	item.Sort = uint(req.Sort)
+	item.Status = uint8(req.Status)
+	item.Description = req.Description
 }

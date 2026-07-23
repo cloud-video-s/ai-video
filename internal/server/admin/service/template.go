@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -44,9 +45,7 @@ type ListTemplateTypeRequest struct {
 // TemplateTypeAppRulePayload 描述分类可投放的精确 APP、包与版本组合。
 // app_rules 为空表示全部 APP/包/版本，不向关系表写入默认数据。
 type TemplateTypeAppRulePayload struct {
-	AppCode     string `json:"app_code" binding:"required,max=50"`
-	PackageCode string `json:"package_code" binding:"required,max=50"`
-	VersionCode string `json:"version_code" binding:"required,max=50"`
+	AppID uint64 `json:"app_id" binding:"required,max=50"`
 }
 
 type TemplateTypePayload struct {
@@ -138,8 +137,10 @@ func applyTemplateTypePayload(item *model.VideoTemplateType, req *TemplateTypePa
 	item.Sort = req.Sort
 	item.Status = req.Status
 	item.Description = strings.TrimSpace(req.Description)
-	//item.UserTypes = append([]int(nil), req.UserTypes...)
-	//item.SubscriptionStatuses = append([]string(nil), req.SubscriptionStatuses...)
+	userTypes, _ := json.Marshal(req.UserTypes)
+	subscriptionStatuses, _ := json.Marshal(req.SubscriptionStatuses)
+	item.UserTypes = string(userTypes)
+	item.SubscriptionStatuses = string(subscriptionStatuses)
 }
 
 // prepareTargets 校验分类关系并统一去重。三个关系数组为空都表示“全部”。
@@ -169,43 +170,14 @@ func (s *TemplateTypeService) prepareTargets(ctx context.Context, req *TemplateT
 		}
 	}
 	normalizedRules := make([]TemplateTypeAppRulePayload, 0, len(req.AppRules))
-	seenRules := make(map[string]struct{}, len(req.AppRules))
 	for _, rule := range req.AppRules {
-		rule.AppCode = strings.TrimSpace(rule.AppCode)
-		rule.PackageCode = strings.TrimSpace(rule.PackageCode)
-		rule.VersionCode = strings.TrimSpace(rule.VersionCode)
-		if rule.AppCode == "" || rule.PackageCode == "" || rule.VersionCode == "" {
-			return errors.New("APP、安装包和版本均不能为空")
-		}
-		key := rule.AppCode + "\x00" + rule.PackageCode + "\x00" + rule.VersionCode
-		if _, exists := seenRules[key]; exists {
-			continue
-		}
-		app, lookupErr := s.appRepo.GetByAppCode(ctx, rule.AppCode)
+		app, lookupErr := s.appRepo.GetByAppCode(ctx, rule.AppID)
 		if lookupErr != nil {
 			return notFoundOr(lookupErr, "APP 不存在")
 		}
 		if app.Status != 1 {
 			return errors.New("所选 APP 中包含已禁用项")
 		}
-		appPackage, lookupErr := s.packageRepo.GetByCode(ctx, rule.PackageCode)
-		if lookupErr != nil {
-			return notFoundOr(lookupErr, "安装包不存在")
-		}
-		if appPackage.Status != 1 {
-			return errors.New("所选安装包中包含已禁用项")
-		}
-		if appPackage.AppCode != rule.AppCode {
-			return errors.New("安装包不属于所选 APP")
-		}
-		version, lookupErr := s.versionRepo.GetByPackageVersion(ctx, rule.PackageCode, rule.VersionCode)
-		if lookupErr != nil {
-			return notFoundOr(lookupErr, "安装包版本不存在")
-		}
-		if version.Status != 1 {
-			return errors.New("所选安装包版本中包含已禁用项")
-		}
-		seenRules[key] = struct{}{}
 		normalizedRules = append(normalizedRules, rule)
 	}
 	req.AppRules = normalizedRules
@@ -226,7 +198,7 @@ func templateTypeTargetIDs(req *TemplateTypePayload) repository.TemplateTypeTarg
 			rules := make([]repository.TemplateTypeAppRule, 0, len(req.AppRules))
 			for _, rule := range req.AppRules {
 				rules = append(rules, repository.TemplateTypeAppRule{
-					AppCode: rule.AppCode, PackageCode: rule.PackageCode, VersionCode: rule.VersionCode,
+					AppID: rule.AppID,
 				})
 			}
 			return rules
@@ -291,8 +263,7 @@ func (s *TemplateService) List(ctx context.Context, page, pageSize int, req *Lis
 	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateListFilter{
 		VideoTemplateTypeID: req.VideoTemplateTypeID,
 		PositionKey:         strings.TrimSpace(req.PositionKey),
-		UserType:            req.UserType, SubscriptionStatus: req.SubscriptionStatus,
-		TemplateType: strings.TrimSpace(req.TemplateType), Status: req.Status,
+		TemplateType:        strings.TrimSpace(req.TemplateType), Status: req.Status,
 		Keyword: strings.TrimSpace(req.Keyword),
 	})
 }

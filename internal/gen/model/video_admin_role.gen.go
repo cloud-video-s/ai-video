@@ -20,8 +20,6 @@ type VideoAdminRole struct {
 	CreatedAt    time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
 	UpdatedAt    time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
-	Admin        VideoAdmin     `gorm:"foreignKey:VideoAdminID;references:ID" json:"admin"`
-	Role         VideoRole      `gorm:"foreignKey:VideoRoleID;references:ID" json:"role"`
 }
 
 // TableName VideoAdminRole's table name

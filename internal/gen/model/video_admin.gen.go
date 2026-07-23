@@ -26,7 +26,7 @@ type VideoAdmin struct {
 	CreatedAt    time.Time      `gorm:"column:created_at;type:datetime(3);not null;index:idx_sys_user_created_at,priority:1;index:idx_video_admin_created_at,priority:1;index:idx_video_user_created_at,priority:1" json:"created_at"`
 	UpdatedAt    time.Time      `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_sys_user_deleted_at,priority:1;index:idx_video_admin_deleted_at,priority:1;index:idx_video_user_deleted_at,priority:1" json:"deleted_at"`
-	Roles        []*VideoRole   `gorm:"References:ID;foreignKey:ID;joinForeignKey:VideoAdminId;joinReferences:VideoRoleId;many2many:video_admin_role" json:"roles"`
+	Roles        []VideoRole    `gorm:"foreignKey:ID;joinForeignKey:VideoAdminID;joinReferences:VideoRoleID;many2many:video_admin_role;references:ID" json:"roles"`
 }
 
 // TableName VideoAdmin's table name

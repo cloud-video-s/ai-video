@@ -28,6 +28,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	authHandler := handler.NewAuthHandler()
 	bannerHandler := handler.NewBannerHandler()
 	templateHandler := handler.NewTemplateHandler()
+	generationHandler := handler.NewGenerationHandler()
 	vipHandler := handler.NewVipHandler()
 	paymentHandler := handler.NewPaymentHandler()
 	uploadConfig, err := uploadruntime.ManagerConfig()
@@ -72,13 +73,25 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 
 		templates := authenticated.Group("/templates")
 		{
-			templates.GET("/recommend", templateHandler.Recommend)
-			templates.GET("/by-position", templateHandler.ByPosition)
-			templates.GET("/list", templateHandler.List)
 			templates.GET("/categories", templateHandler.Categories)
-			templates.GET("/category_template_list", templateHandler.CategoryTemplateList)
+			templates.GET("/recommend", templateHandler.Recommend)
+
+			templates.GET("/list", templateHandler.List)
+			templates.GET("/template_list", templateHandler.TemplateList)
+			templates.GET("/template_info", templateHandler.TemplateInfo)
+
 			templates.POST("/:id/favorite", templateHandler.Favorite)
 			templates.DELETE("/:id/favorite", templateHandler.Unfavorite)
+		}
+
+		generationTasks := authenticated.Group("/generation")
+		{
+			generationTasks.GET("/models", generationHandler.Models)
+			generationTasks.POST("/tasks", generationHandler.Create)
+			generationTasks.GET("/tasks", generationHandler.List)
+			generationTasks.GET("/tasks/:id", generationHandler.Get)
+			generationTasks.GET("/tasks/:id/events", generationHandler.Events)
+			generationTasks.DELETE("/tasks/:id", generationHandler.Delete)
 		}
 
 		vip := authenticated.Group("/vip")

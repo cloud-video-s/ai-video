@@ -8,6 +8,7 @@ import (
 	"ai-video/internal/gen/model"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gen/field"
 )
 
 type ChannelRepo struct {
@@ -15,25 +16,26 @@ type ChannelRepo struct {
 }
 
 func (r *ChannelRepo) ResolveEnabledTargets(ctx *gin.Context, codeOrID, deliveryPackage string) ([]model.VideoChannel, error) {
-	db := dbFrom(ctx).Model(&model.VideoChannel{}).Where("status = ?", 1)
+	q := qFrom(ctx).VideoChannel
+	dao := q.WithContext(ctx).Where(q.Status.Eq(1))
 	if value := strings.TrimSpace(codeOrID); value != "" {
 		if id, err := strconv.ParseUint(value, 10, 64); err == nil && id > 0 {
-			db = db.Where("channel_id = ?", id)
+			dao = dao.Where(q.ChannelID.Eq(id))
 		} else {
-			db = db.Where("channel_code = ?", value)
+			dao = dao.Where(q.ChannelCode.Eq(value))
 		}
 	}
 	if value := strings.TrimSpace(deliveryPackage); value != "" {
-		db = db.Where("delivery_package = ?", value)
+		dao = dao.Where(q.DeliveryPackage.Eq(value))
 	}
 	if strings.TrimSpace(codeOrID) == "" && strings.TrimSpace(deliveryPackage) == "" {
 		return []model.VideoChannel{}, nil
 	}
-	var list []model.VideoChannel
-	if err := db.Order("channel_id ASC").Find(&list).Error; err != nil {
+	rows, err := dao.Order(q.ChannelID.Asc()).Find()
+	if err != nil {
 		return nil, err
 	}
-	return list, nil
+	return valuesOf(rows), nil
 }
 
 func NewChannelRepo() *ChannelRepo {
@@ -48,42 +50,49 @@ type ChannelListFilter struct {
 }
 
 func (r *ChannelRepo) PageList(ctx context.Context, page, pageSize int, filter *ChannelListFilter) ([]model.VideoChannel, int64, error) {
-	q := &QueryOptions{Where: map[string]interface{}{}, Order: []string{"channel_id DESC"}}
+	q := qFrom(ctx).VideoChannel
+	dao := q.WithContext(ctx)
 	if filter != nil {
 		if filter.AdPlatform != "" {
-			q.Where["ad_platform"] = filter.AdPlatform
+			dao = dao.Where(q.AdPlatform.Eq(filter.AdPlatform))
 		}
 		if filter.UploadMethod != "" {
-			q.Where["upload_method"] = filter.UploadMethod
+			dao = dao.Where(q.UploadMethod.Eq(filter.UploadMethod))
 		}
 		if filter.Status != nil {
-			q.Where["status"] = *filter.Status
+			dao = dao.Where(q.Status.Eq(*filter.Status))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			q.Conds = append(q.Conds, Cond{
-				Query: "channel_code LIKE ? OR channel_name LIKE ? OR agency_company LIKE ? OR delivery_package LIKE ?",
-				Args:  []interface{}{keyword, keyword, keyword, keyword},
-			})
+			dao = dao.Where(field.Or(
+				q.ChannelCode.Like(keyword), q.ChannelName.Like(keyword),
+				q.AgencyCompany.Like(keyword), q.DeliveryPackage.Like(keyword),
+			))
 		}
 	}
-	return r.BaseRepo.PageList(ctx, page, pageSize, q)
+	total, err := dao.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, err := dao.Order(q.ChannelID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	return valuesOf(rows), total, err
 }
 
 func (r *ChannelRepo) ListOptions(ctx context.Context) ([]model.VideoChannel, error) {
-	return r.BaseRepo.List(ctx, &QueryOptions{
-		Where: map[string]interface{}{"status": int8(1)},
-		Order: []string{"channel_name ASC", "channel_id ASC"},
-	})
+	q := qFrom(ctx).VideoChannel
+	rows, err := q.WithContext(ctx).Where(q.Status.Eq(1)).Order(q.ChannelName.Asc(), q.ChannelID.Asc()).Find()
+	return valuesOf(rows), err
 }
 
 func (r *ChannelRepo) GetByCode(ctx context.Context, code string) (*model.VideoChannel, error) {
-	return r.BaseRepo.GetOne(ctx, &QueryOptions{Where: map[string]interface{}{"channel_code": code}})
+	q := qFrom(ctx).VideoChannel
+	return q.WithContext(ctx).Where(q.ChannelCode.Eq(code)).First()
 }
 
 func (r *ChannelRepo) GetByCodeOrID(ctx context.Context, value string) (*model.VideoChannel, error) {
 	if id, err := strconv.ParseUint(value, 10, 64); err == nil && id > 0 {
-		if item, getErr := r.GetByID(ctx, uint(id)); getErr == nil {
+		q := qFrom(ctx).VideoChannel
+		if item, getErr := q.WithContext(ctx).Where(q.ChannelID.Eq(id)).First(); getErr == nil {
 			return item, nil
 		}
 	}
@@ -91,19 +100,15 @@ func (r *ChannelRepo) GetByCodeOrID(ctx context.Context, value string) (*model.V
 }
 
 func (r *ChannelRepo) UpdateFields(ctx context.Context, item *model.VideoChannel) error {
-	return r.BaseRepo.Update(ctx, item,
-		"ChannelCode", "ChannelName", "AgencyCompany", "AdPlatform", "DeliveryPackage",
-		"TrackingURL", "PortRebate", "ServiceOrderFee", "UploadMethod", "Status",
-	)
+	q := qFrom(ctx).VideoChannel
+	_, err := q.WithContext(ctx).Where(q.ChannelID.Eq(item.ChannelID)).Select(
+		q.ChannelCode, q.ChannelName, q.AgencyCompany, q.AdPlatform, q.DeliveryPackage,
+		q.TrackingURL, q.PortRebate, q.ServiceOrderFee, q.UploadMethod, q.Status,
+	).Updates(item)
+	return err
 }
 
 func (r *ChannelRepo) TemplateCount(ctx context.Context, channelID uint64) (int64, error) {
-	var templateCount, typeCount int64
-	if err := dbFrom(ctx).Table("video_template_channel").Where("channel_id = ?", channelID).Count(&templateCount).Error; err != nil {
-		return 0, err
-	}
-	if err := dbFrom(ctx).Table("video_template_type_channel").Where("channel_id = ?", channelID).Count(&typeCount).Error; err != nil {
-		return 0, err
-	}
-	return templateCount + typeCount, nil
+	// 最新模板模型不再关联渠道。
+	return 0, nil
 }

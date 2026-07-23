@@ -2,25 +2,26 @@ package repository
 
 import (
 	"context"
-	"fmt"
 
 	"ai-video/internal/gen/model"
 
-	"gorm.io/gorm"
+	"gorm.io/gen/field"
 )
 
 type TemplateDisplayConfigRepo struct {
-	BaseRepo[model.VideoTemplateDisplayConfig]
+	BaseRepo[model.VideoTemplatePlacementConfig]
 }
 
 func NewTemplateDisplayConfigRepo() *TemplateDisplayConfigRepo {
 	return &TemplateDisplayConfigRepo{}
 }
 
-// Create selects Status explicitly so a deliberately disabled configuration
-// is not replaced by GORM's database default for the zero value.
-func (r *TemplateDisplayConfigRepo) Create(ctx context.Context, item *model.VideoTemplateDisplayConfig) error {
-	return dbFrom(ctx).Select("TemplateID", "DisplayPositionKey", "Sort", "Status", "Remark", "CreatedAt", "UpdatedAt").Create(item).Error
+// Create 显式写入 Status，确保 0 值不会被数据库默认值替换。
+func (r *TemplateDisplayConfigRepo) Create(ctx context.Context, item *model.VideoTemplatePlacementConfig) error {
+	q := qFrom(ctx).VideoTemplatePlacementConfig
+	return q.WithContext(ctx).Select(
+		q.TemplateID, q.PlacementKey, q.Sort, q.Status, q.Description, q.CreatedAt, q.UpdatedAt,
+	).Create(item)
 }
 
 type TemplateDisplayConfigListFilter struct {
@@ -31,135 +32,106 @@ type TemplateDisplayConfigListFilter struct {
 	Keyword             string
 }
 
-func (r *TemplateDisplayConfigRepo) PageList(ctx context.Context, page, pageSize int, filter *TemplateDisplayConfigListFilter) ([]model.VideoTemplateDisplayConfig, int64, error) {
-	buildQuery := func() *gorm.DB {
-		db := dbFrom(ctx).Model(&model.VideoTemplateDisplayConfig{})
-		if filter == nil {
-			return db
-		}
+func (r *TemplateDisplayConfigRepo) PageList(ctx context.Context, page, pageSize int, filter *TemplateDisplayConfigListFilter) ([]model.VideoTemplatePlacementConfig, int64, error) {
+	q := qFrom(ctx)
+	config := q.VideoTemplatePlacementConfig
+	template := q.VideoTemplate
+	placement := q.VideoTemplatePlacement
+	dao := config.WithContext(ctx).
+		LeftJoin(template, template.ID.EqCol(config.TemplateID)).
+		LeftJoin(placement, placement.PlacementKey.EqCol(config.PlacementKey))
+	if filter != nil {
 		if filter.TemplateID != 0 {
-			db = db.Where("template_id = ?", filter.TemplateID)
+			dao = dao.Where(config.TemplateID.Eq(filter.TemplateID))
 		}
 		if filter.VideoTemplateTypeID != 0 {
-			db = db.Where("EXISTS (SELECT 1 FROM video_template vt WHERE vt.id = video_template_display_config.template_id AND vt.video_template_type_id = ? AND vt.deleted_at IS NULL)", filter.VideoTemplateTypeID)
+			dao = dao.Where(template.VideoTemplateTypeID.Eq(filter.VideoTemplateTypeID))
 		}
 		if filter.PositionKey != "" {
-			db = db.Where("position_key = ?", filter.PositionKey)
+			dao = dao.Where(config.PlacementKey.Eq(filter.PositionKey))
 		}
 		if filter.Status != nil {
-			db = db.Where("status = ?", *filter.Status)
+			dao = dao.Where(config.Status.Eq(uint8(*filter.Status)))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			db = db.Where(`remark LIKE ? OR EXISTS (
-				SELECT 1 FROM video_template vt
-				WHERE vt.id = video_template_display_config.template_id
-					AND vt.deleted_at IS NULL AND vt.name LIKE ?
-			) OR EXISTS (
-				SELECT 1 FROM video_display_position vdp
-				WHERE vdp.position_key = video_template_display_config.position_key
-					AND vdp.deleted_at IS NULL AND (vdp.position_name LIKE ? OR vdp.position_key LIKE ?)
-			)`, keyword, keyword, keyword, keyword)
+			dao = dao.Where(field.Or(
+				config.Description.Like(keyword), template.Name.Like(keyword),
+				placement.PlacementName.Like(keyword), placement.PlacementKey.Like(keyword),
+			))
 		}
-		return db
 	}
-
-	var total int64
-	if err := buildQuery().Count(&total).Error; err != nil {
+	total, err := dao.Count()
+	if err != nil {
 		return nil, 0, err
 	}
-	var list []model.VideoTemplateDisplayConfig
-	err := preloadTemplateDisplayConfig(buildQuery()).
-		Order("sort DESC, id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error
-	return list, total, err
+	rows, err := dao.Preload(config.Template, config.Template.VideoTemplateType, config.Placement).
+		Order(config.Sort.Desc(), config.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	return valuesOf(rows), total, err
 }
 
-func (r *TemplateDisplayConfigRepo) GetDetail(ctx context.Context, id uint64) (*model.VideoTemplateDisplayConfig, error) {
-	var item model.VideoTemplateDisplayConfig
-	if err := preloadTemplateDisplayConfig(dbFrom(ctx)).First(&item, id).Error; err != nil {
-		return nil, err
-	}
-	return &item, nil
-}
-
-func preloadTemplateDisplayConfig(db *gorm.DB) *gorm.DB {
-	return db.Preload("Template.VideoTemplateType").Preload("DisplayPosition")
+func (r *TemplateDisplayConfigRepo) GetDetail(ctx context.Context, id uint64) (*model.VideoTemplatePlacementConfig, error) {
+	q := qFrom(ctx).VideoTemplatePlacementConfig
+	return q.WithContext(ctx).Preload(q.Template, q.Template.VideoTemplateType, q.Placement).
+		Where(q.ID.Eq(id)).First()
 }
 
 func (r *TemplateDisplayConfigRepo) PairExists(ctx context.Context, templateID uint64, positionKey string, excludeID uint64) (bool, error) {
-	db := dbFrom(ctx).Model(&model.VideoTemplateDisplayConfig{}).
-		Where("template_id = ? AND position_key = ?", templateID, positionKey)
+	q := qFrom(ctx).VideoTemplatePlacementConfig
+	dao := q.WithContext(ctx).Where(q.TemplateID.Eq(templateID), q.PlacementKey.Eq(positionKey))
 	if excludeID != 0 {
-		db = db.Where("id <> ?", excludeID)
+		dao = dao.Where(q.ID.Neq(excludeID))
 	}
-	var count int64
-	if err := db.Count(&count).Error; err != nil {
-		return false, err
-	}
-	return count > 0, nil
+	count, err := dao.Count()
+	return count > 0, err
 }
 
-func (r *TemplateDisplayConfigRepo) UpdateFields(ctx context.Context, item *model.VideoTemplateDisplayConfig) error {
-	return r.BaseRepo.Update(ctx, item, "TemplateID", "DisplayPositionKey", "Sort", "Status", "Remark")
+func (r *TemplateDisplayConfigRepo) UpdateFields(ctx context.Context, item *model.VideoTemplatePlacementConfig) error {
+	q := qFrom(ctx).VideoTemplatePlacementConfig
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID)).Select(
+		q.TemplateID, q.PlacementKey, q.Sort, q.Status, q.Description,
+	).Updates(item)
+	return err
 }
 
 type ClientTemplateDisplayTargets struct {
-	PositionKey       string
-	CountryID         uint64
-	AppCode           string
-	PackageCode       string
-	VersionCode       string
-	UserType          uint8
-	SubscriptionState string
+	PositionKey string
+	CountryCode string
+	AppCode     string
+	PackageCode string
+	VersionCode string
 }
 
-func (r *TemplateDisplayConfigRepo) ListForClient(ctx context.Context, targets ClientTemplateDisplayTargets) ([]model.VideoTemplateDisplayConfig, error) {
-	db := dbFrom(ctx).Model(&model.VideoTemplateDisplayConfig{}).
-		Joins("JOIN video_template vt ON vt.id = video_template_display_config.template_id AND vt.deleted_at IS NULL").
-		Joins("JOIN video_template_type vtt ON vtt.id = vt.video_template_type_id AND vtt.deleted_at IS NULL").
-		Joins("JOIN video_display_position vdp ON vdp.position_key = video_template_display_config.position_key AND vdp.deleted_at IS NULL").
-		Where("video_template_display_config.position_key = ?", targets.PositionKey).
-		Where("video_template_display_config.status = ? AND vt.status = ? AND vtt.status = ? AND vdp.status = ?", 1, 1, 1, 1)
-	db = db.Where(`(NOT EXISTS (
-		SELECT 1 FROM video_template_type_display_position all_positions
-		WHERE all_positions.template_type_id = vtt.id AND all_positions.deleted_at IS NULL
-	) OR EXISTS (
-		SELECT 1 FROM video_template_type_display_position vttdp
-		WHERE vttdp.template_type_id = vtt.id AND vttdp.position_key = ? AND vttdp.deleted_at IS NULL
-	))`, targets.PositionKey)
-
-	if targets.CountryID != 0 {
-		db = db.Where(`(NOT EXISTS (
-				SELECT 1 FROM video_template_type_country vttc WHERE vttc.template_type_id = vtt.id AND vttc.deleted_at IS NULL
-			) OR EXISTS (
-				SELECT 1 FROM video_template_type_country vttc JOIN video_country vc ON vc.code = vttc.country_code
-				WHERE vttc.template_type_id = vtt.id AND vc.id = ? AND vttc.deleted_at IS NULL
-			))`, targets.CountryID)
-	} else {
-		db = db.Where("NOT EXISTS (SELECT 1 FROM video_template_type_country vttc WHERE vttc.template_type_id = vtt.id AND vttc.deleted_at IS NULL)")
+func (r *TemplateDisplayConfigRepo) ListForClient(ctx context.Context, targets ClientTemplateDisplayTargets) ([]model.VideoTemplatePlacementConfig, error) {
+	// 分类的国家、展示位置和 APP/包/版本规则由 TemplateTypeRepo 统一解析。
+	types, err := NewTemplateTypeRepo().ListForClient(ctx, ClientTemplateTypeTargets{
+		PositionKey: targets.PositionKey, CountryCode: targets.CountryCode,
+		AppCode: targets.AppCode, PackageCode: targets.PackageCode, VersionCode: targets.VersionCode,
+	})
+	if err != nil {
+		return nil, err
 	}
-	db = db.Where(`(NOT EXISTS (
-		SELECT 1 FROM video_template_type_app vtta
-		WHERE vtta.template_type_id = vtt.id AND vtta.deleted_at IS NULL
-	) OR EXISTS (
-		SELECT 1 FROM video_template_type_app vtta
-		WHERE vtta.template_type_id = vtt.id AND vtta.deleted_at IS NULL
-			AND vtta.app_code = ? AND vtta.package_code = ? AND vtta.version_code = ?
-	))`, targets.AppCode, targets.PackageCode, targets.VersionCode)
-	if targets.UserType != 0 {
-		pattern := "%" + fmt.Sprint(targets.UserType) + "%"
-		db = db.Where("(COALESCE(vt.user_types, '') IN ('', 'null') OR vt.user_types LIKE ?)", pattern).
-			Where("(COALESCE(vtt.user_types, '') IN ('', 'null') OR vtt.user_types LIKE ?)", pattern)
+	if len(types) == 0 {
+		return []model.VideoTemplatePlacementConfig{}, nil
 	}
-	if targets.SubscriptionState != "" {
-		pattern := "%\"" + targets.SubscriptionState + "\"%"
-		db = db.Where("(COALESCE(vt.subscription_statuses, '') IN ('', 'null') OR vt.subscription_statuses LIKE ?)", pattern).
-			Where("(COALESCE(vtt.subscription_statuses, '') IN ('', 'null') OR vtt.subscription_statuses LIKE ?)", pattern)
+	typeIDs := make([]uint64, 0, len(types))
+	for i := range types {
+		typeIDs = append(typeIDs, types[i].ID)
 	}
 
-	var list []model.VideoTemplateDisplayConfig
-	err := db.Preload("Template").
-		Order("video_template_display_config.sort DESC, vt.sort DESC, vt.usage_count DESC, vt.favorite_count DESC, vt.view_count DESC, vt.id DESC").
-		Find(&list).Error
-	return list, err
+	q := qFrom(ctx)
+	config := q.VideoTemplatePlacementConfig
+	template := q.VideoTemplate
+	placement := q.VideoTemplatePlacement
+	rows, err := config.WithContext(ctx).
+		Join(template, template.ID.EqCol(config.TemplateID)).
+		Join(placement, placement.PlacementKey.EqCol(config.PlacementKey)).
+		Where(
+			config.PlacementKey.Eq(targets.PositionKey), config.Status.Eq(1),
+			template.Status.Eq(1), template.VideoTemplateTypeID.In(typeIDs...), placement.Status.Eq(1),
+		).
+		Preload(config.Template, config.Template.VideoTemplateType, config.Placement).
+		Order(config.Sort.Desc(), template.Sort.Desc(), template.UsageCount.Desc(),
+			template.LikeCount.Desc(), template.ViewCount.Desc(), template.ID.Desc()).Find()
+	return valuesOf(rows), err
 }

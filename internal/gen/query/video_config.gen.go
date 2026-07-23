@@ -35,7 +35,7 @@ func newVideoConfig(db *gorm.DB, opts ...gen.DOOption) videoConfig {
 	_videoConfig.Value = field.NewString(tableName, "value")
 	_videoConfig.Type = field.NewString(tableName, "type")
 	_videoConfig.Options = field.NewString(tableName, "options")
-	_videoConfig.IsPublic = field.NewInt8(tableName, "is_public")
+	_videoConfig.IsPublic = field.NewBool(tableName, "is_public")
 	_videoConfig.Editable = field.NewInt8(tableName, "editable")
 	_videoConfig.Builtin = field.NewInt8(tableName, "builtin")
 	_videoConfig.Sort = field.NewInt64(tableName, "sort")
@@ -61,7 +61,7 @@ type videoConfig struct {
 	Value     field.String // 值(统一字符串存储)
 	Type      field.String // string/int/bool/float/json/text/select/password/color
 	Options   field.String // select 选项或校验规则(JSON)
-	IsPublic  field.Int8   // 是否免鉴权可读
+	IsPublic  field.Bool   // 是否免鉴权可读
 	Editable  field.Int8   // 是否允许后台编辑
 	Builtin   field.Int8   // 内置(不可删除)
 	Sort      field.Int64
@@ -93,7 +93,7 @@ func (v *videoConfig) updateTableName(table string) *videoConfig {
 	v.Value = field.NewString(table, "value")
 	v.Type = field.NewString(table, "type")
 	v.Options = field.NewString(table, "options")
-	v.IsPublic = field.NewInt8(table, "is_public")
+	v.IsPublic = field.NewBool(table, "is_public")
 	v.Editable = field.NewInt8(table, "editable")
 	v.Builtin = field.NewInt8(table, "builtin")
 	v.Sort = field.NewInt64(table, "sort")

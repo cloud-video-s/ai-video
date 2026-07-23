@@ -34,17 +34,6 @@ func newVideoMenuAPI(db *gorm.DB, opts ...gen.DOOption) videoMenuAPI {
 	_videoMenuAPI.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoMenuAPI.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoMenuAPI.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoMenuAPI.Menu = videoMenuAPIBelongsToMenu{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("Menu", "model.VideoMenu"),
-	}
-
-	_videoMenuAPI.API = videoMenuAPIBelongsToAPI{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("API", "model.VideoAPI"),
-	}
 
 	_videoMenuAPI.fillFieldMap()
 
@@ -61,9 +50,6 @@ type videoMenuAPI struct {
 	CreatedAt   field.Time
 	UpdatedAt   field.Time
 	DeletedAt   field.Field
-	Menu        videoMenuAPIBelongsToMenu
-
-	API videoMenuAPIBelongsToAPI
 
 	fieldMap map[string]field.Expr
 }
@@ -114,192 +100,23 @@ func (v *videoMenuAPI) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (v *videoMenuAPI) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 8)
+	v.fieldMap = make(map[string]field.Expr, 6)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["video_menu_id"] = v.VideoMenuID
 	v.fieldMap["video_api_id"] = v.VideoAPIID
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-
 }
 
 func (v videoMenuAPI) clone(db *gorm.DB) videoMenuAPI {
 	v.videoMenuAPIDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.Menu.db = db.Session(&gorm.Session{Initialized: true})
-	v.Menu.db.Statement.ConnPool = db.Statement.ConnPool
-	v.API.db = db.Session(&gorm.Session{Initialized: true})
-	v.API.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoMenuAPI) replaceDB(db *gorm.DB) videoMenuAPI {
 	v.videoMenuAPIDo.ReplaceDB(db)
-	v.Menu.db = db.Session(&gorm.Session{})
-	v.API.db = db.Session(&gorm.Session{})
 	return v
-}
-
-type videoMenuAPIBelongsToMenu struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a videoMenuAPIBelongsToMenu) Where(conds ...field.Expr) *videoMenuAPIBelongsToMenu {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoMenuAPIBelongsToMenu) WithContext(ctx context.Context) *videoMenuAPIBelongsToMenu {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoMenuAPIBelongsToMenu) Session(session *gorm.Session) *videoMenuAPIBelongsToMenu {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoMenuAPIBelongsToMenu) Model(m *model.VideoMenuAPI) *videoMenuAPIBelongsToMenuTx {
-	return &videoMenuAPIBelongsToMenuTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoMenuAPIBelongsToMenu) Unscoped() *videoMenuAPIBelongsToMenu {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoMenuAPIBelongsToMenuTx struct{ tx *gorm.Association }
-
-func (a videoMenuAPIBelongsToMenuTx) Find() (result *model.VideoMenu, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoMenuAPIBelongsToMenuTx) Append(values ...*model.VideoMenu) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoMenuAPIBelongsToMenuTx) Replace(values ...*model.VideoMenu) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoMenuAPIBelongsToMenuTx) Delete(values ...*model.VideoMenu) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoMenuAPIBelongsToMenuTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoMenuAPIBelongsToMenuTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoMenuAPIBelongsToMenuTx) Unscoped() *videoMenuAPIBelongsToMenuTx {
-	a.tx = a.tx.Unscoped()
-	return &a
-}
-
-type videoMenuAPIBelongsToAPI struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a videoMenuAPIBelongsToAPI) Where(conds ...field.Expr) *videoMenuAPIBelongsToAPI {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoMenuAPIBelongsToAPI) WithContext(ctx context.Context) *videoMenuAPIBelongsToAPI {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoMenuAPIBelongsToAPI) Session(session *gorm.Session) *videoMenuAPIBelongsToAPI {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoMenuAPIBelongsToAPI) Model(m *model.VideoMenuAPI) *videoMenuAPIBelongsToAPITx {
-	return &videoMenuAPIBelongsToAPITx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoMenuAPIBelongsToAPI) Unscoped() *videoMenuAPIBelongsToAPI {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoMenuAPIBelongsToAPITx struct{ tx *gorm.Association }
-
-func (a videoMenuAPIBelongsToAPITx) Find() (result *model.VideoAPI, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoMenuAPIBelongsToAPITx) Append(values ...*model.VideoAPI) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoMenuAPIBelongsToAPITx) Replace(values ...*model.VideoAPI) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoMenuAPIBelongsToAPITx) Delete(values ...*model.VideoAPI) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoMenuAPIBelongsToAPITx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoMenuAPIBelongsToAPITx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoMenuAPIBelongsToAPITx) Unscoped() *videoMenuAPIBelongsToAPITx {
-	a.tx = a.tx.Unscoped()
-	return &a
 }
 
 type videoMenuAPIDo struct{ gen.DO }

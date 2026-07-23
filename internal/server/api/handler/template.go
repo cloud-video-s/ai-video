@@ -31,8 +31,7 @@ func (h *TemplateHandler) List(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	req.PositionKey = "homeCategory"
-	list, err := h.svc.List(c, middleware.GetAPIUserID(c), &req)
+	list, err := h.svc.List(c, &req)
 	if err != nil {
 		if errors.Is(err, apiservice.ErrClientTemplateAudienceMismatch) {
 			response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, err.Error())
@@ -51,7 +50,7 @@ func (h *TemplateHandler) Categories(c *gin.Context) {
 		return
 	}
 	req.PositionKey = "homeCategory"
-	list, err := h.svc.Categories(c, middleware.GetAPIUserID(c), &req)
+	list, err := h.svc.Categories(c, &req)
 	if err != nil {
 		if errors.Is(err, apiservice.ErrClientTemplateAudienceMismatch) {
 			response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, err.Error())
@@ -69,7 +68,7 @@ func (h *TemplateHandler) Recommend(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	list, err := h.svc.Recommend(c, middleware.GetAPIUserID(c), &req)
+	list, err := h.svc.Recommend(c, &req)
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
@@ -77,22 +76,8 @@ func (h *TemplateHandler) Recommend(c *gin.Context) {
 	response.OK(c, list)
 }
 
-func (h *TemplateHandler) ByPosition(c *gin.Context) {
-	var req apiservice.ClientTemplateDisplayRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
-		return
-	}
-	list, err := h.svc.ListByPosition(c, middleware.GetAPIUserID(c), &req)
-	if err != nil {
-		response.Fail(c, errcode.ErrServer, err.Error())
-		return
-	}
-	response.OK(c, list)
-}
-
-func (h *TemplateHandler) CategoryTemplateList(c *gin.Context) {
-	var req apiservice.CategoryTemplateListRequest
+func (h *TemplateHandler) TemplateList(c *gin.Context) {
+	var req apiservice.TemplateListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
@@ -103,6 +88,20 @@ func (h *TemplateHandler) CategoryTemplateList(c *gin.Context) {
 			response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, err.Error())
 			return
 		}
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, list)
+}
+
+func (h *TemplateHandler) TemplateInfo(c *gin.Context) {
+	var req apiservice.TemplateInfoRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
+	list, err := h.svc.ClientTemplateInfo(c, &req)
+	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}

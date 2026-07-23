@@ -13,7 +13,6 @@ import (
 
 	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/upload"
-	"ai-video/internal/repository"
 
 	"github.com/gin-gonic/gin"
 )
@@ -47,19 +46,19 @@ type responseExampleEnvelope struct {
 	Data    any    `json:"data"`
 }
 
-var delayConfigResponseExample = []repository.DelayConfigValue{
-	{Key: "OBPaymentCloseDely", Value: "5"},
-	{Key: "OBPaymentRetain", Value: "0"},
-	{Key: "HomePaymentBannerShow", Value: "0"},
-	{Key: "LaunchPaymentCloseDelay", Value: "5"},
-	{Key: "LaunchPaymentRetain", Value: "0"},
-	{Key: "BannerPaumentCloseDelay", Value: "5"},
-	{Key: "BannerPaymentCloseRetain", Value: "0"},
-	{Key: "PaymenCloseDelay", Value: "5"},
-	{Key: "PaymenCloseRetain", Value: "0"},
-	{Key: "FunctionPaymentCloseDelay", Value: "5"},
-	{Key: "FunctionPaymentCloseRetain", Value: "0"},
-	{Key: "FunctionUseLoging", Value: "0"},
+var delayConfigResponseExample = map[string]int64{
+	"OBPaymentCloseDely":         5,
+	"OBPaymentRetain":            0,
+	"HomePaymentBannerShow":      0,
+	"LaunchPaymentCloseDelay":    5,
+	"LaunchPaymentRetain":        0,
+	"BannerPaumentCloseDelay":    5,
+	"BannerPaymentCloseRetain":   0,
+	"PaymenCloseDelay":           5,
+	"PaymenCloseRetain":          0,
+	"FunctionPaymentCloseDelay":  5,
+	"FunctionPaymentCloseRetain": 0,
+	"FunctionUseLoging":          0,
 }
 
 var responseDataExamples = map[string]any{
@@ -81,13 +80,12 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/users/me":                                {response: typeOf[apiservice.UserResponse]()},
 	"PUT /api/users/me/country":                        {body: typeOf[apiservice.UpdateCountryRequest](), response: typeOf[apiservice.UserResponse]()},
 	"GET /api/users/me/identities":                     {response: typeOf[[]model.VideoUserIdentity]()},
-	"GET /api/ob_delay":                                {response: typeOf[[]repository.DelayConfigValue]()},
+	"GET /api/ob_delay":                                {response: typeOf[map[string]int64]()},
 	"GET /api/banners/list":                            {query: typeOf[apiservice.ClientBannerRequest](), response: typeOf[[]apiservice.ClientBanner]()},
 	"GET /api/templates/recommend":                     {query: typeOf[apiservice.ClientTemplateRecommendRequest](), response: typeOf[[]apiservice.ClientTemplate]()},
-	"GET /api/templates/by-position":                   {query: typeOf[apiservice.ClientTemplateDisplayRequest](), response: typeOf[[]apiservice.ClientTemplateDisplayItem]()},
 	"GET /api/templates/list":                          {query: typeOf[apiservice.ClientTemplateRequest](), response: typeOf[[]apiservice.ClientTemplateType]()},
 	"GET /api/templates/categories":                    {query: typeOf[apiservice.ClientTemplateRequest](), response: typeOf[[]apiservice.ClientTemplateType]()},
-	"GET /api/templates/category_template_list":        {query: typeOf[apiservice.CategoryTemplateListRequest](), response: typeOf[[]apiservice.ClientTemplate]()},
+	"GET /api/templates/template_list":                 {query: typeOf[apiservice.TemplateListRequest](), response: typeOf[[]apiservice.ClientTemplate]()},
 	"POST /api/templates/:id/favorite":                 {response: typeOf[apiservice.TemplateFavoriteResponse]()},
 	"DELETE /api/templates/:id/favorite":               {response: typeOf[apiservice.TemplateFavoriteResponse]()},
 	"GET /api/vip/recommend":                           {response: typeOf[map[string]any]()},
@@ -495,7 +493,9 @@ func schemaForType(valueType reflect.Type) map[string]any {
 		schema = map[string]any{"type": "integer", "format": "int64"}
 	case reflect.Float32, reflect.Float64:
 		schema = map[string]any{"type": "number", "format": "double"}
-	case reflect.Map, reflect.Interface:
+	case reflect.Map:
+		schema = map[string]any{"type": "object", "additionalProperties": schemaForType(valueType.Elem())}
+	case reflect.Interface:
 		schema = map[string]any{"type": "object", "additionalProperties": true}
 	default:
 		schema = map[string]any{"type": "string"}

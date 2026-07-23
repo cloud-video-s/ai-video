@@ -44,6 +44,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	pointsPackageHandler := handler.NewPointsPackageHandler()
 	userPointsLedgerHandler := handler.NewUserPointsLedgerHandler()
 	bannerHandler := handler.NewBannerHandler()
+	aiModelHandler := handler.NewAIModelHandler()
 	uploadConfig, err := uploadruntime.ManagerConfig()
 	if err != nil {
 		panic(err)
@@ -157,6 +158,13 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.PUT("/configs/:id", configHandler.Update)
 		auth.DELETE("/configs/:id", configHandler.Delete)
 		auth.POST("/configs/refresh", configHandler.Refresh)
+
+		// AI generation model configuration center
+		auth.GET("/ai-models", aiModelHandler.List)
+		auth.POST("/ai-models", aiModelHandler.Create)
+		auth.GET("/ai-models/:id", aiModelHandler.Get)
+		auth.PUT("/ai-models/:id", aiModelHandler.Update)
+		auth.DELETE("/ai-models/:id", aiModelHandler.Delete)
 
 		// OB delay configs
 		auth.GET("/delay-configs", delayConfigHandler.List)

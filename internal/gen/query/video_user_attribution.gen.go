@@ -56,6 +56,11 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("User", "model.VideoUser"),
+		Channel: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.Channel", "model.VideoChannel"),
+		},
 	}
 
 	_videoUserAttribution.Channel = videoUserAttributionBelongsToChannel{
@@ -216,6 +221,10 @@ type videoUserAttributionBelongsToUser struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	Channel struct {
+		field.RelationField
+	}
 }
 
 func (a videoUserAttributionBelongsToUser) Where(conds ...field.Expr) *videoUserAttributionBelongsToUser {

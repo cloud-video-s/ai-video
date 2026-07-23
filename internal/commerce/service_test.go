@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"ai-video/internal/app"
 	"ai-video/internal/config"
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
@@ -134,7 +133,27 @@ func commerceTestDB(t *testing.T) *gorm.DB {
 			id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, direction INTEGER NOT NULL,
 			points_change INTEGER NOT NULL, balance_before INTEGER NOT NULL, balance_after INTEGER NOT NULL,
 			source_type TEXT NOT NULL, business_id TEXT, points_package_id INTEGER, operator_admin_id INTEGER,
-			description TEXT, occurred_at DATETIME NOT NULL, created_at DATETIME NOT NULL
+			description TEXT, occurred_at DATETIME NOT NULL, created_at DATETIME NOT NULL,
+			order_id INTEGER, work_id TEXT, mode_key TEXT, idempotency_key TEXT UNIQUE
+		)`,
+		`CREATE TABLE video_order (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			order_no TEXT NOT NULL UNIQUE, client_request_id TEXT NOT NULL UNIQUE,
+			user_id INTEGER NOT NULL, product_type TEXT NOT NULL, product_id INTEGER NOT NULL,
+			product_code TEXT NOT NULL, product_name TEXT NOT NULL, currency TEXT NOT NULL,
+			product_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+			discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+			payable_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+			paid_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+			refunded_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+			bonus_points INTEGER NOT NULL DEFAULT 0, vip_level INTEGER NOT NULL DEFAULT 0,
+			vip_duration_days INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL,
+			payment_method TEXT NOT NULL, provider_transaction_id TEXT,
+			original_transaction_id TEXT, payment_evidence TEXT,
+			failure_code TEXT, failure_message TEXT, cancel_reason TEXT,
+			paid_at DATETIME, cancelled_at DATETIME, expires_at DATETIME,
+			created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL,
+			UNIQUE (payment_method, provider_transaction_id)
 		)`,
 		`INSERT INTO video_user (id) VALUES (1)`,
 		`INSERT INTO video_points_package (id, product_code, name, points, currency, sale_price, status)
@@ -147,9 +166,6 @@ func commerceTestDB(t *testing.T) *gorm.DB {
 		if err := db.Exec(statement).Error; err != nil {
 			t.Fatal(err)
 		}
-	}
-	if err := app.MigrateCommerceTables(db); err != nil {
-		t.Fatal(err)
 	}
 	return db
 }

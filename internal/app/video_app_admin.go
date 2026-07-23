@@ -9,13 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func MigrateVideoAppTable(db *gorm.DB) error {
-	if db == nil {
-		return nil
-	}
-	return db.AutoMigrate(&model.VideoApp{})
-}
-
 type videoAppAPISeed struct{ Path, Method, Description string }
 
 func SeedVideoAppAdmin() error {

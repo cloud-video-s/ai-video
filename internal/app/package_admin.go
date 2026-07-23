@@ -15,13 +15,6 @@ type packageAPISeed struct {
 	Description string
 }
 
-func MigratePackageTables(db *gorm.DB) error {
-	if db == nil {
-		return nil
-	}
-	return db.AutoMigrate(&model.VideoPackage{}, &model.VideoPackageVersion{})
-}
-
 // SeedPackageAdmin reconciles package-management APIs, menus and super-admin grants.
 func SeedPackageAdmin() error {
 	return config.DB.Transaction(func(tx *gorm.DB) error {

@@ -8,6 +8,7 @@ import (
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -25,159 +26,194 @@ type UserAttributionListFilter struct {
 	EndedAt     *time.Time
 }
 
-func (r *UserAttributionRepo) PageList(
-	ctx context.Context, page, pageSize int, filter *UserAttributionListFilter,
-) ([]model.VideoUserAttribution, int64, error) {
-	db := dbFrom(ctx).Model(&model.VideoUserAttribution{}).
-		Joins("JOIN video_user AS attribution_user ON attribution_user.id = video_user_attribution.user_id AND attribution_user.deleted_at IS NULL")
+func (r *UserAttributionRepo) PageList(ctx context.Context, page, pageSize int, filter *UserAttributionListFilter) ([]model.VideoUserAttribution, int64, error) {
+	q := qFrom(ctx)
+	attribution := q.VideoUserAttribution
+	user := q.VideoUser
+	dao := attribution.WithContext(ctx).Join(user, user.ID.EqCol(attribution.UserID))
 	if filter != nil {
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			db = db.Where(
-				"video_user_attribution.oaid LIKE ? OR video_user_attribution.imei LIKE ? OR "+
-					"video_user_attribution.android_id LIKE ? OR video_user_attribution.ip LIKE ? OR "+
-					"attribution_user.username LIKE ? OR attribution_user.imei LIKE ?",
-				keyword, keyword, keyword, keyword, keyword, keyword,
-			)
+			dao = dao.Where(field.Or(
+				attribution.OAID.Like(keyword), attribution.IMEI.Like(keyword),
+				attribution.AndroidID.Like(keyword), attribution.IP.Like(keyword),
+				user.Username.Like(keyword), user.IMEI.Like(keyword),
+			))
 		}
 		if filter.ChannelCode != "" {
-			db = db.Where(
-				"video_user_attribution.channel_code = ? OR (video_user_attribution.channel_code = '' AND attribution_user.channel_id = ?)",
-				filter.ChannelCode, filter.ChannelCode,
-			)
+			dao = dao.Where(field.Or(
+				attribution.ChannelCode.Eq(filter.ChannelCode),
+				field.And(attribution.ChannelCode.Eq(""), user.ChannelID.Eq(filter.ChannelCode)),
+			))
 		}
 		if filter.StartedAt != nil {
-			db = db.Where("video_user_attribution.attributed_at >= ?", *filter.StartedAt)
+			dao = dao.Where(attribution.AttributedAt.Gte(*filter.StartedAt))
 		}
 		if filter.EndedAt != nil {
-			db = db.Where("video_user_attribution.attributed_at <= ?", *filter.EndedAt)
+			dao = dao.Where(attribution.AttributedAt.Lte(*filter.EndedAt))
 		}
 		if filter.Reached != nil {
-			if column := reachedColumn(filter.Event); column != "" {
-				value := interface{}(*filter.Reached)
-				if filter.Event == domain.AttributionEventActivation || filter.Event == domain.AttributionEventKeyBehavior {
-					value = uint32(0)
-					if *filter.Reached {
-						value = uint32(1)
-					}
+			reached := *filter.Reached
+			switch strings.TrimSpace(filter.Event) {
+			case domain.AttributionEventActivation:
+				value := uint32(0)
+				if reached {
+					value = 1
 				}
-				db = db.Where("attribution_user."+column+" = ?", value)
+				dao = dao.Where(user.Activated.Eq(value))
+			case domain.AttributionEventKeyBehavior:
+				value := uint32(0)
+				if reached {
+					value = 1
+				}
+				dao = dao.Where(user.KeyBehaviorMet.Eq(value))
+			case domain.AttributionEventPayment:
+				dao = dao.Where(user.PaymentMet.Eq(reached))
+			case domain.AttributionEventFirstPayment:
+				dao = dao.Where(user.FirstPaymentMet.Eq(reached))
+			case domain.AttributionEventRegistration:
+				dao = dao.Where(user.Registered.Eq(reached))
 			}
 		}
 	}
-	var total int64
-	if err := db.Count(&total).Error; err != nil {
+	total, err := dao.Count()
+	if err != nil {
 		return nil, 0, err
 	}
-	var list []model.VideoUserAttribution
-	err := db.Select("video_user_attribution.*").Preload("User").
-		Order("video_user_attribution.id DESC").
-		Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error
-	return list, total, err
+	rows, err := dao.Select(attribution.ALL).Preload(attribution.User).
+		Order(attribution.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	return valuesOf(rows), total, err
 }
 
 func (r *UserAttributionRepo) GetByID(ctx context.Context, id uint64, lock bool) (*model.VideoUserAttribution, error) {
-	var item model.VideoUserAttribution
-	db := dbFrom(ctx).Preload("User")
+	q := qFrom(ctx).VideoUserAttribution
+	dao := q.WithContext(ctx).Preload(q.User).Where(q.ID.Eq(id))
 	if lock {
-		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
+		dao = dao.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
-	if err := db.First(&item, id).Error; err != nil {
-		return nil, err
-	}
-	return &item, nil
+	return dao.First()
 }
 
 func (r *UserAttributionRepo) GetByUserID(ctx context.Context, userID uint64) (*model.VideoUserAttribution, error) {
-	var item model.VideoUserAttribution
-	if err := dbFrom(ctx).Where("user_id = ?", userID).First(&item).Error; err != nil {
-		return nil, err
-	}
-	return &item, nil
+	q := qFrom(ctx).VideoUserAttribution
+	return q.WithContext(ctx).Where(q.UserID.Eq(userID)).First()
 }
 
 func (r *UserAttributionRepo) ClearDevice(ctx context.Context, userID uint64) error {
-	return dbFrom(ctx).Model(&model.VideoUserAttribution{}).Where("user_id = ?", userID).Updates(map[string]interface{}{
+	q := qFrom(ctx).VideoUserAttribution
+	_, err := q.WithContext(ctx).Where(q.UserID.Eq(userID)).Updates(map[string]interface{}{
 		"oaid": "", "imei": "", "android_id": "", "ip": "", "user_agent": "",
-	}).Error
+	})
+	return err
 }
 
 func (r *UserAttributionRepo) Update(ctx context.Context, item *model.VideoUserAttribution) error {
-	return dbFrom(ctx).Model(item).Select(
-		"ChannelCode", "OAID", "IMEI", "AndroidID", "IP", "UserAgent", "AttributedAt", "Remark",
-	).Updates(item).Error
+	q := qFrom(ctx).VideoUserAttribution
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID)).Select(
+		q.ChannelCode, q.OAID, q.IMEI, q.AndroidID, q.IP, q.UserAgent, q.AttributedAt, q.Remark,
+	).Updates(item)
+	return err
 }
 
-func (r *UserAttributionRepo) UpsertDevice(
-	ctx context.Context, userID uint64, updates map[string]interface{},
-) error {
+func (r *UserAttributionRepo) UpsertDevice(ctx context.Context, userID uint64, updates map[string]interface{}) error {
+	q := qFrom(ctx).VideoUserAttribution
 	row := model.VideoUserAttribution{UserID: userID}
-	if err := dbFrom(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "user_id"}},
-		DoNothing: true,
-	}).Create(&row).Error; err != nil {
+	if err := q.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "user_id"}}, DoNothing: true,
+	}).Create(&row); err != nil {
 		return err
 	}
 	if len(updates) == 0 {
 		return nil
 	}
-	return dbFrom(ctx).Model(&model.VideoUserAttribution{}).Where("user_id = ?", userID).Updates(updates).Error
+	_, err := q.WithContext(ctx).Where(q.UserID.Eq(userID)).Updates(updates)
+	return err
 }
 
-func (r *UserAttributionRepo) IncrementEvent(
-	ctx context.Context, id uint64, column string, now time.Time,
-) error {
-	allowed := map[string]bool{
-		"activation_callback_count": true, "activation_deduct_count": true,
-		"key_behavior_callback_count": true, "key_behavior_deduct_count": true,
-		"payment_callback_count": true, "payment_deduct_count": true,
-		"first_payment_callback_count": true, "first_payment_deduct_count": true,
-		"registration_callback_count": true, "registration_deduct_count": true,
-	}
-	if !allowed[column] {
+func (r *UserAttributionRepo) IncrementEvent(ctx context.Context, id uint64, column string, now time.Time) error {
+	q := qFrom(ctx).VideoUserAttribution
+	dao := q.WithContext(ctx).Where(q.ID.Eq(id))
+	var err error
+	switch column {
+	case "activation_callback_count":
+		_, err = dao.UpdateSimple(q.ActivationCallbackCount.Add(1), q.LastOperatedAt.Value(now))
+	case "activation_deduct_count":
+		_, err = dao.UpdateSimple(q.ActivationDeductCount.Add(1), q.LastOperatedAt.Value(now))
+	case "key_behavior_callback_count":
+		_, err = dao.UpdateSimple(q.KeyBehaviorCallbackCount.Add(1), q.LastOperatedAt.Value(now))
+	case "key_behavior_deduct_count":
+		_, err = dao.UpdateSimple(q.KeyBehaviorDeductCount.Add(1), q.LastOperatedAt.Value(now))
+	case "payment_callback_count":
+		_, err = dao.UpdateSimple(q.PaymentCallbackCount.Add(1), q.LastOperatedAt.Value(now))
+	case "payment_deduct_count":
+		_, err = dao.UpdateSimple(q.PaymentDeductCount.Add(1), q.LastOperatedAt.Value(now))
+	case "first_payment_callback_count":
+		_, err = dao.UpdateSimple(q.FirstPaymentCallbackCount.Add(1), q.LastOperatedAt.Value(now))
+	case "first_payment_deduct_count":
+		_, err = dao.UpdateSimple(q.FirstPaymentDeductCount.Add(1), q.LastOperatedAt.Value(now))
+	case "registration_callback_count":
+		_, err = dao.UpdateSimple(q.RegistrationCallbackCount.Add(1), q.LastOperatedAt.Value(now))
+	case "registration_deduct_count":
+		_, err = dao.UpdateSimple(q.RegistrationDeductCount.Add(1), q.LastOperatedAt.Value(now))
+	default:
 		return gorm.ErrInvalidField
 	}
-	return dbFrom(ctx).Model(&model.VideoUserAttribution{}).Where("id = ?", id).Updates(map[string]interface{}{
-		column:             gorm.Expr(column + " + 1"),
-		"last_operated_at": now,
-	}).Error
+	return err
 }
 
 func (r *UserAttributionRepo) SyncUsers(ctx context.Context) (int64, error) {
 	var total int64
 	var cursor uint64
 	for {
-		var users []model.VideoUser
-		err := dbFrom(ctx).Where(
-			"id > ? AND NOT EXISTS (SELECT 1 FROM video_user_attribution a WHERE a.user_id = video_user.id)",
-			cursor,
-		).Order("id ASC").Limit(500).Find(&users).Error
+		q := qFrom(ctx)
+		user := q.VideoUser
+		users, err := user.WithContext(ctx).Where(user.ID.Gt(cursor)).Order(user.ID.Asc()).Limit(500).Find()
 		if err != nil {
 			return total, err
 		}
 		if len(users) == 0 {
 			return total, nil
 		}
-		rows := make([]model.VideoUserAttribution, 0, len(users))
-		for i := range users {
-			attributedAt := users[i].AttributionClickedAt
-			if !attributedAt.IsZero() {
-				attributedAt = users[i].FirstOpenedAt
+		userIDs := make([]uint64, 0, len(users))
+		for _, item := range users {
+			userIDs = append(userIDs, item.ID)
+			cursor = item.ID
+		}
+		attribution := q.VideoUserAttribution
+		var existingIDs []uint64
+		if err := attribution.WithContext(ctx).Where(attribution.UserID.In(userIDs...)).
+			Pluck(attribution.UserID, &existingIDs); err != nil {
+			return total, err
+		}
+		existing := make(map[uint64]struct{}, len(existingIDs))
+		for _, id := range existingIDs {
+			existing[id] = struct{}{}
+		}
+		rows := make([]*model.VideoUserAttribution, 0, len(users))
+		for _, item := range users {
+			if _, ok := existing[item.ID]; ok {
+				continue
 			}
-			rows = append(rows, model.VideoUserAttribution{
-				UserID: users[i].ID, ChannelCode: users[i].ChannelID,
-				IMEI: users[i].DeviceCode, IP: users[i].LastLoginIP, AttributedAt: attributedAt,
+			attributedAt := item.AttributionClickedAt
+			if attributedAt.IsZero() {
+				attributedAt = item.FirstOpenedAt
+			}
+			rows = append(rows, &model.VideoUserAttribution{
+				UserID: item.ID, ChannelCode: item.ChannelID,
+				IMEI: item.DeviceCode, IP: item.LastLoginIP, AttributedAt: attributedAt,
 			})
-			cursor = users[i].ID
 		}
-		result := dbFrom(ctx).Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "user_id"}},
-			DoNothing: true,
-		}).CreateInBatches(&rows, 500)
-		if result.Error != nil {
-			return total, result.Error
+		if len(rows) == 0 {
+			continue
 		}
-		total += result.RowsAffected
+		for _, row := range rows {
+			if err := attribution.WithContext(ctx).Clauses(clause.OnConflict{
+				Columns: []clause.Column{{Name: "user_id"}}, DoNothing: true,
+			}).Create(row); err != nil {
+				return total, err
+			}
+			total++
+		}
 	}
 }
 

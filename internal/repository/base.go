@@ -84,6 +84,18 @@ func (q *QueryOptions) applyAll(db *gorm.DB) *gorm.DB {
 // concrete repo; all methods honor transactions carried in ctx (see Transaction).
 type BaseRepo[T any] struct{}
 
+// valuesOf converts the pointer slices returned by gorm/gen into the value
+// slices used by the existing service layer.
+func valuesOf[T any](items []*T) []T {
+	result := make([]T, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, *item)
+		}
+	}
+	return result
+}
+
 func (r BaseRepo[T]) Create(ctx context.Context, m *T) error {
 	return dbFrom(ctx).Create(m).Error
 }

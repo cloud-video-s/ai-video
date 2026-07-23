@@ -34,17 +34,6 @@ func newVideoAdminRole(db *gorm.DB, opts ...gen.DOOption) videoAdminRole {
 	_videoAdminRole.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoAdminRole.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoAdminRole.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoAdminRole.Admin = videoAdminRoleBelongsToAdmin{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("Admin", "model.VideoAdmin"),
-	}
-
-	_videoAdminRole.Role = videoAdminRoleBelongsToRole{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("Role", "model.VideoRole"),
-	}
 
 	_videoAdminRole.fillFieldMap()
 
@@ -61,9 +50,6 @@ type videoAdminRole struct {
 	CreatedAt    field.Time
 	UpdatedAt    field.Time
 	DeletedAt    field.Field
-	Admin        videoAdminRoleBelongsToAdmin
-
-	Role videoAdminRoleBelongsToRole
 
 	fieldMap map[string]field.Expr
 }
@@ -114,192 +100,23 @@ func (v *videoAdminRole) GetFieldByName(fieldName string) (field.OrderExpr, bool
 }
 
 func (v *videoAdminRole) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 8)
+	v.fieldMap = make(map[string]field.Expr, 6)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["video_admin_id"] = v.VideoAdminID
 	v.fieldMap["video_role_id"] = v.VideoRoleID
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-
 }
 
 func (v videoAdminRole) clone(db *gorm.DB) videoAdminRole {
 	v.videoAdminRoleDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.Admin.db = db.Session(&gorm.Session{Initialized: true})
-	v.Admin.db.Statement.ConnPool = db.Statement.ConnPool
-	v.Role.db = db.Session(&gorm.Session{Initialized: true})
-	v.Role.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoAdminRole) replaceDB(db *gorm.DB) videoAdminRole {
 	v.videoAdminRoleDo.ReplaceDB(db)
-	v.Admin.db = db.Session(&gorm.Session{})
-	v.Role.db = db.Session(&gorm.Session{})
 	return v
-}
-
-type videoAdminRoleBelongsToAdmin struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a videoAdminRoleBelongsToAdmin) Where(conds ...field.Expr) *videoAdminRoleBelongsToAdmin {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoAdminRoleBelongsToAdmin) WithContext(ctx context.Context) *videoAdminRoleBelongsToAdmin {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoAdminRoleBelongsToAdmin) Session(session *gorm.Session) *videoAdminRoleBelongsToAdmin {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoAdminRoleBelongsToAdmin) Model(m *model.VideoAdminRole) *videoAdminRoleBelongsToAdminTx {
-	return &videoAdminRoleBelongsToAdminTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoAdminRoleBelongsToAdmin) Unscoped() *videoAdminRoleBelongsToAdmin {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoAdminRoleBelongsToAdminTx struct{ tx *gorm.Association }
-
-func (a videoAdminRoleBelongsToAdminTx) Find() (result *model.VideoAdmin, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoAdminRoleBelongsToAdminTx) Append(values ...*model.VideoAdmin) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoAdminRoleBelongsToAdminTx) Replace(values ...*model.VideoAdmin) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoAdminRoleBelongsToAdminTx) Delete(values ...*model.VideoAdmin) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoAdminRoleBelongsToAdminTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoAdminRoleBelongsToAdminTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoAdminRoleBelongsToAdminTx) Unscoped() *videoAdminRoleBelongsToAdminTx {
-	a.tx = a.tx.Unscoped()
-	return &a
-}
-
-type videoAdminRoleBelongsToRole struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a videoAdminRoleBelongsToRole) Where(conds ...field.Expr) *videoAdminRoleBelongsToRole {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoAdminRoleBelongsToRole) WithContext(ctx context.Context) *videoAdminRoleBelongsToRole {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoAdminRoleBelongsToRole) Session(session *gorm.Session) *videoAdminRoleBelongsToRole {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoAdminRoleBelongsToRole) Model(m *model.VideoAdminRole) *videoAdminRoleBelongsToRoleTx {
-	return &videoAdminRoleBelongsToRoleTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoAdminRoleBelongsToRole) Unscoped() *videoAdminRoleBelongsToRole {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoAdminRoleBelongsToRoleTx struct{ tx *gorm.Association }
-
-func (a videoAdminRoleBelongsToRoleTx) Find() (result *model.VideoRole, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoAdminRoleBelongsToRoleTx) Append(values ...*model.VideoRole) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoAdminRoleBelongsToRoleTx) Replace(values ...*model.VideoRole) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoAdminRoleBelongsToRoleTx) Delete(values ...*model.VideoRole) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoAdminRoleBelongsToRoleTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoAdminRoleBelongsToRoleTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoAdminRoleBelongsToRoleTx) Unscoped() *videoAdminRoleBelongsToRoleTx {
-	a.tx = a.tx.Unscoped()
-	return &a
 }
 
 type videoAdminRoleDo struct{ gen.DO }

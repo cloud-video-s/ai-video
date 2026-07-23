@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
@@ -14,11 +13,12 @@ import (
 )
 
 type ClientTemplateService struct {
-	typeRepo     *repository.TemplateTypeRepo
-	templateRepo *repository.TemplateRepo
-	displayRepo  *repository.TemplateDisplayConfigRepo
-	userRepo     *repository.AppUserRepo
-	countryRepo  *repository.CountryRepo
+	typeRepo             *repository.TemplateTypeRepo
+	templateRepo         *repository.TemplateRepo
+	displayRepo          *repository.TemplateDisplayConfigRepo
+	userRepo             *repository.AppUserRepo
+	countryRepo          *repository.CountryRepo
+	TemplateFavoriteRepo *repository.TemplateFavoriteRepo
 }
 
 func NewClientTemplateService() *ClientTemplateService {
@@ -33,23 +33,15 @@ func NewClientTemplateService() *ClientTemplateService {
 // API clients. UserType and SubscriptionStatus may only repeat the authenticated
 // user's current values; they cannot be used to elevate template visibility.
 type ClientTemplateRequest struct {
-	PositionKey        string `form:"position_key" binding:"required,max=64"`
-	Country            string `form:"country" binding:"omitempty,max=64"`
-	PackageCode        string `form:"package" binding:"omitempty,max=255"`
-	PackageVersion     string `form:"package_version" binding:"omitempty,max=64"`
-	UserType           uint32 `form:"user_type" binding:"omitempty,oneof=1 2"`
-	SubscriptionStatus uint32 `form:"subscription_status" binding:"omitempty,oneof=1 2 3"`
+	PositionKey string `form:"position_key"`
 	AccountBaseRequest
 }
 
-type CategoryTemplateListRequest struct {
-	Page               int    `form:"page" binding:"omitempty,min=1" default:"1"`
-	PageSize           int    `form:"pageSize" binding:"omitempty,min=1" default:"10"`
-	PositionKey        string `form:"position_key" binding:"required,max=64"`
-	TemplateTypeId     uint64 `form:"template_type_id" binding:"required,max=64"`
-	Country            string `form:"country" binding:"omitempty,max=64"`
-	UserType           uint32 `form:"user_type" binding:"omitempty,oneof=1 2"`
-	SubscriptionStatus uint32 `form:"subscription_status" binding:"omitempty,oneof=1 2 3"`
+type TemplateListRequest struct {
+	Page           int    `form:"page" binding:"omitempty,min=1" default:"1"`
+	PageSize       int    `form:"pageSize" binding:"omitempty,min=1" default:"10"`
+	PositionKey    string `form:"position_key" binding:"required,max=64"`
+	TemplateTypeId uint64 `form:"template_type_id" binding:"required,max=64"`
 	AccountBaseRequest
 }
 
@@ -58,8 +50,8 @@ type ClientTemplateRecommendRequest struct {
 	AccountBaseRequest
 }
 
-type ClientTemplateDisplayRequest struct {
-	PositionKey string `form:"position_key" binding:"required,max=64"`
+type TemplateInfoRequest struct {
+	TemplateID uint64 `form:"template_id" binding:"required,max=64"`
 	AccountBaseRequest
 }
 
@@ -74,21 +66,20 @@ type ClientTemplateType struct {
 }
 
 type ClientTemplate struct {
-	ID                   uint64   `json:"id"`
-	VideoTemplateTypeID  uint64   `json:"video_template_type_id"`
-	Name                 string   `json:"name"`
-	TemplateType         string   `json:"template_type"`
-	CoverImage           string   `json:"cover_image"`
-	TemplateVideo        string   `json:"template_video"`
-	ThumbnailVideo       string   `json:"thumbnail_video"`
-	Prompt               string   `json:"prompt"`
-	Description          string   `json:"description"`
-	UserTypes            []int    `json:"user_types"`
-	SubscriptionStatuses []string `json:"subscription_statuses"`
-	Sort                 int      `json:"sort"`
-	UsageCount           uint64   `json:"usage_count"`
-	FavoriteCount        uint64   `json:"favorite_count"`
-	ViewCount            uint64   `json:"view_count"`
+	ID                  uint64 `json:"id"`
+	VideoTemplateTypeID uint64 `json:"video_template_type_id"`
+	Name                string `json:"name"`
+	TemplateType        string `json:"template_type"`
+	CoverImage          string `json:"cover_image"`
+	TemplateVideo       string `json:"template_video"`
+	ThumbnailVideo      string `json:"thumbnail_video"`
+	Prompt              string `json:"prompt"`
+	Description         string `json:"description"`
+	Sort                int    `json:"sort"`
+	UsageCount          uint64 `json:"usage_count"`
+	FavoriteCount       uint64 `json:"favorite_count"`
+	ViewCount           uint64 `json:"view_count"`
+	IsFavorite          int    `json:"is_favorite"`
 }
 
 type ClientTemplateDisplayItem struct {
@@ -98,84 +89,23 @@ type ClientTemplateDisplayItem struct {
 	DisplaySort     int    `json:"display_sort"`
 }
 
-// ListByPosition returns templates explicitly curated for a display position.
-// Template, category, position and configuration status must all be enabled;
-// the category country/APP rule and template/category audience fields apply.
-func (s *ClientTemplateService) ListByPosition(ctx *gin.Context, userID uint64, req *ClientTemplateDisplayRequest) ([]ClientTemplateDisplayItem, error) {
-	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
+func (s *ClientTemplateService) List(ctx *gin.Context, req *ClientTemplateRequest) ([]ClientTemplateType, error) {
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
-
 	countryCode := strings.ToUpper(strings.TrimSpace(req.ClientCountry))
-	if countryCode == "" {
-		countryCode = strings.ToUpper(strings.TrimSpace(user.ClientCountry))
-	}
-	var countryID uint64
-	if countryCode != "" {
-		if country, lookupErr := s.countryRepo.GetEnabledByCode(ctx, countryCode); lookupErr == nil {
-			countryID = country.ID
-		}
-	}
-
-	subscriptionState := "unsubscribed"
-	if user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed {
-		subscriptionState = "subscribed"
-	}
-	rows, err := s.displayRepo.ListForClient(ctx, repository.ClientTemplateDisplayTargets{
-		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
-		AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
-		VersionCode: strings.TrimSpace(req.AppVersion), UserType: user.UserType,
-		SubscriptionState: subscriptionState,
-	})
-	if err != nil {
-		return nil, err
-	}
-	result := make([]ClientTemplateDisplayItem, 0, len(rows))
-	for i := range rows {
-		result = append(result, ClientTemplateDisplayItem{
-			ClientTemplate: mapClientTemplate(&rows[i].Template), DisplayConfigID: rows[i].ID,
-			PositionKey: rows[i].Description, DisplaySort: int(rows[i].Sort),
-		})
-	}
-	return result, nil
-}
-
-func (s *ClientTemplateService) List(ctx *gin.Context, userID uint64, req *ClientTemplateRequest) ([]ClientTemplateType, error) {
-	user, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
-	countryCode := strings.ToUpper(strings.TrimSpace(req.Country))
 	if countryCode == "" {
 		countryCode = strings.ToUpper(strings.TrimSpace(req.ClientCountry))
 	}
-	var countryID uint64
-	if countryCode != "" {
-		if country, lookupErr := s.countryRepo.GetEnabledByCode(ctx, countryCode); lookupErr == nil {
-			countryID = country.ID
-		}
-	}
 
-	subscriptionState := "unsubscribed"
-	if user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed {
-		subscriptionState = "subscribed"
-	}
 	types, err := s.typeRepo.ListForClient(ctx, repository.ClientTemplateTypeTargets{
-		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
+		PositionKey: strings.TrimSpace(req.PositionKey), CountryCode: countryCode,
 		AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
-		VersionCode: strings.TrimSpace(req.AppVersion), UserType: user.UserType,
-		SubscriptionState: subscriptionState,
+		VersionCode: strings.TrimSpace(req.AppVersion),
 	})
 	if err != nil {
 		return nil, err
 	}
 	rows, err := s.templateRepo.ListForClient(ctx, repository.ClientTemplateTargets{
-		TemplateTypeIDs: templateTypeIDs(types), UserType: user.UserType,
-		SubscriptionStatus: subscriptionState,
+		TemplateTypeIDs: templateTypeIDs(types),
 	})
 	if err != nil {
 		return nil, err
@@ -183,40 +113,28 @@ func (s *ClientTemplateService) List(ctx *gin.Context, userID uint64, req *Clien
 	return buildClientTemplateGroups(types, rows), nil
 }
 
-func (s *ClientTemplateService) Categories(ctx *gin.Context, userID uint64, req *ClientTemplateRequest) ([]ClientTemplateType, error) {
-	user, err := s.userRepo.GetByID(ctx, userID)
+func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplateRequest) ([]ClientTemplateType, error) {
+	user, err := s.userRepo.GetByID(ctx, middleware.GetAPIUserID(ctx))
 	if err != nil {
 		return nil, err
 	}
 
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
-	countryCode := strings.ToUpper(strings.TrimSpace(req.Country))
+	countryCode := strings.ToUpper(strings.TrimSpace(req.ClientCountry))
 	if countryCode == "" {
-		countryCode = strings.ToUpper(strings.TrimSpace(req.ClientCountry))
-	}
-	var countryID uint64
-	if countryCode != "" {
-		if country, lookupErr := s.countryRepo.GetEnabledByCode(ctx, countryCode); lookupErr == nil {
-			countryID = country.ID
-		}
+		countryCode = user.ClientCountry
 	}
 
-	subscriptionState := "unsubscribed"
-	if user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed {
-		subscriptionState = "subscribed"
-	}
 	types, err := s.typeRepo.ListForClient(ctx, repository.ClientTemplateTypeTargets{
-		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
+		PositionKey: strings.TrimSpace(req.PositionKey), CountryCode: countryCode,
 		AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
-		//VersionCode: strings.TrimSpace(req.AppVersion), UserType: uint32(user.UserType),
-		SubscriptionState: subscriptionState,
+		VersionCode: strings.TrimSpace(req.AppVersion),
 	})
 	if err != nil {
 		return nil, err
 	}
 	rows, err := s.templateRepo.ListForClient(ctx, repository.ClientTemplateTargets{
 		TemplateTypeIDs: templateTypeIDs(types), UserType: user.UserType,
-		SubscriptionStatus: subscriptionState,
 	})
 	if err != nil {
 		return nil, err
@@ -239,9 +157,6 @@ func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.Vid
 		}
 		if rows[i].UsageCount != rows[j].UsageCount {
 			return rows[i].UsageCount > rows[j].UsageCount
-		}
-		if rows[i].FavoriteCount != rows[j].FavoriteCount {
-			return rows[i].FavoriteCount > rows[j].FavoriteCount
 		}
 		if rows[i].ViewCount != rows[j].ViewCount {
 			return rows[i].ViewCount > rows[j].ViewCount
@@ -280,12 +195,9 @@ func mapClientTemplate(item *model.VideoTemplate) ClientTemplate {
 		ThumbnailVideo:      item.ThumbnailVideo,
 		Prompt:              item.Prompt,
 		Description:         item.Description,
-		//UserTypes:            item.UserTypes,
-		//SubscriptionStatuses: item.SubscriptionStatuses,
-		Sort:          int(item.Sort),
-		UsageCount:    item.UsageCount,
-		FavoriteCount: item.FavoriteCount,
-		ViewCount:     item.ViewCount,
+		Sort:                int(item.Sort),
+		UsageCount:          item.UsageCount,
+		ViewCount:           item.ViewCount,
 	}
 }
 
@@ -305,8 +217,8 @@ func templatePositionKeys(items []model.VideoDisplayPosition) []string {
 	return result
 }
 
-func (s *ClientTemplateService) Recommend(ctx *gin.Context, userID uint64, req *ClientTemplateRecommendRequest) ([]ClientTemplate, error) {
-	user, err := s.userRepo.GetByID(ctx, userID)
+func (s *ClientTemplateService) Recommend(ctx *gin.Context, req *ClientTemplateRecommendRequest) ([]ClientTemplate, error) {
+	user, err := s.userRepo.GetByID(ctx, middleware.GetAPIUserID(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -315,23 +227,10 @@ func (s *ClientTemplateService) Recommend(ctx *gin.Context, userID uint64, req *
 	if countryCode == "" {
 		countryCode = strings.ToUpper(strings.TrimSpace(user.ClientCountry))
 	}
-	var countryID uint64
-	if countryCode != "" {
-		if country, lookupErr := s.countryRepo.GetEnabledByCode(ctx, countryCode); lookupErr == nil {
-			countryID = country.ID
-		}
-	}
-
-	subscriptionState := "unsubscribed"
-	if user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed {
-		subscriptionState = "subscribed"
-	}
-
 	rows, err := s.displayRepo.ListForClient(ctx, repository.ClientTemplateDisplayTargets{
-		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
+		PositionKey: strings.TrimSpace(req.PositionKey), CountryCode: countryCode,
 		AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
-		//VersionCode: strings.TrimSpace(req.AppVersion), UserType: uint32(user.UserType),
-		SubscriptionState: subscriptionState,
+		VersionCode: strings.TrimSpace(req.AppVersion),
 	})
 	if err != nil {
 		return nil, err
@@ -343,7 +242,7 @@ func (s *ClientTemplateService) Recommend(ctx *gin.Context, userID uint64, req *
 	return result, nil
 }
 
-func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *CategoryTemplateListRequest) ([]ClientTemplate, error) {
+func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *TemplateListRequest) ([]ClientTemplate, error) {
 	user, err := s.userRepo.GetByID(ctx, middleware.GetAPIUserID(ctx))
 	if err != nil {
 		return nil, err
@@ -352,17 +251,6 @@ func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *Cate
 	countryCode := strings.ToUpper(strings.TrimSpace(req.ClientCountry))
 	if countryCode == "" {
 		countryCode = strings.ToUpper(strings.TrimSpace(user.ClientCountry))
-	}
-	var countryID uint64
-	if countryCode != "" {
-		if country, lookupErr := s.countryRepo.GetEnabledByCode(ctx, countryCode); lookupErr == nil {
-			countryID = country.ID
-		}
-	}
-
-	subscriptionState := "unsubscribed"
-	if user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed {
-		subscriptionState = "subscribed"
 	}
 
 	page, pageSize := req.Page, req.PageSize
@@ -373,10 +261,9 @@ func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *Cate
 		pageSize = 10
 	}
 	types, err := s.typeRepo.ListForClient(ctx, repository.ClientTemplateTypeTargets{
-		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
+		PositionKey: strings.TrimSpace(req.PositionKey), CountryCode: countryCode,
 		AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
-		VersionCode: strings.TrimSpace(req.AppVersion), UserType: user.UserType,
-		SubscriptionState: subscriptionState,
+		VersionCode: strings.TrimSpace(req.AppVersion),
 	})
 	if err != nil {
 		return nil, err
@@ -393,8 +280,6 @@ func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *Cate
 	}
 	rows, _, err := s.templateRepo.PageList(ctx, page, pageSize, &repository.TemplateListFilter{
 		VideoTemplateTypeID: req.TemplateTypeId,
-		UserType:            uint8(user.UserType),
-		SubscriptionStatus:  subscriptionState,
 	})
 	if err != nil {
 		return nil, err
@@ -404,4 +289,16 @@ func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *Cate
 		result = append(result, mapClientTemplate(&rows[i]))
 	}
 	return result, nil
+}
+
+func (s *ClientTemplateService) ClientTemplateInfo(ctx *gin.Context, req *TemplateInfoRequest) (ClientTemplate, error) {
+	template, err := s.templateRepo.GetTemplateID(ctx, req.TemplateID)
+	if err != nil {
+		return ClientTemplate{}, err
+	}
+	resp := mapClientTemplate(template)
+	if s.TemplateFavoriteRepo.GetUserFavorite(ctx, middleware.GetAPIUserID(ctx), template.ID) {
+		resp.IsFavorite = 1
+	}
+	return resp, nil
 }

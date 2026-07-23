@@ -14,14 +14,14 @@ const TableNameVideoBannerApp = "video_banner_app"
 
 // VideoBannerApp mapped from table <video_banner_app>
 type VideoBannerApp struct {
-	ID          uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	BannerID    uint64         `gorm:"column:banner_id;type:bigint unsigned;not null;uniqueIndex:idx_banner_app,priority:1" json:"banner_id"`
-	AppCode     string         `gorm:"column:app_code;type:varchar(50);not null;uniqueIndex:idx_banner_app,priority:2" json:"app_code"`
-	PackageCode string         `gorm:"column:package_code;type:varchar(50);uniqueIndex:idx_banner_app,priority:5" json:"package_code"`
-	VersionCode string         `gorm:"column:version_code;type:varchar(50);not null;uniqueIndex:idx_banner_app,priority:3" json:"version_code"`
-	CreatedAt   time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
-	UpdatedAt   time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);uniqueIndex:idx_banner_app,priority:4" json:"deleted_at"`
+	ID        uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	BannerID  uint64         `gorm:"column:banner_id;type:bigint unsigned;not null;uniqueIndex:idx_banner_app,priority:1" json:"banner_id"`
+	AppID     uint64         `gorm:"column:app_id;type:bigint unsigned;not null;uniqueIndex:idx_banner_app,priority:3" json:"app_id"`
+	CreatedAt time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);uniqueIndex:idx_banner_app,priority:2" json:"deleted_at"`
+	Banner    VideoBanner    `gorm:"foreignKey:BannerID;references:ID" json:"banner"`
+	App       VideoApp       `gorm:"foreignKey:AppID;references:ID" json:"app"`
 }
 
 // TableName VideoBannerApp's table name

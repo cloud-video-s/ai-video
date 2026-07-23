@@ -1,7 +1,6 @@
 package apidoc
 
 import (
-	"ai-video/internal/repository"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -68,6 +67,13 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		t.Fatalf("query field documentation is incomplete: %#v", positionSchema)
 	}
 	assertParameter(t, banner, "position_key", "query", true)
+	assertResponseParameter(t, banner, "data[].target_template", false)
+	assertResponseParameter(t, banner, "data[].target_template.id", false)
+	assertResponseParameter(t, banner, "data[].target_template.name", false)
+	assertResponseParameter(t, banner, "data[].target_template.template_type", false)
+	assertResponseParameter(t, banner, "data[].target_template.cover_image", false)
+	assertResponseParameter(t, banner, "data[].target_template.template_video", false)
+	assertResponseParameter(t, banner, "data[].target_template.thumbnail_video", false)
 	loginResponse := login["responses"].(map[string]any)["200"].(map[string]any)
 	responseContent := loginResponse["content"].(map[string]any)
 	responseSchema := responseContent["application/json"].(map[string]any)["schema"].(map[string]any)
@@ -101,11 +107,11 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	assertResponseParameter(t, delay, "code", true)
 	assertResponseParameter(t, delay, "message", true)
 	assertResponseParameter(t, delay, "data", true)
-	assertResponseParameter(t, delay, "data[].key", true)
-	assertResponseParameter(t, delay, "data[].value", true)
+	assertResponseParameterAbsent(t, delay, "data[].key")
+	assertResponseParameterAbsent(t, delay, "data[].value")
 	delayExample := delay["x-response-example"].(responseExampleEnvelope)
-	delayData := delayExample.Data.([]repository.DelayConfigValue)
-	if len(delayData) != 12 || delayData[0].Key != "OBPaymentCloseDely" || delayData[0].Value != "5" {
+	delayData := delayExample.Data.(map[string]int64)
+	if len(delayData) != 12 || delayData["OBPaymentCloseDely"] != 5 || delayData["FunctionUseLoging"] != 0 {
 		t.Fatalf("delay response example is incomplete: %#v", delayExample)
 	}
 	recommend := document.Paths["/api/templates/recommend"]["get"].(map[string]any)

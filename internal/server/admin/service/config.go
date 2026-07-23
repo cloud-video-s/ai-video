@@ -193,7 +193,7 @@ type CreateConfigRequest struct {
 	Value    string `json:"value"`
 	Type     string `json:"type"`
 	Options  string `json:"options"`
-	IsPublic int8   `json:"is_public"`
+	IsPublic bool   `json:"is_public"`
 	Remark   string `json:"remark"`
 	Sort     int    `json:"sort"`
 }
@@ -241,7 +241,7 @@ type UpdateConfigRequest struct {
 	Value    string `json:"value"`
 	Type     string `json:"type"`
 	Options  string `json:"options"`
-	IsPublic int8   `json:"is_public"`
+	IsPublic bool   `json:"is_public"`
 	Remark   string `json:"remark"`
 	Sort     int    `json:"sort"`
 }

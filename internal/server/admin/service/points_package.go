@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"regexp"
 	"strings"
@@ -185,9 +186,9 @@ func (s *PointsPackageService) prepareAndValidate(ctx context.Context, req *Poin
 		return err
 	}
 	var err error
-	//if req.Systems, err = normalizeSystemTypes(req.Systems); err != nil {
-	//	return err
-	//}
+	if req.Systems, err = normalizeSystemTypes(req.Systems); err != nil {
+		return err
+	}
 	if req.UserTypes, err = normalizeUserTypes(req.UserTypes); err != nil {
 		return err
 	}
@@ -237,8 +238,10 @@ func validatePointsPackageMoney(req *PointsPackagePayload) error {
 func applyPointsPackagePayload(item *model.VideoPointsPackage, req *PointsPackagePayload) {
 	item.ProductCode = req.ProductCode
 	item.Name = req.Name
-	//item.Systems = req.Systems
-	//item.UserTypes = req.UserTypes
+	systems, _ := json.Marshal(req.Systems)
+	userTypes, _ := json.Marshal(req.UserTypes)
+	item.Systems = string(systems)
+	item.UserTypes = string(userTypes)
 	item.ResourceType = req.ResourceType
 	item.Points = req.Points
 	item.Currency = req.Currency
@@ -248,7 +251,33 @@ func applyPointsPackagePayload(item *model.VideoPointsPackage, req *PointsPackag
 	item.BadgeText = strings.TrimSpace(req.BadgeText)
 	item.Description = strings.TrimSpace(req.Description)
 	item.ButtonText = strings.TrimSpace(req.ButtonText)
-	//item.IsDefault = req.IsDefault
-	//item.Status = req.Status
-	//item.Sort = req.Sort
+	item.IsDefault = 0
+	if req.IsDefault {
+		item.IsDefault = 1
+	}
+	item.Status = req.Status
+	item.Sort = int64(req.Sort)
+}
+
+func normalizeSystemTypes(values []string) ([]string, error) {
+	allowed := map[string]struct{}{
+		"android": {}, "ios": {}, "pc": {}, "harmony": {}, "other": {},
+	}
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if _, ok := allowed[value]; !ok {
+			return nil, errors.New("系统类型仅支持 android、ios、pc、harmony 或 other")
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	if len(result) == 0 {
+		return nil, errors.New("至少选择一个系统类型")
+	}
+	return result, nil
 }

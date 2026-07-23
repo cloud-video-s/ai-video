@@ -20,8 +20,6 @@ type VideoMenuAPI struct {
 	CreatedAt   time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
 	UpdatedAt   time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
-	Menu        VideoMenu      `gorm:"foreignKey:VideoMenuID;references:ID" json:"menu"`
-	API         VideoAPI       `gorm:"foreignKey:VideoAPIID;references:ID" json:"api"`
 }
 
 // TableName VideoMenuAPI's table name

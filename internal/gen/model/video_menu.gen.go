@@ -28,8 +28,8 @@ type VideoMenu struct {
 	CreatedAt  time.Time      `gorm:"column:created_at;type:datetime(3);not null" json:"created_at"`
 	UpdatedAt  time.Time      `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt  gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
-	ParentMenu *VideoMenu     `gorm:"foreignKey:ParentID;references:ID" json:"parent_menu"`
-	ChildMenus []*VideoMenu   `gorm:"foreignKey:ParentID;references:ID" json:"child_menus"`
+	Children   []VideoMenu    `gorm:"foreignKey:ParentID;references:ID" json:"children"`
+	APIs       []VideoAPI     `gorm:"foreignKey:ID;joinForeignKey:VideoMenuID;joinReferences:VideoAPIID;many2many:video_menu_api;references:ID" json:"apis"`
 }
 
 // TableName VideoMenu's table name

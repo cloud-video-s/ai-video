@@ -41,6 +41,21 @@ func newVideoRole(db *gorm.DB, opts ...gen.DOOption) videoRole {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("Menus", "model.VideoMenu"),
+		ParentMenu: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Menus.ParentMenu", "model.VideoMenu"),
+		},
+		ChildMenus: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Menus.ChildMenus", "model.VideoMenu"),
+		},
+		APIs: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Menus.APIs", "model.VideoAPI"),
+		},
 	}
 
 	_videoRole.fillFieldMap()
@@ -144,6 +159,16 @@ type videoRoleManyToManyMenus struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	ParentMenu struct {
+		field.RelationField
+	}
+	ChildMenus struct {
+		field.RelationField
+	}
+	APIs struct {
+		field.RelationField
+	}
 }
 
 func (a videoRoleManyToManyMenus) Where(conds ...field.Expr) *videoRoleManyToManyMenus {

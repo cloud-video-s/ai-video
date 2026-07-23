@@ -39,34 +39,177 @@ func newVideoTemplateType(db *gorm.DB, opts ...gen.DOOption) videoTemplateType {
 	_videoTemplateType.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoTemplateType.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoTemplateType.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoTemplateType.DisplayPosition = videoTemplateTypeManyToManyDisplayPosition{
+	_videoTemplateType.Templates = videoTemplateTypeHasManyTemplates{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("DisplayPosition", "model.VideoDisplayPosition"),
+		RelationField: field.NewRelation("Templates", "model.VideoTemplate"),
+		VideoTemplateType: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Templates.VideoTemplateType", "model.VideoTemplateType"),
+		},
 	}
 
-	_videoTemplateType.Countrys = videoTemplateTypeManyToManyCountrys{
+	_videoTemplateType.DisplayPositions = videoTemplateTypeManyToManyDisplayPositions{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("Countrys", "model.VideoCountry"),
+		RelationField: field.NewRelation("DisplayPositions", "model.VideoDisplayPosition"),
 	}
 
-	_videoTemplateType.App = videoTemplateTypeManyToManyApp{
+	_videoTemplateType.Countries = videoTemplateTypeManyToManyCountries{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("App", "model.VideoApp"),
+		RelationField: field.NewRelation("Countries", "model.VideoCountry"),
 	}
 
-	_videoTemplateType.Package = videoTemplateTypeManyToManyPackage{
+	_videoTemplateType.Apps = videoTemplateTypeManyToManyApps{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("Package", "model.VideoPackage"),
+		RelationField: field.NewRelation("Apps", "model.VideoApp"),
+		Packages: struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+			}
+		}{
+			RelationField: field.NewRelation("Apps.Packages", "model.VideoPackage"),
+			App: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("Apps.Packages.App", "model.VideoApp"),
+			},
+		},
 	}
 
-	_videoTemplateType.Version = videoTemplateTypeManyToManyVersion{
+	_videoTemplateType.Packages = videoTemplateTypeManyToManyPackages{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("Version", "model.VideoPackageVersion"),
+		RelationField: field.NewRelation("Packages", "model.VideoPackage"),
+		App: struct {
+			field.RelationField
+			Packages struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Packages.App", "model.VideoApp"),
+			Packages: struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}{
+				RelationField: field.NewRelation("Packages.App.Packages", "model.VideoPackage"),
+				App: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Packages.App.Packages.App", "model.VideoApp"),
+				},
+			},
+		},
+		Versions: struct {
+			field.RelationField
+			Package struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Packages.Versions", "model.VideoPackageVersion"),
+			Package: struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}{
+				RelationField: field.NewRelation("Packages.Versions.Package", "model.VideoPackage"),
+				App: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Packages.Versions.Package.App", "model.VideoApp"),
+				},
+			},
+		},
+	}
+
+	_videoTemplateType.Versions = videoTemplateTypeManyToManyVersions{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Versions", "model.VideoPackageVersion"),
+		Package: struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+				Packages struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}
+			}
+			Versions struct {
+				field.RelationField
+				Package struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Versions.Package", "model.VideoPackage"),
+			App: struct {
+				field.RelationField
+				Packages struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}
+			}{
+				RelationField: field.NewRelation("Versions.Package.App", "model.VideoApp"),
+				Packages: struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}{
+					RelationField: field.NewRelation("Versions.Package.App.Packages", "model.VideoPackage"),
+					App: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Versions.Package.App.Packages.App", "model.VideoApp"),
+					},
+				},
+			},
+			Versions: struct {
+				field.RelationField
+				Package struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}
+			}{
+				RelationField: field.NewRelation("Versions.Package.Versions", "model.VideoPackageVersion"),
+				Package: struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}{
+					RelationField: field.NewRelation("Versions.Package.Versions.Package", "model.VideoPackage"),
+					App: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Versions.Package.Versions.Package.App", "model.VideoApp"),
+					},
+				},
+			},
+		},
 	}
 
 	_videoTemplateType.fillFieldMap()
@@ -89,15 +232,17 @@ type videoTemplateType struct {
 	CreatedAt            field.Time
 	UpdatedAt            field.Time
 	DeletedAt            field.Field
-	DisplayPosition      videoTemplateTypeManyToManyDisplayPosition
+	Templates            videoTemplateTypeHasManyTemplates
 
-	Countrys videoTemplateTypeManyToManyCountrys
+	DisplayPositions videoTemplateTypeManyToManyDisplayPositions
 
-	App videoTemplateTypeManyToManyApp
+	Countries videoTemplateTypeManyToManyCountries
 
-	Package videoTemplateTypeManyToManyPackage
+	Apps videoTemplateTypeManyToManyApps
 
-	Version videoTemplateTypeManyToManyVersion
+	Packages videoTemplateTypeManyToManyPackages
+
+	Versions videoTemplateTypeManyToManyVersions
 
 	fieldMap map[string]field.Expr
 }
@@ -153,7 +298,7 @@ func (v *videoTemplateType) GetFieldByName(fieldName string) (field.OrderExpr, b
 }
 
 func (v *videoTemplateType) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 16)
+	v.fieldMap = make(map[string]field.Expr, 17)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["category_name"] = v.CategoryName
 	v.fieldMap["sort"] = v.Sort
@@ -170,36 +315,43 @@ func (v *videoTemplateType) fillFieldMap() {
 
 func (v videoTemplateType) clone(db *gorm.DB) videoTemplateType {
 	v.videoTemplateTypeDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.DisplayPosition.db = db.Session(&gorm.Session{Initialized: true})
-	v.DisplayPosition.db.Statement.ConnPool = db.Statement.ConnPool
-	v.Countrys.db = db.Session(&gorm.Session{Initialized: true})
-	v.Countrys.db.Statement.ConnPool = db.Statement.ConnPool
-	v.App.db = db.Session(&gorm.Session{Initialized: true})
-	v.App.db.Statement.ConnPool = db.Statement.ConnPool
-	v.Package.db = db.Session(&gorm.Session{Initialized: true})
-	v.Package.db.Statement.ConnPool = db.Statement.ConnPool
-	v.Version.db = db.Session(&gorm.Session{Initialized: true})
-	v.Version.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Templates.db = db.Session(&gorm.Session{Initialized: true})
+	v.Templates.db.Statement.ConnPool = db.Statement.ConnPool
+	v.DisplayPositions.db = db.Session(&gorm.Session{Initialized: true})
+	v.DisplayPositions.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Countries.db = db.Session(&gorm.Session{Initialized: true})
+	v.Countries.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Apps.db = db.Session(&gorm.Session{Initialized: true})
+	v.Apps.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Packages.db = db.Session(&gorm.Session{Initialized: true})
+	v.Packages.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Versions.db = db.Session(&gorm.Session{Initialized: true})
+	v.Versions.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoTemplateType) replaceDB(db *gorm.DB) videoTemplateType {
 	v.videoTemplateTypeDo.ReplaceDB(db)
-	v.DisplayPosition.db = db.Session(&gorm.Session{})
-	v.Countrys.db = db.Session(&gorm.Session{})
-	v.App.db = db.Session(&gorm.Session{})
-	v.Package.db = db.Session(&gorm.Session{})
-	v.Version.db = db.Session(&gorm.Session{})
+	v.Templates.db = db.Session(&gorm.Session{})
+	v.DisplayPositions.db = db.Session(&gorm.Session{})
+	v.Countries.db = db.Session(&gorm.Session{})
+	v.Apps.db = db.Session(&gorm.Session{})
+	v.Packages.db = db.Session(&gorm.Session{})
+	v.Versions.db = db.Session(&gorm.Session{})
 	return v
 }
 
-type videoTemplateTypeManyToManyDisplayPosition struct {
+type videoTemplateTypeHasManyTemplates struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	VideoTemplateType struct {
+		field.RelationField
+	}
 }
 
-func (a videoTemplateTypeManyToManyDisplayPosition) Where(conds ...field.Expr) *videoTemplateTypeManyToManyDisplayPosition {
+func (a videoTemplateTypeHasManyTemplates) Where(conds ...field.Expr) *videoTemplateTypeHasManyTemplates {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -212,32 +364,32 @@ func (a videoTemplateTypeManyToManyDisplayPosition) Where(conds ...field.Expr) *
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyDisplayPosition) WithContext(ctx context.Context) *videoTemplateTypeManyToManyDisplayPosition {
+func (a videoTemplateTypeHasManyTemplates) WithContext(ctx context.Context) *videoTemplateTypeHasManyTemplates {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyDisplayPosition) Session(session *gorm.Session) *videoTemplateTypeManyToManyDisplayPosition {
+func (a videoTemplateTypeHasManyTemplates) Session(session *gorm.Session) *videoTemplateTypeHasManyTemplates {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyDisplayPosition) Model(m *model.VideoTemplateType) *videoTemplateTypeManyToManyDisplayPositionTx {
-	return &videoTemplateTypeManyToManyDisplayPositionTx{a.db.Model(m).Association(a.Name())}
+func (a videoTemplateTypeHasManyTemplates) Model(m *model.VideoTemplateType) *videoTemplateTypeHasManyTemplatesTx {
+	return &videoTemplateTypeHasManyTemplatesTx{a.db.Model(m).Association(a.Name())}
 }
 
-func (a videoTemplateTypeManyToManyDisplayPosition) Unscoped() *videoTemplateTypeManyToManyDisplayPosition {
+func (a videoTemplateTypeHasManyTemplates) Unscoped() *videoTemplateTypeHasManyTemplates {
 	a.db = a.db.Unscoped()
 	return &a
 }
 
-type videoTemplateTypeManyToManyDisplayPositionTx struct{ tx *gorm.Association }
+type videoTemplateTypeHasManyTemplatesTx struct{ tx *gorm.Association }
 
-func (a videoTemplateTypeManyToManyDisplayPositionTx) Find() (result []*model.VideoDisplayPosition, err error) {
+func (a videoTemplateTypeHasManyTemplatesTx) Find() (result []*model.VideoTemplate, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a videoTemplateTypeManyToManyDisplayPositionTx) Append(values ...*model.VideoDisplayPosition) (err error) {
+func (a videoTemplateTypeHasManyTemplatesTx) Append(values ...*model.VideoTemplate) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -245,7 +397,7 @@ func (a videoTemplateTypeManyToManyDisplayPositionTx) Append(values ...*model.Vi
 	return a.tx.Append(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyDisplayPositionTx) Replace(values ...*model.VideoDisplayPosition) (err error) {
+func (a videoTemplateTypeHasManyTemplatesTx) Replace(values ...*model.VideoTemplate) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -253,7 +405,7 @@ func (a videoTemplateTypeManyToManyDisplayPositionTx) Replace(values ...*model.V
 	return a.tx.Replace(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyDisplayPositionTx) Delete(values ...*model.VideoDisplayPosition) (err error) {
+func (a videoTemplateTypeHasManyTemplatesTx) Delete(values ...*model.VideoTemplate) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -261,26 +413,26 @@ func (a videoTemplateTypeManyToManyDisplayPositionTx) Delete(values ...*model.Vi
 	return a.tx.Delete(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyDisplayPositionTx) Clear() error {
+func (a videoTemplateTypeHasManyTemplatesTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a videoTemplateTypeManyToManyDisplayPositionTx) Count() int64 {
+func (a videoTemplateTypeHasManyTemplatesTx) Count() int64 {
 	return a.tx.Count()
 }
 
-func (a videoTemplateTypeManyToManyDisplayPositionTx) Unscoped() *videoTemplateTypeManyToManyDisplayPositionTx {
+func (a videoTemplateTypeHasManyTemplatesTx) Unscoped() *videoTemplateTypeHasManyTemplatesTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }
 
-type videoTemplateTypeManyToManyCountrys struct {
+type videoTemplateTypeManyToManyDisplayPositions struct {
 	db *gorm.DB
 
 	field.RelationField
 }
 
-func (a videoTemplateTypeManyToManyCountrys) Where(conds ...field.Expr) *videoTemplateTypeManyToManyCountrys {
+func (a videoTemplateTypeManyToManyDisplayPositions) Where(conds ...field.Expr) *videoTemplateTypeManyToManyDisplayPositions {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -293,32 +445,32 @@ func (a videoTemplateTypeManyToManyCountrys) Where(conds ...field.Expr) *videoTe
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyCountrys) WithContext(ctx context.Context) *videoTemplateTypeManyToManyCountrys {
+func (a videoTemplateTypeManyToManyDisplayPositions) WithContext(ctx context.Context) *videoTemplateTypeManyToManyDisplayPositions {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyCountrys) Session(session *gorm.Session) *videoTemplateTypeManyToManyCountrys {
+func (a videoTemplateTypeManyToManyDisplayPositions) Session(session *gorm.Session) *videoTemplateTypeManyToManyDisplayPositions {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyCountrys) Model(m *model.VideoTemplateType) *videoTemplateTypeManyToManyCountrysTx {
-	return &videoTemplateTypeManyToManyCountrysTx{a.db.Model(m).Association(a.Name())}
+func (a videoTemplateTypeManyToManyDisplayPositions) Model(m *model.VideoTemplateType) *videoTemplateTypeManyToManyDisplayPositionsTx {
+	return &videoTemplateTypeManyToManyDisplayPositionsTx{a.db.Model(m).Association(a.Name())}
 }
 
-func (a videoTemplateTypeManyToManyCountrys) Unscoped() *videoTemplateTypeManyToManyCountrys {
+func (a videoTemplateTypeManyToManyDisplayPositions) Unscoped() *videoTemplateTypeManyToManyDisplayPositions {
 	a.db = a.db.Unscoped()
 	return &a
 }
 
-type videoTemplateTypeManyToManyCountrysTx struct{ tx *gorm.Association }
+type videoTemplateTypeManyToManyDisplayPositionsTx struct{ tx *gorm.Association }
 
-func (a videoTemplateTypeManyToManyCountrysTx) Find() (result []*model.VideoCountry, err error) {
+func (a videoTemplateTypeManyToManyDisplayPositionsTx) Find() (result []*model.VideoDisplayPosition, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a videoTemplateTypeManyToManyCountrysTx) Append(values ...*model.VideoCountry) (err error) {
+func (a videoTemplateTypeManyToManyDisplayPositionsTx) Append(values ...*model.VideoDisplayPosition) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -326,7 +478,7 @@ func (a videoTemplateTypeManyToManyCountrysTx) Append(values ...*model.VideoCoun
 	return a.tx.Append(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyCountrysTx) Replace(values ...*model.VideoCountry) (err error) {
+func (a videoTemplateTypeManyToManyDisplayPositionsTx) Replace(values ...*model.VideoDisplayPosition) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -334,7 +486,7 @@ func (a videoTemplateTypeManyToManyCountrysTx) Replace(values ...*model.VideoCou
 	return a.tx.Replace(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyCountrysTx) Delete(values ...*model.VideoCountry) (err error) {
+func (a videoTemplateTypeManyToManyDisplayPositionsTx) Delete(values ...*model.VideoDisplayPosition) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -342,26 +494,26 @@ func (a videoTemplateTypeManyToManyCountrysTx) Delete(values ...*model.VideoCoun
 	return a.tx.Delete(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyCountrysTx) Clear() error {
+func (a videoTemplateTypeManyToManyDisplayPositionsTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a videoTemplateTypeManyToManyCountrysTx) Count() int64 {
+func (a videoTemplateTypeManyToManyDisplayPositionsTx) Count() int64 {
 	return a.tx.Count()
 }
 
-func (a videoTemplateTypeManyToManyCountrysTx) Unscoped() *videoTemplateTypeManyToManyCountrysTx {
+func (a videoTemplateTypeManyToManyDisplayPositionsTx) Unscoped() *videoTemplateTypeManyToManyDisplayPositionsTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }
 
-type videoTemplateTypeManyToManyApp struct {
+type videoTemplateTypeManyToManyCountries struct {
 	db *gorm.DB
 
 	field.RelationField
 }
 
-func (a videoTemplateTypeManyToManyApp) Where(conds ...field.Expr) *videoTemplateTypeManyToManyApp {
+func (a videoTemplateTypeManyToManyCountries) Where(conds ...field.Expr) *videoTemplateTypeManyToManyCountries {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -374,32 +526,32 @@ func (a videoTemplateTypeManyToManyApp) Where(conds ...field.Expr) *videoTemplat
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyApp) WithContext(ctx context.Context) *videoTemplateTypeManyToManyApp {
+func (a videoTemplateTypeManyToManyCountries) WithContext(ctx context.Context) *videoTemplateTypeManyToManyCountries {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyApp) Session(session *gorm.Session) *videoTemplateTypeManyToManyApp {
+func (a videoTemplateTypeManyToManyCountries) Session(session *gorm.Session) *videoTemplateTypeManyToManyCountries {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyApp) Model(m *model.VideoTemplateType) *videoTemplateTypeManyToManyAppTx {
-	return &videoTemplateTypeManyToManyAppTx{a.db.Model(m).Association(a.Name())}
+func (a videoTemplateTypeManyToManyCountries) Model(m *model.VideoTemplateType) *videoTemplateTypeManyToManyCountriesTx {
+	return &videoTemplateTypeManyToManyCountriesTx{a.db.Model(m).Association(a.Name())}
 }
 
-func (a videoTemplateTypeManyToManyApp) Unscoped() *videoTemplateTypeManyToManyApp {
+func (a videoTemplateTypeManyToManyCountries) Unscoped() *videoTemplateTypeManyToManyCountries {
 	a.db = a.db.Unscoped()
 	return &a
 }
 
-type videoTemplateTypeManyToManyAppTx struct{ tx *gorm.Association }
+type videoTemplateTypeManyToManyCountriesTx struct{ tx *gorm.Association }
 
-func (a videoTemplateTypeManyToManyAppTx) Find() (result []*model.VideoApp, err error) {
+func (a videoTemplateTypeManyToManyCountriesTx) Find() (result []*model.VideoCountry, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a videoTemplateTypeManyToManyAppTx) Append(values ...*model.VideoApp) (err error) {
+func (a videoTemplateTypeManyToManyCountriesTx) Append(values ...*model.VideoCountry) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -407,7 +559,7 @@ func (a videoTemplateTypeManyToManyAppTx) Append(values ...*model.VideoApp) (err
 	return a.tx.Append(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyAppTx) Replace(values ...*model.VideoApp) (err error) {
+func (a videoTemplateTypeManyToManyCountriesTx) Replace(values ...*model.VideoCountry) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -415,7 +567,7 @@ func (a videoTemplateTypeManyToManyAppTx) Replace(values ...*model.VideoApp) (er
 	return a.tx.Replace(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyAppTx) Delete(values ...*model.VideoApp) (err error) {
+func (a videoTemplateTypeManyToManyCountriesTx) Delete(values ...*model.VideoCountry) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -423,26 +575,33 @@ func (a videoTemplateTypeManyToManyAppTx) Delete(values ...*model.VideoApp) (err
 	return a.tx.Delete(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyAppTx) Clear() error {
+func (a videoTemplateTypeManyToManyCountriesTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a videoTemplateTypeManyToManyAppTx) Count() int64 {
+func (a videoTemplateTypeManyToManyCountriesTx) Count() int64 {
 	return a.tx.Count()
 }
 
-func (a videoTemplateTypeManyToManyAppTx) Unscoped() *videoTemplateTypeManyToManyAppTx {
+func (a videoTemplateTypeManyToManyCountriesTx) Unscoped() *videoTemplateTypeManyToManyCountriesTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }
 
-type videoTemplateTypeManyToManyPackage struct {
+type videoTemplateTypeManyToManyApps struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	Packages struct {
+		field.RelationField
+		App struct {
+			field.RelationField
+		}
+	}
 }
 
-func (a videoTemplateTypeManyToManyPackage) Where(conds ...field.Expr) *videoTemplateTypeManyToManyPackage {
+func (a videoTemplateTypeManyToManyApps) Where(conds ...field.Expr) *videoTemplateTypeManyToManyApps {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -455,32 +614,32 @@ func (a videoTemplateTypeManyToManyPackage) Where(conds ...field.Expr) *videoTem
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyPackage) WithContext(ctx context.Context) *videoTemplateTypeManyToManyPackage {
+func (a videoTemplateTypeManyToManyApps) WithContext(ctx context.Context) *videoTemplateTypeManyToManyApps {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyPackage) Session(session *gorm.Session) *videoTemplateTypeManyToManyPackage {
+func (a videoTemplateTypeManyToManyApps) Session(session *gorm.Session) *videoTemplateTypeManyToManyApps {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyPackage) Model(m *model.VideoTemplateType) *videoTemplateTypeManyToManyPackageTx {
-	return &videoTemplateTypeManyToManyPackageTx{a.db.Model(m).Association(a.Name())}
+func (a videoTemplateTypeManyToManyApps) Model(m *model.VideoTemplateType) *videoTemplateTypeManyToManyAppsTx {
+	return &videoTemplateTypeManyToManyAppsTx{a.db.Model(m).Association(a.Name())}
 }
 
-func (a videoTemplateTypeManyToManyPackage) Unscoped() *videoTemplateTypeManyToManyPackage {
+func (a videoTemplateTypeManyToManyApps) Unscoped() *videoTemplateTypeManyToManyApps {
 	a.db = a.db.Unscoped()
 	return &a
 }
 
-type videoTemplateTypeManyToManyPackageTx struct{ tx *gorm.Association }
+type videoTemplateTypeManyToManyAppsTx struct{ tx *gorm.Association }
 
-func (a videoTemplateTypeManyToManyPackageTx) Find() (result []*model.VideoPackage, err error) {
+func (a videoTemplateTypeManyToManyAppsTx) Find() (result []*model.VideoApp, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a videoTemplateTypeManyToManyPackageTx) Append(values ...*model.VideoPackage) (err error) {
+func (a videoTemplateTypeManyToManyAppsTx) Append(values ...*model.VideoApp) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -488,7 +647,7 @@ func (a videoTemplateTypeManyToManyPackageTx) Append(values ...*model.VideoPacka
 	return a.tx.Append(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyPackageTx) Replace(values ...*model.VideoPackage) (err error) {
+func (a videoTemplateTypeManyToManyAppsTx) Replace(values ...*model.VideoApp) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -496,7 +655,7 @@ func (a videoTemplateTypeManyToManyPackageTx) Replace(values ...*model.VideoPack
 	return a.tx.Replace(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyPackageTx) Delete(values ...*model.VideoPackage) (err error) {
+func (a videoTemplateTypeManyToManyAppsTx) Delete(values ...*model.VideoApp) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -504,26 +663,45 @@ func (a videoTemplateTypeManyToManyPackageTx) Delete(values ...*model.VideoPacka
 	return a.tx.Delete(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyPackageTx) Clear() error {
+func (a videoTemplateTypeManyToManyAppsTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a videoTemplateTypeManyToManyPackageTx) Count() int64 {
+func (a videoTemplateTypeManyToManyAppsTx) Count() int64 {
 	return a.tx.Count()
 }
 
-func (a videoTemplateTypeManyToManyPackageTx) Unscoped() *videoTemplateTypeManyToManyPackageTx {
+func (a videoTemplateTypeManyToManyAppsTx) Unscoped() *videoTemplateTypeManyToManyAppsTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }
 
-type videoTemplateTypeManyToManyVersion struct {
+type videoTemplateTypeManyToManyPackages struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	App struct {
+		field.RelationField
+		Packages struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+			}
+		}
+	}
+	Versions struct {
+		field.RelationField
+		Package struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+			}
+		}
+	}
 }
 
-func (a videoTemplateTypeManyToManyVersion) Where(conds ...field.Expr) *videoTemplateTypeManyToManyVersion {
+func (a videoTemplateTypeManyToManyPackages) Where(conds ...field.Expr) *videoTemplateTypeManyToManyPackages {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -536,32 +714,32 @@ func (a videoTemplateTypeManyToManyVersion) Where(conds ...field.Expr) *videoTem
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyVersion) WithContext(ctx context.Context) *videoTemplateTypeManyToManyVersion {
+func (a videoTemplateTypeManyToManyPackages) WithContext(ctx context.Context) *videoTemplateTypeManyToManyPackages {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyVersion) Session(session *gorm.Session) *videoTemplateTypeManyToManyVersion {
+func (a videoTemplateTypeManyToManyPackages) Session(session *gorm.Session) *videoTemplateTypeManyToManyPackages {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a videoTemplateTypeManyToManyVersion) Model(m *model.VideoTemplateType) *videoTemplateTypeManyToManyVersionTx {
-	return &videoTemplateTypeManyToManyVersionTx{a.db.Model(m).Association(a.Name())}
+func (a videoTemplateTypeManyToManyPackages) Model(m *model.VideoTemplateType) *videoTemplateTypeManyToManyPackagesTx {
+	return &videoTemplateTypeManyToManyPackagesTx{a.db.Model(m).Association(a.Name())}
 }
 
-func (a videoTemplateTypeManyToManyVersion) Unscoped() *videoTemplateTypeManyToManyVersion {
+func (a videoTemplateTypeManyToManyPackages) Unscoped() *videoTemplateTypeManyToManyPackages {
 	a.db = a.db.Unscoped()
 	return &a
 }
 
-type videoTemplateTypeManyToManyVersionTx struct{ tx *gorm.Association }
+type videoTemplateTypeManyToManyPackagesTx struct{ tx *gorm.Association }
 
-func (a videoTemplateTypeManyToManyVersionTx) Find() (result []*model.VideoPackageVersion, err error) {
+func (a videoTemplateTypeManyToManyPackagesTx) Find() (result []*model.VideoPackage, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a videoTemplateTypeManyToManyVersionTx) Append(values ...*model.VideoPackageVersion) (err error) {
+func (a videoTemplateTypeManyToManyPackagesTx) Append(values ...*model.VideoPackage) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -569,7 +747,7 @@ func (a videoTemplateTypeManyToManyVersionTx) Append(values ...*model.VideoPacka
 	return a.tx.Append(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyVersionTx) Replace(values ...*model.VideoPackageVersion) (err error) {
+func (a videoTemplateTypeManyToManyPackagesTx) Replace(values ...*model.VideoPackage) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -577,7 +755,7 @@ func (a videoTemplateTypeManyToManyVersionTx) Replace(values ...*model.VideoPack
 	return a.tx.Replace(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyVersionTx) Delete(values ...*model.VideoPackageVersion) (err error) {
+func (a videoTemplateTypeManyToManyPackagesTx) Delete(values ...*model.VideoPackage) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -585,15 +763,118 @@ func (a videoTemplateTypeManyToManyVersionTx) Delete(values ...*model.VideoPacka
 	return a.tx.Delete(targetValues...)
 }
 
-func (a videoTemplateTypeManyToManyVersionTx) Clear() error {
+func (a videoTemplateTypeManyToManyPackagesTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a videoTemplateTypeManyToManyVersionTx) Count() int64 {
+func (a videoTemplateTypeManyToManyPackagesTx) Count() int64 {
 	return a.tx.Count()
 }
 
-func (a videoTemplateTypeManyToManyVersionTx) Unscoped() *videoTemplateTypeManyToManyVersionTx {
+func (a videoTemplateTypeManyToManyPackagesTx) Unscoped() *videoTemplateTypeManyToManyPackagesTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoTemplateTypeManyToManyVersions struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	Package struct {
+		field.RelationField
+		App struct {
+			field.RelationField
+			Packages struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}
+		}
+		Versions struct {
+			field.RelationField
+			Package struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}
+		}
+	}
+}
+
+func (a videoTemplateTypeManyToManyVersions) Where(conds ...field.Expr) *videoTemplateTypeManyToManyVersions {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoTemplateTypeManyToManyVersions) WithContext(ctx context.Context) *videoTemplateTypeManyToManyVersions {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoTemplateTypeManyToManyVersions) Session(session *gorm.Session) *videoTemplateTypeManyToManyVersions {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoTemplateTypeManyToManyVersions) Model(m *model.VideoTemplateType) *videoTemplateTypeManyToManyVersionsTx {
+	return &videoTemplateTypeManyToManyVersionsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoTemplateTypeManyToManyVersions) Unscoped() *videoTemplateTypeManyToManyVersions {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoTemplateTypeManyToManyVersionsTx struct{ tx *gorm.Association }
+
+func (a videoTemplateTypeManyToManyVersionsTx) Find() (result []*model.VideoPackageVersion, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoTemplateTypeManyToManyVersionsTx) Append(values ...*model.VideoPackageVersion) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoTemplateTypeManyToManyVersionsTx) Replace(values ...*model.VideoPackageVersion) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoTemplateTypeManyToManyVersionsTx) Delete(values ...*model.VideoPackageVersion) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoTemplateTypeManyToManyVersionsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoTemplateTypeManyToManyVersionsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoTemplateTypeManyToManyVersionsTx) Unscoped() *videoTemplateTypeManyToManyVersionsTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }

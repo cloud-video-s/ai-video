@@ -38,12 +38,22 @@ func newVideoUserTemplateFavorite(db *gorm.DB, opts ...gen.DOOption) videoUserTe
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("User", "model.VideoUser"),
+		Channel: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.Channel", "model.VideoChannel"),
+		},
 	}
 
 	_videoUserTemplateFavorite.Template = videoUserTemplateFavoriteBelongsToTemplate{
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("Template", "model.VideoTemplate"),
+		VideoTemplateType: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Template.VideoTemplateType", "model.VideoTemplateType"),
+		},
 	}
 
 	_videoUserTemplateFavorite.fillFieldMap()
@@ -146,6 +156,10 @@ type videoUserTemplateFavoriteBelongsToUser struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	Channel struct {
+		field.RelationField
+	}
 }
 
 func (a videoUserTemplateFavoriteBelongsToUser) Where(conds ...field.Expr) *videoUserTemplateFavoriteBelongsToUser {
@@ -227,6 +241,10 @@ type videoUserTemplateFavoriteBelongsToTemplate struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	VideoTemplateType struct {
+		field.RelationField
+	}
 }
 
 func (a videoUserTemplateFavoriteBelongsToTemplate) Where(conds ...field.Expr) *videoUserTemplateFavoriteBelongsToTemplate {

@@ -30,15 +30,10 @@ func newVideoVipSubscriptionPackage(db *gorm.DB, opts ...gen.DOOption) videoVipS
 	_videoVipSubscriptionPackage.ALL = field.NewAsterisk(tableName)
 	_videoVipSubscriptionPackage.ID = field.NewUint64(tableName, "id")
 	_videoVipSubscriptionPackage.SubscriptionID = field.NewUint64(tableName, "subscription_id")
-	_videoVipSubscriptionPackage.PackageCode = field.NewString(tableName, "package_code")
+	_videoVipSubscriptionPackage.PackageID = field.NewUint64(tableName, "package_id")
 	_videoVipSubscriptionPackage.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoVipSubscriptionPackage.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoVipSubscriptionPackage.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoVipSubscriptionPackage.Subscription = videoVipSubscriptionPackageBelongsToSubscription{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("Subscription", "model.VideoVipSubscription"),
-	}
 
 	_videoVipSubscriptionPackage.fillFieldMap()
 
@@ -51,11 +46,10 @@ type videoVipSubscriptionPackage struct {
 	ALL            field.Asterisk
 	ID             field.Uint64 // channel ID
 	SubscriptionID field.Uint64
-	PackageCode    field.String
+	PackageID      field.Uint64
 	CreatedAt      field.Time
 	UpdatedAt      field.Time
 	DeletedAt      field.Field
-	Subscription   videoVipSubscriptionPackageBelongsToSubscription
 
 	fieldMap map[string]field.Expr
 }
@@ -74,7 +68,7 @@ func (v *videoVipSubscriptionPackage) updateTableName(table string) *videoVipSub
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
 	v.SubscriptionID = field.NewUint64(table, "subscription_id")
-	v.PackageCode = field.NewString(table, "package_code")
+	v.PackageID = field.NewUint64(table, "package_id")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -108,108 +102,23 @@ func (v *videoVipSubscriptionPackage) GetFieldByName(fieldName string) (field.Or
 }
 
 func (v *videoVipSubscriptionPackage) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 7)
+	v.fieldMap = make(map[string]field.Expr, 6)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["subscription_id"] = v.SubscriptionID
-	v.fieldMap["package_code"] = v.PackageCode
+	v.fieldMap["package_id"] = v.PackageID
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-
 }
 
 func (v videoVipSubscriptionPackage) clone(db *gorm.DB) videoVipSubscriptionPackage {
 	v.videoVipSubscriptionPackageDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.Subscription.db = db.Session(&gorm.Session{Initialized: true})
-	v.Subscription.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoVipSubscriptionPackage) replaceDB(db *gorm.DB) videoVipSubscriptionPackage {
 	v.videoVipSubscriptionPackageDo.ReplaceDB(db)
-	v.Subscription.db = db.Session(&gorm.Session{})
 	return v
-}
-
-type videoVipSubscriptionPackageBelongsToSubscription struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a videoVipSubscriptionPackageBelongsToSubscription) Where(conds ...field.Expr) *videoVipSubscriptionPackageBelongsToSubscription {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoVipSubscriptionPackageBelongsToSubscription) WithContext(ctx context.Context) *videoVipSubscriptionPackageBelongsToSubscription {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoVipSubscriptionPackageBelongsToSubscription) Session(session *gorm.Session) *videoVipSubscriptionPackageBelongsToSubscription {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoVipSubscriptionPackageBelongsToSubscription) Model(m *model.VideoVipSubscriptionPackage) *videoVipSubscriptionPackageBelongsToSubscriptionTx {
-	return &videoVipSubscriptionPackageBelongsToSubscriptionTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoVipSubscriptionPackageBelongsToSubscription) Unscoped() *videoVipSubscriptionPackageBelongsToSubscription {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoVipSubscriptionPackageBelongsToSubscriptionTx struct{ tx *gorm.Association }
-
-func (a videoVipSubscriptionPackageBelongsToSubscriptionTx) Find() (result *model.VideoVipSubscription, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoVipSubscriptionPackageBelongsToSubscriptionTx) Append(values ...*model.VideoVipSubscription) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoVipSubscriptionPackageBelongsToSubscriptionTx) Replace(values ...*model.VideoVipSubscription) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoVipSubscriptionPackageBelongsToSubscriptionTx) Delete(values ...*model.VideoVipSubscription) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoVipSubscriptionPackageBelongsToSubscriptionTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoVipSubscriptionPackageBelongsToSubscriptionTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoVipSubscriptionPackageBelongsToSubscriptionTx) Unscoped() *videoVipSubscriptionPackageBelongsToSubscriptionTx {
-	a.tx = a.tx.Unscoped()
-	return &a
 }
 
 type videoVipSubscriptionPackageDo struct{ gen.DO }

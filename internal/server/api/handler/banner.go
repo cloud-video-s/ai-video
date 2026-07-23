@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"ai-video/internal/middleware"
 	"ai-video/internal/pkg/errcode"
 	"ai-video/internal/pkg/response"
 	apiservice "ai-video/internal/server/api/server"
@@ -23,7 +22,7 @@ func (h *BannerHandler) List(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	list, err := h.svc.List(c, middleware.GetAPIUserID(c), &req)
+	list, err := h.svc.List(c, &req)
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return

@@ -26,8 +26,8 @@ type VideoUserPointsLedger struct {
 	OccurredAt      time.Time          `gorm:"column:occurred_at;type:datetime(3);not null;index:idx_video_user_points_ledger_occurred_at,priority:1;comment:business occurrence time" json:"occurred_at"`                          // business occurrence time
 	CreatedAt       time.Time          `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_user_points_ledger_created_at,priority:1" json:"created_at"`
 	OrderID         uint64             `gorm:"column:order_id;type:bigint unsigned;index:idx_video_user_points_ledger_order_id,priority:1" json:"order_id"`
-	WorkID          string             `gorm:"column:work_id;type:varchar(191);not null;index:idx_video_user_points_ledger_work_id,priority:1" json:"work_id"`
-	ModeKey         string             `gorm:"column:mode_key;type:varchar(64);not null;index:idx_video_user_points_ledger_mode_key,priority:1" json:"mode_key"`
+	WorkID          string             `gorm:"column:work_id;type:varchar(191);index:idx_video_user_points_ledger_work_id,priority:1" json:"work_id"`
+	ModeKey         string             `gorm:"column:mode_key;type:varchar(64);index:idx_video_user_points_ledger_mode_key,priority:1" json:"mode_key"`
 	IdempotencyKey  string             `gorm:"column:idempotency_key;type:varchar(191);uniqueIndex:uk_video_user_points_ledger_idempotency,priority:1" json:"idempotency_key"`
 	User            VideoUser          `gorm:"foreignKey:UserID;references:ID" json:"user"`
 	PointsPackage   VideoPointsPackage `gorm:"foreignKey:PointsPackageID;references:ID" json:"points_package"`

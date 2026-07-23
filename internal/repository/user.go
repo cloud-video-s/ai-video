@@ -7,6 +7,7 @@ import (
 
 	"ai-video/internal/gen/model"
 
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -33,45 +34,38 @@ type AppUserListFilter struct {
 }
 
 func (d *AppUserRepo) Create(ctx context.Context, user *model.VideoUser) error {
-	return dbFrom(ctx).Create(user).Error
+	return qFrom(ctx).VideoUser.WithContext(ctx).Create(user)
 }
 
 func (d *AppUserRepo) GetByID(ctx context.Context, id uint64) (*model.VideoUser, error) {
-	var user model.VideoUser
-	if err := dbFrom(ctx).First(&user, id).Error; err != nil {
-		return nil, err
-	}
-	return &user, nil
+	q := qFrom(ctx).VideoUser
+	return q.WithContext(ctx).Where(q.ID.Eq(id)).First()
 }
 
 // GetByLookup resolves an exact user ID, account/email or an email stored in
 // the normalized identity table. It keeps legacy direct-email rows searchable.
 func (d *AppUserRepo) GetByLookup(ctx context.Context, value string) (*model.VideoUser, error) {
 	value = strings.TrimSpace(value)
-	var user model.VideoUser
-	db := dbFrom(ctx)
+	q := qFrom(ctx)
+	user := q.VideoUser
 	if id, err := strconv.ParseUint(value, 10, 64); err == nil && id != 0 {
-		if err := db.First(&user, id).Error; err != nil {
-			return nil, err
-		}
-		return &user, nil
+		return user.WithContext(ctx).Where(user.ID.Eq(id)).First()
 	}
-	err := db.Where(`login_account = ? OR LOWER(email) = LOWER(?) OR EXISTS (
-		SELECT 1 FROM video_user_identity identity
-		WHERE identity.user_id = video_user.id AND LOWER(identity.email) = LOWER(?)
-	)`, value, value, value).First(&user).Error
-	if err != nil {
+	conditions := []field.Expr{user.LoginAccount.Eq(value), user.Email.Eq(value)}
+	identity := q.VideoUserIdentity
+	var identityUserIDs []uint64
+	if err := identity.WithContext(ctx).Where(identity.Email.Eq(value)).Pluck(identity.UserID, &identityUserIDs); err != nil {
 		return nil, err
 	}
-	return &user, nil
+	if len(identityUserIDs) > 0 {
+		conditions = append(conditions, user.ID.In(identityUserIDs...))
+	}
+	return user.WithContext(ctx).Where(field.Or(conditions...)).First()
 }
 
 func (d *AppUserRepo) GetByIDForUpdate(ctx context.Context, id uint64) (*model.VideoUser, error) {
-	var user model.VideoUser
-	if err := dbFrom(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, id).Error; err != nil {
-		return nil, err
-	}
-	return &user, nil
+	q := qFrom(ctx).VideoUser
+	return q.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Where(q.ID.Eq(id)).First()
 }
 
 func (d *AppUserRepo) GetByDeviceCode(ctx context.Context, deviceCode string, lock bool) (*model.VideoUser, error) {
@@ -96,8 +90,8 @@ func (d *AppUserRepo) GetAuthState(ctx context.Context, id uint64) (string, int6
 	q := qFrom(ctx).VideoUser
 	user, err := q.WithContext(ctx).Where(q.ID.Eq(id)).
 		Where(q.Status.Eq(1)).
-		Where(q.IsFrozen.Eq(0)).
-		Where(q.IsBlacklisted.Eq(0)).
+		Where(q.IsFrozen.Eq(false)).
+		Where(q.IsBlacklisted.Eq(false)).
 		Select(q.DeviceCode, q.TokenVersion).First()
 	if err != nil {
 		return "", 0, err
@@ -118,10 +112,10 @@ func (d *AppUserRepo) Update(ctx context.Context, id uint64, updates map[string]
 // middleware compares this value with the JWT claim, so older tokens stop
 // working immediately.
 func (d *AppUserRepo) IncrementTokenVersion(ctx context.Context, id uint64) error {
-	result := dbFrom(ctx).Model(&model.VideoUser{}).Where("id = ?", id).
-		UpdateColumn("token_version", gorm.Expr("token_version + 1"))
-	if result.Error != nil {
-		return result.Error
+	q := qFrom(ctx).VideoUser
+	result, err := q.WithContext(ctx).Where(q.ID.Eq(id)).UpdateColumn(q.TokenVersion, q.TokenVersion.Add(1))
+	if err != nil {
+		return err
 	}
 	if result.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
@@ -130,72 +124,80 @@ func (d *AppUserRepo) IncrementTokenVersion(ctx context.Context, id uint64) erro
 }
 
 func (d *AppUserRepo) Delete(ctx context.Context, id uint64) error {
-	return dbFrom(ctx).Delete(&model.VideoUser{}, id).Error
+	q := qFrom(ctx).VideoUser
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(id)).Delete()
+	return err
 }
 
 func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *AppUserListFilter) ([]model.VideoUser, int64, error) {
-	db := dbFrom(ctx).Model(&model.VideoUser{})
+	q := qFrom(ctx)
+	user := q.VideoUser
+	dao := user.WithContext(ctx)
 	if filter != nil {
 		if filter.DeviceCountry != "" {
-			db = db.Where("device_country = ?", filter.DeviceCountry)
+			dao = dao.Where(user.ClientCountry.Eq(filter.DeviceCountry))
 		}
 		if filter.ChannelID != "" {
-			db = db.Where("channel_id = ?", filter.ChannelID)
+			dao = dao.Where(user.ChannelID.Eq(filter.ChannelID))
 		}
 		if filter.AppVersion != "" {
-			db = db.Where("app_version = ?", filter.AppVersion)
+			dao = dao.Where(user.AppVersion.Eq(filter.AppVersion))
 		}
 		if filter.AppName != "" {
-			db = db.Where("app_name = ?", filter.AppName)
+			dao = dao.Where(user.AppName.Eq(filter.AppName))
 		}
 		if filter.LoginType != 0 {
-			db = db.Where("login_type = ?", filter.LoginType)
+			dao = dao.Where(user.LoginType.Eq(uint8(filter.LoginType)))
 		}
 		if filter.UserType != 0 {
-			db = db.Where("user_type = ?", filter.UserType)
+			dao = dao.Where(user.UserType.Eq(uint8(filter.UserType)))
 		}
 		if filter.SubscriptionStatus != 0 {
-			db = db.Where("subscription_status = ?", filter.SubscriptionStatus)
+			dao = dao.Where(user.SubscriptionStatus.Eq(uint8(filter.SubscriptionStatus)))
 		}
 		if filter.Activated != nil {
-			db = db.Where("activated = ?", *filter.Activated)
+			dao = dao.Where(user.Activated.Eq(*filter.Activated))
 		}
 		if filter.Registered != nil {
-			db = db.Where("registered = ?", *filter.Registered)
+			dao = dao.Where(user.Registered.Eq(*filter.Registered))
 		}
 		if filter.PaymentMet != nil {
-			db = db.Where("payment_met = ?", *filter.PaymentMet)
+			dao = dao.Where(user.PaymentMet.Eq(*filter.PaymentMet))
 		}
 		if filter.Status != nil {
-			db = db.Where("status = ?", *filter.Status)
+			dao = dao.Where(user.Status.Eq(int8(*filter.Status)))
 		}
 		if filter.IsFrozen != nil {
-			db = db.Where("is_frozen = ?", *filter.IsFrozen)
+			dao = dao.Where(user.IsFrozen.Eq(*filter.IsFrozen))
 		}
 		if filter.IsBlacklisted != nil {
-			db = db.Where("is_blacklisted = ?", *filter.IsBlacklisted)
+			dao = dao.Where(user.IsBlacklisted.Eq(*filter.IsBlacklisted))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			condition := `username LIKE ? OR login_account LIKE ? OR imei LIKE ? OR email LIKE ? OR phone LIKE ? OR third_code LIKE ? OR app_name LIKE ? OR EXISTS (
-				SELECT 1 FROM video_user_identity identity WHERE identity.user_id = video_user.id AND identity.email LIKE ?
-			)`
-			args := []interface{}{keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword}
-			if id, err := strconv.ParseUint(strings.TrimSpace(filter.Keyword), 10, 64); err == nil {
-				condition = "video_user.id = ? OR " + condition
-				args = append([]interface{}{id}, args...)
+			conditions := []field.Expr{
+				user.Username.Like(keyword), user.LoginAccount.Like(keyword), user.IMEI.Like(keyword),
+				user.Email.Like(keyword), user.Phone.Like(keyword), user.ThirdCode.Like(keyword), user.AppName.Like(keyword),
 			}
-			db = db.Where(condition, args...)
+			if id, err := strconv.ParseUint(strings.TrimSpace(filter.Keyword), 10, 64); err == nil {
+				conditions = append(conditions, user.ID.Eq(id))
+			}
+			identity := q.VideoUserIdentity
+			var identityUserIDs []uint64
+			if err := identity.WithContext(ctx).Where(identity.Email.Like(keyword)).Pluck(identity.UserID, &identityUserIDs); err != nil {
+				return nil, 0, err
+			}
+			if len(identityUserIDs) > 0 {
+				conditions = append(conditions, user.ID.In(identityUserIDs...))
+			}
+			dao = dao.Where(field.Or(conditions...))
 		}
 	}
 
-	var total int64
-	if err := db.Count(&total).Error; err != nil {
+	total, err := dao.Count()
+	if err != nil {
 		return nil, 0, err
 	}
-	var users []model.VideoUser
-	if err := db.Order("id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&users).Error; err != nil {
-		return nil, 0, err
-	}
-	return users, total, nil
+	rows, err := dao.Order(user.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	return valuesOf(rows), total, err
 }

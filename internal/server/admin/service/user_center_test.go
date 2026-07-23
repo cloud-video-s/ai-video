@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"ai-video/internal/app"
 	"ai-video/internal/config"
 	"ai-video/internal/gen/model"
 
@@ -58,43 +57,5 @@ func TestUserCenterVIPAndAccessOperations(t *testing.T) {
 	}
 	if _, _, err := service.repo.GetAuthState(context.Background(), user.ID); err == nil {
 		t.Fatal("frozen user must not have a valid auth state")
-	}
-}
-
-func TestMigrateUserCenterColumnsPreservesLegacyUsers(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:user-center-migration?mode=memory&cache=shared"), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Exec(`CREATE TABLE video_user (
-		id INTEGER PRIMARY KEY, status INTEGER, user_type INTEGER, subscription_status INTEGER,
-		vip_expires_at DATETIME, google_email TEXT, appid_email TEXT
-	)`).Error; err != nil {
-		t.Fatal(err)
-	}
-	future := time.Now().Add(24 * time.Hour)
-	if err := db.Exec(`INSERT INTO video_user (id, status, user_type, subscription_status, vip_expires_at, google_email)
-		VALUES (7, 0, 1, 1, ?, 'legacy@example.com')`, future).Error; err != nil {
-		t.Fatal(err)
-	}
-	if err := app.MigrateUserCenterColumns(db); err != nil {
-		t.Fatal(err)
-	}
-	for _, column := range []string{"vip_expires_at", "user_type", "subscription_status", "vip_level"} {
-		if !db.Migrator().HasColumn("video_user", column) {
-			t.Errorf("missing column after migration: %s", column)
-		}
-	}
-	var row struct {
-		ID       uint64
-		Email    string
-		VIPLevel uint32 `gorm:"column:vip_level"`
-		IsFrozen bool
-	}
-	if err := db.Table("video_user").First(&row, 7).Error; err != nil {
-		t.Fatal(err)
-	}
-	if row.ID != 7 || row.Email != "legacy@example.com" || row.VIPLevel != 1 || !row.IsFrozen {
-		t.Fatalf("legacy row was not preserved/backfilled: %#v", row)
 	}
 }

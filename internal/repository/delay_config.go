@@ -2,6 +2,9 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"ai-video/internal/gen/model"
 )
@@ -15,11 +18,6 @@ func NewDelayConfigRepo() *DelayConfigRepo {
 type DelayConfigListFilter struct {
 	Group   string
 	Keyword string
-}
-
-type DelayConfigValue struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
 }
 
 func (d *DelayConfigRepo) Create(ctx context.Context, config *model.VideoDelayConfig) error {
@@ -102,16 +100,45 @@ func (d *DelayConfigRepo) ListAll(ctx context.Context) ([]model.VideoDelayConfig
 	return list, err
 }
 
-// ListValues returns the client-facing projection only. Management metadata is
-// intentionally excluded from the API response.
-func (d *DelayConfigRepo) ListValues(ctx context.Context) ([]DelayConfigValue, error) {
+// ListValues returns the client-facing configuration as a key-value object.
+// Numeric and boolean database values are normalized to JSON numbers.
+func (d *DelayConfigRepo) ListValues(ctx context.Context) (map[string]int64, error) {
 	q := qFrom(ctx).VideoDelayConfig
-	var list []DelayConfigValue
-	err := q.WithContext(ctx).
+	type configValue struct {
+		Key   string
+		Value string
+	}
+	var list []configValue
+	if err := q.WithContext(ctx).
 		Select(q.Key, q.Value).
 		Order(q.Sort.Asc(), q.ID.Asc()).
-		Scan(&list)
-	return list, err
+		Scan(&list); err != nil {
+		return nil, err
+	}
+	result := make(map[string]int64, len(list))
+	for _, item := range list {
+		value, err := parseDelayConfigNumber(item.Value)
+		if err != nil {
+			return nil, fmt.Errorf("delay config %s: %w", item.Key, err)
+		}
+		result[item.Key] = value
+	}
+	return result, nil
+}
+
+func parseDelayConfigNumber(value string) (int64, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "true":
+		return 1, nil
+	case "false":
+		return 0, nil
+	default:
+		parsed, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("value %q is not numeric", value)
+		}
+		return parsed, nil
+	}
 }
 
 func (d *DelayConfigRepo) ListGroups(ctx context.Context) ([]string, error) {

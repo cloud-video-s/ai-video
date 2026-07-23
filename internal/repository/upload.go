@@ -9,6 +9,7 @@ import (
 	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/upload"
 
+	"gorm.io/gen/field"
 	"gorm.io/gorm/clause"
 )
 
@@ -52,8 +53,9 @@ func (r *UploadRepo) RecordCompleted(ctx context.Context, completed upload.Compl
 	if result.RowsAffected > 0 {
 		return nil
 	}
-	var existing model.VideoUpload
-	if err := dbFrom(ctx).Where("upload_id = ?", session.UploadID).First(&existing).Error; err != nil {
+	q := qFrom(ctx).VideoUpload
+	existing, err := q.WithContext(ctx).Where(q.UploadID.Eq(session.UploadID)).First()
+	if err != nil {
 		return err
 	}
 	if existing.UserType != row.UserType || existing.UserID != row.UserID {
@@ -63,37 +65,38 @@ func (r *UploadRepo) RecordCompleted(ctx context.Context, completed upload.Compl
 }
 
 func (r *UploadRepo) PageList(ctx context.Context, page, pageSize int, filter *UploadListFilter) ([]model.VideoUpload, int64, error) {
-	db := dbFrom(ctx).Model(&model.VideoUpload{})
+	q := qFrom(ctx).VideoUpload
+	dao := q.WithContext(ctx)
 	if filter != nil {
 		if filter.UserType != 0 {
-			db = db.Where("user_type = ?", filter.UserType)
+			dao = dao.Where(q.UserType.Eq(filter.UserType))
 		}
 		if filter.UserID != 0 {
-			db = db.Where("user_id = ?", filter.UserID)
+			dao = dao.Where(q.UserID.Eq(filter.UserID))
 		}
 		if filter.MediaType != "" {
-			db = db.Where("media_type = ?", filter.MediaType)
+			dao = dao.Where(q.MediaType.Eq(filter.MediaType))
 		}
 		if filter.FileType != "" {
-			db = db.Where("file_type = ?", strings.TrimPrefix(strings.ToLower(filter.FileType), "."))
+			dao = dao.Where(q.FileType.Eq(strings.TrimPrefix(strings.ToLower(filter.FileType), ".")))
 		}
 		if filter.StorageProvider != "" {
-			db = db.Where("storage_provider = ?", filter.StorageProvider)
+			dao = dao.Where(q.StorageProvider.Eq(filter.StorageProvider))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			db = db.Where("original_name LIKE ? OR file_path LIKE ? OR upload_id LIKE ?", keyword, keyword, keyword)
+			dao = dao.Where(field.Or(q.OriginalName.Like(keyword), q.FilePath.Like(keyword), q.UploadID.Like(keyword)))
 		}
 	}
-	var total int64
-	if err := db.Count(&total).Error; err != nil {
+	total, err := dao.Count()
+	if err != nil {
 		return nil, 0, err
 	}
-	var list []model.VideoUpload
-	if err := db.Order("id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error; err != nil {
+	rows, err := dao.Order(q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	if err != nil {
 		return nil, 0, err
 	}
-	return list, total, nil
+	return valuesOf(rows), total, nil
 }
 
 func uploadOwnerUserType(ownerType upload.UploaderType) (int8, error) {

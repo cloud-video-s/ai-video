@@ -108,6 +108,37 @@ func TestBannerListForClientAppliesAllTargetDimensions(t *testing.T) {
 	}
 }
 
+func TestBannerListForClientPreloadsTargetTemplate(t *testing.T) {
+	db := openBannerTargetTestDB(t, "banner-client-template")
+	seedBannerTargetTestData(t, db)
+	if err := db.Exec(`INSERT INTO video_template
+		(id, name, template_type, cover_image, template_video, thumbnail_video, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		42, "Target template", "action", "/template.jpg", "/template.mp4", "/thumb.mp4", 1,
+	).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Model(&model.VideoBanner{}).Where("id = ?", 1).
+		Updates(map[string]interface{}{"jump_type": 2, "template_id": 42}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := NewBannerRepo().ListForClient(context.Background(), ClientBannerTargets{SubscriptionStatus: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range list {
+		if list[i].ID != 1 {
+			continue
+		}
+		if list[i].Template == nil || list[i].Template.ID != 42 || list[i].Template.Name != "Target template" {
+			t.Fatalf("target template was not preloaded: %#v", list[i].Template)
+		}
+		return
+	}
+	t.Fatal("target banner was not returned")
+}
+
 func TestBannerReplaceTargetsWithEmptySelectionsRemovesAllBindings(t *testing.T) {
 	db := openBannerTargetTestDB(t, "banner-empty-targets")
 	seedBannerTargetTestData(t, db)
@@ -118,9 +149,11 @@ func TestBannerReplaceTargetsWithEmptySelectionsRemovesAllBindings(t *testing.T)
 	if err := repo.ReplaceTargets(ctx, &item, BannerTargetIDs{}); err != nil {
 		t.Fatal(err)
 	}
-	assertActiveBannerRelationCount(t, db, &model.VideoBannerDisplayPosition{}, item.ID, 0)
+	assertActiveBannerRelationCount(t, db, &model.VideoBannerPlacementAssociation{}, item.ID, 0)
 	assertActiveBannerRelationCount(t, db, &model.VideoBannerCountry{}, item.ID, 0)
 	assertActiveBannerRelationCount(t, db, &model.VideoBannerApp{}, item.ID, 0)
+	assertActiveBannerRelationCount(t, db, &model.VideoBannerPackage{}, item.ID, 0)
+	assertActiveBannerRelationCount(t, db, &model.VideoBannerVersion{}, item.ID, 0)
 
 	list, err := repo.ListForClient(ctx, ClientBannerTargets{
 		PositionKey: "unknown", CountryCode: "JP", AppCode: "unknown-app", PackageCode: "com.unknown",
@@ -138,6 +171,41 @@ func TestBannerReplaceTargetsWithEmptySelectionsRemovesAllBindings(t *testing.T)
 	}
 	if !matched {
 		t.Fatal("banner with empty target selections must be delivered globally")
+	}
+}
+
+func TestBannerReplaceTargetsWritesNormalizedRelations(t *testing.T) {
+	db := openBannerTargetTestDB(t, "banner-normalized-targets")
+	seedBannerTargetTestData(t, db)
+	repo := NewBannerRepo()
+	ctx := context.Background()
+	item := model.VideoBanner{ID: 1}
+
+	err := repo.ReplaceTargets(ctx, &item, BannerTargetIDs{
+		DisplayPositionKeys: []string{"home"},
+		CountryIDs:          []uint64{1},
+		AppTargets: []BannerAppTargetInput{{
+			AppCode: "ai-video", PackageCode: "com.example.video",
+			VersionCodes: []string{"2.0.0", "1.0.0", "1.0.0"},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertActiveBannerRelationCount(t, db, &model.VideoBannerPlacementAssociation{}, item.ID, 1)
+	assertActiveBannerRelationCount(t, db, &model.VideoBannerCountry{}, item.ID, 1)
+	assertActiveBannerRelationCount(t, db, &model.VideoBannerApp{}, item.ID, 1)
+	assertActiveBannerRelationCount(t, db, &model.VideoBannerPackage{}, item.ID, 1)
+	assertActiveBannerRelationCount(t, db, &model.VideoBannerVersion{}, item.ID, 2)
+
+	targets, err := repo.LoadAppTargets(ctx, []uint64{item.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantVersions := []string{"1.0.0", "2.0.0"}
+	if got := targets[item.ID]; len(got) != 1 || got[0].AppCode != "ai-video" ||
+		got[0].PackageCode != "com.example.video" || !reflect.DeepEqual(got[0].VersionCodes, wantVersions) {
+		t.Fatalf("normalized targets = %#v", got)
 	}
 }
 
@@ -176,8 +244,8 @@ func openBannerTargetTestDB(t *testing.T, name string) *gorm.DB {
 			subscription_status INTEGER NOT NULL DEFAULT 3,
 			created_at DATETIME, updated_at DATETIME, deleted_at DATETIME
 		)`,
-		`CREATE TABLE video_banner_display_position (
-			id INTEGER PRIMARY KEY AUTOINCREMENT, banner_id INTEGER NOT NULL, position_key TEXT NOT NULL,
+		`CREATE TABLE video_banner_placement_association (
+			id INTEGER PRIMARY KEY AUTOINCREMENT, banner_id INTEGER NOT NULL, placement_key TEXT NOT NULL,
 			created_at DATETIME, updated_at DATETIME, deleted_at DATETIME
 		)`,
 		`CREATE TABLE video_display_position (
@@ -195,8 +263,15 @@ func openBannerTargetTestDB(t *testing.T, name string) *gorm.DB {
 			created_at DATETIME, updated_at DATETIME, deleted_at DATETIME
 		)`,
 		`CREATE TABLE video_banner_app (
-			id INTEGER PRIMARY KEY AUTOINCREMENT, banner_id INTEGER NOT NULL, app_code TEXT NOT NULL,
-			package_code TEXT, version_code TEXT NOT NULL,
+			id INTEGER PRIMARY KEY AUTOINCREMENT, banner_id INTEGER NOT NULL, app_id INTEGER NOT NULL,
+			created_at DATETIME, updated_at DATETIME, deleted_at DATETIME
+		)`,
+		`CREATE TABLE video_banner_package (
+			id INTEGER PRIMARY KEY AUTOINCREMENT, banner_id INTEGER NOT NULL, package_id INTEGER NOT NULL,
+			created_at DATETIME, updated_at DATETIME, deleted_at DATETIME
+		)`,
+		`CREATE TABLE video_banner_version (
+			id INTEGER PRIMARY KEY AUTOINCREMENT, banner_id INTEGER NOT NULL, version_id INTEGER NOT NULL,
 			created_at DATETIME, updated_at DATETIME, deleted_at DATETIME
 		)`,
 		`CREATE TABLE video_app (
@@ -210,7 +285,17 @@ func openBannerTargetTestDB(t *testing.T, name string) *gorm.DB {
 			status INTEGER NOT NULL DEFAULT 1, system_type INTEGER NOT NULL DEFAULT 1,
 			created_at DATETIME, updated_at DATETIME, deleted_at DATETIME
 		)`,
-		`CREATE TABLE video_template (id INTEGER PRIMARY KEY AUTOINCREMENT, status INTEGER NOT NULL DEFAULT 1, deleted_at DATETIME)`,
+		`CREATE TABLE video_package_version (
+			id INTEGER PRIMARY KEY AUTOINCREMENT, version_code TEXT NOT NULL, download_url TEXT NOT NULL,
+			install_count INTEGER NOT NULL DEFAULT 0, download_count INTEGER NOT NULL DEFAULT 0,
+			device_count INTEGER NOT NULL DEFAULT 0, description TEXT, status INTEGER NOT NULL DEFAULT 1,
+			created_at DATETIME, updated_at DATETIME, deleted_at DATETIME, package_code TEXT NOT NULL
+		)`,
+		`CREATE TABLE video_template (
+			id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, template_type TEXT,
+			cover_image TEXT, template_video TEXT, thumbnail_video TEXT,
+			status INTEGER NOT NULL DEFAULT 1, deleted_at DATETIME
+		)`,
 	}
 	for _, statement := range statements {
 		if err := db.Exec(statement).Error; err != nil {
@@ -235,7 +320,11 @@ func seedBannerTargetTestData(t *testing.T, db *gorm.DB) {
 		{ID: 1, PackageName: "Main", PackageCode: "com.example.video", AppCode: app.AppCode, Status: 1},
 		{ID: 2, PackageName: "Other", PackageCode: "com.example.other", AppCode: app.AppCode, Status: 1},
 	}
-	for _, values := range []interface{}{&positions, &countries, &app, &packages} {
+	versions := []model.VideoPackageVersion{
+		{ID: 1, VersionCode: "1.0.0", DownloadURL: "/1.0.0.apk", PackageCode: "com.example.video", Status: 1},
+		{ID: 2, VersionCode: "2.0.0", DownloadURL: "/2.0.0.apk", PackageCode: "com.example.video", Status: 1},
+	}
+	for _, values := range []interface{}{&positions, &countries, &app, &packages, &versions} {
 		if err := db.Create(values).Error; err != nil {
 			t.Fatal(err)
 		}
@@ -253,21 +342,25 @@ func seedBannerTargetTestData(t *testing.T, db *gorm.DB) {
 	if err := db.Create(&banners).Error; err != nil {
 		t.Fatal(err)
 	}
-	positionRows := []model.VideoBannerDisplayPosition{
-		{BannerID: 2, PositionKey: "home"}, {BannerID: 3, PositionKey: "home"}, {BannerID: 4, PositionKey: "detail"},
+	positionRows := []model.VideoBannerPlacementAssociation{
+		{BannerID: 2, PlacementKey: "home"}, {BannerID: 3, PlacementKey: "home"}, {BannerID: 4, PlacementKey: "detail"},
 	}
 	countryRows := []model.VideoBannerCountry{
 		{BannerID: 2, CountryCode: "CN"}, {BannerID: 3, CountryCode: "CN"},
 		{BannerID: 4, CountryCode: "CN"}, {BannerID: 5, CountryCode: "US"},
 	}
 	appRows := []model.VideoBannerApp{
-		{BannerID: 2, AppCode: app.AppCode, PackageCode: "com.example.video", VersionCode: "1.0.0"},
-		{BannerID: 2, AppCode: app.AppCode, PackageCode: "com.example.video", VersionCode: "2.0.0"},
-		{BannerID: 3, AppCode: app.AppCode, PackageCode: "com.example.video", VersionCode: ""},
-		{BannerID: 4, AppCode: app.AppCode, PackageCode: "com.example.video", VersionCode: ""},
-		{BannerID: 6, AppCode: app.AppCode, PackageCode: "com.example.other", VersionCode: ""},
+		{BannerID: 2, AppID: app.ID}, {BannerID: 3, AppID: app.ID},
+		{BannerID: 4, AppID: app.ID}, {BannerID: 6, AppID: app.ID},
 	}
-	for _, values := range []interface{}{&positionRows, &countryRows, &appRows} {
+	packageRows := []model.VideoBannerPackage{
+		{BannerID: 2, PackageID: 1}, {BannerID: 3, PackageID: 1},
+		{BannerID: 4, PackageID: 1}, {BannerID: 6, PackageID: 2},
+	}
+	versionRows := []model.VideoBannerVersion{
+		{BannerID: 2, VersionID: 1}, {BannerID: 2, VersionID: 2},
+	}
+	for _, values := range []interface{}{&positionRows, &countryRows, &appRows, &packageRows, &versionRows} {
 		if err := db.Create(values).Error; err != nil {
 			t.Fatal(err)
 		}

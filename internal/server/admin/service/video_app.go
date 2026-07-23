@@ -26,7 +26,7 @@ type ListVideoAppRequest struct {
 
 type VideoAppPayload struct {
 	Name        string `json:"name" binding:"required,max=255"`
-	AppCode     string `json:"app_code" binding:"required,max=60"`
+	AppID       uint64 `json:"app_id" binding:"required,max=60"`
 	Status      uint32 `json:"status" binding:"oneof=0 1"`
 	Sort        uint32 `json:"sort" binding:"max=999999"`
 	Description string `json:"description" binding:"max=10000"`
@@ -75,15 +75,15 @@ func (s *VideoAppService) Update(ctx context.Context, id uint64, req *VideoAppPa
 	if err := s.validatePayload(ctx, req, id); err != nil {
 		return nil, err
 	}
-	if item.AppCode != strings.TrimSpace(req.AppCode) {
-		count, err := s.repo.PackageCount(ctx, item.AppCode)
-		if err != nil {
-			return nil, err
-		}
-		if count > 0 {
-			return nil, errors.New("该应用仍有关联安装包，不能修改应用标识")
-		}
-	}
+	//if item.AppCode != strings.TrimSpace(req.AppID) {
+	//	count, err := s.repo.PackageCount(ctx, item.AppCode)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	if count > 0 {
+	//		return nil, errors.New("该应用仍有关联安装包，不能修改应用标识")
+	//	}
+	//}
 	applyVideoAppPayload(item, req)
 	if err := s.repo.UpdateFields(ctx, item); err != nil {
 		return nil, err
@@ -110,11 +110,11 @@ func (s *VideoAppService) validatePayload(ctx context.Context, req *VideoAppPayl
 	if strings.TrimSpace(req.Name) == "" {
 		return errors.New("应用名称不能为空")
 	}
-	code := strings.TrimSpace(req.AppCode)
-	if !videoAppCodePattern.MatchString(code) {
-		return errors.New("应用标识只能包含字母、数字、点、下划线和中划线")
-	}
-	existing, err := s.repo.GetByAppCode(ctx, code)
+	//code := strings.TrimSpace(req.AppID)
+	//if !videoAppCodePattern.MatchString(code) {
+	//	return errors.New("应用标识只能包含字母、数字、点、下划线和中划线")
+	//}
+	existing, err := s.repo.GetByAppCode(ctx, req.AppID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil
 	}
@@ -129,7 +129,7 @@ func (s *VideoAppService) validatePayload(ctx context.Context, req *VideoAppPayl
 
 func applyVideoAppPayload(item *model.VideoApp, req *VideoAppPayload) {
 	item.Name = strings.TrimSpace(req.Name)
-	item.AppCode = strings.TrimSpace(req.AppCode)
+	//item.AppCode = strings.TrimSpace(req.AppID)
 	//item.Status = req.Status
 	//item.Sort = req.Sort
 	item.Description = strings.TrimSpace(req.Description)

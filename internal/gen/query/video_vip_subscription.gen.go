@@ -29,10 +29,9 @@ func newVideoVipSubscription(db *gorm.DB, opts ...gen.DOOption) videoVipSubscrip
 	tableName := _videoVipSubscription.videoVipSubscriptionDo.TableName()
 	_videoVipSubscription.ALL = field.NewAsterisk(tableName)
 	_videoVipSubscription.ID = field.NewUint64(tableName, "id")
-	_videoVipSubscription.Platform = field.NewString(tableName, "platform")
-	_videoVipSubscription.ProductID = field.NewString(tableName, "product_id")
+	_videoVipSubscription.VipType = field.NewString(tableName, "vip_type")
+	_videoVipSubscription.ProductCode = field.NewString(tableName, "product_code")
 	_videoVipSubscription.Name = field.NewString(tableName, "name")
-	_videoVipSubscription.VIPLevel = field.NewString(tableName, "v_ip_level")
 	_videoVipSubscription.PlanType = field.NewString(tableName, "plan_type")
 	_videoVipSubscription.AppVersion = field.NewString(tableName, "app_version")
 	_videoVipSubscription.Currency = field.NewString(tableName, "currency")
@@ -58,13 +57,177 @@ func newVideoVipSubscription(db *gorm.DB, opts ...gen.DOOption) videoVipSubscrip
 	_videoVipSubscription.Sort = field.NewInt64(tableName, "sort")
 	_videoVipSubscription.Description = field.NewString(tableName, "description")
 	_videoVipSubscription.Remark = field.NewString(tableName, "remark")
+	_videoVipSubscription.PlacementKey = field.NewString(tableName, "placement_key")
+	_videoVipSubscription.LevelID = field.NewInt64(tableName, "level_id")
 	_videoVipSubscription.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoVipSubscription.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoVipSubscription.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoVipSubscription.ExcludedChannels = videoVipSubscriptionManyToManyExcludedChannels{
+	_videoVipSubscription.Placement = videoVipSubscriptionBelongsToPlacement{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("ExcludedChannels", "model.VideoChannel"),
+		RelationField: field.NewRelation("Placement", "model.VideoVipPlacement"),
+	}
+
+	_videoVipSubscription.SubscriptionLevel = videoVipSubscriptionBelongsToSubscriptionLevel{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("SubscriptionLevel", "model.VideoVipSubscriptionLevel"),
+	}
+
+	_videoVipSubscription.Apps = videoVipSubscriptionManyToManyApps{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Apps", "model.VideoApp"),
+		Packages: struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+			}
+		}{
+			RelationField: field.NewRelation("Apps.Packages", "model.VideoPackage"),
+			App: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("Apps.Packages.App", "model.VideoApp"),
+			},
+		},
+	}
+
+	_videoVipSubscription.Packages = videoVipSubscriptionManyToManyPackages{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Packages", "model.VideoPackage"),
+		App: struct {
+			field.RelationField
+			Packages struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Packages.App", "model.VideoApp"),
+			Packages: struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}{
+				RelationField: field.NewRelation("Packages.App.Packages", "model.VideoPackage"),
+				App: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Packages.App.Packages.App", "model.VideoApp"),
+				},
+			},
+		},
+		Versions: struct {
+			field.RelationField
+			Package struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Packages.Versions", "model.VideoPackageVersion"),
+			Package: struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}{
+				RelationField: field.NewRelation("Packages.Versions.Package", "model.VideoPackage"),
+				App: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Packages.Versions.Package.App", "model.VideoApp"),
+				},
+			},
+		},
+	}
+
+	_videoVipSubscription.Versions = videoVipSubscriptionManyToManyVersions{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Versions", "model.VideoPackageVersion"),
+		Package: struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+				Packages struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}
+			}
+			Versions struct {
+				field.RelationField
+				Package struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Versions.Package", "model.VideoPackage"),
+			App: struct {
+				field.RelationField
+				Packages struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}
+			}{
+				RelationField: field.NewRelation("Versions.Package.App", "model.VideoApp"),
+				Packages: struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}{
+					RelationField: field.NewRelation("Versions.Package.App.Packages", "model.VideoPackage"),
+					App: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Versions.Package.App.Packages.App", "model.VideoApp"),
+					},
+				},
+			},
+			Versions: struct {
+				field.RelationField
+				Package struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}
+			}{
+				RelationField: field.NewRelation("Versions.Package.Versions", "model.VideoPackageVersion"),
+				Package: struct {
+					field.RelationField
+					App struct {
+						field.RelationField
+					}
+				}{
+					RelationField: field.NewRelation("Versions.Package.Versions.Package", "model.VideoPackage"),
+					App: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Versions.Package.Versions.Package.App", "model.VideoApp"),
+					},
+				},
+			},
+		},
+	}
+
+	_videoVipSubscription.Countries = videoVipSubscriptionManyToManyCountries{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Countries", "model.VideoCountry"),
 	}
 
 	_videoVipSubscription.fillFieldMap()
@@ -77,10 +240,9 @@ type videoVipSubscription struct {
 
 	ALL                      field.Asterisk
 	ID                       field.Uint64
-	Platform                 field.String  // android, ios, pc or web
-	ProductID                field.String  // store product SKU
+	VipType                  field.String  // android, ios, pc or web
+	ProductCode              field.String  // store product SKU
 	Name                     field.String  // VIP plan name
-	VIPLevel                 field.String  // VIP level
 	PlanType                 field.String  // plan type
 	AppVersion               field.String  // minimum or targeted app version
 	Currency                 field.String  // ISO currency code
@@ -106,10 +268,22 @@ type videoVipSubscription struct {
 	Sort                     field.Int64   // sort order
 	Description              field.String  // plan description
 	Remark                   field.String  // internal remark
+	PlacementKey             field.String  // 展示位置
+	LevelID                  field.Int64   // 会员等级id
 	CreatedAt                field.Time
 	UpdatedAt                field.Time
 	DeletedAt                field.Field
-	ExcludedChannels         videoVipSubscriptionManyToManyExcludedChannels
+	Placement                videoVipSubscriptionBelongsToPlacement
+
+	SubscriptionLevel videoVipSubscriptionBelongsToSubscriptionLevel
+
+	Apps videoVipSubscriptionManyToManyApps
+
+	Packages videoVipSubscriptionManyToManyPackages
+
+	Versions videoVipSubscriptionManyToManyVersions
+
+	Countries videoVipSubscriptionManyToManyCountries
 
 	fieldMap map[string]field.Expr
 }
@@ -127,10 +301,9 @@ func (v videoVipSubscription) As(alias string) *videoVipSubscription {
 func (v *videoVipSubscription) updateTableName(table string) *videoVipSubscription {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
-	v.Platform = field.NewString(table, "platform")
-	v.ProductID = field.NewString(table, "product_id")
+	v.VipType = field.NewString(table, "vip_type")
+	v.ProductCode = field.NewString(table, "product_code")
 	v.Name = field.NewString(table, "name")
-	v.VIPLevel = field.NewString(table, "v_ip_level")
 	v.PlanType = field.NewString(table, "plan_type")
 	v.AppVersion = field.NewString(table, "app_version")
 	v.Currency = field.NewString(table, "currency")
@@ -156,6 +329,8 @@ func (v *videoVipSubscription) updateTableName(table string) *videoVipSubscripti
 	v.Sort = field.NewInt64(table, "sort")
 	v.Description = field.NewString(table, "description")
 	v.Remark = field.NewString(table, "remark")
+	v.PlacementKey = field.NewString(table, "placement_key")
+	v.LevelID = field.NewInt64(table, "level_id")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -187,12 +362,11 @@ func (v *videoVipSubscription) GetFieldByName(fieldName string) (field.OrderExpr
 }
 
 func (v *videoVipSubscription) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 34)
+	v.fieldMap = make(map[string]field.Expr, 40)
 	v.fieldMap["id"] = v.ID
-	v.fieldMap["platform"] = v.Platform
-	v.fieldMap["product_id"] = v.ProductID
+	v.fieldMap["vip_type"] = v.VipType
+	v.fieldMap["product_code"] = v.ProductCode
 	v.fieldMap["name"] = v.Name
-	v.fieldMap["v_ip_level"] = v.VIPLevel
 	v.fieldMap["plan_type"] = v.PlanType
 	v.fieldMap["app_version"] = v.AppVersion
 	v.fieldMap["currency"] = v.Currency
@@ -218,6 +392,8 @@ func (v *videoVipSubscription) fillFieldMap() {
 	v.fieldMap["sort"] = v.Sort
 	v.fieldMap["description"] = v.Description
 	v.fieldMap["remark"] = v.Remark
+	v.fieldMap["placement_key"] = v.PlacementKey
+	v.fieldMap["level_id"] = v.LevelID
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
@@ -226,24 +402,39 @@ func (v *videoVipSubscription) fillFieldMap() {
 
 func (v videoVipSubscription) clone(db *gorm.DB) videoVipSubscription {
 	v.videoVipSubscriptionDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.ExcludedChannels.db = db.Session(&gorm.Session{Initialized: true})
-	v.ExcludedChannels.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Placement.db = db.Session(&gorm.Session{Initialized: true})
+	v.Placement.db.Statement.ConnPool = db.Statement.ConnPool
+	v.SubscriptionLevel.db = db.Session(&gorm.Session{Initialized: true})
+	v.SubscriptionLevel.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Apps.db = db.Session(&gorm.Session{Initialized: true})
+	v.Apps.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Packages.db = db.Session(&gorm.Session{Initialized: true})
+	v.Packages.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Versions.db = db.Session(&gorm.Session{Initialized: true})
+	v.Versions.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Countries.db = db.Session(&gorm.Session{Initialized: true})
+	v.Countries.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoVipSubscription) replaceDB(db *gorm.DB) videoVipSubscription {
 	v.videoVipSubscriptionDo.ReplaceDB(db)
-	v.ExcludedChannels.db = db.Session(&gorm.Session{})
+	v.Placement.db = db.Session(&gorm.Session{})
+	v.SubscriptionLevel.db = db.Session(&gorm.Session{})
+	v.Apps.db = db.Session(&gorm.Session{})
+	v.Packages.db = db.Session(&gorm.Session{})
+	v.Versions.db = db.Session(&gorm.Session{})
+	v.Countries.db = db.Session(&gorm.Session{})
 	return v
 }
 
-type videoVipSubscriptionManyToManyExcludedChannels struct {
+type videoVipSubscriptionBelongsToPlacement struct {
 	db *gorm.DB
 
 	field.RelationField
 }
 
-func (a videoVipSubscriptionManyToManyExcludedChannels) Where(conds ...field.Expr) *videoVipSubscriptionManyToManyExcludedChannels {
+func (a videoVipSubscriptionBelongsToPlacement) Where(conds ...field.Expr) *videoVipSubscriptionBelongsToPlacement {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -256,32 +447,32 @@ func (a videoVipSubscriptionManyToManyExcludedChannels) Where(conds ...field.Exp
 	return &a
 }
 
-func (a videoVipSubscriptionManyToManyExcludedChannels) WithContext(ctx context.Context) *videoVipSubscriptionManyToManyExcludedChannels {
+func (a videoVipSubscriptionBelongsToPlacement) WithContext(ctx context.Context) *videoVipSubscriptionBelongsToPlacement {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a videoVipSubscriptionManyToManyExcludedChannels) Session(session *gorm.Session) *videoVipSubscriptionManyToManyExcludedChannels {
+func (a videoVipSubscriptionBelongsToPlacement) Session(session *gorm.Session) *videoVipSubscriptionBelongsToPlacement {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a videoVipSubscriptionManyToManyExcludedChannels) Model(m *model.VideoVipSubscription) *videoVipSubscriptionManyToManyExcludedChannelsTx {
-	return &videoVipSubscriptionManyToManyExcludedChannelsTx{a.db.Model(m).Association(a.Name())}
+func (a videoVipSubscriptionBelongsToPlacement) Model(m *model.VideoVipSubscription) *videoVipSubscriptionBelongsToPlacementTx {
+	return &videoVipSubscriptionBelongsToPlacementTx{a.db.Model(m).Association(a.Name())}
 }
 
-func (a videoVipSubscriptionManyToManyExcludedChannels) Unscoped() *videoVipSubscriptionManyToManyExcludedChannels {
+func (a videoVipSubscriptionBelongsToPlacement) Unscoped() *videoVipSubscriptionBelongsToPlacement {
 	a.db = a.db.Unscoped()
 	return &a
 }
 
-type videoVipSubscriptionManyToManyExcludedChannelsTx struct{ tx *gorm.Association }
+type videoVipSubscriptionBelongsToPlacementTx struct{ tx *gorm.Association }
 
-func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Find() (result []*model.VideoChannel, err error) {
+func (a videoVipSubscriptionBelongsToPlacementTx) Find() (result *model.VideoVipPlacement, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Append(values ...*model.VideoChannel) (err error) {
+func (a videoVipSubscriptionBelongsToPlacementTx) Append(values ...*model.VideoVipPlacement) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -289,7 +480,7 @@ func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Append(values ...*mode
 	return a.tx.Append(targetValues...)
 }
 
-func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Replace(values ...*model.VideoChannel) (err error) {
+func (a videoVipSubscriptionBelongsToPlacementTx) Replace(values ...*model.VideoVipPlacement) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -297,7 +488,7 @@ func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Replace(values ...*mod
 	return a.tx.Replace(targetValues...)
 }
 
-func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Delete(values ...*model.VideoChannel) (err error) {
+func (a videoVipSubscriptionBelongsToPlacementTx) Delete(values ...*model.VideoVipPlacement) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -305,15 +496,468 @@ func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Delete(values ...*mode
 	return a.tx.Delete(targetValues...)
 }
 
-func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Clear() error {
+func (a videoVipSubscriptionBelongsToPlacementTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Count() int64 {
+func (a videoVipSubscriptionBelongsToPlacementTx) Count() int64 {
 	return a.tx.Count()
 }
 
-func (a videoVipSubscriptionManyToManyExcludedChannelsTx) Unscoped() *videoVipSubscriptionManyToManyExcludedChannelsTx {
+func (a videoVipSubscriptionBelongsToPlacementTx) Unscoped() *videoVipSubscriptionBelongsToPlacementTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoVipSubscriptionBelongsToSubscriptionLevel struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevel) Where(conds ...field.Expr) *videoVipSubscriptionBelongsToSubscriptionLevel {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevel) WithContext(ctx context.Context) *videoVipSubscriptionBelongsToSubscriptionLevel {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevel) Session(session *gorm.Session) *videoVipSubscriptionBelongsToSubscriptionLevel {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevel) Model(m *model.VideoVipSubscription) *videoVipSubscriptionBelongsToSubscriptionLevelTx {
+	return &videoVipSubscriptionBelongsToSubscriptionLevelTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevel) Unscoped() *videoVipSubscriptionBelongsToSubscriptionLevel {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoVipSubscriptionBelongsToSubscriptionLevelTx struct{ tx *gorm.Association }
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevelTx) Find() (result *model.VideoVipSubscriptionLevel, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevelTx) Append(values ...*model.VideoVipSubscriptionLevel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevelTx) Replace(values ...*model.VideoVipSubscriptionLevel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevelTx) Delete(values ...*model.VideoVipSubscriptionLevel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevelTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevelTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoVipSubscriptionBelongsToSubscriptionLevelTx) Unscoped() *videoVipSubscriptionBelongsToSubscriptionLevelTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoVipSubscriptionManyToManyApps struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	Packages struct {
+		field.RelationField
+		App struct {
+			field.RelationField
+		}
+	}
+}
+
+func (a videoVipSubscriptionManyToManyApps) Where(conds ...field.Expr) *videoVipSubscriptionManyToManyApps {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyApps) WithContext(ctx context.Context) *videoVipSubscriptionManyToManyApps {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyApps) Session(session *gorm.Session) *videoVipSubscriptionManyToManyApps {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyApps) Model(m *model.VideoVipSubscription) *videoVipSubscriptionManyToManyAppsTx {
+	return &videoVipSubscriptionManyToManyAppsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoVipSubscriptionManyToManyApps) Unscoped() *videoVipSubscriptionManyToManyApps {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoVipSubscriptionManyToManyAppsTx struct{ tx *gorm.Association }
+
+func (a videoVipSubscriptionManyToManyAppsTx) Find() (result []*model.VideoApp, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoVipSubscriptionManyToManyAppsTx) Append(values ...*model.VideoApp) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyAppsTx) Replace(values ...*model.VideoApp) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyAppsTx) Delete(values ...*model.VideoApp) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyAppsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoVipSubscriptionManyToManyAppsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoVipSubscriptionManyToManyAppsTx) Unscoped() *videoVipSubscriptionManyToManyAppsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoVipSubscriptionManyToManyPackages struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	App struct {
+		field.RelationField
+		Packages struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+			}
+		}
+	}
+	Versions struct {
+		field.RelationField
+		Package struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+			}
+		}
+	}
+}
+
+func (a videoVipSubscriptionManyToManyPackages) Where(conds ...field.Expr) *videoVipSubscriptionManyToManyPackages {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyPackages) WithContext(ctx context.Context) *videoVipSubscriptionManyToManyPackages {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyPackages) Session(session *gorm.Session) *videoVipSubscriptionManyToManyPackages {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyPackages) Model(m *model.VideoVipSubscription) *videoVipSubscriptionManyToManyPackagesTx {
+	return &videoVipSubscriptionManyToManyPackagesTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoVipSubscriptionManyToManyPackages) Unscoped() *videoVipSubscriptionManyToManyPackages {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoVipSubscriptionManyToManyPackagesTx struct{ tx *gorm.Association }
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Find() (result []*model.VideoPackage, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Append(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Replace(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Delete(values ...*model.VideoPackage) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoVipSubscriptionManyToManyPackagesTx) Unscoped() *videoVipSubscriptionManyToManyPackagesTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoVipSubscriptionManyToManyVersions struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	Package struct {
+		field.RelationField
+		App struct {
+			field.RelationField
+			Packages struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}
+		}
+		Versions struct {
+			field.RelationField
+			Package struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}
+		}
+	}
+}
+
+func (a videoVipSubscriptionManyToManyVersions) Where(conds ...field.Expr) *videoVipSubscriptionManyToManyVersions {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyVersions) WithContext(ctx context.Context) *videoVipSubscriptionManyToManyVersions {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyVersions) Session(session *gorm.Session) *videoVipSubscriptionManyToManyVersions {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyVersions) Model(m *model.VideoVipSubscription) *videoVipSubscriptionManyToManyVersionsTx {
+	return &videoVipSubscriptionManyToManyVersionsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoVipSubscriptionManyToManyVersions) Unscoped() *videoVipSubscriptionManyToManyVersions {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoVipSubscriptionManyToManyVersionsTx struct{ tx *gorm.Association }
+
+func (a videoVipSubscriptionManyToManyVersionsTx) Find() (result []*model.VideoPackageVersion, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoVipSubscriptionManyToManyVersionsTx) Append(values ...*model.VideoPackageVersion) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyVersionsTx) Replace(values ...*model.VideoPackageVersion) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyVersionsTx) Delete(values ...*model.VideoPackageVersion) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyVersionsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoVipSubscriptionManyToManyVersionsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoVipSubscriptionManyToManyVersionsTx) Unscoped() *videoVipSubscriptionManyToManyVersionsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoVipSubscriptionManyToManyCountries struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoVipSubscriptionManyToManyCountries) Where(conds ...field.Expr) *videoVipSubscriptionManyToManyCountries {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyCountries) WithContext(ctx context.Context) *videoVipSubscriptionManyToManyCountries {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyCountries) Session(session *gorm.Session) *videoVipSubscriptionManyToManyCountries {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoVipSubscriptionManyToManyCountries) Model(m *model.VideoVipSubscription) *videoVipSubscriptionManyToManyCountriesTx {
+	return &videoVipSubscriptionManyToManyCountriesTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoVipSubscriptionManyToManyCountries) Unscoped() *videoVipSubscriptionManyToManyCountries {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoVipSubscriptionManyToManyCountriesTx struct{ tx *gorm.Association }
+
+func (a videoVipSubscriptionManyToManyCountriesTx) Find() (result []*model.VideoCountry, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoVipSubscriptionManyToManyCountriesTx) Append(values ...*model.VideoCountry) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyCountriesTx) Replace(values ...*model.VideoCountry) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyCountriesTx) Delete(values ...*model.VideoCountry) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoVipSubscriptionManyToManyCountriesTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoVipSubscriptionManyToManyCountriesTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoVipSubscriptionManyToManyCountriesTx) Unscoped() *videoVipSubscriptionManyToManyCountriesTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }
