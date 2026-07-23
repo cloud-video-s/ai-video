@@ -77,6 +77,8 @@ func (h *AuthHandler) handleIdentityError(c *gin.Context, err error) {
 		response.FailWithStatus(c, http.StatusUnauthorized, errcode.ErrTokenInvalid, "第三方身份凭证无效")
 	case errors.Is(err, apiservice.ErrIdentityProviderNotConfigured):
 		response.FailWithStatus(c, http.StatusServiceUnavailable, errcode.ErrServer, err.Error())
+	case errors.Is(err, apiservice.ErrDeviceCodeNotConfigured):
+		response.Fail(c, errcode.ErrRoleExist, err.Error())
 	default:
 		response.Fail(c, errcode.ErrServer, err.Error())
 	}

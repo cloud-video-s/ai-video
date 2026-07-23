@@ -1,7 +1,6 @@
 package service
 
 import (
-	"ai-video/internal/config"
 	"ai-video/internal/middleware"
 	"ai-video/internal/pkg/utils"
 	"context"
@@ -40,9 +39,12 @@ type BindIdentityRequest struct {
 	FamilyName    string `json:"family_name" binding:"omitempty,max=128"`
 }
 
-var ErrIdentityProviderNotConfigured = errors.New("third-party identity provider is not configured")
+var (
+	ErrIdentityProviderNotConfigured = errors.New("third-party identity provider is not configured")
+	ErrDeviceCodeNotConfigured       = errors.New("当前设备已绑定另一个同类型第三方账号，是否确认登录？")
+)
 
-func (s *AuthService) ThirdPartyLogin(ctx *gin.Context, req *ThirdPartyLoginRequest, clientIP, userAgent string) (*ThirdAuthResponse, error) {
+func (s *AuthService) ThirdPartyLogin(ctx *gin.Context, req *ThirdPartyLoginRequest, clientIP, userAgent string) (*AuthResponse, error) {
 	provider, err := normalizeIdentityProvider(req.ThirdType)
 	if err != nil {
 		return nil, err
@@ -66,17 +68,21 @@ func (s *AuthService) ThirdPartyLogin(ctx *gin.Context, req *ThirdPartyLoginRequ
 	return s.loginVerifiedIdentity(ctx, req, clientIP, userAgent)
 }
 
-func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLoginRequest, clientIP, userAgent string) (*ThirdAuthResponse, error) {
+func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLoginRequest, clientIP, userAgent string) (*AuthResponse, error) {
 	now := time.Now()
 	var user *model.VideoUser
 	apiUserID := middleware.GetAPIUserID(ctx)
 	serverCountry := utils.ClientIP(ctx)
 	var err error
-	user, err = s.userRepo.GetByProviderSubject(ctx, req.ThirdCode, true)
+	user, err = s.userRepo.GetByThirdCode(ctx, req.ThirdCode, true)
 	if errors.Is(err, gorm.ErrRecordNotFound) || user == nil {
 		user, err = s.userRepo.GetByID(ctx, apiUserID)
 		if err != nil {
 			return nil, errors.New("user not found")
+		}
+
+		if user.ThirdCode != "" && user.ThirdCode != req.ThirdCode {
+			return nil, errors.New("当前账号已绑定邮箱")
 		}
 		firstOpenedAt := req.FirstOpenedAt
 		if firstOpenedAt == nil {
@@ -99,31 +105,22 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 	}
 
 	if user.ID != apiUserID {
-		if user.Status != 1 || user.IsFrozen || user.IsBlacklisted {
+		if user.Status != 1 || user.IsFrozen == 1 || user.IsBlacklisted == 1 {
 			return nil, errors.New("当前邮箱绑定账号已停用，暂时无法使用")
 		}
 		if req.ForceNew {
 			if err := s.userRepo.Update(ctx, user.ID, ThirdPartyLoginBinding(req.ThirdType, req.Email, req.ThirdCode, clientIP, serverCountry, now)); err != nil {
-				config.Log.Errorf("")
 				return nil, errors.New("failed to update third party login info")
 			}
 		} else {
-			return &ThirdAuthResponse{
-				Status: 1,
-			}, errors.New("当前设备已绑定另一个同类型第三方账号，是否确认登录？")
+			return &AuthResponse{}, errors.New("当前设备已绑定另一个同类型第三方账号，是否确认登录？")
 		}
 	}
 	user, err = s.prepareLoginSession(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
-	authResponse, err := issueToken(user, providerLoginType(req.ThirdType))
-	if err != nil {
-		return nil, err
-	}
-	return &ThirdAuthResponse{
-		AuthResponse: *authResponse,
-	}, err
+	return issueToken(user, uint32(providerLoginType(req.ThirdType)))
 }
 
 func (s *AuthService) ListIdentities(ctx context.Context, userID uint64) ([]model.VideoUserIdentity, error) {
@@ -211,11 +208,11 @@ func firstToken(values ...string) string {
 	return ""
 }
 
-func providerLoginType(provider string) uint32 {
+func providerLoginType(provider string) uint8 {
 	if provider == domain.IdentityProviderGoogle {
-		return domain.AppUserLoginGoogle
+		return uint8(domain.AppUserLoginGoogle)
 	}
-	return domain.AppUserLoginAppID
+	return uint8(domain.AppUserLoginAppID)
 }
 
 func identityRecordLoginAccount(identity *model.VideoUserIdentity) string {

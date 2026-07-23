@@ -138,8 +138,8 @@ func applyTemplateTypePayload(item *model.VideoTemplateType, req *TemplateTypePa
 	item.Sort = req.Sort
 	item.Status = req.Status
 	item.Description = strings.TrimSpace(req.Description)
-	item.UserTypes = append([]int(nil), req.UserTypes...)
-	item.SubscriptionStatuses = append([]string(nil), req.SubscriptionStatuses...)
+	//item.UserTypes = append([]int(nil), req.UserTypes...)
+	//item.SubscriptionStatuses = append([]string(nil), req.SubscriptionStatuses...)
 }
 
 // prepareTargets 校验分类关系并统一去重。三个关系数组为空都表示“全部”。
@@ -359,11 +359,11 @@ func (s *TemplateService) ensureTypeExists(ctx context.Context, id uint64) error
 
 func applyTemplatePayload(item *model.VideoTemplate, req *TemplatePayload) {
 	item.VideoTemplateTypeID = req.VideoTemplateTypeID
-	item.UserTypes = append([]int(nil), req.UserTypes...)
-	item.SubscriptionStatuses = append([]string(nil), req.SubscriptionStatuses...)
+	//item.UserTypes = append([]int(nil), req.UserTypes...)
+	//item.SubscriptionStatuses = append([]string(nil), req.SubscriptionStatuses...)
 	item.Name = strings.TrimSpace(req.Name)
 	item.TemplateType = strings.TrimSpace(req.TemplateType)
-	item.Sort = req.Sort
+	item.Sort = int64(req.Sort)
 	item.CoverImage = strings.TrimSpace(req.CoverImage)
 	item.TemplateVideo = strings.TrimSpace(req.TemplateVideo)
 	item.ThumbnailVideo = strings.TrimSpace(req.ThumbnailVideo)

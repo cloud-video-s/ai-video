@@ -70,7 +70,7 @@ func (s *RoleService) Create(ctx context.Context, req *CreateRoleRequest) error 
 		Name:   req.Name,
 		Code:   req.Code,
 		Sort:   req.Sort,
-		Status: uint32(status),
+		Status: uint8(status),
 		Remark: req.Remark,
 	}
 	if err := s.roleRepo.Create(ctx, role); err != nil {
@@ -97,7 +97,7 @@ func (s *RoleService) Update(ctx context.Context, id uint64, req *UpdateRoleRequ
 	}
 	role.Sort = req.Sort
 	if req.Status != nil {
-		role.Status = uint32(*req.Status)
+		role.Status = uint8(*req.Status)
 	}
 	if req.Remark != "" {
 		role.Remark = req.Remark
@@ -153,17 +153,17 @@ func (s *RoleService) SetMenus(ctx context.Context, roleID uint64, menuIDs []uin
 		return fmt.Errorf("清除旧权限策略失败: %w", err)
 	}
 	if len(menuIDs) > 0 {
-		menus, err := repository.NewMenuRepo().GetByIDs(ctx, menuIDs)
-		if err != nil {
-			config.Enforcer.LoadPolicy()
-			return err
-		}
+		//menus, err := repository.NewMenuRepo().GetByIDs(ctx, menuIDs)
+		//if err != nil {
+		//	config.Enforcer.LoadPolicy()
+		//	return err
+		//}
 		var policies [][]string
-		for _, m := range menus {
-			for _, api := range m.APIs {
-				policies = append(policies, []string{role.Code, api.Path, api.Method})
-			}
-		}
+		//for _, m := range menus {
+		//	for _, api := range m.APIs {
+		//		policies = append(policies, []string{role.Code, api.Path, api.Method})
+		//	}
+		//}
 		if len(policies) > 0 {
 			if _, err := config.Enforcer.AddPolicies(policies); err != nil {
 				config.Enforcer.LoadPolicy()

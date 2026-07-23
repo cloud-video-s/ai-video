@@ -56,10 +56,10 @@ func (s *MenuService) Create(ctx context.Context, req *CreateMenuRequest) error 
 		Component:  req.Component,
 		Icon:       req.Icon,
 		Sort:       req.Sort,
-		Type:       req.Type,
+		Type:       uint8(req.Type),
 		Permission: req.Permission,
-		Visible:    req.Visible,
-		Status:     req.Status,
+		Visible:    uint8(req.Visible),
+		Status:     uint8(req.Status),
 	}
 	return repository.Transaction(ctx, func(ctx context.Context) error {
 		if err := s.menuRepo.Create(ctx, menu); err != nil {
@@ -98,12 +98,12 @@ func (s *MenuService) Update(ctx context.Context, id uint64, req *UpdateMenuRequ
 		menu.Icon = req.Icon
 	}
 	menu.Sort = req.Sort
-	menu.Type = req.Type
+	menu.Type = uint8(req.Type)
 	if req.Permission != "" {
 		menu.Permission = req.Permission
 	}
-	menu.Visible = req.Visible
-	menu.Status = req.Status
+	menu.Visible = uint8(req.Visible)
+	menu.Status = uint8(req.Status)
 
 	return repository.Transaction(ctx, func(ctx context.Context) error {
 		if err := s.menuRepo.Update(ctx, menu); err != nil {

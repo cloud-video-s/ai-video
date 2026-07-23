@@ -166,7 +166,7 @@ func (r *UserAttributionRepo) SyncUsers(ctx context.Context) (int64, error) {
 			}
 			rows = append(rows, model.VideoUserAttribution{
 				UserID: users[i].ID, ChannelCode: users[i].ChannelID,
-				IMEI: users[i].IMEI, IP: users[i].LastLoginIP, AttributedAt: attributedAt,
+				IMEI: users[i].DeviceCode, IP: users[i].LastLoginIP, AttributedAt: attributedAt,
 			})
 			cursor = users[i].ID
 		}

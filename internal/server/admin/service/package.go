@@ -40,9 +40,9 @@ type PackagePayload struct {
 	PackageCode string `json:"package_code" binding:"required,max=128"`
 	AppCode     string `json:"app_code" binding:"required,max=50"`
 	Description string `json:"description" binding:"max=10000"`
-	Sort        int    `json:"sort" binding:"min=0,max=999999"`
-	Status      int8   `json:"status" binding:"oneof=0 1"`
-	SystemType  uint32 `json:"system_type" binding:"required,oneof=1 2"`
+	Sort        int64  `json:"sort" binding:"min=0,max=999999"`
+	Status      uint8  `json:"status" binding:"oneof=0 1"`
+	SystemType  uint8  `json:"system_type" binding:"required,oneof=1 2"`
 }
 
 func (s *PackageService) List(ctx context.Context, page, pageSize int, req *ListPackageRequest) ([]model.VideoPackage, int64, error) {

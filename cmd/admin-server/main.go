@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ai-video/internal/app"
 	"ai-video/internal/config"
 	"ai-video/internal/pkg/setting"
 	"ai-video/internal/repository"
@@ -26,6 +27,9 @@ func main() {
 
 	if err := config.Init(*cfgFile); err != nil {
 		panic(fmt.Sprintf("init app failed: %v", err))
+	}
+	if err := app.MigrateCommerceTables(config.DB); err != nil {
+		panic(fmt.Sprintf("migrate commerce tables failed: %v", err))
 	}
 	if err := setting.Init(context.Background()); err != nil {
 		config.Log.Warnf("init settings: %v", err)

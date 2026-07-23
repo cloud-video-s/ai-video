@@ -132,11 +132,7 @@ func (s *AppUserService) Create(ctx context.Context, req *CreateAppUserRequest) 
 	}
 	subscriptionStatus := req.SubscriptionStatus
 	if subscriptionStatus == 0 {
-		subscriptionStatus = domain.AppUserSubscriptionNotSubscribed
-	}
-	status := int32(1)
-	if req.Status != nil {
-		status = *req.Status
+		subscriptionStatus = uint32(domain.AppUserSubscriptionNotSubscribed)
 	}
 	appName := strings.TrimSpace(req.AppName)
 	if appName == "" {
@@ -147,19 +143,19 @@ func (s *AppUserService) Create(ctx context.Context, req *CreateAppUserRequest) 
 		ClientCountry: strings.TrimSpace(req.ClientCountry), ChannelID: strings.TrimSpace(req.ChannelID),
 		AppVersion: strings.TrimSpace(req.AppVersion), AppName: appName,
 		FirstOpenedAt: req.FirstOpenedAt, LastOpenedAt: req.LastOpenedAt,
-		LoginType: loginType, LoginAccount: strings.TrimSpace(req.LoginAccount), UserType: userType,
-		ActiveDays: req.ActiveDays, AvgDailyUsageSeconds: req.AvgDailyUsageSeconds,
-		VipExpiresAt: req.VIPExpiresAt, PointsBalance: req.PointsBalance, SubscriptionStatus: subscriptionStatus,
-		FirstOrderCreatedAt: req.FirstOrderCreatedAt, FirstPaidAt: req.FirstPaidAt,
-		OrderCount: req.OrderCount, PaymentCount: req.PaymentCount,
-		SubscriptionPaymentCount: req.SubscriptionPaymentCount, OneTimePaymentCount: req.OneTimePaymentCount,
-		OrderAmountMoney: req.OrderAmountMoney, ActualAmountMoney: req.ActualAmountMoney,
-		LastPaidAt: req.LastPaidAt, RefundAmountMoney: req.RefundAmountMoney,
-		PointsMoney: req.PointsMoney, AiCotsMoney: req.AiCotsMoney,
-		Activated: req.Activated, KeyBehaviorMet: req.KeyBehaviorMet,
-		PaymentMet: req.PaymentMet, FirstPaymentMet: req.FirstPaymentMet, Registered: req.Registered,
-		AttributionClickedAt: req.AttributionClickedAt, PhoneModel: strings.TrimSpace(req.PhoneModel),
-		ReRegisteredFromID: uint64Value(req.ReRegisteredFromID), Status: status,
+		//LoginType: loginType, LoginAccount: strings.TrimSpace(req.LoginAccount), UserType: userType,
+		//ActiveDays: req.ActiveDays, AvgDailyUsageSeconds: req.AvgDailyUsageSeconds,
+		//VipExpiresAt: req.VIPExpiresAt, PointsBalance: req.PointsBalance, SubscriptionStatus: subscriptionStatus,
+		//FirstOrderCreatedAt: req.FirstOrderCreatedAt, FirstPaidAt: req.FirstPaidAt,
+		//OrderCount: req.OrderCount, PaymentCount: req.PaymentCount,
+		//SubscriptionPaymentCount: req.SubscriptionPaymentCount, OneTimePaymentCount: req.OneTimePaymentCount,
+		//OrderAmountMoney: req.OrderAmountMoney, ActualAmountMoney: req.ActualAmountMoney,
+		//LastPaidAt: req.LastPaidAt, RefundAmountMoney: req.RefundAmountMoney,
+		//PointsMoney: req.PointsMoney, AiCotsMoney: req.AiCotsMoney,
+		//Activated: req.Activated, KeyBehaviorMet: req.KeyBehaviorMet,
+		//PaymentMet: req.PaymentMet, FirstPaymentMet: req.FirstPaymentMet, Registered: req.Registered,
+		//AttributionClickedAt: req.AttributionClickedAt, PhoneModel: strings.TrimSpace(req.PhoneModel),
+		//ReRegisteredFromID: uint64Value(req.ReRegisteredFromID), Status: status,
 		LastLoginAt: req.LastLoginAt, LastLoginIP: strings.TrimSpace(req.LastLoginIP),
 	}
 	user.Email = nullableString(req.Email)

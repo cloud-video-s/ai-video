@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/utils"
 	"ai-video/internal/repository"
@@ -65,7 +64,7 @@ func (s *UserService) Create(ctx context.Context, req *CreateUserRequest) error 
 		Nickname: req.Nickname,
 		Email:    req.Email,
 		Phone:    req.Phone,
-		Status:   int32(status),
+		Status:   uint8(status),
 	}
 
 	// 创建用户 + 分配角色 在同一事务内（中途失败整体回滚）
@@ -106,7 +105,7 @@ func (s *UserService) Update(ctx context.Context, id uint64, req *UpdateUserRequ
 		user.Avatar = req.Avatar
 	}
 	if req.Status != nil {
-		user.Status = int32(*req.Status)
+		user.Status = uint8(*req.Status)
 	}
 	if req.Password != "" {
 		hashed, err := utils.HashPassword(req.Password)
@@ -135,15 +134,15 @@ func (s *UserService) Delete(ctx context.Context, id, currentUserID uint64) erro
 	if id == currentUserID {
 		return errors.New("不能删除当前登录用户")
 	}
-	user, err := s.userRepo.GetByID(ctx, id)
-	if err != nil {
-		return notFoundOr(err, "用户不存在")
-	}
-	for _, r := range user.Roles {
-		if r.Code == domain.SuperAdminRoleCode {
-			return errors.New("不能删除超级管理员")
-		}
-	}
+	//user, err := s.userRepo.GetByID(ctx, id)
+	//if err != nil {
+	//	return notFoundOr(err, "用户不存在")
+	//}
+	//for _, r := range user.Roles {
+	//	if r.Code == domain.SuperAdminRoleCode {
+	//		return errors.New("不能删除超级管理员")
+	//	}
+	//}
 	return s.userRepo.Delete(ctx, id)
 }
 

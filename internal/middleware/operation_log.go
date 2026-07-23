@@ -74,10 +74,13 @@ func OperationLog() gin.HandlerFunc {
 		m := meta[c.Request.Method+" "+c.FullPath()]
 		bizCode, bizMsg := parseBizResult(blw.body.Bytes())
 		status := c.Writer.Status()
-
+		success := 0
+		if status == http.StatusOK && bizCode == 0 {
+			success = 1
+		}
 		entry := &model.VideoOperationLog{
 			TraceID:    c.GetString("trace_id"),
-			UserID:     GetAdminID(c),
+			Admin:      GetAdminID(c),
 			Username:   GetUsername(c),
 			RoleCodes:  strings.Join(GetRoleCodes(c), ","),
 			Module:     m.module,
@@ -90,12 +93,12 @@ func OperationLog() gin.HandlerFunc {
 			RespParams: captureResponse(blw.body.Bytes()),
 			Status:     int64(status),
 			BizCode:    int64(bizCode),
-			Success:    status == http.StatusOK && bizCode == 0,
+			Success:    int8(success),
 			ClientIP:   c.ClientIP(),
 			UserAgent:  c.Request.UserAgent(),
 			LatencyMs:  time.Since(start).Milliseconds(),
 		}
-		if !entry.Success {
+		if entry.Success == 1 {
 			entry.ErrorMsg = bizMsg
 		}
 
@@ -112,10 +115,10 @@ func OperationLog() gin.HandlerFunc {
 // RecordLogin writes an explicit auth event (login/logout). Login lives on a
 // public route with no AdminAuth/OperationLog middleware, and a failed login has
 // no authenticated user — so auth handlers record it directly. Best-effort.
-func RecordLogin(c *gin.Context, action string, userID uint64, username string, success bool, errMsg string) {
+func RecordLogin(c *gin.Context, action string, userID uint64, username string, success int8, errMsg string) {
 	entry := &model.VideoOperationLog{
 		TraceID:   c.GetString("trace_id"),
-		UserID:    userID,
+		Admin:     userID,
 		Username:  username,
 		Module:    "认证",
 		Action:    action,

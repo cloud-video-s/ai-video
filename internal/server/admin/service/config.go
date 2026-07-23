@@ -143,7 +143,7 @@ func (s *ConfigService) List(ctx context.Context, group string) ([]model.VideoCo
 		return nil, err
 	}
 	for i := range list {
-		if list[i].Sensitive {
+		if list[i].Sensitive == 1 {
 			list[i].Value = sensitiveValueMask
 		}
 	}
@@ -172,7 +172,7 @@ func (s *ConfigService) BatchUpdate(ctx context.Context, items []ConfigItem) err
 			if err != nil {
 				return err
 			}
-			if config.Sensitive && it.Value == sensitiveValueMask {
+			if config.Sensitive == 1 && it.Value == sensitiveValueMask {
 				continue
 			}
 			if err := s.repo.UpdateValue(ctx, it.Key, it.Value); err != nil {
@@ -193,7 +193,7 @@ type CreateConfigRequest struct {
 	Value    string `json:"value"`
 	Type     string `json:"type"`
 	Options  string `json:"options"`
-	IsPublic bool   `json:"is_public"`
+	IsPublic int8   `json:"is_public"`
 	Remark   string `json:"remark"`
 	Sort     int    `json:"sort"`
 }
@@ -219,10 +219,14 @@ func (s *ConfigService) Create(ctx context.Context, req *CreateConfigRequest) er
 	if exists {
 		return errors.New("配置键已存在")
 	}
+	sensitive := 0
+	if typ == "password" {
+		sensitive = 1
+	}
 	c := &model.VideoConfig{
 		Group: req.Group, Key: req.Key, Name: req.Name, Value: req.Value,
 		Type: typ, Options: req.Options, IsPublic: req.IsPublic,
-		Sensitive: typ == "password", Remark: req.Remark, Sort: int64(req.Sort), Editable: true, Builtin: false,
+		Sensitive: int8(sensitive), Remark: req.Remark, Sort: int64(req.Sort), Editable: 1, Builtin: 0,
 	}
 	if err := s.repo.Create(ctx, c); err != nil {
 		return err
@@ -237,7 +241,7 @@ type UpdateConfigRequest struct {
 	Value    string `json:"value"`
 	Type     string `json:"type"`
 	Options  string `json:"options"`
-	IsPublic bool   `json:"is_public"`
+	IsPublic int8   `json:"is_public"`
 	Remark   string `json:"remark"`
 	Sort     int    `json:"sort"`
 }
@@ -262,7 +266,7 @@ func (s *ConfigService) Update(ctx context.Context, id uint, req *UpdateConfigRe
 	}
 	c.Group = req.Group
 	c.Name = req.Name
-	if !(c.Sensitive && req.Value == sensitiveValueMask) {
+	if !(c.Sensitive == 1 && req.Value == sensitiveValueMask) {
 		c.Value = req.Value
 	}
 	c.Type = typ
@@ -289,7 +293,7 @@ func (s *ConfigService) Delete(ctx context.Context, id uint) error {
 	if err != nil {
 		return notFoundOr(err, "配置不存在")
 	}
-	if c.Builtin {
+	if c.Builtin == 1 {
 		return errors.New("内置配置不可删除")
 	}
 	// Hard delete: configs are reference data, and a soft-deleted row would keep

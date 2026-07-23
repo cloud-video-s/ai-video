@@ -29,6 +29,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	bannerHandler := handler.NewBannerHandler()
 	templateHandler := handler.NewTemplateHandler()
 	vipHandler := handler.NewVipHandler()
+	paymentHandler := handler.NewPaymentHandler()
 	uploadConfig, err := uploadruntime.ManagerConfig()
 	if err != nil {
 		panic(err)
@@ -83,6 +84,11 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		vip := authenticated.Group("/vip")
 		{
 			vip.GET("/recommend", vipHandler.Recommend)
+		}
+
+		payments := authenticated.Group("/payments")
+		{
+			payments.POST("/apple/confirm", paymentHandler.ConfirmApple)
 		}
 
 		conf := authenticated.Group("/configs")

@@ -75,44 +75,43 @@ func (d *AppUserRepo) GetByIDForUpdate(ctx context.Context, id uint64) (*model.V
 }
 
 func (d *AppUserRepo) GetByDeviceCode(ctx context.Context, deviceCode string, lock bool) (*model.VideoUser, error) {
-	var user model.VideoUser
-	db := dbFrom(ctx).Where("device_code = ?", deviceCode)
+	q := qFrom(ctx).VideoUser
+	dao := q.WithContext(ctx).Where(q.DeviceCode.Eq(deviceCode))
 	if lock {
-		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
+		dao = dao.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
-	if err := db.Order("last_login_at DESC").First(&user).Error; err != nil {
-		return nil, err
-	}
-	return &user, nil
+	return dao.Order(q.LastLoginAt.Desc()).First()
 }
 
-func (d *AppUserRepo) GetByProviderSubject(ctx context.Context, thirdCode string, lock bool) (*model.VideoUser, error) {
-	var user model.VideoUser
-	db := dbFrom(ctx).Where("third_code = ?", thirdCode)
+func (d *AppUserRepo) GetByThirdCode(ctx context.Context, thirdCode string, lock bool) (*model.VideoUser, error) {
+	q := qFrom(ctx).VideoUser
+	dao := q.WithContext(ctx).Where(q.ThirdCode.Eq(thirdCode))
 	if lock {
-		db = db.Clauses(clause.Locking{Strength: "UPDATE"})
+		dao = dao.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
-	if err := db.First(&user).Error; err != nil {
-		return nil, err
-	}
-	return &user, nil
+	return dao.First()
 }
 
 func (d *AppUserRepo) GetAuthState(ctx context.Context, id uint64) (string, int64, error) {
-	var user model.VideoUser
-	if err := dbFrom(ctx).Select("imei", "token_version").
-		Where("id = ? AND status = 1 AND is_frozen = ? AND is_blacklisted = ?", id, false, false).
-		First(&user).Error; err != nil {
+	q := qFrom(ctx).VideoUser
+	user, err := q.WithContext(ctx).Where(q.ID.Eq(id)).
+		Where(q.Status.Eq(1)).
+		Where(q.IsFrozen.Eq(0)).
+		Where(q.IsBlacklisted.Eq(0)).
+		Select(q.DeviceCode, q.TokenVersion).First()
+	if err != nil {
 		return "", 0, err
 	}
-	return user.IMEI, user.TokenVersion, nil
+	return user.DeviceCode, user.TokenVersion, nil
 }
 
 func (d *AppUserRepo) Update(ctx context.Context, id uint64, updates map[string]interface{}) error {
 	if len(updates) == 0 {
 		return nil
 	}
-	return dbFrom(ctx).Model(&model.VideoUser{}).Where("id = ?", id).Updates(updates).Error
+	q := qFrom(ctx).VideoUser
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(id)).Updates(updates)
+	return err
 }
 
 // IncrementTokenVersion atomically rotates the user's session version. API

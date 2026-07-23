@@ -84,7 +84,7 @@ func (s *ClientBannerService) List(ctx *gin.Context, userID uint64, req *ClientB
 }
 
 func mapClientBanner(item *model.VideoBanner) ClientBanner {
-	positionKeys := clientBannerPositionKeys(item.DisplayPositions)
+	positionKeys := clientBannerPositionKeys(item.DisplayPosition)
 	positionKey := ""
 	if len(positionKeys) > 0 {
 		positionKey = positionKeys[0]
@@ -94,17 +94,17 @@ func mapClientBanner(item *model.VideoBanner) ClientBanner {
 		Status: int8(item.Status), JumpType: uint8(item.JumpType),
 		CoverImage: item.CoverImage, Route: clientBannerRoute(item), TemplateID: item.TemplateID, Sort: item.Sort,
 	}
-	if item.Template != nil {
-		result.TargetTemplate = &ClientBannerTemplate{
-			ID: item.Template.ID, Name: item.Template.Name, TemplateType: item.Template.TemplateType,
-			CoverImage: item.Template.CoverImage, TemplateVideo: item.Template.TemplateVideo,
-			ThumbnailVideo: item.Template.ThumbnailVideo, Status: int8(item.Template.Status),
-		}
-	}
+	//if item.Template != nil {
+	//	result.TargetTemplate = &ClientBannerTemplate{
+	//		ID: item.Template.ID, Name: item.Template.Name, TemplateType: item.Template.TemplateType,
+	//		CoverImage: item.Template.CoverImage, TemplateVideo: item.Template.TemplateVideo,
+	//		ThumbnailVideo: item.Template.ThumbnailVideo, Status: int8(item.Template.Status),
+	//	}
+	//}
 	return result
 }
 
-func clientBannerPositionKeys(items []model.VideoDisplayPosition) []string {
+func clientBannerPositionKeys(items []*model.VideoDisplayPosition) []string {
 	result := make([]string, 0, len(items))
 	for i := range items {
 		if key := strings.TrimSpace(items[i].PositionKey); key != "" {

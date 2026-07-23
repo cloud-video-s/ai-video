@@ -92,7 +92,7 @@ func BuildMenuTree(menus []model.VideoMenu, parentID uint64) []*model.VideoMenu 
 	for i := range menus {
 		if menus[i].ParentID == parentID {
 			node := &menus[i]
-			node.Children = menuTreeValues(BuildMenuTree(menus, node.ID))
+			//node.Children = menuTreeValues(BuildMenuTree(menus, node.ID))
 			tree = append(tree, node)
 		}
 	}

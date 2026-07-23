@@ -109,12 +109,12 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 		if req.ForceNew {
 			user = &model.VideoUser{
 				DeviceCode: req.DeviceCode,
-				Username:   newGuestUsername(), LoginType: domain.AppUserLoginGuest,
-				UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
+				Username:   newGuestUsername(), LoginType: uint8(domain.AppUserLoginGuest),
+				UserType: uint8(domain.AppUserTypeFree), SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
 				ClientCountry: req.ClientCountry,
 				AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 				FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
-				AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
+				AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: 1,
 				Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
 			}
 			if err := s.userRepo.Create(ctx, user); err != nil {
@@ -128,7 +128,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 			return errors.New("账号异常，请稍后重试")
 		}
 		if latest != nil {
-			if latest.Status != 1 || latest.IsFrozen || latest.IsBlacklisted {
+			if latest.Status != 1 || latest.IsFrozen == 1 || latest.IsBlacklisted == 1 {
 				return errors.New("当前设备账号已停用")
 			}
 			updates := baseTrackingUpdates(1, &req.AccountBaseRequest, clientIP, now)
@@ -147,12 +147,12 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 
 		user = &model.VideoUser{
 			DeviceCode: req.DeviceCode,
-			Username:   newGuestUsername(), LoginType: domain.AppUserLoginGuest,
-			UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
+			Username:   newGuestUsername(), LoginType: uint8(domain.AppUserLoginGuest),
+			UserType: uint8(domain.AppUserTypeFree), SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
 			ClientCountry: req.ClientCountry,
 			AppVersion:    req.AppVersion, AppName: req.AppPackage, PhoneModel: req.PhoneModel,
 			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
-			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
+			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: 0,
 			Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
 		}
 		if err = s.userRepo.Create(ctx, user); err != nil {
@@ -167,7 +167,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 			if lookupErr == nil {
 				latest, lookupErr = s.prepareLoginSession(ctx, latest.ID)
 				if lookupErr == nil {
-					return issueToken(latest, latest.LoginType)
+					return issueToken(latest, uint32(latest.LoginType))
 				}
 			}
 		}
@@ -175,6 +175,10 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 	}
 	return issueToken(user, domain.AppUserLoginGuest)
 }
+
+//func (s *AuthService) loginUpdate(ctx *gin.Context, user *model.VideoUser, req *LoginRequest, clientIP string, userAgent string) (*AuthResponse, error) {
+//
+//}
 
 func (s *AuthService) prepareLoginSession(ctx context.Context, userID uint64) (*model.VideoUser, error) {
 	if setting.GetBool(setting.UserSingleDeviceLoginKey) {
@@ -206,12 +210,12 @@ func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, 
 
 		user = &model.VideoUser{
 			DeviceCode: req.DeviceCode,
-			Username:   newGuestUsername(), LoginType: domain.AppUserLoginGuest,
-			UserType: domain.AppUserTypeFree, SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
+			Username:   newGuestUsername(), LoginType: uint8(domain.AppUserLoginGuest),
+			UserType: uint8(domain.AppUserTypeFree), SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
 			ClientCountry: req.ClientCountry,
 			AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
-			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: false,
+			AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: 0,
 			Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
 		}
 		if err := s.userRepo.Create(ctx, user); err != nil {
@@ -226,7 +230,7 @@ func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, 
 			if lookupErr == nil {
 				latest, lookupErr = s.prepareLoginSession(ctx, latest.ID)
 				if lookupErr == nil {
-					return issueToken(latest, latest.LoginType)
+					return issueToken(latest, uint32(latest.LoginType))
 				}
 			}
 		}
@@ -260,11 +264,11 @@ func (s *AuthService) GetProfile(ctx context.Context, userID uint64) (*UserRespo
 		Email:              user.Email,
 		DeviceCountry:      user.ClientCountry,
 		ChannelID:          user.ChannelID,
-		LoginType:          user.LoginType,
-		UserType:           user.UserType,
+		LoginType:          uint32(user.LoginType),
+		UserType:           uint32(user.UserType),
 		PointsBalance:      user.PointsBalance,
-		SubscriptionStatus: user.SubscriptionStatus,
-		Status:             user.Status,
+		SubscriptionStatus: uint32(user.SubscriptionStatus),
+		Status:             int32(user.Status),
 		LastLoginIP:        user.LastLoginIP,
 		LoginAccount:       user.LoginAccount,
 	}
@@ -300,11 +304,11 @@ func (s *AuthService) UpdateCountry(ctx context.Context, userID uint64, req *Upd
 }
 
 func issueToken(user *model.VideoUser, loginType uint32) (*AuthResponse, error) {
-	token, err := jwt.GenerateApiToken(user.ID, user.IMEI, user.TokenVersion, loginType)
+	token, err := jwt.GenerateApiToken(user.ID, user.DeviceCode, user.TokenVersion, loginType)
 	if err != nil {
 		return nil, fmt.Errorf("生成客户端 Token 失败: %w", err)
 	}
-	cfg := config.Cfg.JWT
+	cfg := config.Cfg.ApiJwt
 	return &AuthResponse{
 		Token: token, LoginType: loginType, ExpireAt: time.Now().Add(time.Duration(cfg.Expire) * time.Second).Unix(), TokenVersion: user.TokenVersion,
 	}, nil

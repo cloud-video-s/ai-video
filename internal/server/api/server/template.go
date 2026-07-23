@@ -136,7 +136,7 @@ func (s *ClientTemplateService) ListByPosition(ctx *gin.Context, userID uint64, 
 	for i := range rows {
 		result = append(result, ClientTemplateDisplayItem{
 			ClientTemplate: mapClientTemplate(&rows[i].Template), DisplayConfigID: rows[i].ID,
-			PositionKey: rows[i].DisplayPositionKey, DisplaySort: int(rows[i].Sort),
+			PositionKey: rows[i].Description, DisplaySort: int(rows[i].Sort),
 		})
 	}
 	return result, nil
@@ -208,7 +208,7 @@ func (s *ClientTemplateService) Categories(ctx *gin.Context, userID uint64, req 
 	types, err := s.typeRepo.ListForClient(ctx, repository.ClientTemplateTypeTargets{
 		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
 		AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
-		VersionCode: strings.TrimSpace(req.AppVersion), UserType: user.UserType,
+		//VersionCode: strings.TrimSpace(req.AppVersion), UserType: uint32(user.UserType),
 		SubscriptionState: subscriptionState,
 	})
 	if err != nil {
@@ -271,21 +271,21 @@ func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.Vid
 
 func mapClientTemplate(item *model.VideoTemplate) ClientTemplate {
 	return ClientTemplate{
-		ID:                   item.ID,
-		VideoTemplateTypeID:  item.VideoTemplateTypeID,
-		Name:                 item.Name,
-		TemplateType:         item.TemplateType,
-		CoverImage:           item.CoverImage,
-		TemplateVideo:        item.TemplateVideo,
-		ThumbnailVideo:       item.ThumbnailVideo,
-		Prompt:               item.Prompt,
-		Description:          item.Description,
-		UserTypes:            item.UserTypes,
-		SubscriptionStatuses: item.SubscriptionStatuses,
-		Sort:                 item.Sort,
-		UsageCount:           item.UsageCount,
-		FavoriteCount:        item.FavoriteCount,
-		ViewCount:            item.ViewCount,
+		ID:                  item.ID,
+		VideoTemplateTypeID: item.VideoTemplateTypeID,
+		Name:                item.Name,
+		TemplateType:        item.TemplateType,
+		CoverImage:          item.CoverImage,
+		TemplateVideo:       item.TemplateVideo,
+		ThumbnailVideo:      item.ThumbnailVideo,
+		Prompt:              item.Prompt,
+		Description:         item.Description,
+		//UserTypes:            item.UserTypes,
+		//SubscriptionStatuses: item.SubscriptionStatuses,
+		Sort:          int(item.Sort),
+		UsageCount:    item.UsageCount,
+		FavoriteCount: item.FavoriteCount,
+		ViewCount:     item.ViewCount,
 	}
 }
 
@@ -330,7 +330,7 @@ func (s *ClientTemplateService) Recommend(ctx *gin.Context, userID uint64, req *
 	rows, err := s.displayRepo.ListForClient(ctx, repository.ClientTemplateDisplayTargets{
 		PositionKey: strings.TrimSpace(req.PositionKey), CountryID: countryID,
 		AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
-		VersionCode: strings.TrimSpace(req.AppVersion), UserType: user.UserType,
+		//VersionCode: strings.TrimSpace(req.AppVersion), UserType: uint32(user.UserType),
 		SubscriptionState: subscriptionState,
 	})
 	if err != nil {

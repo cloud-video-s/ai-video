@@ -41,7 +41,7 @@ type ListPointsPackageRequest struct {
 }
 
 type PointsPackagePayload struct {
-	ProductID     string   `json:"product_id" binding:"required,max=191"`
+	ProductCode   string   `json:"product_code" binding:"required,max=191"`
 	Name          string   `json:"name" binding:"required,max=128"`
 	PackageID     uint64   `json:"package_id" binding:"required"`
 	Systems       []string `json:"systems" binding:"required,min=1,max=10,dive,required,max=32"`
@@ -98,7 +98,7 @@ func (s *PointsPackageService) Create(ctx context.Context, req *PointsPackagePay
 		if err := s.repo.ReplaceTargets(ctx, item, req.PackageID, req.ChannelIDs); err != nil {
 			return err
 		}
-		if item.IsDefault {
+		if item.IsDefault == 1 {
 			return s.repo.ClearDefaults(ctx, req.PackageID, item.ResourceType, item.ID)
 		}
 		return nil
@@ -120,7 +120,7 @@ func (s *PointsPackageService) Update(ctx context.Context, id uint64, req *Point
 	if err := s.prepareAndValidate(ctx, req, id); err != nil {
 		return nil, err
 	}
-	if req.ProductID != item.ProductID {
+	if req.ProductCode != item.ProductCode {
 		return nil, errors.New("产品 ID 创建后不可修改")
 	}
 	applyPointsPackagePayload(item, req)
@@ -131,7 +131,7 @@ func (s *PointsPackageService) Update(ctx context.Context, id uint64, req *Point
 		if err := s.repo.ReplaceTargets(ctx, item, req.PackageID, req.ChannelIDs); err != nil {
 			return err
 		}
-		if item.IsDefault {
+		if item.IsDefault == 1 {
 			return s.repo.ClearDefaults(ctx, req.PackageID, item.ResourceType, item.ID)
 		}
 		return nil
@@ -168,11 +168,11 @@ func (s *PointsPackageService) SetDefault(ctx context.Context, id uint64) error 
 }
 
 func (s *PointsPackageService) prepareAndValidate(ctx context.Context, req *PointsPackagePayload, currentID uint64) error {
-	req.ProductID = strings.TrimSpace(req.ProductID)
+	req.ProductCode = strings.TrimSpace(req.ProductCode)
 	req.Name = strings.TrimSpace(req.Name)
 	req.ResourceType = strings.ToLower(strings.TrimSpace(req.ResourceType))
 	req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
-	if !pointsProductIDPattern.MatchString(req.ProductID) {
+	if !pointsProductIDPattern.MatchString(req.ProductCode) {
 		return errors.New("产品 ID 只能包含字母、数字、点、下划线和中划线")
 	}
 	if !resourceTypePattern.MatchString(req.ResourceType) {
@@ -206,7 +206,7 @@ func (s *PointsPackageService) prepareAndValidate(ctx context.Context, req *Poin
 			return notFoundOr(err, "渠道不存在")
 		}
 	}
-	existing, err := s.repo.GetByProductID(ctx, req.ProductID)
+	existing, err := s.repo.GetByProductID(ctx, req.ProductCode)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil
 	}
@@ -235,10 +235,10 @@ func validatePointsPackageMoney(req *PointsPackagePayload) error {
 }
 
 func applyPointsPackagePayload(item *model.VideoPointsPackage, req *PointsPackagePayload) {
-	item.ProductID = req.ProductID
+	item.ProductCode = req.ProductCode
 	item.Name = req.Name
-	item.Systems = req.Systems
-	item.UserTypes = req.UserTypes
+	//item.Systems = req.Systems
+	//item.UserTypes = req.UserTypes
 	item.ResourceType = req.ResourceType
 	item.Points = req.Points
 	item.Currency = req.Currency
@@ -248,7 +248,7 @@ func applyPointsPackagePayload(item *model.VideoPointsPackage, req *PointsPackag
 	item.BadgeText = strings.TrimSpace(req.BadgeText)
 	item.Description = strings.TrimSpace(req.Description)
 	item.ButtonText = strings.TrimSpace(req.ButtonText)
-	item.IsDefault = req.IsDefault
-	item.Status = req.Status
-	item.Sort = req.Sort
+	//item.IsDefault = req.IsDefault
+	//item.Status = req.Status
+	//item.Sort = req.Sort
 }

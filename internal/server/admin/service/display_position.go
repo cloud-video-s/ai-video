@@ -144,6 +144,6 @@ func applyDisplayPositionPayload(item *model.VideoDisplayPosition, req *DisplayP
 	item.PositionKey = strings.TrimSpace(req.PositionKey)
 	item.Description = strings.TrimSpace(req.Description)
 	item.CoverImage = strings.TrimSpace(req.CoverImage)
-	item.Sort = req.Sort
+	item.Sort = int64(req.Sort)
 	item.Status = req.Status
 }

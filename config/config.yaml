@@ -28,7 +28,7 @@ jwt:
   issuer: admin_video
 
 api_jwt:
-  secret: video-jwt-api-in-production
+  secret: video-jwt-api-in-production-app
   expire: 604800    # token 过期时间（秒）
   issuer: api_video
 

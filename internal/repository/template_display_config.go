@@ -109,7 +109,7 @@ type ClientTemplateDisplayTargets struct {
 	AppCode           string
 	PackageCode       string
 	VersionCode       string
-	UserType          uint32
+	UserType          uint8
 	SubscriptionState string
 }
 

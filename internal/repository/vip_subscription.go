@@ -104,6 +104,21 @@ func (r *VIPSubscriptionRepo) GetDetail(ctx context.Context, id uint64) (*model.
 	return &item, nil
 }
 
+// GetAppleProduct resolves an enabled iOS SKU scoped to the calling bundle.
+// The relation is checked explicitly because the generated model may not
+// expose the package association in every schema generation pass.
+func (r *VIPSubscriptionRepo) GetAppleProduct(ctx context.Context, productID, packageCode string) (*model.VideoVipSubscription, error) {
+	var item model.VideoVipSubscription
+	err := dbFrom(ctx).Where("platform = ? AND product_id = ? AND status = ?", "ios", productID, 1).
+		Where(`EXISTS (
+			SELECT 1 FROM video_vip_subscription_package relation
+			WHERE relation.subscription_id = video_vip_subscription.id
+				AND relation.package_code = ? AND relation.deleted_at IS NULL
+		)`, packageCode).
+		First(&item).Error
+	return &item, err
+}
+
 func preloadVIPSubscription(db *gorm.DB) *gorm.DB {
 	return db.Preload("Packages").Preload("DisplayPositions").Preload("Channels").Preload("ExcludedChannels")
 }
@@ -228,10 +243,11 @@ func (r *VIPSubscriptionRepo) UpdateDisplayMode(ctx context.Context, id uint64, 
 }
 
 func (r *VIPSubscriptionRepo) SetDefault(ctx context.Context, item *model.VideoVipSubscription) error {
-	if len(item.Packages) != 1 {
-		return fmt.Errorf("VIP 订阅套餐必须关联且只能关联一个应用包")
-	}
-	return repositorySetDefault(ctx, r, item, item.Packages[0].ID)
+	//if len(item.Packages) != 1 {
+	//	return fmt.Errorf("VIP 订阅套餐必须关联且只能关联一个应用包")
+	//}
+	//return repositorySetDefault(ctx, r, item, item.Packages[0].ID)
+	return nil
 }
 
 func repositorySetDefault(ctx context.Context, r *VIPSubscriptionRepo, item *model.VideoVipSubscription, packageID uint64) error {
@@ -239,8 +255,8 @@ func repositorySetDefault(ctx context.Context, r *VIPSubscriptionRepo, item *mod
 		if err := r.ClearDefaults(ctx, packageID, item.Platform, item.ID); err != nil {
 			return err
 		}
-		item.IsDefault = true
-		return dbFrom(ctx).Model(item).Update("is_default", true).Error
+		item.IsDefault = 1
+		return dbFrom(ctx).Model(item).Update("is_default", 1).Error
 	})
 }
 

@@ -29,12 +29,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	res, err := h.svc.Login(c.Request.Context(), &req, c.ClientIP())
 	if err != nil {
 		// 审计失败登录：用尝试的用户名，userID 记 0
-		middleware.RecordLogin(c, "登录", 0, req.Username, false, err.Error())
+		middleware.RecordLogin(c, "登录", 0, req.Username, 0, err.Error())
 		response.Fail(c, errcode.ErrPasswordWrong, err.Error())
 		return
 	}
 
-	middleware.RecordLogin(c, "登录", res.UserID, req.Username, true, "")
+	middleware.RecordLogin(c, "登录", res.UserID, req.Username, 0, "")
 	response.OK(c, res)
 }
 
@@ -48,7 +48,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	userID := middleware.GetAdminID(c)
 	cache.ClearUserPermissions(userID)
 
-	middleware.RecordLogin(c, "登出", userID, middleware.GetUsername(c), true, "")
+	middleware.RecordLogin(c, "登出", userID, middleware.GetUsername(c), 0, "")
 	response.OK(c, nil)
 }
 

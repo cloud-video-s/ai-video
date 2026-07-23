@@ -211,7 +211,7 @@ type ClientTemplateTypeTargets struct {
 	AppCode           string
 	PackageCode       string
 	VersionCode       string
-	UserType          uint32
+	UserType          uint8
 	SubscriptionState string
 }
 
@@ -339,7 +339,7 @@ func (r *TemplateRepo) ListOptions(ctx context.Context) ([]model.VideoTemplate, 
 
 type ClientTemplateTargets struct {
 	TemplateTypeIDs    []uint64
-	UserType           uint32
+	UserType           uint8
 	SubscriptionStatus string
 }
 

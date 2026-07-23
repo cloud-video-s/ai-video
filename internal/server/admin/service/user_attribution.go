@@ -159,9 +159,7 @@ func (s *UserAttributionService) enrichChannel(ctx context.Context, item *model.
 	if code == "" {
 		return
 	}
-	if channel, err := s.channelRepo.GetByCodeOrID(ctx, code); err == nil {
-		item.Channel = channel
-	}
+	return
 }
 
 func parseAttributionDate(value string, endOfDay bool) (*time.Time, error) {
@@ -184,12 +182,12 @@ func attributionEventState(item *model.VideoUserAttribution, event string) (uint
 		return item.ActivationCallbackCount, item.ActivationDeductCount, item.User.Activated != 0, nil
 	case domain.AttributionEventKeyBehavior:
 		return item.KeyBehaviorCallbackCount, item.KeyBehaviorDeductCount, item.User.KeyBehaviorMet != 0, nil
-	case domain.AttributionEventPayment:
-		return item.PaymentCallbackCount, item.PaymentDeductCount, item.User.PaymentMet, nil
-	case domain.AttributionEventFirstPayment:
-		return item.FirstPaymentCallbackCount, item.FirstPaymentDeductCount, item.User.FirstPaymentMet, nil
-	case domain.AttributionEventRegistration:
-		return item.RegistrationCallbackCount, item.RegistrationDeductCount, item.User.Registered, nil
+	//case domain.AttributionEventPayment:
+	//	return item.PaymentCallbackCount, item.PaymentDeductCount, item.User.PaymentMet, nil
+	//case domain.AttributionEventFirstPayment:
+	//	return item.FirstPaymentCallbackCount, item.FirstPaymentDeductCount, item.User.FirstPaymentMet, nil
+	//case domain.AttributionEventRegistration:
+	//	return item.RegistrationCallbackCount, item.RegistrationDeductCount, item.User.Registered, nil
 	default:
 		return 0, 0, false, errors.New("不支持的归因事件")
 	}

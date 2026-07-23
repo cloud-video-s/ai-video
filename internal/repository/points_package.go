@@ -89,6 +89,19 @@ func (r *PointsPackageRepo) GetByProductID(ctx context.Context, productID string
 	return r.BaseRepo.GetOne(ctx, &QueryOptions{Where: map[string]interface{}{"product_code": productID}})
 }
 
+// GetAppleProduct resolves an enabled store SKU scoped to the calling bundle.
+func (r *PointsPackageRepo) GetAppleProduct(ctx context.Context, productID, packageCode string) (*model.VideoPointsPackage, error) {
+	var item model.VideoPointsPackage
+	err := dbFrom(ctx).Where("product_code = ? AND status = ?", productID, 1).
+		Where(`EXISTS (
+			SELECT 1 FROM video_points_package_package relation
+			WHERE relation.product_code = video_points_package.product_code
+				AND relation.package_code = ? AND relation.deleted_at IS NULL
+		)`, packageCode).
+		First(&item).Error
+	return &item, err
+}
+
 func (r *PointsPackageRepo) ListOptions(ctx context.Context) ([]model.VideoPointsPackage, error) {
 	var list []model.VideoPointsPackage
 	err := preloadPointsPackageTargets(dbFrom(ctx)).Where("status = ?", int8(1)).Order("sort ASC, id ASC").Find(&list).Error
@@ -122,19 +135,19 @@ func (r *PointsPackageRepo) ReplaceTargets(ctx context.Context, item *model.Vide
 			return fmt.Errorf("one or more channels do not exist")
 		}
 	}
-	if err := db.Unscoped().Where("product_code = ?", item.ProductID).Delete(&model.VideoPointsPackagePackage{}).Error; err != nil {
+	if err := db.Unscoped().Where("product_code = ?", item.ProductCode).Delete(&model.VideoPointsPackagePackage{}).Error; err != nil {
 		return err
 	}
 	now := time.Now()
 	if err := db.Create(&model.VideoPointsPackagePackage{
-		ProductCode: item.ProductID,
+		ProductCode: item.ProductCode,
 		PackageCode: appPackage.PackageCode,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}).Error; err != nil {
 		return err
 	}
-	if err := db.Unscoped().Where("product_code = ?", item.ProductID).Delete(&model.VideoPointsPackageChannel{}).Error; err != nil {
+	if err := db.Unscoped().Where("product_code = ?", item.ProductCode).Delete(&model.VideoPointsPackageChannel{}).Error; err != nil {
 		return err
 	}
 	if len(channels) == 0 {
@@ -143,7 +156,7 @@ func (r *PointsPackageRepo) ReplaceTargets(ctx context.Context, item *model.Vide
 	rows := make([]model.VideoPointsPackageChannel, 0, len(channels))
 	for _, channel := range channels {
 		rows = append(rows, model.VideoPointsPackageChannel{
-			ProductCode: item.ProductID,
+			ProductCode: item.ProductCode,
 			ChannelCode: channel.ChannelCode,
 			CreatedAt:   now,
 			UpdatedAt:   now,
@@ -169,15 +182,15 @@ func (r *PointsPackageRepo) ClearDefaults(ctx context.Context, packageID uint64,
 
 func (r *PointsPackageRepo) SetDefault(ctx context.Context, item *model.VideoPointsPackage) error {
 	return Transaction(ctx, func(ctx context.Context) error {
-		if len(item.Packages) == 0 {
+		if len(item.ProductCode) == 0 {
 			return fmt.Errorf("points package is not associated with an app package")
 		}
-		if err := r.ClearDefaults(ctx, item.Packages[0].ID, item.ResourceType, item.ID); err != nil {
-			return err
-		}
-		item.IsDefault = true
+		//if err := r.ClearDefaults(ctx, item.Packages[0].ID, item.ResourceType, item.ID); err != nil {
+		//	return err
+		//}
+		item.IsDefault = 1
 		return dbFrom(ctx).Model(&model.VideoPointsPackage{}).
-			Where("id = ?", item.ID).Update("is_default", true).Error
+			Where("id = ?", item.ID).Update("is_default", 1).Error
 	})
 }
 
@@ -192,10 +205,10 @@ func (r *PointsPackageRepo) DeleteWithTargets(ctx context.Context, id uint64) er
 		if err := tx.Select("id", "product_code").First(&item, id).Error; err != nil {
 			return err
 		}
-		if err := tx.Unscoped().Where("product_code = ?", item.ProductID).Delete(&model.VideoPointsPackagePackage{}).Error; err != nil {
+		if err := tx.Unscoped().Where("product_code = ?", item.ProductCode).Delete(&model.VideoPointsPackagePackage{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Unscoped().Where("product_code = ?", item.ProductID).Delete(&model.VideoPointsPackageChannel{}).Error; err != nil {
+		if err := tx.Unscoped().Where("product_code = ?", item.ProductCode).Delete(&model.VideoPointsPackageChannel{}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&item).Error

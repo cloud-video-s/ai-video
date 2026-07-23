@@ -11,9 +11,9 @@ const (
 	AppUserTypeFree    uint32 = 1
 	AppUserTypePaid    uint32 = 2
 
-	AppUserSubscriptionNotSubscribed uint32 = 1
-	AppUserSubscriptionSubscribed    uint32 = 2
-	AppUserSubscriptionCancelled     uint32 = 3
+	AppUserSubscriptionNotSubscribed uint8 = 1
+	AppUserSubscriptionSubscribed    uint8 = 2
+	AppUserSubscriptionCancelled     uint8 = 3
 
 	IdentityProviderGoogle = "google"
 	IdentityProviderApple  = "apple"

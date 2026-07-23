@@ -124,8 +124,8 @@ func (s *TemplateDisplayConfigService) prepare(ctx context.Context, req *Templat
 
 func applyTemplateDisplayConfigPayload(item *model.VideoTemplateDisplayConfig, req *TemplateDisplayConfigPayload) {
 	item.TemplateID = req.TemplateID
-	item.DisplayPositionKey = req.PositionKey
-	item.Sort = req.Sort
-	item.Status = req.Status
-	item.Remark = req.Description
+	//item.DisplayPositionKey = req.PositionKey
+	//item.Sort = req.Sort
+	//item.Status = req.Status
+	//item.Remark = req.Description
 }

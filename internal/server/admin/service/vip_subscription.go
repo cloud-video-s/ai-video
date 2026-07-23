@@ -131,7 +131,7 @@ func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptio
 		if err := s.repo.ReplaceTargets(ctx, item, vipSubscriptionTargets(req)); err != nil {
 			return err
 		}
-		if item.IsDefault {
+		if item.IsDefault == 1 {
 			return s.repo.ClearDefaults(ctx, req.PackageID, item.Platform, item.ID)
 		}
 		return nil
@@ -165,7 +165,7 @@ func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIP
 		if err := s.repo.ReplaceTargets(ctx, item, vipSubscriptionTargets(req)); err != nil {
 			return err
 		}
-		if item.IsDefault {
+		if item.IsDefault == 1 {
 			return s.repo.ClearDefaults(ctx, req.PackageID, item.Platform, item.ID)
 		}
 		return nil
@@ -242,14 +242,8 @@ func (s *VIPSubscriptionService) prepareAndValidate(ctx context.Context, req *VI
 	if err != nil {
 		return err
 	}
-	packageItem, err := s.packageRepo.GetByID(ctx, uint(req.PackageID))
-	if err != nil {
-		return notFoundOr(err, "应用包不存在")
-	}
+
 	req.Platform = strings.ToLower(strings.TrimSpace(req.Platform))
-	if packageSystemPlatform(packageItem.SystemType) != req.Platform {
-		return errors.New("所选应用包不支持该平台")
-	}
 	for _, id := range req.DisplayPositionIDs {
 		if _, err := s.positionRepo.GetByID(ctx, uint(id)); err != nil {
 			return notFoundOr(err, "展示位置不存在")
@@ -307,22 +301,18 @@ func applyVIPSubscriptionPayload(item *model.VideoVipSubscription, req *VIPSubsc
 	item.FirstSubscriptionRevenue = req.FirstSubscriptionRevenue
 	item.FirstBonusPoints = req.FirstBonusPoints
 	item.OriginalPrice = req.OriginalPrice
-	item.VIPDurationDays = req.VIPDurationDays
-	item.TrialDays = req.TrialDays
+
 	item.RenewalText = strings.TrimSpace(req.RenewalText)
 	item.BadgeText = strings.TrimSpace(req.BadgeText)
-	item.AgreementDefaultChecked = req.AgreementDefaultChecked
+
 	item.DisplayMode = req.DisplayMode
 	item.Status = req.Status
-	item.FreeTrial = req.FreeTrial
-	item.IsSubscription = req.IsSubscription
-	item.IsDefault = req.IsDefault
+
 	item.SubscriptionDescription = strings.TrimSpace(req.SubscriptionDescription)
 	item.SubscriptionPrice = req.SubscriptionPrice
 	item.SubscriptionRevenue = req.SubscriptionRevenue
 	item.SubscriptionPoints = req.SubscriptionPoints
 	item.SubscriptionPeriod = strings.TrimSpace(req.SubscriptionPeriod)
-	item.Sort = req.Sort
 	item.Description = strings.TrimSpace(req.Description)
 	item.Remark = strings.TrimSpace(req.Remark)
 }
@@ -337,20 +327,12 @@ func vipSubscriptionTargets(req *VIPSubscriptionPayload) repository.VIPSubscript
 func vipSubscriptionPayloadFromModel(item *model.VideoVipSubscription) *VIPSubscriptionPayload {
 	payload := &VIPSubscriptionPayload{
 		Platform: item.Platform, ProductID: item.ProductID, Name: item.Name,
-		VIPLevel: item.VIPLevel, PlanType: item.PlanType, DisplayPositionIDs: positionIDs(item.DisplayPositions),
-		ChannelIDs: channelIDs(item.Channels), ExcludedChannelIDs: channelIDs(item.ExcludedChannels),
+
 		AppVersion: item.AppVersion, Currency: item.Currency, FirstSubscriptionPrice: item.FirstSubscriptionPrice,
 		FirstSubscriptionRevenue: item.FirstSubscriptionRevenue, FirstBonusPoints: item.FirstBonusPoints,
-		OriginalPrice: item.OriginalPrice, VIPDurationDays: item.VIPDurationDays, TrialDays: item.TrialDays,
-		RenewalText: item.RenewalText, BadgeText: item.BadgeText, AgreementDefaultChecked: item.AgreementDefaultChecked,
-		DisplayMode: item.DisplayMode, Status: item.Status, FreeTrial: item.FreeTrial, IsSubscription: item.IsSubscription,
-		IsDefault: item.IsDefault, SubscriptionDescription: item.SubscriptionDescription,
+
 		SubscriptionPrice: item.SubscriptionPrice, SubscriptionRevenue: item.SubscriptionRevenue,
 		SubscriptionPoints: item.SubscriptionPoints, SubscriptionPeriod: item.SubscriptionPeriod,
-		Sort: item.Sort, Description: item.Description, Remark: item.Remark,
-	}
-	if len(item.Packages) > 0 {
-		payload.PackageID = item.Packages[0].ID
 	}
 	return payload
 }
@@ -391,10 +373,5 @@ func containsString(values []string, target string) bool {
 
 func vipSubscriptionView(item *model.VideoVipSubscription) *VIPSubscriptionView {
 	view := &VIPSubscriptionView{VideoVipSubscription: item}
-	if len(item.Packages) > 0 {
-		packageItem := item.Packages[0]
-		view.PackageID = packageItem.ID
-		view.Package = &packageItem
-	}
 	return view
 }
