@@ -75,7 +75,7 @@ func SeedUploadAdmin() error {
 				return err
 			}
 		}
-		if err := tx.Model(&permission).Association("APIs").Replace(apis); err != nil {
+		if err := replaceMenuAPIs(tx, &permission, apis...); err != nil {
 			return err
 		}
 
@@ -83,6 +83,6 @@ func SeedUploadAdmin() error {
 		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
-		return tx.Model(&adminRole).Association("Menus").Append(&permission)
+		return grantRoleMenus(tx, &adminRole, permission)
 	})
 }

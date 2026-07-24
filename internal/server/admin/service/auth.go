@@ -61,6 +61,9 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest, ip string) (
 
 	roleCodes := make([]string, 0, len(user.Roles))
 	for _, r := range user.Roles {
+		if r.Status != 1 {
+			continue
+		}
 		roleCodes = append(roleCodes, r.Code)
 	}
 

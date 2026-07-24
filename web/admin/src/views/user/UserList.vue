@@ -10,6 +10,101 @@
         </div>
       </template>
 
+      <el-form class="list-filters" inline @submit.prevent="handleListSearch">
+        <el-form-item label="关键词">
+          <el-input v-model="filters.keyword" clearable placeholder="ID、昵称、账号、邮箱、手机或设备" @keyup.enter="handleListSearch" />
+        </el-form-item>
+        <el-form-item label="国家">
+          <el-input v-model="filters.device_country" clearable placeholder="例如 CN" />
+        </el-form-item>
+        <el-form-item label="渠道">
+          <el-input v-model="filters.channel_id" clearable placeholder="渠道编码" />
+        </el-form-item>
+        <el-form-item label="用户类型">
+          <el-select v-model="filters.user_type" clearable placeholder="全部" style="width: 120px">
+            <el-option label="免费用户" :value="1" />
+            <el-option label="付费用户" :value="2" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="登录方式">
+          <el-select v-model="filters.login_type" clearable placeholder="全部" style="width: 120px">
+            <el-option label="游客" :value="1" />
+            <el-option label="Google" :value="2" />
+            <el-option label="Apple" :value="3" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="filters.status" clearable placeholder="全部" style="width: 110px">
+            <el-option label="正常" :value="1" />
+            <el-option label="禁用" :value="0" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleListSearch">查询</el-button>
+          <el-button @click="resetListFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-table v-loading="listLoading" :data="listData" row-key="id" stripe>
+        <el-table-column prop="id" label="用户 ID" width="95" />
+        <el-table-column label="用户" min-width="210">
+          <template #default="{ row }">
+            <div class="primary-text">{{ row.username || '-' }}</div>
+            <div class="secondary-text">{{ row.login_account || row.email || row.phone || '-' }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="应用/版本" min-width="170">
+          <template #default="{ row }">
+            <div class="primary-text">{{ row.app_name || '-' }}</div>
+            <div class="secondary-text">{{ row.app_version || '-' }} · {{ row.package_code || '-' }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="国家/渠道" min-width="150">
+          <template #default="{ row }">
+            <div>{{ row.client_country || row.server_country || '-' }}</div>
+            <div class="secondary-text">{{ row.channel_id || '-' }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="类型" width="120">
+          <template #default="{ row }">
+            <el-tag :type="row.user_type === 2 ? 'warning' : 'info'" size="small">{{ row.user_type === 2 ? '付费' : '免费' }}</el-tag>
+            <div class="secondary-text">{{ loginTypeLabel(row.login_type) }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="会员/积分" min-width="145">
+          <template #default="{ row }">
+            <div>VIP {{ row.vip_level || 0 }} · {{ subscriptionLabel(row.subscription_status) }}</div>
+            <div class="secondary-text">积分 {{ formatNumber(row.points_balance) }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="账号状态" width="150">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">{{ row.status === 1 ? '正常' : '禁用' }}</el-tag>
+            <el-tag v-if="flagActive(row.is_frozen)" type="warning" size="small" class="status-tag">冻结</el-tag>
+            <el-tag v-if="flagActive(row.is_blacklisted)" type="danger" size="small" class="status-tag">黑名单</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="最近活跃" min-width="170">
+          <template #default="{ row }">{{ formatDate(row.last_opened_at || row.last_login_at) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="90" fixed="right">
+          <template #default="{ row }"><el-button link type="primary" @click="openDetail(row)">详情</el-button></template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next"
+          @size-change="handlePageSizeChange"
+          @current-change="fetchList"
+        />
+      </div>
+
+      <el-divider content-position="left">用户详情与管理</el-divider>
       <el-form class="search-form" inline @submit.prevent="handleSearch">
         <el-form-item label="用户 ID / 邮箱">
           <el-input v-model="searchValue" clearable placeholder="输入用户 ID、登录邮箱或第三方邮箱" @keyup.enter="handleSearch" />
@@ -19,7 +114,7 @@
         </el-form-item>
       </el-form>
 
-      <el-empty v-if="!detail && !searching" description="请输入用户 ID 或邮箱查询" />
+      <el-empty v-if="!detail && !searching" description="点击列表详情，或输入用户 ID / 邮箱查询" />
 
       <div v-if="detail" v-loading="loadingDetail">
         <el-descriptions :column="2" border class="summary">
@@ -64,7 +159,7 @@
               <el-descriptions-item label="设备编号">{{ user.device_code || '-' }}</el-descriptions-item>
               <el-descriptions-item label="IMEI">{{ user.imei || '-' }}</el-descriptions-item>
               <el-descriptions-item label="设备型号">{{ user.phone_model || '-' }}</el-descriptions-item>
-              <el-descriptions-item label="设备国家">{{ user.device_country || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="设备国家">{{ user.client_country || user.server_country || '-' }}</el-descriptions-item>
               <el-descriptions-item label="最近登录 IP">{{ user.last_login_ip || '-' }}</el-descriptions-item>
               <el-descriptions-item label="最近登录时间">{{ formatDate(user.last_login_at) }}</el-descriptions-item>
               <el-descriptions-item label="积分余额">{{ formatNumber(user.points_balance) }}</el-descriptions-item>
@@ -128,17 +223,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   bindUserPhone, clearUserDevice, extendUserVIP, getUserCenter, grantUserVIP,
-  lookupAppUser, setUserBlacklisted, setUserFrozen, terminateUserVIP, transferUserVIP,
-  type UserCenterDetail,
+  getAppUserList, lookupAppUser, setUserBlacklisted, setUserFrozen, terminateUserVIP, transferUserVIP,
+  type AppUser, type UserCenterDetail,
 } from '@/api/appUser'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
 const canManage = computed(() => userStore.hasPermission('system:app-user:manage'))
+const listLoading = ref(false)
+const listData = ref<AppUser[]>([])
+const page = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
+const filters = reactive({ keyword: '', device_country: '', channel_id: '', user_type: undefined as number | undefined, login_type: undefined as number | undefined, status: undefined as number | undefined })
 const searchValue = ref('')
 const searching = ref(false)
 const loadingDetail = ref(false)
@@ -148,6 +249,32 @@ const user = computed(() => detail.value!.user)
 const activeTab = ref('account')
 const vipDialogVisible = ref(false)
 const vipForm = reactive({ level: 1, started_at: '', expires_at: '' })
+
+async function fetchList() {
+  listLoading.value = true
+  try {
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== '' && value !== undefined && value !== null) params[key] = typeof value === 'string' ? value.trim() : value
+    }
+    const result: any = await getAppUserList(params)
+    listData.value = result.data?.list || []
+    total.value = Number(result.data?.total) || 0
+  } finally { listLoading.value = false }
+}
+
+function handleListSearch() { page.value = 1; fetchList() }
+function handlePageSizeChange() { page.value = 1; fetchList() }
+function resetListFilters() {
+  Object.assign(filters, { keyword: '', device_country: '', channel_id: '', user_type: undefined, login_type: undefined, status: undefined })
+  page.value = 1
+  fetchList()
+}
+
+async function openDetail(row: AppUser) {
+  searchValue.value = String(row.id)
+  await loadDetail(row.id)
+}
 
 async function handleSearch() {
   const query = searchValue.value.trim()
@@ -231,12 +358,16 @@ async function clearDevice() {
 }
 
 function loginTypeLabel(value: number) { return value === 2 ? 'Google' : value === 3 ? 'Apple' : '游客' }
+function subscriptionLabel(value: number) { return value === 2 ? '订阅中' : value === 3 ? '已取消' : '未订阅' }
+function flagActive(value: boolean | number) { return value === true || Number(value) === 1 }
 function formatNumber(value: number) { return new Intl.NumberFormat('zh-CN').format(value || 0) }
 function formatDate(value?: string | null) {
   if (!value) return '-'
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false })
 }
+
+onMounted(fetchList)
 </script>
 
 <style scoped>
@@ -244,6 +375,12 @@ function formatDate(value?: string | null) {
 .header { display: flex; align-items: center; justify-content: space-between; }
 .title { color: #303133; font-size: 18px; font-weight: 600; }
 .subtitle { margin-top: 5px; color: #909399; font-size: 12px; }
+.list-filters { margin-bottom: 8px; }
+.list-filters :deep(.el-input) { width: 190px; }
+.primary-text { color: var(--el-text-color-primary); }
+.secondary-text { margin-top: 3px; color: var(--el-text-color-secondary); font-size: 12px; }
+.status-tag { margin-left: 4px; }
+.pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
 .search-form { display: flex; align-items: center; margin-bottom: 18px; }
 .search-form :deep(.el-form-item:first-child) { flex: 1; max-width: 720px; }
 .search-form :deep(.el-form-item:first-child .el-form-item__content), .search-form :deep(.el-input) { width: 100%; }

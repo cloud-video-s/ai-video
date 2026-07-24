@@ -14,22 +14,21 @@ const TableNameVideoTemplateType = "video_template_type"
 
 // VideoTemplateType mapped from table <video_template_type>
 type VideoTemplateType struct {
-	ID                   uint64                  `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	CategoryName         string                  `gorm:"column:category_name;type:varchar(128);not null;index:idx_video_template_type_category_name,priority:1;comment:category name" json:"category_name"` // category name
-	Sort                 int64                   `gorm:"column:sort;type:bigint;not null;index:idx_video_template_type_sort,priority:1;comment:sort order" json:"sort"`                                     // sort order
-	Status               int8                    `gorm:"column:status;type:tinyint;not null;index:idx_video_template_type_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"` // status: 0 disabled, 1 enabled
-	Description          string                  `gorm:"column:description;type:varchar(500);comment:description" json:"description"`                                                                       // description
-	IsSubscribed         int8                    `gorm:"column:is_subscribed;type:tinyint(1);not null;index:idx_video_template_type_is_subscribed,priority:1;index:idx_video_template_type_legacy_is_subscribed,priority:1" json:"is_subscribed"`
-	UserTypes            string                  `gorm:"column:user_types;type:text;comment:target user types: 1 free, 2 paid" json:"user_types"`                    // target user types: 1 free, 2 paid
-	SubscriptionStatuses string                  `gorm:"column:subscription_statuses;type:text;comment:subscribed and/or unsubscribed" json:"subscription_statuses"` // subscribed and/or unsubscribed
-	CreatedAt            time.Time               `gorm:"column:created_at;type:datetime(3);index:idx_video_template_type_created_at,priority:1" json:"created_at"`
-	UpdatedAt            time.Time               `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt            gorm.DeletedAt          `gorm:"column:deleted_at;type:datetime(3);index:idx_video_template_type_deleted_at,priority:1" json:"deleted_at"`
-	DisplayPosition      []*VideoDisplayPosition `gorm:"References:PositionKey;foreignKey:ID;joinForeignKey:TemplateTypeID;joinReferences:PositionKey;many2many:video_template_type_display_position" json:"display_position"`
-	Countrys             []*VideoCountry         `gorm:"References:Code;foreignKey:ID;joinForeignKey:TemplateTypeID;joinReferences:CountryCode;many2many:video_template_type_country" json:"countrys"`
-	App                  []*VideoApp             `gorm:"References:AppCode;foreignKey:ID;joinForeignKey:TemplateTypeID;joinReferences:AppCode;many2many:video_template_type_app" json:"app"`
-	Package              []*VideoPackage         `gorm:"References:PackageCode;foreignKey:ID;joinForeignKey:TemplateTypeID;joinReferences:PackageCode;many2many:video_template_type_package" json:"package"`
-	Version              []*VideoPackageVersion  `gorm:"References:VersionCode;foreignKey:ID;joinForeignKey:TemplateTypeID;joinReferences:VersionCode;many2many:video_template_type_version" json:"version"`
+	ID                 uint64                  `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	CategoryName       string                  `gorm:"column:category_name;type:varchar(128);not null;index:idx_video_template_type_category_name,priority:1;comment:分类名称" json:"category_name"`          // 分类名称
+	Sort               int64                   `gorm:"column:sort;type:bigint;not null;index:idx_video_template_type_sort,priority:1;comment:sort order" json:"sort"`                                     // sort order
+	Status             int8                    `gorm:"column:status;type:tinyint;not null;index:idx_video_template_type_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"` // status: 0 disabled, 1 enabled
+	Description        string                  `gorm:"column:description;type:varchar(500);comment:description" json:"description"`                                                                       // description
+	UserType           uint32                  `gorm:"column:user_type;type:tinyint unsigned;not null;comment:用户类型 0全部 1收费 2免费" json:"user_type"`                                                         // 用户类型 0全部 1收费 2免费
+	SubscriptionStatus uint32                  `gorm:"column:subscription_status;type:tinyint unsigned;not null;comment:订阅类型 0全部 1订阅 2未订阅" json:"subscription_status"`                                    // 订阅类型 0全部 1订阅 2未订阅
+	CreatedAt          time.Time               `gorm:"column:created_at;type:datetime(3);index:idx_video_template_type_created_at,priority:1" json:"created_at"`
+	UpdatedAt          time.Time               `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt          gorm.DeletedAt          `gorm:"column:deleted_at;type:datetime(3);index:idx_video_template_type_deleted_at,priority:1" json:"deleted_at"`
+	DisplayPosition    []*VideoDisplayPosition `gorm:"References:PositionKey;foreignKey:ID;joinForeignKey:TemplateTypeID;joinReferences:PositionKey;many2many:video_template_type_display_position" json:"display_position"`
+	Countrys           []*VideoCountry         `gorm:"References:Code;foreignKey:ID;joinForeignKey:TemplateTypeID;joinReferences:CountryCode;many2many:video_template_type_country" json:"countrys"`
+	App                []*VideoApp             `gorm:"References:AppCode;foreignKey:ID;joinForeignKey:TemplateTypeID;joinReferences:AppCode;many2many:video_template_type_app" json:"app"`
+	Package            []*VideoPackage         `gorm:"References:PackageCode;foreignKey:ID;joinForeignKey:TemplateTypeID;joinReferences:PackageCode;many2many:video_template_type_package" json:"package"`
+	Version            []*VideoPackageVersion  `gorm:"References:VersionCode;foreignKey:ID;joinForeignKey:TemplateTypeID;joinReferences:VersionCode;many2many:video_template_type_version" json:"version"`
 }
 
 // TableName VideoTemplateType's table name

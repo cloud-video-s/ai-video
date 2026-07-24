@@ -37,7 +37,7 @@ func SeedUserPointsLedgerAdmin() error {
 		if err != nil {
 			return err
 		}
-		if err := tx.Model(page).Association("APIs").Replace(apis); err != nil {
+		if err := replaceMenuAPIs(tx, page, apis...); err != nil {
 			return err
 		}
 
@@ -45,6 +45,6 @@ func SeedUserPointsLedgerAdmin() error {
 		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
-		return tx.Model(&adminRole).Association("Menus").Append(root, page)
+		return grantRoleMenus(tx, &adminRole, *root, *page)
 	})
 }

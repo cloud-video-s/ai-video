@@ -20,28 +20,28 @@ func NewVIPSubscriptionService() *VIPSubscriptionService {
 }
 
 type ListVIPSubscriptionRequest struct {
-	AppCode        string `form:"app_code"`
-	PackageCode    string `form:"package_code"`
-	VersionCode    string `form:"version_code"`
-	CountryCode    string `form:"country_code"`
-	PlacementKey   string `form:"placement_key" binding:"omitempty,max=100"`
-	LevelID        int64  `form:"level_id"`
-	PlanType       string `form:"plan_type" binding:"omitempty,oneof=normal trial paywall"`
-	VipType        uint64 `form:"vip_type" binding:"omitempty,oneof=android ios pc web"`
-	DisplayMode    int8   `form:"display_mode" binding:"omitempty,oneof=0 1"`
-	Status         int8   `form:"status" binding:"omitempty,oneof=0 1"`
-	IsSubscription int8   `form:"is_subscription"`
+	AppCode        string `form:"app_code" binding:"omitempty,max=60"`
+	PackageCode    string `form:"package_code" binding:"omitempty,max=128"`
+	VersionCode    string `form:"version_code" binding:"omitempty,max=50"`
+	CountryCode    string `form:"country_code" binding:"omitempty,max=2"`
+	ChannelCode    string `form:"channel_code" binding:"omitempty,max=64"`
+	LevelID        uint64 `form:"level_id"`
+	VipType        uint64 `form:"vip_type" binding:"omitempty,oneof=1 2 3 4 5 6 7 8"`
+	DisplayMode    *int8  `form:"display_mode" binding:"omitempty,oneof=0 1"`
+	Status         *int8  `form:"status" binding:"omitempty,oneof=0 1"`
+	IsSubscription *int8  `form:"is_subscription" binding:"omitempty,oneof=0 1"`
 	Keyword        string `form:"keyword" binding:"max=255"`
 }
 
-// VIPSubscriptionPayload 与新模型保持一致，投放范围使用 APP、包、版本和国家关联表。
+// VIPSubscriptionPayload 与生成模型保持一致，投放范围使用模型定义的五组关联表。
 type VIPSubscriptionPayload struct {
 	AppCodes                 []string `json:"app_codes" binding:"max=100,dive,gt=0"`
 	PackageCodes             []string `json:"package_codes" binding:"required,min=1,max=100,dive,gt=0"`
 	VersionCodes             []string `json:"version_codes" binding:"max=100,dive,gt=0"`
-	CountryCodes             []string `json:"country_codes" binding:"max=250,dive,gt=0"`
+	CountryCodes             []string `json:"country_codes" binding:"max=100,dive,gt=0"`
+	ChannelCodes             []string `json:"channel_codes" binding:"max=100,dive,gt=0"`
 	LevelID                  uint64   `json:"level_id" binding:"required,gt=0"`
-	VipType                  uint64   `json:"vip_type" binding:"required,oneof=android ios pc web"`
+	VipType                  uint64   `json:"vip_type" binding:"required,oneof=1 2 3 4 5 6 7 8"`
 	SukCode                  string   `json:"suk_code" binding:"required,max=191"`
 	Name                     string   `json:"name" binding:"required,max=128"`
 	Currency                 string   `json:"currency" binding:"required,len=3"`
@@ -63,18 +63,18 @@ type VIPSubscriptionPayload struct {
 	SubscriptionPrice        float64  `json:"subscription_price" binding:"gte=0"`
 	SubscriptionRevenue      float64  `json:"subscription_revenue" binding:"gte=0"`
 	SubscriptionPoints       uint64   `json:"subscription_points"`
-	SubscriptionPeriod       uint32   `json:"subscription_period" binding:"max=64"`
-	Sort                     int64    `json:"sort"`
+	SubscriptionPeriod       uint32   `json:"subscription_period" binding:"required,oneof=1 2 3 4"`
+	Sort                     int64    `json:"sort" binding:"gte=0"`
 	Description              string   `json:"description" binding:"max=1000"`
 	Remark                   string   `json:"remark" binding:"max=1000"`
 }
 
 type VIPSubscriptionStatusPayload struct {
-	Status int8 `json:"status" binding:"oneof=0 1"`
+	Status *int8 `json:"status" binding:"required,oneof=0 1"`
 }
 
 type VIPSubscriptionDisplayPayload struct {
-	DisplayMode int8 `json:"display_mode" binding:"oneof=0 1"`
+	DisplayMode *int8 `json:"display_mode" binding:"required,oneof=0 1"`
 }
 
 type CloneVIPSubscriptionRequest struct {
@@ -82,17 +82,17 @@ type CloneVIPSubscriptionRequest struct {
 	Name    string `json:"name" binding:"omitempty,max=128"`
 }
 
-func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]repository.VIPSubscriptionRecord, int64, error) {
+func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]model.VideoVipSubscription, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.VIPSubscriptionListFilter{
-		AppCode: req.AppCode, PackageCode: req.PackageCode, VersionCode: req.VersionCode, CountryCode: req.CountryCode,
-		PlacementKey: strings.TrimSpace(req.PlacementKey), LevelID: req.LevelID,
-		PlanType: strings.TrimSpace(req.PlanType), VipType: req.VipType,
+		AppCode: strings.TrimSpace(req.AppCode), PackageCode: strings.TrimSpace(req.PackageCode),
+		VersionCode: strings.TrimSpace(req.VersionCode), CountryCode: strings.ToUpper(strings.TrimSpace(req.CountryCode)),
+		ChannelCode: strings.TrimSpace(req.ChannelCode), LevelID: req.LevelID, VipType: req.VipType,
 		DisplayMode: req.DisplayMode, Status: req.Status, IsSubscription: req.IsSubscription,
 		Keyword: strings.TrimSpace(req.Keyword),
 	})
 }
 
-func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*repository.VIPSubscriptionRecord, error) {
+func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*model.VideoVipSubscription, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -100,7 +100,7 @@ func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*repos
 	return item, nil
 }
 
-func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptionPayload) (*repository.VIPSubscriptionRecord, error) {
+func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptionPayload) (*model.VideoVipSubscription, error) {
 	if err := s.prepareAndValidate(ctx, req); err != nil {
 		return nil, err
 	}
@@ -120,14 +120,14 @@ func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptio
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, errors.New("该 VIP 类型下的产品编码已存在")
+			return nil, errors.New("该 VIP 套餐类型下的产品 SKU 已存在")
 		}
 		return nil, err
 	}
 	return s.repo.GetDetail(ctx, item.ID)
 }
 
-func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIPSubscriptionPayload) (*repository.VIPSubscriptionRecord, error) {
+func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIPSubscriptionPayload) (*model.VideoVipSubscription, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -135,12 +135,12 @@ func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIP
 	if err := s.prepareAndValidate(ctx, req); err != nil {
 		return nil, err
 	}
-	applyVIPSubscriptionPayload(&item.VideoVipSubscription, req)
+	applyVIPSubscriptionPayload(item, req)
 	err = repository.Transaction(ctx, func(txCtx context.Context) error {
-		if err := s.repo.UpdateFields(txCtx, &item.VideoVipSubscription); err != nil {
+		if err := s.repo.UpdateFields(txCtx, item); err != nil {
 			return err
 		}
-		if err := s.repo.ReplaceTargets(txCtx, &item.VideoVipSubscription, vipSubscriptionTargets(req)); err != nil {
+		if err := s.repo.ReplaceTargets(txCtx, item, vipSubscriptionTargets(req)); err != nil {
 			return err
 		}
 		if item.IsDefault == 1 {
@@ -150,7 +150,7 @@ func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIP
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, errors.New("该 VIP 类型下的产品编码已存在")
+			return nil, errors.New("该 VIP 套餐类型下的产品 SKU 已存在")
 		}
 		return nil, err
 	}
@@ -195,7 +195,7 @@ func (s *VIPSubscriptionService) SetDefault(ctx context.Context, id uint64) erro
 	return s.repo.SetDefault(ctx, item)
 }
 
-func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *CloneVIPSubscriptionRequest) (*repository.VIPSubscriptionRecord, error) {
+func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *CloneVIPSubscriptionRequest) (*model.VideoVipSubscription, error) {
 	source, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -213,29 +213,34 @@ func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *Clon
 
 func (s *VIPSubscriptionService) prepareAndValidate(ctx context.Context, req *VIPSubscriptionPayload) error {
 	var err error
-	if req.AppCodes, err = normalizeTargetIDs(req.AppCodes, "APP"); err != nil {
+	if req.AppCodes, err = normalizeVIPTargetCodes(req.AppCodes, "APP", false); err != nil {
 		return err
 	}
-	if req.PackageCodes, err = normalizeTargetIDs(req.PackageCodes, "安装包"); err != nil {
+	if req.PackageCodes, err = normalizeVIPTargetCodes(req.PackageCodes, "安装包", false); err != nil {
 		return err
 	}
 	if len(req.PackageCodes) == 0 {
 		return errors.New("至少选择一个安装包")
 	}
-	if req.VersionCodes, err = normalizeTargetIDs(req.VersionCodes, "版本"); err != nil {
+	if req.VersionCodes, err = normalizeVIPTargetCodes(req.VersionCodes, "版本", false); err != nil {
 		return err
 	}
-	if req.CountryCodes, err = normalizeTargetIDs(req.CountryCodes, "国家"); err != nil {
+	if req.CountryCodes, err = normalizeVIPTargetCodes(req.CountryCodes, "国家", true); err != nil {
 		return err
 	}
-	req.VipType = req.VipType
+	if req.ChannelCodes, err = normalizeVIPTargetCodes(req.ChannelCodes, "渠道", false); err != nil {
+		return err
+	}
 	req.SukCode = strings.TrimSpace(req.SukCode)
 	req.Name = strings.TrimSpace(req.Name)
 	req.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
-	if req.VipType <= 0 || req.LevelID <= 0 || req.SukCode == "" || req.Name == "" {
-		return errors.New("展示位置、会员等级、产品编码和 VIP 名称不能为空")
+	if req.VipType < 1 || req.VipType > 8 || req.LevelID == 0 || req.SukCode == "" || req.Name == "" {
+		return errors.New("套餐类型、会员等级、产品 SKU 和 VIP 名称不能为空")
 	}
-	if _, err := s.repo.GetLevelByID(ctx, int64(req.LevelID)); err != nil {
+	if req.SubscriptionPeriod < 1 || req.SubscriptionPeriod > 4 {
+		return errors.New("订阅周期必须为周、月、季或年")
+	}
+	if _, err := s.repo.GetLevelByID(ctx, req.LevelID); err != nil {
 		return notFoundOr(err, "VIP 会员等级不存在")
 	}
 	if req.FirstSubscriptionRevenue > req.FirstSubscriptionPrice && req.FirstSubscriptionPrice > 0 {
@@ -272,14 +277,16 @@ func applyVIPSubscriptionPayload(item *model.VideoVipSubscription, req *VIPSubsc
 
 func vipSubscriptionTargets(req *VIPSubscriptionPayload) repository.VIPSubscriptionTargets {
 	return repository.VIPSubscriptionTargets{
-		AppCodes: req.AppCodes, PackageCodes: req.PackageCodes, VersionCdes: req.VersionCodes, CountryCode: req.CountryCodes,
+		AppCodes: req.AppCodes, PackageCodes: req.PackageCodes, VersionCodes: req.VersionCodes,
+		CountryCodes: req.CountryCodes, ChannelCodes: req.ChannelCodes,
 	}
 }
 
-func vipSubscriptionPayloadFromModel(item *repository.VIPSubscriptionRecord) *VIPSubscriptionPayload {
+func vipSubscriptionPayloadFromModel(item *model.VideoVipSubscription) *VIPSubscriptionPayload {
 	return &VIPSubscriptionPayload{
-		AppCodes: appIDs(item.Apps), PackageCodes: packageIDs(item.Packages), VersionCodes: versionIDs(item.Versions), CountryCodes: countryIDs(item.Countries),
-		LevelID: item.LevelID, VipType: item.VipType,
+		AppCodes: appIDs(item.Apps), PackageCodes: packageIDs(item.Packages), VersionCodes: versionIDs(item.PackageVersion),
+		CountryCodes: countryIDs(item.Country), ChannelCodes: channelIDs(item.Channels),
+		LevelID: item.LevelID, VipType: item.VipType, SukCode: item.SukCode,
 		Name: item.Name, Currency: item.Currency,
 		FirstSubscriptionPrice: item.FirstSubscriptionPrice, FirstSubscriptionRevenue: item.FirstSubscriptionRevenue,
 		FirstBonusPoints: item.FirstBonusPoints, OriginalPrice: item.OriginalPrice,
@@ -293,34 +300,64 @@ func vipSubscriptionPayloadFromModel(item *repository.VIPSubscriptionRecord) *VI
 	}
 }
 
-func appIDs(items []model.VideoApp) []string {
-	result := make([]string, len(items))
-	for i := range items {
-		result[i] = items[i].AppCode
+func normalizeVIPTargetCodes(values []string, label string, uppercase bool) ([]string, error) {
+	normalized := make([]string, len(values))
+	for i, value := range values {
+		value = strings.TrimSpace(value)
+		if uppercase {
+			value = strings.ToUpper(value)
+		}
+		normalized[i] = value
+	}
+	return normalizeTargetIDs(normalized, label)
+}
+
+func appIDs(items []*model.VideoApp) []string {
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, item.AppCode)
+		}
 	}
 	return result
 }
 
-func packageIDs(items []model.VideoPackage) []string {
-	result := make([]string, len(items))
-	for i := range items {
-		result[i] = items[i].PackageCode
+func packageIDs(items []*model.VideoPackage) []string {
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, item.PackageCode)
+		}
 	}
 	return result
 }
 
-func versionIDs(items []model.VideoPackageVersion) []string {
-	result := make([]string, len(items))
-	for i := range items {
-		result[i] = items[i].VersionCode
+func versionIDs(items []*model.VideoPackageVersion) []string {
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, item.VersionCode)
+		}
 	}
 	return result
 }
 
-func countryIDs(items []model.VideoCountry) []string {
-	result := make([]string, len(items))
-	for i := range items {
-		result[i] = items[i].Code
+func countryIDs(items []*model.VideoCountry) []string {
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, item.Code)
+		}
+	}
+	return result
+}
+
+func channelIDs(items []*model.VideoChannel) []string {
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, item.ChannelCode)
+		}
 	}
 	return result
 }

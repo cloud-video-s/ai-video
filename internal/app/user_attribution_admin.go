@@ -33,7 +33,7 @@ func SeedUserAttributionAdmin() error {
 		if err != nil {
 			return err
 		}
-		if err := tx.Model(page).Association("APIs").Replace(apis[0], apis[1]); err != nil {
+		if err := replaceMenuAPIs(tx, page, apis[0], apis[1]); err != nil {
 			return err
 		}
 		edit, err := upsertTemplateMenu(tx, model.VideoMenu{
@@ -43,7 +43,7 @@ func SeedUserAttributionAdmin() error {
 		if err != nil {
 			return err
 		}
-		if err := tx.Model(edit).Association("APIs").Replace(apis[2], apis[3]); err != nil {
+		if err := replaceMenuAPIs(tx, edit, apis[2], apis[3]); err != nil {
 			return err
 		}
 		syncMenu, err := upsertTemplateMenu(tx, model.VideoMenu{
@@ -53,7 +53,7 @@ func SeedUserAttributionAdmin() error {
 		if err != nil {
 			return err
 		}
-		if err := tx.Model(syncMenu).Association("APIs").Replace(apis[4]); err != nil {
+		if err := replaceMenuAPIs(tx, syncMenu, apis[4]); err != nil {
 			return err
 		}
 
@@ -61,6 +61,6 @@ func SeedUserAttributionAdmin() error {
 		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
-		return tx.Model(&adminRole).Association("Menus").Append(page, edit, syncMenu)
+		return grantRoleMenus(tx, &adminRole, *page, *edit, *syncMenu)
 	})
 }

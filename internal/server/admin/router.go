@@ -41,6 +41,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	packageVersionHandler := handler.NewPackageVersionHandler()
 	videoAppHandler := handler.NewVideoAppHandler()
 	vipSubscriptionHandler := handler.NewVIPSubscriptionHandler()
+	vipSubscriptionLevelHandler := handler.NewVIPSubscriptionLevelHandler()
 	pointsPackageHandler := handler.NewPointsPackageHandler()
 	userPointsLedgerHandler := handler.NewUserPointsLedgerHandler()
 	bannerHandler := handler.NewBannerHandler()
@@ -83,6 +84,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		authenticated.GET("/packages/options", packageHandler.ListOptions)
 		authenticated.GET("/apps/options", videoAppHandler.ListOptions)
 		authenticated.GET("/points-packages/options", pointsPackageHandler.ListOptions)
+		authenticated.GET("/vip-subscription-levels/options", vipSubscriptionLevelHandler.ListOptions)
 		authenticated.GET("/banners/delivery-options", bannerHandler.DeliveryOptions)
 	}
 
@@ -251,6 +253,14 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.PATCH("/vip-subscriptions/:id/display", vipSubscriptionHandler.UpdateDisplayMode)
 		auth.PATCH("/vip-subscriptions/:id/default", vipSubscriptionHandler.SetDefault)
 		auth.POST("/vip-subscriptions/:id/clone", vipSubscriptionHandler.Clone)
+
+		// VIP subscription levels
+		auth.GET("/vip-subscription-levels", vipSubscriptionLevelHandler.List)
+		auth.POST("/vip-subscription-levels", vipSubscriptionLevelHandler.Create)
+		auth.GET("/vip-subscription-levels/:id", vipSubscriptionLevelHandler.GetByID)
+		auth.PUT("/vip-subscription-levels/:id", vipSubscriptionLevelHandler.Update)
+		auth.PATCH("/vip-subscription-levels/:id/status", vipSubscriptionLevelHandler.UpdateStatus)
+		auth.DELETE("/vip-subscription-levels/:id", vipSubscriptionLevelHandler.Delete)
 
 		// One-time points packages
 		auth.GET("/points-packages", pointsPackageHandler.List)

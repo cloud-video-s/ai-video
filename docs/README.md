@@ -2,7 +2,8 @@
 
 ## 运行时与接口
 
-- [API 文档说明](API_DOCS.md)：运行时 OpenAPI、鉴权和客户端错误语言选择
+- [API 接口文档](API_DOCS.md)：当前客户端接口清单、公共参数、鉴权与语言规则
+- [静态 OpenAPI](openapi.json)：根据当前 Gin 路由导出的 OpenAPI 3.0.3 文档
 - [Podman 镜像构建与打包](PODMAN.md)：分别构建、导出和运行 Web 与 Go 后端镜像
 - [第三方登录](third-party-auth.md)：Google/Apple ID Token 验证、配置与安全边界
 - [客户端 Banner API](client-banners-api.md)：Banner 展示接口

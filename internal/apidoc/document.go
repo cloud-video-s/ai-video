@@ -93,6 +93,14 @@ var responseDataExamples = map[string]any{
 	"DELETE /api/templates/:id/favorite": apiservice.TemplateFavoriteResponse{
 		TemplateID: 1, Favorited: false, FavoriteCount: 0,
 	},
+	"GET /api/vip/recommend": apiservice.VIPRecommendResponse{
+		ID: 1, VipType: 1, SukCode: "111111", Name: "首页ob套餐", LevelName: "", Currency: "USD",
+		VIPDurationDays: 1, TrialDays: 0, BadgeText: "", AgreementDefaultChecked: 0,
+		DisplayMode: 1, Status: 1, FreeTrial: 0, IsSubscription: 1, IsDefault: 0,
+		SubscriptionDescription: "0", SubscriptionPrice: 0, OriginalPrice: 0,
+		SubscriptionPoints: 0, SubscriptionPeriod: 1, Sort: 0, Description: "", Remark: "",
+		CreatedAt: 1784859297, UpdatedAt: 1784835434,
+	},
 }
 
 var endpointTypes = map[string]endpointType{
@@ -119,7 +127,7 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/generation/tasks/:id":                    {response: typeOf[generation.TaskView]()},
 	"GET /api/generation/tasks/:id/events":             {response: typeOf[generation.TaskView]()},
 	"DELETE /api/generation/tasks/:id":                 {},
-	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[model.VideoVipSubscription]()},
+	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[apiservice.VIPRecommendResponse]()},
 	"POST /api/payments/apple/confirm":                 {body: typeOf[commerce.ApplePurchaseRequest](), response: typeOf[commerce.ApplePurchaseResponse]()},
 	"POST /api/uploads/images/batches":                 {response: typeOf[uploadBatchResponse]()},
 	"POST /api/uploads/videos/batches":                 {response: typeOf[uploadBatchResponse]()},
@@ -202,7 +210,13 @@ var fieldDescriptions = map[string]string{
 	"originalTransactionID": "Apple 原始交易 ID", "signedTransactionInfo": "Apple 签名交易 JWS",
 	"purchaseDate": "购买时间", "expirationDate": "订阅到期时间", "revocationDate": "撤销时间", "isActive": "订阅是否有效",
 	"vip_type": "VIP 套餐类型",
-	"files":    "待上传文件列表", "file_name": "文件名", "size": "文件字节数", "content_type": "MIME 类型", "sha256": "文件 SHA-256",
+	"suk_code": "商店产品 SKU", "level_name": "会员等级名称", "currency": "ISO 货币代码",
+	"vip_duration_days": "VIP 权益持续天数", "trial_days": "免费试用天数", "badge_text": "徽章文案",
+	"agreement_default_checked": "订阅协议是否默认勾选", "display_mode": "展示模式：0 隐藏，1 正常",
+	"free_trial": "是否启用免费试用", "is_subscription": "是否循环订阅", "is_default": "是否为默认套餐",
+	"subscription_description": "订阅说明", "subscription_price": "当前用户适用的订阅价格",
+	"original_price": "原价", "subscription_points": "订阅赠送积分", "subscription_period": "订阅周期：1 周，2 月，3 季，4 年",
+	"files": "待上传文件列表", "file_name": "文件名", "size": "文件字节数", "content_type": "MIME 类型", "sha256": "文件 SHA-256",
 	"uploads": "上传会话列表", "upload_id": "上传会话 ID", "kind": "媒体类型：image 或 video", "original_name": "原始文件名",
 	"extension": "文件扩展名", "total_size": "文件总字节数", "chunk_size": "分片字节数", "total_chunks": "分片总数",
 	"uploaded_chunks": "已上传分片序号", "expected_sha256": "预期文件 SHA-256", "uploader_type": "上传者类型",

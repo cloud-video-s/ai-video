@@ -95,7 +95,7 @@ func (h *VIPSubscriptionHandler) UpdateStatus(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	if err := h.svc.UpdateStatus(c.Request.Context(), id, req.Status); err != nil {
+	if err := h.svc.UpdateStatus(c.Request.Context(), id, *req.Status); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}
@@ -111,7 +111,7 @@ func (h *VIPSubscriptionHandler) UpdateDisplayMode(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	if err := h.svc.UpdateDisplayMode(c.Request.Context(), id, req.DisplayMode); err != nil {
+	if err := h.svc.UpdateDisplayMode(c.Request.Context(), id, *req.DisplayMode); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}

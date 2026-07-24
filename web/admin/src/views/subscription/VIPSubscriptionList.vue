@@ -20,7 +20,7 @@
         <el-select v-model="query.platform" clearable placeholder="平台"><el-option v-for="item in platformOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select>
         <el-select v-model="query.channel_id" clearable filterable placeholder="渠道"><el-option v-for="item in channelOptions" :key="item.channel_id" :label="channelLabel(item)" :value="String(item.channel_id)" /></el-select>
         <el-select v-model="query.excluded_channel_id" clearable filterable placeholder="排除渠道"><el-option v-for="item in channelOptions" :key="item.channel_id" :label="channelLabel(item)" :value="String(item.channel_id)" /></el-select>
-        <el-input v-model="query.keyword" clearable placeholder="产品ID、名称、VIP等级" @keyup.enter="handleSearch" />
+        <el-input v-model="query.keyword" clearable placeholder="产品 SKU、名称、VIP 等级" @keyup.enter="handleSearch" />
         <el-button type="primary" plain @click="handleSearch">查询</el-button>
         <el-button @click="handleReset">重置</el-button>
       </div>
@@ -59,7 +59,7 @@
         <el-tabs v-model="formTab">
           <el-tab-pane label="基础配置" name="base">
             <div class="form-grid">
-              <el-form-item label="产品 ID" prop="product_id"><el-input v-model="form.product_id" maxlength="191" placeholder="应用商店订阅 SKU" /></el-form-item>
+              <el-form-item label="产品 SKU" prop="product_id"><el-input v-model="form.product_id" maxlength="191" placeholder="应用商店订阅 SKU" /></el-form-item>
               <el-form-item label="VIP 名称" prop="name"><el-input v-model="form.name" maxlength="128" /></el-form-item>
               <el-form-item label="VIP 等级" prop="vip_level"><el-input v-model="form.vip_level" maxlength="64" placeholder="例如：月度会员、年度会员" /></el-form-item>
               <el-form-item label="套餐类型" prop="plan_type"><el-select v-model="form.plan_type" style="width: 100%"><el-option v-for="item in planTypeOptions" :key="item.value" :label="item.label" :value="item.value" /></el-select></el-form-item>

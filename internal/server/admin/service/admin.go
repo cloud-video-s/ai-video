@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 
+	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/cache"
 	"ai-video/internal/pkg/utils"
 	"ai-video/internal/repository"
 
@@ -82,7 +84,7 @@ func (s *UserService) Create(ctx context.Context, req *CreateUserRequest) error 
 	})
 }
 
-func (s *UserService) GetByID(ctx context.Context, id uint64) (*model.VideoAdmin, error) {
+func (s *UserService) GetByID(ctx context.Context, id uint64) (*repository.AdminRecord, error) {
 	return s.userRepo.GetByID(ctx, id)
 }
 
@@ -119,8 +121,8 @@ func (s *UserService) Update(ctx context.Context, id uint64, req *UpdateUserRequ
 		user.TokenVersion++
 	}
 
-	return repository.Transaction(ctx, func(ctx context.Context) error {
-		if err := s.userRepo.Update(ctx, user); err != nil {
+	err = repository.Transaction(ctx, func(ctx context.Context) error {
+		if err := s.userRepo.Update(ctx, &user.VideoAdmin); err != nil {
 			return err
 		}
 		if req.RoleIDs != nil {
@@ -128,32 +130,37 @@ func (s *UserService) Update(ctx context.Context, id uint64, req *UpdateUserRequ
 		}
 		return nil
 	})
+	if err == nil && req.RoleIDs != nil {
+		cache.ClearUserPermissions(id)
+	}
+	return err
 }
 
 func (s *UserService) Delete(ctx context.Context, id, currentUserID uint64) error {
 	if id == currentUserID {
 		return errors.New("不能删除当前登录用户")
 	}
-	//user, err := s.userRepo.GetByID(ctx, id)
-	//if err != nil {
-	//	return notFoundOr(err, "用户不存在")
-	//}
-	//for _, r := range user.Roles {
-	//	if r.Code == domain.SuperAdminRoleCode {
-	//		return errors.New("不能删除超级管理员")
-	//	}
-	//}
-	return s.userRepo.Delete(ctx, id)
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return notFoundOr(err, "用户不存在")
+	}
+	for _, role := range user.Roles {
+		if role.Code == domain.SuperAdminRoleCode {
+			return errors.New("不能删除超级管理员账号")
+		}
+	}
+	if err := s.userRepo.Delete(ctx, id); err != nil {
+		return err
+	}
+	cache.ClearUserPermissions(id)
+	return nil
 }
 
-func (s *UserService) List(ctx context.Context, page, pageSize int) ([]model.VideoAdmin, int64, error) {
-	return s.userRepo.PageList(ctx, page, pageSize, &repository.QueryOptions{
-		Order:    []string{"id DESC"},
-		Preloads: []string{"Roles"},
-	})
+func (s *UserService) List(ctx context.Context, page, pageSize int) ([]repository.AdminRecord, int64, error) {
+	return s.userRepo.PageList(ctx, page, pageSize, nil)
 }
 
-func (s *UserService) GetProfile(ctx context.Context, id uint64) (*model.VideoAdmin, error) {
+func (s *UserService) GetProfile(ctx context.Context, id uint64) (*repository.AdminRecord, error) {
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "用户不存在")

@@ -4,6 +4,10 @@ export function getMenuTree() {
   return request.get('/admin/menus/tree')
 }
 
+export function getAllAPIs() {
+  return request.get('/admin/apis/all')
+}
+
 export function getMenuById(id: number) {
   return request.get(`/admin/menus/${id}`)
 }

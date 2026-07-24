@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -25,7 +26,7 @@ type CreateRoleRequest struct {
 	Name   string `json:"name" binding:"required"`
 	Code   string `json:"code" binding:"required"`
 	Sort   int64  `json:"sort"`
-	Status int8   `json:"status"`
+	Status *int8  `json:"status" binding:"omitempty,oneof=0 1"`
 	Remark string `json:"remark"`
 }
 
@@ -62,8 +63,8 @@ func (s *RoleService) Create(ctx context.Context, req *CreateRoleRequest) error 
 	}
 
 	status := int8(1)
-	if req.Status > 0 {
-		status = req.Status
+	if req.Status != nil {
+		status = *req.Status
 	}
 
 	role := &model.VideoRole{
@@ -82,7 +83,7 @@ func (s *RoleService) Create(ctx context.Context, req *CreateRoleRequest) error 
 	return nil
 }
 
-func (s *RoleService) GetByID(ctx context.Context, id uint64) (*model.VideoRole, error) {
+func (s *RoleService) GetByID(ctx context.Context, id uint64) (*repository.RoleRecord, error) {
 	return s.roleRepo.GetByID(ctx, id)
 }
 
@@ -102,7 +103,10 @@ func (s *RoleService) Update(ctx context.Context, id uint64, req *UpdateRoleRequ
 	if req.Remark != "" {
 		role.Remark = req.Remark
 	}
-	return s.roleRepo.Update(ctx, role)
+	if err := s.roleRepo.Update(ctx, &role.VideoRole); err != nil {
+		return err
+	}
+	return s.syncMenuPolicies(ctx, id)
 }
 
 func (s *RoleService) Delete(ctx context.Context, id uint64) error {
@@ -140,9 +144,17 @@ func (s *RoleService) ListAll(ctx context.Context) ([]model.VideoRole, error) {
 // operations are error-checked and, on failure, the in-memory policy is reloaded
 // from DB to stay consistent.
 func (s *RoleService) SetMenus(ctx context.Context, roleID uint64, menuIDs []uint64) error {
+	if _, err := s.roleRepo.GetByID(ctx, roleID); err != nil {
+		return notFoundOr(err, "角色不存在")
+	}
 	if err := s.roleRepo.SetMenus(ctx, roleID, menuIDs); err != nil {
 		return err
 	}
+	return s.syncMenuPolicies(ctx, roleID)
+}
+
+// syncMenuPolicies 根据角色当前菜单所绑定的 API 重建 Casbin 策略。
+func (s *RoleService) syncMenuPolicies(ctx context.Context, roleID uint64) error {
 	role, err := s.roleRepo.GetByID(ctx, roleID)
 	if err != nil {
 		return err
@@ -152,18 +164,27 @@ func (s *RoleService) SetMenus(ctx context.Context, roleID uint64, menuIDs []uin
 		config.Enforcer.LoadPolicy()
 		return fmt.Errorf("清除旧权限策略失败: %w", err)
 	}
-	if len(menuIDs) > 0 {
-		//menus, err := repository.NewMenuRepo().GetByIDs(ctx, menuIDs)
-		//if err != nil {
-		//	config.Enforcer.LoadPolicy()
-		//	return err
-		//}
-		var policies [][]string
-		//for _, m := range menus {
-		//	for _, api := range m.APIs {
-		//		policies = append(policies, []string{role.Code, api.Path, api.Method})
-		//	}
-		//}
+	if role.Status == 1 && len(role.Menus) > 0 {
+		policies := make([][]string, 0)
+		seen := make(map[string]struct{})
+		for _, menu := range role.Menus {
+			if menu.Status != 1 {
+				continue
+			}
+			for _, api := range menu.APIs {
+				path := strings.TrimSpace(api.Path)
+				method := strings.ToUpper(strings.TrimSpace(api.Method))
+				if path == "" || method == "" {
+					continue
+				}
+				key := method + " " + path
+				if _, ok := seen[key]; ok {
+					continue
+				}
+				seen[key] = struct{}{}
+				policies = append(policies, []string{role.Code, path, method})
+			}
+		}
 		if len(policies) > 0 {
 			if _, err := config.Enforcer.AddPolicies(policies); err != nil {
 				config.Enforcer.LoadPolicy()
@@ -189,9 +210,20 @@ func (s *RoleService) SetAPIs(ctx context.Context, roleID uint64, apis []RoleAPI
 		config.Enforcer.LoadPolicy()
 		return fmt.Errorf("清除旧权限策略失败: %w", err)
 	}
-	var policies [][]string
+	policies := make([][]string, 0, len(apis))
+	seen := make(map[string]struct{}, len(apis))
 	for _, api := range apis {
-		policies = append(policies, []string{role.Code, api.Path, api.Method})
+		path := strings.TrimSpace(api.Path)
+		method := strings.ToUpper(strings.TrimSpace(api.Method))
+		if path == "" || method == "" {
+			continue
+		}
+		key := method + " " + path
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		policies = append(policies, []string{role.Code, path, method})
 	}
 	if len(policies) > 0 {
 		if _, err := config.Enforcer.AddPolicies(policies); err != nil {

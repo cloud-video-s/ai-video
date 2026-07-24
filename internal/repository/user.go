@@ -153,9 +153,23 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 		if filter.SubscriptionStatus != 0 {
 			dao = dao.Where(user.SubscriptionStatus.Eq(uint8(filter.SubscriptionStatus)))
 		}
-
+		if filter.Activated != nil {
+			dao = dao.Where(user.Activated.Eq(uint(*filter.Activated)))
+		}
+		if filter.Registered != nil {
+			dao = dao.Where(user.Registered.Eq(boolInt8(*filter.Registered)))
+		}
+		if filter.PaymentMet != nil {
+			dao = dao.Where(user.PaymentMet.Eq(boolInt8(*filter.PaymentMet)))
+		}
 		if filter.Status != nil {
 			dao = dao.Where(user.Status.Eq(int8(*filter.Status)))
+		}
+		if filter.IsFrozen != nil {
+			dao = dao.Where(user.IsFrozen.Eq(boolInt8(*filter.IsFrozen)))
+		}
+		if filter.IsBlacklisted != nil {
+			dao = dao.Where(user.IsBlacklisted.Eq(boolInt8(*filter.IsBlacklisted)))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
@@ -184,4 +198,11 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 	}
 	rows, err := dao.Order(user.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
+}
+
+func boolInt8(value bool) int8 {
+	if value {
+		return 1
+	}
+	return 0
 }

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"strings"
 
@@ -49,15 +48,13 @@ type TemplateTypeAppRulePayload struct {
 }
 
 type TemplateTypePayload struct {
-	CategoryName         string                       `json:"category_name" binding:"required,max=128"`
-	DisplayPositionKeys  []string                     `json:"display_position_keys" binding:"max=100,dive,required,max=64"`
-	CountryCodes         []string                     `json:"country_codes" binding:"max=100,dive,gt=0"`
-	AppRules             []TemplateTypeAppRulePayload `json:"app_rules" binding:"max=100,dive"`
-	UserTypes            []int                        `json:"user_types" binding:"required,min=1,max=2,dive,oneof=1 2"`
-	SubscriptionStatuses []string                     `json:"subscription_statuses" binding:"required,min=1,max=2,dive,oneof=subscribed unsubscribed"`
-	Sort                 int64                        `json:"sort"`
-	Status               int8                         `json:"status" binding:"oneof=0 1"`
-	Description          string                       `json:"description" binding:"max=500"`
+	CategoryName        string                       `json:"category_name" binding:"required,max=128"`
+	DisplayPositionKeys []string                     `json:"display_position_keys" binding:"max=100,dive,required,max=64"`
+	CountryCodes        []string                     `json:"country_codes" binding:"max=100,dive,gt=0"`
+	AppRules            []TemplateTypeAppRulePayload `json:"app_rules" binding:"max=100,dive"`
+	Sort                int64                        `json:"sort"`
+	Status              int8                         `json:"status" binding:"oneof=0 1"`
+	Description         string                       `json:"description" binding:"max=500"`
 }
 
 func (s *TemplateTypeService) List(ctx context.Context, page, pageSize int, req *ListTemplateTypeRequest) ([]repository.TemplateTypeRecord, int64, error) {
@@ -137,10 +134,6 @@ func applyTemplateTypePayload(item *model.VideoTemplateType, req *TemplateTypePa
 	item.Sort = req.Sort
 	item.Status = req.Status
 	item.Description = strings.TrimSpace(req.Description)
-	userTypes, _ := json.Marshal(req.UserTypes)
-	subscriptionStatuses, _ := json.Marshal(req.SubscriptionStatuses)
-	item.UserTypes = string(userTypes)
-	item.SubscriptionStatuses = string(subscriptionStatuses)
 }
 
 // prepareTargets 校验分类关系并统一去重。三个关系数组为空都表示“全部”。
@@ -181,12 +174,6 @@ func (s *TemplateTypeService) prepareTargets(ctx context.Context, req *TemplateT
 		normalizedRules = append(normalizedRules, rule)
 	}
 	req.AppRules = normalizedRules
-	if req.UserTypes, err = normalizeUserTypes(req.UserTypes); err != nil {
-		return err
-	}
-	if req.SubscriptionStatuses, err = normalizeSubscriptionStatuses(req.SubscriptionStatuses); err != nil {
-		return err
-	}
 	return nil
 }
 

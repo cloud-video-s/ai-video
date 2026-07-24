@@ -66,7 +66,7 @@ func SeedDelayConfigAdmin() error {
 		if err != nil {
 			return err
 		}
-		if err := tx.Model(page).Association("APIs").Replace(apis[0], apis[1], apis[2]); err != nil {
+		if err := replaceMenuAPIs(tx, page, apis[0], apis[1], apis[2]); err != nil {
 			return err
 		}
 
@@ -85,7 +85,7 @@ func SeedDelayConfigAdmin() error {
 			if err != nil {
 				return err
 			}
-			if err := tx.Model(button).Association("APIs").Replace(item.apis); err != nil {
+			if err := replaceMenuAPIs(tx, button, item.apis...); err != nil {
 				return err
 			}
 			allMenus = append(allMenus, *button)
@@ -95,7 +95,7 @@ func SeedDelayConfigAdmin() error {
 		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
-		return tx.Model(&adminRole).Association("Menus").Append(allMenus)
+		return grantRoleMenus(tx, &adminRole, allMenus...)
 	})
 }
 

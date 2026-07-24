@@ -45,19 +45,6 @@
 
       <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
         <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column label="封面图" width="130" align="center">
-          <template #default="{ row }">
-            <el-image
-              class="cover-image"
-              :src="row.cover_image"
-              :preview-src-list="[row.cover_image]"
-              preview-teleported
-              fit="cover"
-            >
-              <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
-            </el-image>
-          </template>
-        </el-table-column>
         <el-table-column label="Banner" min-width="190">
           <template #default="{ row }">
             <div class="primary-text">{{ row.name }}</div>
@@ -71,6 +58,19 @@
               <div class="remark-text">{{ row.remark }}</div>
             </el-tooltip>
             <span v-else class="secondary-text">暂无备注</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="封面图" width="130" align="center">
+          <template #default="{ row }">
+            <el-image
+              class="cover-image"
+              :src="row.cover_image"
+              :preview-src-list="[row.cover_image]"
+              preview-teleported
+              fit="cover"
+            >
+              <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
+            </el-image>
           </template>
         </el-table-column>
         <el-table-column label="投放范围" min-width="260">
@@ -124,39 +124,8 @@
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑 Banner' : '新增 Banner'" width="940px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
         <div class="form-grid">
-          <el-form-item label="Banner 名称" prop="name">
-            <el-input v-model="form.name" maxlength="128" placeholder="请输入 Banner 名称" />
-          </el-form-item>
-          <el-form-item label="排序">
-            <el-input-number v-model="form.sort" :min="0" :max="999999" controls-position="right" />
-          </el-form-item>
-          <el-form-item label="国家">
-            <div class="target-scope-control">
-              <el-radio-group v-model="targetModes.countries" @change="handleCountryModeChange">
-                <el-radio-button value="all">全部国家</el-radio-button>
-                <el-radio-button value="selected">指定国家</el-radio-button>
-              </el-radio-group>
-              <el-select
-                v-if="targetModes.countries === 'selected'"
-                v-model="form.country_ids"
-                multiple
-                collapse-tags
-                collapse-tags-tooltip
-                clearable
-                filterable
-                placeholder="请选择国家"
-                style="width: 100%"
-              >
-                <el-option v-for="item in countryOptions" :key="item.id" :label="countryLabel(item)" :value="item.id" />
-              </el-select>
-              <div v-else class="secondary-text target-tip">全部国家不写入国家关联数据</div>
-            </div>
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-radio-group v-model="form.status">
-              <el-radio :value="1">启用</el-radio>
-              <el-radio :value="0">禁用</el-radio>
-            </el-radio-group>
+          <el-form-item label="名称" prop="name">
+            <el-input v-model="form.name" maxlength="128" placeholder="请输入名称" />
           </el-form-item>
           <el-form-item label="会员类型">
             <el-select v-model="form.subscription_status" style="width: 100%">
@@ -165,18 +134,38 @@
               <el-option label="非会员" :value="1" />
             </el-select>
           </el-form-item>
-          <el-form-item label="跳转方式" prop="jump_type">
-            <el-select v-model="form.jump_type" style="width: 100%" @change="handleJumpTypeChange">
-              <el-option v-for="item in jumpTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
-            </el-select>
+          <el-form-item label="状态">
+            <el-radio-group v-model="form.status">
+              <el-radio :value="1">启用</el-radio>
+              <el-radio :value="0">禁用</el-radio>
+            </el-radio-group>
           </el-form-item>
-          <el-form-item v-if="form.jump_type === 2" label="目标模板" prop="template_id">
-            <el-select v-model="form.template_id" clearable filterable placeholder="请选择目标模板" style="width: 100%">
-              <el-option v-for="item in templateOptions" :key="item.id" :label="`${item.name} · #${item.id}`" :value="item.id" />
-            </el-select>
+          <el-form-item label="排序">
+            <el-input-number v-model="form.sort" :min="0" :max="999999" controls-position="right" />
           </el-form-item>
         </div>
-
+        <el-form-item label="国家">
+          <div class="target-scope-control">
+            <el-radio-group v-model="targetModes.countries" @change="handleCountryModeChange">
+              <el-radio-button value="all">全部国家</el-radio-button>
+              <el-radio-button value="selected">指定国家</el-radio-button>
+            </el-radio-group>
+            <el-select
+              v-if="targetModes.countries === 'selected'"
+              v-model="form.country_ids"
+              multiple
+              collapse-tags
+              collapse-tags-tooltip
+              clearable
+              filterable
+              placeholder="请选择国家"
+              style="width: 100%"
+            >
+              <el-option v-for="item in countryOptions" :key="item.id" :label="countryLabel(item)" :value="item.id" />
+            </el-select>
+            <div v-else class="secondary-text target-tip">全部国家不写入国家关联数据</div>
+          </div>
+        </el-form-item>
         <el-form-item label="应用范围">
           <div class="app-target-field">
             <el-radio-group v-model="targetModes.apps" @change="handleAppModeChange">
@@ -226,9 +215,18 @@
             <div v-else class="secondary-text target-tip">全部展示位置不写入展示位置关联数据</div>
           </div>
         </el-form-item>
-
+        <el-form-item label="跳转方式" prop="jump_type">
+          <el-select v-model="form.jump_type" style="width: 100%" @change="handleJumpTypeChange">
+            <el-option v-for="item in jumpTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
         <el-form-item v-if="form.jump_type === 1" label="跳转链接" prop="jump_url">
           <el-input v-model="form.jump_url" maxlength="1024" clearable placeholder="https://...、myapp://... 或 /app/path" />
+        </el-form-item>
+        <el-form-item v-if="form.jump_type === 2" label="目标模板" prop="template_id">
+          <el-select v-model="form.template_id" clearable filterable placeholder="请选择目标模板" style="width: 100%">
+            <el-option v-for="item in templateOptions" :key="item.id" :label="`${item.name} · #${item.id}`" :value="item.id" />
+          </el-select>
         </el-form-item>
         <el-alert
           v-else-if="form.jump_type === 3 || form.jump_type === 4"
@@ -295,11 +293,11 @@ import {
   type BannerDeliveryVersion,
   type VideoBanner,
   type VideoBannerPayload,
-} from '@/api/banner'
-import { getCountryOptions, type Country } from '@/api/country'
-import { getTemplateList, type VideoTemplate } from '@/api/template'
-import { getDisplayPositionOptions, type DisplayPosition } from '@/api/displayPosition'
-import { useUserStore } from '@/store/user'
+} from '@/api/banner.ts'
+import { getCountryOptions, type Country } from '@/api/country.ts'
+import { getTemplateList, type VideoTemplate } from '@/api/template.ts'
+import { getDisplayPositionOptions, type DisplayPosition } from '@/api/displayPosition.ts'
+import { useUserStore } from '@/store/user.ts'
 import MediaUploader from '@/components/MediaUploader.vue'
 
 interface BannerForm extends VideoBannerPayload { id: number }

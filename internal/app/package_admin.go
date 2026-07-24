@@ -54,7 +54,7 @@ func SeedPackageAdmin() error {
 		if err != nil {
 			return err
 		}
-		if err := tx.Model(page).Association("APIs").Replace(apis[0], apis[1]); err != nil {
+		if err := replaceMenuAPIs(tx, page, apis[0], apis[1]); err != nil {
 			return err
 		}
 
@@ -72,7 +72,7 @@ func SeedPackageAdmin() error {
 			if err != nil {
 				return err
 			}
-			if err := tx.Model(button).Association("APIs").Replace(seed.apis); err != nil {
+			if err := replaceMenuAPIs(tx, button, seed.apis...); err != nil {
 				return err
 			}
 			menus = append(menus, *button)
@@ -86,7 +86,7 @@ func SeedPackageAdmin() error {
 		if err != nil {
 			return err
 		}
-		if err := tx.Model(versionPage).Association("APIs").Replace(apis[5], apis[6]); err != nil {
+		if err := replaceMenuAPIs(tx, versionPage, apis[5], apis[6]); err != nil {
 			return err
 		}
 		versionButtons := []struct {
@@ -103,7 +103,7 @@ func SeedPackageAdmin() error {
 			if err != nil {
 				return err
 			}
-			if err := tx.Model(button).Association("APIs").Replace(seed.apis); err != nil {
+			if err := replaceMenuAPIs(tx, button, seed.apis...); err != nil {
 				return err
 			}
 			menus = append(menus, *button)
@@ -113,7 +113,7 @@ func SeedPackageAdmin() error {
 		if err := tx.Where("code = ?", "admin").First(&adminRole).Error; err != nil {
 			return err
 		}
-		return tx.Model(&adminRole).Association("Menus").Append(menus)
+		return grantRoleMenus(tx, &adminRole, menus...)
 	})
 }
 

@@ -6,7 +6,8 @@ export interface AppUser {
   email?: string
   imei: string
   username: string
-  device_country: string
+  client_country: string
+  server_country: string
   channel_id: string
   app_version: string
   app_name: string
@@ -17,8 +18,8 @@ export interface AppUser {
   phone: string
   vip_level: number
   vip_started_at: string | null
-  is_frozen: boolean
-  is_blacklisted: boolean
+  is_frozen: boolean | number
+  is_blacklisted: boolean | number
   active_days: number
   avg_daily_usage_seconds: number
   vip_expires_at: string | null
@@ -53,6 +54,7 @@ export interface AppUser {
   last_login_at: string | null
   last_login_ip: string
   login_account: string
+  package_code: string
   created_at: string
   updated_at: string
 }

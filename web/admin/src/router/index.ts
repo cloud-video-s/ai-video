@@ -16,7 +16,7 @@ const routes: RouteRecordRaw[] = [
 	  // Backend directory menu paths redirect to concrete pages. This also
 	  // prevents a blank router-view when a directory URL is opened directly.
 	  { path: 'system', redirect: '/system/admin' },
-	  { path: 'system/app-user', redirect: '/user/list' },
+	  { path: 'system/user', redirect: '/user/list' },
 	  { path: 'system/user', redirect: '/system/admin' },
 	  { path: 'template', redirect: '/template/list' },
 	  { path: 'package', redirect: '/package/list' },
@@ -50,6 +50,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '菜单管理' },
       },
       {
+        path: 'system/api',
+        name: 'SystemAPI',
+        component: () => import('@/views/system/ApiList.vue'),
+        meta: { title: 'API 管理' },
+      },
+      {
         path: 'system/config',
         name: 'SystemConfig',
         component: () => import('@/views/system/ConfigList.vue'),
@@ -78,6 +84,12 @@ const routes: RouteRecordRaw[] = [
         name: 'VIPSubscriptionList',
         component: () => import('@/views/subscription/VIPSubscriptionList.vue'),
         meta: { title: 'VIP 订阅' },
+      },
+      {
+        path: 'subscription/vip-levels',
+        name: 'VIPSubscriptionLevelList',
+        component: () => import('@/views/subscription/VIPSubscriptionLevelList.vue'),
+        meta: { title: 'VIP 等级' },
       },
       {
         path: 'package/apps',
@@ -122,9 +134,9 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '视频模板' },
       },
       {
-        path: 'template/banners',
+        path: 'banner/list',
         name: 'BannerList',
-        component: () => import('@/views/template/BannerList.vue'),
+        component: () => import('@/views/banner/BannerList.vue'),
         meta: { title: 'Banner 管理' },
       },
       {
@@ -138,6 +150,12 @@ const routes: RouteRecordRaw[] = [
         name: 'UserList',
         component: () => import('@/views/user/UserList.vue'),
         meta: { title: '客户端用户' },
+      },
+      {
+        path: 'user/points-ledger',
+        name: 'UserPointsLedgerList',
+        component: () => import('@/views/user/UserPointsLedgerList.vue'),
+        meta: { title: '积分明细' },
       },
       {
         path: 'attribution/list',
@@ -154,7 +172,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'subscription/points-ledger',
         name: 'UserPointsLedgerList',
-        component: () => import('@/views/subscription/UserPointsLedgerList.vue'),
+        component: () => import('@/views/user/UserPointsLedgerList.vue'),
         meta: { title: '积分明细' },
       },
 	  {

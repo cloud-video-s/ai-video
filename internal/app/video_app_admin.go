@@ -46,7 +46,7 @@ func SeedVideoAppAdmin() error {
 		if err != nil {
 			return err
 		}
-		if err := tx.Model(page).Association("APIs").Replace(apis[0], apis[1]); err != nil {
+		if err := replaceMenuAPIs(tx, page, apis[0], apis[1]); err != nil {
 			return err
 		}
 
@@ -64,7 +64,7 @@ func SeedVideoAppAdmin() error {
 			if err != nil {
 				return err
 			}
-			if err := tx.Model(button).Association("APIs").Replace(seed.apis); err != nil {
+			if err := replaceMenuAPIs(tx, button, seed.apis...); err != nil {
 				return err
 			}
 			menus = append(menus, *button)
@@ -76,7 +76,7 @@ func SeedVideoAppAdmin() error {
 			}
 			return err
 		}
-		return tx.Model(&role).Association("Menus").Append(menus)
+		return grantRoleMenus(tx, &role, menus...)
 	})
 }
 

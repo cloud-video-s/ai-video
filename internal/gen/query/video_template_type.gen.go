@@ -33,9 +33,8 @@ func newVideoTemplateType(db *gorm.DB, opts ...gen.DOOption) videoTemplateType {
 	_videoTemplateType.Sort = field.NewInt64(tableName, "sort")
 	_videoTemplateType.Status = field.NewInt8(tableName, "status")
 	_videoTemplateType.Description = field.NewString(tableName, "description")
-	_videoTemplateType.IsSubscribed = field.NewInt8(tableName, "is_subscribed")
-	_videoTemplateType.UserTypes = field.NewString(tableName, "user_types")
-	_videoTemplateType.SubscriptionStatuses = field.NewString(tableName, "subscription_statuses")
+	_videoTemplateType.UserType = field.NewUint32(tableName, "user_type")
+	_videoTemplateType.SubscriptionStatus = field.NewUint32(tableName, "subscription_status")
 	_videoTemplateType.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoTemplateType.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoTemplateType.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -95,19 +94,18 @@ func newVideoTemplateType(db *gorm.DB, opts ...gen.DOOption) videoTemplateType {
 type videoTemplateType struct {
 	videoTemplateTypeDo videoTemplateTypeDo
 
-	ALL                  field.Asterisk
-	ID                   field.Uint64
-	CategoryName         field.String // category name
-	Sort                 field.Int64  // sort order
-	Status               field.Int8   // status: 0 disabled, 1 enabled
-	Description          field.String // description
-	IsSubscribed         field.Int8
-	UserTypes            field.String // target user types: 1 free, 2 paid
-	SubscriptionStatuses field.String // subscribed and/or unsubscribed
-	CreatedAt            field.Time
-	UpdatedAt            field.Time
-	DeletedAt            field.Field
-	DisplayPosition      videoTemplateTypeManyToManyDisplayPosition
+	ALL                field.Asterisk
+	ID                 field.Uint64
+	CategoryName       field.String // 分类名称
+	Sort               field.Int64  // sort order
+	Status             field.Int8   // status: 0 disabled, 1 enabled
+	Description        field.String // description
+	UserType           field.Uint32 // 用户类型 0全部 1收费 2免费
+	SubscriptionStatus field.Uint32 // 订阅类型 0全部 1订阅 2未订阅
+	CreatedAt          field.Time
+	UpdatedAt          field.Time
+	DeletedAt          field.Field
+	DisplayPosition    videoTemplateTypeManyToManyDisplayPosition
 
 	Countrys videoTemplateTypeManyToManyCountrys
 
@@ -137,9 +135,8 @@ func (v *videoTemplateType) updateTableName(table string) *videoTemplateType {
 	v.Sort = field.NewInt64(table, "sort")
 	v.Status = field.NewInt8(table, "status")
 	v.Description = field.NewString(table, "description")
-	v.IsSubscribed = field.NewInt8(table, "is_subscribed")
-	v.UserTypes = field.NewString(table, "user_types")
-	v.SubscriptionStatuses = field.NewString(table, "subscription_statuses")
+	v.UserType = field.NewUint32(table, "user_type")
+	v.SubscriptionStatus = field.NewUint32(table, "subscription_status")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -171,15 +168,14 @@ func (v *videoTemplateType) GetFieldByName(fieldName string) (field.OrderExpr, b
 }
 
 func (v *videoTemplateType) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 16)
+	v.fieldMap = make(map[string]field.Expr, 15)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["category_name"] = v.CategoryName
 	v.fieldMap["sort"] = v.Sort
 	v.fieldMap["status"] = v.Status
 	v.fieldMap["description"] = v.Description
-	v.fieldMap["is_subscribed"] = v.IsSubscribed
-	v.fieldMap["user_types"] = v.UserTypes
-	v.fieldMap["subscription_statuses"] = v.SubscriptionStatuses
+	v.fieldMap["user_type"] = v.UserType
+	v.fieldMap["subscription_status"] = v.SubscriptionStatus
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

@@ -71,8 +71,71 @@ func (s *ClientVipService) VipRecommend(ctx *gin.Context, req *VipRecommendReque
 	return resp, nil
 }
 
+func (s *ClientVipService) VipList(ctx *gin.Context, req *VipVipListRequest) ([]*VIPRecommendResponse, error) {
+	user, err := s.userRepo.GetByID(ctx, middleware.GetAPIUserID(ctx))
+	if err != nil {
+		return nil, err
+	}
+	vipList, err := s.subscriptionRepo.VipList(ctx, &repository.VIPSubscriptionListFilter{
+		VipTypes:           req.VipTypes,
+		AppCode:            middleware.GetAPIAPPCode(ctx),
+		PackageCode:        middleware.GetAPIAppPackageCode(ctx),
+		VersionCode:        middleware.GetAPIAppVersion(ctx),
+		UserType:           uint32(user.UserType),
+		SubscriptionStatus: uint32(user.SubscriptionStatus),
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp := make([]*VIPRecommendResponse, 0)
+	for _, item := range vipList {
+		subscriptionPrice := item.SubscriptionPrice
+		subscriptionPoints := item.SubscriptionPoints
+		levelName := ""
+		if user.SubscriptionStatus == domain.SubscriptionStatusUnsubscribed {
+			subscriptionPrice = item.FirstSubscriptionPrice
+			subscriptionPoints = item.FirstBonusPoints
+		}
+		if item.SubscriptionLevel.ID != 0 {
+			levelName = item.SubscriptionLevel.Level
+		}
+		resp = append(resp, &VIPRecommendResponse{
+			ID:                      item.ID,
+			VipType:                 item.VipType,
+			SukCode:                 item.SukCode,
+			Name:                    item.Name,
+			LevelName:               levelName,
+			Currency:                item.Currency,
+			VIPDurationDays:         item.VIPDurationDays,
+			TrialDays:               item.TrialDays,
+			BadgeText:               item.BadgeText,
+			AgreementDefaultChecked: item.AgreementDefaultChecked,
+			DisplayMode:             item.DisplayMode,
+			Status:                  item.Status,
+			FreeTrial:               item.FreeTrial,
+			IsSubscription:          item.IsSubscription,
+			IsDefault:               item.IsDefault,
+			SubscriptionPrice:       subscriptionPrice,
+			OriginalPrice:           item.OriginalPrice,
+			SubscriptionPoints:      subscriptionPoints,
+			SubscriptionPeriod:      item.SubscriptionPeriod,
+			Sort:                    item.Sort,
+			Description:             item.Description,
+			Remark:                  item.Remark,
+			CreatedAt:               item.CreatedAt.Unix(),
+			UpdatedAt:               item.UpdatedAt.Unix(),
+		})
+	}
+	return resp, nil
+}
+
 type VipRecommendRequest struct {
 	VipType uint64 `form:"vip_type" binding:"required,min=1"`
+	AccountBaseRequest
+}
+
+type VipVipListRequest struct {
+	VipTypes []uint64 `form:"vip_types" binding:"required,min=1"`
 	AccountBaseRequest
 }
 

@@ -17,6 +17,12 @@
         <el-table-column prop="path" label="路由路径" />
         <el-table-column prop="component" label="组件路径" />
         <el-table-column prop="permission" label="权限标识" width="160" />
+        <el-table-column label="关联接口" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.apis?.length" size="small" type="info">{{ row.apis.length }} 个</el-tag>
+            <span v-else class="empty-text">未关联</span>
+          </template>
+        </el-table-column>
         <el-table-column label="类型" width="80">
           <template #default="{ row }">
             <el-tag v-if="row.type === 0" type="warning">目录</el-tag>
@@ -44,7 +50,7 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑菜单' : '新增菜单'" width="580px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑菜单' : '新增菜单'" width="720px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="上级菜单">
           <el-tree-select
@@ -76,8 +82,30 @@
         <el-form-item label="图标">
           <el-input v-model="form.icon" />
         </el-form-item>
-        <el-form-item label="权限标识" v-if="form.type === 2">
+        <el-form-item label="权限标识" v-if="form.type !== 0">
           <el-input v-model="form.permission" />
+        </el-form-item>
+        <el-form-item label="关联接口">
+          <el-select
+            v-model="form.api_ids"
+            multiple
+            filterable
+            collapse-tags
+            collapse-tags-tooltip
+            clearable
+            placeholder="选择该菜单或按钮允许访问的接口"
+            style="width: 100%"
+          >
+            <el-option-group v-for="group in apiGroups" :key="group.name" :label="group.name">
+              <el-option
+                v-for="api in group.items"
+                :key="api.id"
+                :label="`${api.method} ${api.path}${api.description ? ` · ${api.description}` : ''}`"
+                :value="api.id"
+              />
+            </el-option-group>
+          </el-select>
+          <div class="form-tip">角色勾选该菜单后，将自动获得这里绑定的接口权限。</div>
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="form.sort" :min="0" />
@@ -112,7 +140,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, type FormInstance } from 'element-plus'
-import { getMenuTree, createMenu, updateMenu, deleteMenu } from '@/api/menu'
+import { getAllAPIs, getMenuById, getMenuTree, createMenu, updateMenu, deleteMenu } from '@/api/menu'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
@@ -122,14 +150,25 @@ const submitLoading = ref(false)
 const dialogVisible = ref(false)
 const formRef = ref<FormInstance>()
 const treeData = ref<any[]>([])
+const apiOptions = ref<any[]>([])
 
 const parentOptions = computed(() => {
-  return [{ id: 0, name: '顶级菜单', children: treeData.value }]
+  return [{ id: 0, name: '顶级菜单', children: excludeMenu(treeData.value, form.id) }]
+})
+
+const apiGroups = computed(() => {
+  const groups = new Map<string, any[]>()
+  for (const api of apiOptions.value) {
+    const name = api.group || '其他'
+    if (!groups.has(name)) groups.set(name, [])
+    groups.get(name)!.push(api)
+  }
+  return [...groups.entries()].map(([name, items]) => ({ name, items }))
 })
 
 const defaultForm = {
   id: 0, parent_id: 0, name: '', path: '', component: '',
-  icon: '', sort: 0, type: 1, permission: '', visible: 1, status: 1,
+  icon: '', sort: 0, type: 1, permission: '', visible: 1, status: 1, api_ids: [] as number[],
 }
 const form = reactive({ ...defaultForm })
 
@@ -147,13 +186,27 @@ async function fetchData() {
   }
 }
 
-function openDialog(row?: any, parentId?: number) {
-  Object.assign(form, { ...defaultForm })
+async function fetchAPIs() {
+  const res: any = await getAllAPIs()
+  apiOptions.value = res.data || []
+}
+
+function excludeMenu(items: any[], excludedId: number): any[] {
+  return items
+    .filter((item) => item.id !== excludedId)
+    .map((item) => ({ ...item, children: excludeMenu(item.children || [], excludedId) }))
+}
+
+async function openDialog(row?: any, parentId?: number) {
+  Object.assign(form, { ...defaultForm, api_ids: [] })
   if (row) {
+    const res: any = await getMenuById(row.id)
+    const item = res.data || row
     Object.assign(form, {
-      id: row.id, parent_id: row.parent_id, name: row.name, path: row.path,
-      component: row.component, icon: row.icon, sort: row.sort, type: row.type,
-      permission: row.permission, visible: row.visible, status: row.status,
+      id: item.id, parent_id: item.parent_id, name: item.name, path: item.path,
+      component: item.component, icon: item.icon, sort: item.sort, type: item.type,
+      permission: item.permission, visible: item.visible, status: item.status,
+      api_ids: (item.apis || []).map((api: any) => api.id),
     })
   } else if (parentId !== undefined) {
     form.parent_id = parentId
@@ -165,10 +218,23 @@ async function handleSubmit() {
   await formRef.value?.validate()
   submitLoading.value = true
   try {
+    const payload = {
+      parent_id: form.parent_id || 0,
+      name: form.name.trim(),
+      path: form.path.trim(),
+      component: form.type === 1 ? form.component.trim() : '',
+      icon: form.icon.trim(),
+      sort: form.sort,
+      type: form.type,
+      permission: form.type === 0 ? '' : form.permission.trim(),
+      visible: form.visible,
+      status: form.status,
+      api_ids: [...form.api_ids],
+    }
     if (form.id) {
-      await updateMenu(form.id, form)
+      await updateMenu(form.id, payload)
     } else {
-      await createMenu(form)
+      await createMenu(payload)
     }
     ElMessage.success('操作成功')
     dialogVisible.value = false
@@ -184,5 +250,10 @@ async function handleDelete(id: number) {
   fetchData()
 }
 
-onMounted(() => fetchData())
+onMounted(() => Promise.all([fetchData(), fetchAPIs()]))
 </script>
+
+<style scoped>
+.empty-text { color: var(--el-text-color-placeholder); font-size: 12px; }
+.form-tip { margin-top: 6px; color: var(--el-text-color-secondary); font-size: 12px; line-height: 1.5; }
+</style>

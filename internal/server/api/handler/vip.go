@@ -31,3 +31,17 @@ func (h *VipHandler) Recommend(c *gin.Context) {
 	}
 	response.OK(c, result)
 }
+
+func (h *VipHandler) VipList(c *gin.Context) {
+	var req service.VipVipListRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
+	result, err := h.svc.VipList(c, &req)
+	if err != nil {
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, result)
+}
