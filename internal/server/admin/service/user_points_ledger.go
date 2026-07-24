@@ -1,13 +1,11 @@
 package service
 
 import (
+	"ai-video/internal/repository"
 	"context"
 	"errors"
 	"strings"
 	"time"
-
-	"ai-video/internal/gen/model"
-	"ai-video/internal/repository"
 )
 
 type UserPointsLedgerService struct {
@@ -29,7 +27,7 @@ type ListUserPointsLedgerRequest struct {
 	DateTo          string `form:"date_to" binding:"omitempty,datetime=2006-01-02"`
 }
 
-func (s *UserPointsLedgerService) List(ctx context.Context, page, pageSize int, req *ListUserPointsLedgerRequest) ([]model.VideoUserPointsLedger, int64, repository.UserPointsLedgerSummary, error) {
+func (s *UserPointsLedgerService) List(ctx context.Context, page, pageSize int, req *ListUserPointsLedgerRequest) ([]repository.UserPointsLedgerRecord, int64, repository.UserPointsLedgerSummary, error) {
 	from, to, err := parsePointsLedgerDateRange(req.DateFrom, req.DateTo)
 	if err != nil {
 		return nil, 0, repository.UserPointsLedgerSummary{}, err
@@ -46,7 +44,7 @@ func (s *UserPointsLedgerService) List(ctx context.Context, page, pageSize int, 
 	})
 }
 
-func (s *UserPointsLedgerService) GetByID(ctx context.Context, id uint64) (*model.VideoUserPointsLedger, error) {
+func (s *UserPointsLedgerService) GetByID(ctx context.Context, id uint64) (*repository.UserPointsLedgerRecord, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "积分明细不存在")

@@ -73,9 +73,9 @@ type TaskView struct {
 func ViewOf(item *model.VideoGenerationTask) TaskView {
 	view := TaskView{
 		ID: item.ID, ClientRequestID: item.ClientRequestID, ModelConfigID: item.ModelConfigID,
-		ExternalTaskID: item.ExternalTaskID, Status: item.Status, Progress: item.Progress,
+		ExternalTaskID: item.ExternalTaskID, Status: item.Status, Progress: uint8(item.Progress),
 		ErrorMessage: item.ErrorMessage, UsageDuration: item.UsageDuration,
-		SubmittedAt: item.SubmittedAt, StartedAt: item.StartedAt, FinishedAt: item.FinishedAt,
+		SubmittedAt: nullableTime(item.SubmittedAt), StartedAt: nullableTime(item.StartedAt), FinishedAt: nullableTime(item.FinishedAt),
 		CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt, LocalURLs: []string{},
 	}
 	var request remoteSubmitRequest
@@ -88,6 +88,13 @@ func ViewOf(item *model.VideoGenerationTask) TaskView {
 		view.LocalURLs = []string{}
 	}
 	return view
+}
+
+func nullableTime(value time.Time) *time.Time {
+	if value.IsZero() {
+		return nil
+	}
+	return &value
 }
 
 func IsTerminal(status string) bool {

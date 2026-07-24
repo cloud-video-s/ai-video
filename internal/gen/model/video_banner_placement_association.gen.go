@@ -14,14 +14,12 @@ const TableNameVideoBannerPlacementAssociation = "video_banner_placement_associa
 
 // VideoBannerPlacementAssociation mapped from table <video_banner_placement_association>
 type VideoBannerPlacementAssociation struct {
-	ID              uint64               `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	BannerID        uint64               `gorm:"column:banner_id;type:bigint unsigned;not null;uniqueIndex:idx_placement_key,priority:1" json:"banner_id"`
-	PlacementKey    string               `gorm:"column:placement_key;type:varchar(64);not null;uniqueIndex:idx_placement_key,priority:2" json:"placement_key"`
-	CreatedAt       time.Time            `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
-	UpdatedAt       time.Time            `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt       gorm.DeletedAt       `gorm:"column:deleted_at;type:datetime(3);uniqueIndex:idx_placement_key,priority:3" json:"deleted_at"`
-	Banner          VideoBanner          `gorm:"foreignKey:BannerID;references:ID" json:"banner"`
-	DisplayPosition VideoDisplayPosition `gorm:"foreignKey:PlacementKey;references:PositionKey" json:"display_position"`
+	ID           uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	BannerID     uint64         `gorm:"column:banner_id;type:bigint unsigned;not null;uniqueIndex:idx_placement_key,priority:1" json:"banner_id"`
+	PlacementKey string         `gorm:"column:placement_key;type:varchar(64);not null;uniqueIndex:idx_placement_key,priority:2" json:"placement_key"`
+	CreatedAt    time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt    time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);uniqueIndex:idx_placement_key,priority:3" json:"deleted_at"`
 }
 
 // TableName VideoBannerPlacementAssociation's table name

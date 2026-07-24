@@ -90,8 +90,6 @@ func (d *AppUserRepo) GetAuthState(ctx context.Context, id uint64) (string, int6
 	q := qFrom(ctx).VideoUser
 	user, err := q.WithContext(ctx).Where(q.ID.Eq(id)).
 		Where(q.Status.Eq(1)).
-		Where(q.IsFrozen.Eq(false)).
-		Where(q.IsBlacklisted.Eq(false)).
 		Select(q.DeviceCode, q.TokenVersion).First()
 	if err != nil {
 		return "", 0, err
@@ -155,23 +153,9 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 		if filter.SubscriptionStatus != 0 {
 			dao = dao.Where(user.SubscriptionStatus.Eq(uint8(filter.SubscriptionStatus)))
 		}
-		if filter.Activated != nil {
-			dao = dao.Where(user.Activated.Eq(*filter.Activated))
-		}
-		if filter.Registered != nil {
-			dao = dao.Where(user.Registered.Eq(*filter.Registered))
-		}
-		if filter.PaymentMet != nil {
-			dao = dao.Where(user.PaymentMet.Eq(*filter.PaymentMet))
-		}
+
 		if filter.Status != nil {
 			dao = dao.Where(user.Status.Eq(int8(*filter.Status)))
-		}
-		if filter.IsFrozen != nil {
-			dao = dao.Where(user.IsFrozen.Eq(*filter.IsFrozen))
-		}
-		if filter.IsBlacklisted != nil {
-			dao = dao.Where(user.IsBlacklisted.Eq(*filter.IsBlacklisted))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"

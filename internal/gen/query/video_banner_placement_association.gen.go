@@ -34,74 +34,6 @@ func newVideoBannerPlacementAssociation(db *gorm.DB, opts ...gen.DOOption) video
 	_videoBannerPlacementAssociation.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoBannerPlacementAssociation.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoBannerPlacementAssociation.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoBannerPlacementAssociation.Banner = videoBannerPlacementAssociationBelongsToBanner{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("Banner", "model.VideoBanner"),
-		Template: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Banner.Template", "model.VideoTemplate"),
-		},
-		Placement: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Banner.Placement", "model.VideoBannerPlacementAssociation"),
-		},
-		Countrys: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Banner.Countrys", "model.VideoCountry"),
-		},
-		App: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Banner.App", "model.VideoApp"),
-		},
-		Package: struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}{
-			RelationField: field.NewRelation("Banner.Package", "model.VideoPackage"),
-			App: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("Banner.Package.App", "model.VideoApp"),
-			},
-		},
-		Version: struct {
-			field.RelationField
-			Package struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}
-		}{
-			RelationField: field.NewRelation("Banner.Version", "model.VideoPackageVersion"),
-			Package: struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}{
-				RelationField: field.NewRelation("Banner.Version.Package", "model.VideoPackage"),
-				App: struct {
-					field.RelationField
-				}{
-					RelationField: field.NewRelation("Banner.Version.Package.App", "model.VideoApp"),
-				},
-			},
-		},
-	}
-
-	_videoBannerPlacementAssociation.DisplayPosition = videoBannerPlacementAssociationBelongsToDisplayPosition{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("DisplayPosition", "model.VideoDisplayPosition"),
-	}
 
 	_videoBannerPlacementAssociation.fillFieldMap()
 
@@ -118,9 +50,6 @@ type videoBannerPlacementAssociation struct {
 	CreatedAt    field.Time
 	UpdatedAt    field.Time
 	DeletedAt    field.Field
-	Banner       videoBannerPlacementAssociationBelongsToBanner
-
-	DisplayPosition videoBannerPlacementAssociationBelongsToDisplayPosition
 
 	fieldMap map[string]field.Expr
 }
@@ -175,220 +104,23 @@ func (v *videoBannerPlacementAssociation) GetFieldByName(fieldName string) (fiel
 }
 
 func (v *videoBannerPlacementAssociation) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 8)
+	v.fieldMap = make(map[string]field.Expr, 6)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["banner_id"] = v.BannerID
 	v.fieldMap["placement_key"] = v.PlacementKey
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-
 }
 
 func (v videoBannerPlacementAssociation) clone(db *gorm.DB) videoBannerPlacementAssociation {
 	v.videoBannerPlacementAssociationDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.Banner.db = db.Session(&gorm.Session{Initialized: true})
-	v.Banner.db.Statement.ConnPool = db.Statement.ConnPool
-	v.DisplayPosition.db = db.Session(&gorm.Session{Initialized: true})
-	v.DisplayPosition.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoBannerPlacementAssociation) replaceDB(db *gorm.DB) videoBannerPlacementAssociation {
 	v.videoBannerPlacementAssociationDo.ReplaceDB(db)
-	v.Banner.db = db.Session(&gorm.Session{})
-	v.DisplayPosition.db = db.Session(&gorm.Session{})
 	return v
-}
-
-type videoBannerPlacementAssociationBelongsToBanner struct {
-	db *gorm.DB
-
-	field.RelationField
-
-	Template struct {
-		field.RelationField
-	}
-	Placement struct {
-		field.RelationField
-	}
-	Countrys struct {
-		field.RelationField
-	}
-	App struct {
-		field.RelationField
-	}
-	Package struct {
-		field.RelationField
-		App struct {
-			field.RelationField
-		}
-	}
-	Version struct {
-		field.RelationField
-		Package struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}
-	}
-}
-
-func (a videoBannerPlacementAssociationBelongsToBanner) Where(conds ...field.Expr) *videoBannerPlacementAssociationBelongsToBanner {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoBannerPlacementAssociationBelongsToBanner) WithContext(ctx context.Context) *videoBannerPlacementAssociationBelongsToBanner {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoBannerPlacementAssociationBelongsToBanner) Session(session *gorm.Session) *videoBannerPlacementAssociationBelongsToBanner {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoBannerPlacementAssociationBelongsToBanner) Model(m *model.VideoBannerPlacementAssociation) *videoBannerPlacementAssociationBelongsToBannerTx {
-	return &videoBannerPlacementAssociationBelongsToBannerTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoBannerPlacementAssociationBelongsToBanner) Unscoped() *videoBannerPlacementAssociationBelongsToBanner {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoBannerPlacementAssociationBelongsToBannerTx struct{ tx *gorm.Association }
-
-func (a videoBannerPlacementAssociationBelongsToBannerTx) Find() (result *model.VideoBanner, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoBannerPlacementAssociationBelongsToBannerTx) Append(values ...*model.VideoBanner) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoBannerPlacementAssociationBelongsToBannerTx) Replace(values ...*model.VideoBanner) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoBannerPlacementAssociationBelongsToBannerTx) Delete(values ...*model.VideoBanner) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoBannerPlacementAssociationBelongsToBannerTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoBannerPlacementAssociationBelongsToBannerTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoBannerPlacementAssociationBelongsToBannerTx) Unscoped() *videoBannerPlacementAssociationBelongsToBannerTx {
-	a.tx = a.tx.Unscoped()
-	return &a
-}
-
-type videoBannerPlacementAssociationBelongsToDisplayPosition struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPosition) Where(conds ...field.Expr) *videoBannerPlacementAssociationBelongsToDisplayPosition {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPosition) WithContext(ctx context.Context) *videoBannerPlacementAssociationBelongsToDisplayPosition {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPosition) Session(session *gorm.Session) *videoBannerPlacementAssociationBelongsToDisplayPosition {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPosition) Model(m *model.VideoBannerPlacementAssociation) *videoBannerPlacementAssociationBelongsToDisplayPositionTx {
-	return &videoBannerPlacementAssociationBelongsToDisplayPositionTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPosition) Unscoped() *videoBannerPlacementAssociationBelongsToDisplayPosition {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoBannerPlacementAssociationBelongsToDisplayPositionTx struct{ tx *gorm.Association }
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPositionTx) Find() (result *model.VideoDisplayPosition, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPositionTx) Append(values ...*model.VideoDisplayPosition) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPositionTx) Replace(values ...*model.VideoDisplayPosition) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPositionTx) Delete(values ...*model.VideoDisplayPosition) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPositionTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPositionTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoBannerPlacementAssociationBelongsToDisplayPositionTx) Unscoped() *videoBannerPlacementAssociationBelongsToDisplayPositionTx {
-	a.tx = a.tx.Unscoped()
-	return &a
 }
 
 type videoBannerPlacementAssociationDo struct{ gen.DO }

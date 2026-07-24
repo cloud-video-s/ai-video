@@ -34,9 +34,6 @@ func (r *PackageRepo) PageList(ctx context.Context, page, pageSize int, filter *
 		if filter.SystemType != nil {
 			dao = dao.Where(q.SystemType.Eq(uint8(*filter.SystemType)))
 		}
-		if filter.Status != nil {
-			dao = dao.Where(q.Status.Eq(*filter.Status))
-		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
 			dao = dao.Where(field.Or(

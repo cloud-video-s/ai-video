@@ -42,25 +42,16 @@ func newVideoMenu(db *gorm.DB, opts ...gen.DOOption) videoMenu {
 	_videoMenu.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoMenu.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoMenu.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoMenu.Children = videoMenuHasManyChildren{
+	_videoMenu.ParentMenu = videoMenuBelongsToParentMenu{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("Children", "model.VideoMenu"),
-		ParentMenu: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Children.ParentMenu", "model.VideoMenu"),
-		},
-		ChildMenus: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Children.ChildMenus", "model.VideoMenu"),
-		},
-		APIs: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Children.APIs", "model.VideoAPI"),
-		},
+		RelationField: field.NewRelation("ParentMenu", "model.VideoMenu"),
+	}
+
+	_videoMenu.ChildMenus = videoMenuHasManyChildMenus{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("ChildMenus", "model.VideoMenu"),
 	}
 
 	_videoMenu.APIs = videoMenuManyToManyAPIs{
@@ -92,7 +83,9 @@ type videoMenu struct {
 	CreatedAt  field.Time
 	UpdatedAt  field.Time
 	DeletedAt  field.Field
-	Children   videoMenuHasManyChildren
+	ParentMenu videoMenuBelongsToParentMenu
+
+	ChildMenus videoMenuHasManyChildMenus
 
 	APIs videoMenuManyToManyAPIs
 
@@ -151,7 +144,7 @@ func (v *videoMenu) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoMenu) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 16)
+	v.fieldMap = make(map[string]field.Expr, 17)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["parent_id"] = v.ParentID
 	v.fieldMap["name"] = v.Name
@@ -171,8 +164,10 @@ func (v *videoMenu) fillFieldMap() {
 
 func (v videoMenu) clone(db *gorm.DB) videoMenu {
 	v.videoMenuDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.Children.db = db.Session(&gorm.Session{Initialized: true})
-	v.Children.db.Statement.ConnPool = db.Statement.ConnPool
+	v.ParentMenu.db = db.Session(&gorm.Session{Initialized: true})
+	v.ParentMenu.db.Statement.ConnPool = db.Statement.ConnPool
+	v.ChildMenus.db = db.Session(&gorm.Session{Initialized: true})
+	v.ChildMenus.db.Statement.ConnPool = db.Statement.ConnPool
 	v.APIs.db = db.Session(&gorm.Session{Initialized: true})
 	v.APIs.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
@@ -180,28 +175,19 @@ func (v videoMenu) clone(db *gorm.DB) videoMenu {
 
 func (v videoMenu) replaceDB(db *gorm.DB) videoMenu {
 	v.videoMenuDo.ReplaceDB(db)
-	v.Children.db = db.Session(&gorm.Session{})
+	v.ParentMenu.db = db.Session(&gorm.Session{})
+	v.ChildMenus.db = db.Session(&gorm.Session{})
 	v.APIs.db = db.Session(&gorm.Session{})
 	return v
 }
 
-type videoMenuHasManyChildren struct {
+type videoMenuBelongsToParentMenu struct {
 	db *gorm.DB
 
 	field.RelationField
-
-	ParentMenu struct {
-		field.RelationField
-	}
-	ChildMenus struct {
-		field.RelationField
-	}
-	APIs struct {
-		field.RelationField
-	}
 }
 
-func (a videoMenuHasManyChildren) Where(conds ...field.Expr) *videoMenuHasManyChildren {
+func (a videoMenuBelongsToParentMenu) Where(conds ...field.Expr) *videoMenuBelongsToParentMenu {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -214,32 +200,32 @@ func (a videoMenuHasManyChildren) Where(conds ...field.Expr) *videoMenuHasManyCh
 	return &a
 }
 
-func (a videoMenuHasManyChildren) WithContext(ctx context.Context) *videoMenuHasManyChildren {
+func (a videoMenuBelongsToParentMenu) WithContext(ctx context.Context) *videoMenuBelongsToParentMenu {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a videoMenuHasManyChildren) Session(session *gorm.Session) *videoMenuHasManyChildren {
+func (a videoMenuBelongsToParentMenu) Session(session *gorm.Session) *videoMenuBelongsToParentMenu {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a videoMenuHasManyChildren) Model(m *model.VideoMenu) *videoMenuHasManyChildrenTx {
-	return &videoMenuHasManyChildrenTx{a.db.Model(m).Association(a.Name())}
+func (a videoMenuBelongsToParentMenu) Model(m *model.VideoMenu) *videoMenuBelongsToParentMenuTx {
+	return &videoMenuBelongsToParentMenuTx{a.db.Model(m).Association(a.Name())}
 }
 
-func (a videoMenuHasManyChildren) Unscoped() *videoMenuHasManyChildren {
+func (a videoMenuBelongsToParentMenu) Unscoped() *videoMenuBelongsToParentMenu {
 	a.db = a.db.Unscoped()
 	return &a
 }
 
-type videoMenuHasManyChildrenTx struct{ tx *gorm.Association }
+type videoMenuBelongsToParentMenuTx struct{ tx *gorm.Association }
 
-func (a videoMenuHasManyChildrenTx) Find() (result []*model.VideoMenu, err error) {
+func (a videoMenuBelongsToParentMenuTx) Find() (result *model.VideoMenu, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a videoMenuHasManyChildrenTx) Append(values ...*model.VideoMenu) (err error) {
+func (a videoMenuBelongsToParentMenuTx) Append(values ...*model.VideoMenu) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -247,7 +233,7 @@ func (a videoMenuHasManyChildrenTx) Append(values ...*model.VideoMenu) (err erro
 	return a.tx.Append(targetValues...)
 }
 
-func (a videoMenuHasManyChildrenTx) Replace(values ...*model.VideoMenu) (err error) {
+func (a videoMenuBelongsToParentMenuTx) Replace(values ...*model.VideoMenu) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -255,7 +241,7 @@ func (a videoMenuHasManyChildrenTx) Replace(values ...*model.VideoMenu) (err err
 	return a.tx.Replace(targetValues...)
 }
 
-func (a videoMenuHasManyChildrenTx) Delete(values ...*model.VideoMenu) (err error) {
+func (a videoMenuBelongsToParentMenuTx) Delete(values ...*model.VideoMenu) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -263,15 +249,96 @@ func (a videoMenuHasManyChildrenTx) Delete(values ...*model.VideoMenu) (err erro
 	return a.tx.Delete(targetValues...)
 }
 
-func (a videoMenuHasManyChildrenTx) Clear() error {
+func (a videoMenuBelongsToParentMenuTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a videoMenuHasManyChildrenTx) Count() int64 {
+func (a videoMenuBelongsToParentMenuTx) Count() int64 {
 	return a.tx.Count()
 }
 
-func (a videoMenuHasManyChildrenTx) Unscoped() *videoMenuHasManyChildrenTx {
+func (a videoMenuBelongsToParentMenuTx) Unscoped() *videoMenuBelongsToParentMenuTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoMenuHasManyChildMenus struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoMenuHasManyChildMenus) Where(conds ...field.Expr) *videoMenuHasManyChildMenus {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoMenuHasManyChildMenus) WithContext(ctx context.Context) *videoMenuHasManyChildMenus {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoMenuHasManyChildMenus) Session(session *gorm.Session) *videoMenuHasManyChildMenus {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoMenuHasManyChildMenus) Model(m *model.VideoMenu) *videoMenuHasManyChildMenusTx {
+	return &videoMenuHasManyChildMenusTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoMenuHasManyChildMenus) Unscoped() *videoMenuHasManyChildMenus {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoMenuHasManyChildMenusTx struct{ tx *gorm.Association }
+
+func (a videoMenuHasManyChildMenusTx) Find() (result []*model.VideoMenu, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoMenuHasManyChildMenusTx) Append(values ...*model.VideoMenu) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoMenuHasManyChildMenusTx) Replace(values ...*model.VideoMenu) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoMenuHasManyChildMenusTx) Delete(values ...*model.VideoMenu) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoMenuHasManyChildMenusTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoMenuHasManyChildMenusTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoMenuHasManyChildMenusTx) Unscoped() *videoMenuHasManyChildMenusTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }

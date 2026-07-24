@@ -166,6 +166,6 @@ func applyPackagePayload(item *model.VideoPackage, req *PackagePayload) {
 	item.AppCode = strings.TrimSpace(req.AppCode)
 	item.Description = strings.TrimSpace(req.Description)
 	item.Sort = req.Sort
-	item.Status = int8(req.Status)
+	item.Status = uint8(req.Status)
 	item.SystemType = req.SystemType
 }

@@ -37,16 +37,6 @@ func newVideoApp(db *gorm.DB, opts ...gen.DOOption) videoApp {
 	_videoApp.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoApp.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoApp.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoApp.Packages = videoAppHasManyPackages{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("Packages", "model.VideoPackage"),
-		App: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Packages.App", "model.VideoApp"),
-		},
-	}
 
 	_videoApp.fillFieldMap()
 
@@ -71,7 +61,6 @@ type videoApp struct {
 	CreatedAt   field.Time
 	UpdatedAt   field.Time
 	DeletedAt   field.Field
-	Packages    videoAppHasManyPackages
 
 	fieldMap map[string]field.Expr
 }
@@ -121,7 +110,7 @@ func (v *videoApp) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoApp) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 10)
+	v.fieldMap = make(map[string]field.Expr, 9)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["name"] = v.Name
 	v.fieldMap["app_code"] = v.AppCode
@@ -131,105 +120,16 @@ func (v *videoApp) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-
 }
 
 func (v videoApp) clone(db *gorm.DB) videoApp {
 	v.videoAppDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.Packages.db = db.Session(&gorm.Session{Initialized: true})
-	v.Packages.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoApp) replaceDB(db *gorm.DB) videoApp {
 	v.videoAppDo.ReplaceDB(db)
-	v.Packages.db = db.Session(&gorm.Session{})
 	return v
-}
-
-type videoAppHasManyPackages struct {
-	db *gorm.DB
-
-	field.RelationField
-
-	App struct {
-		field.RelationField
-	}
-}
-
-func (a videoAppHasManyPackages) Where(conds ...field.Expr) *videoAppHasManyPackages {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoAppHasManyPackages) WithContext(ctx context.Context) *videoAppHasManyPackages {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoAppHasManyPackages) Session(session *gorm.Session) *videoAppHasManyPackages {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoAppHasManyPackages) Model(m *model.VideoApp) *videoAppHasManyPackagesTx {
-	return &videoAppHasManyPackagesTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoAppHasManyPackages) Unscoped() *videoAppHasManyPackages {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoAppHasManyPackagesTx struct{ tx *gorm.Association }
-
-func (a videoAppHasManyPackagesTx) Find() (result []*model.VideoPackage, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoAppHasManyPackagesTx) Append(values ...*model.VideoPackage) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoAppHasManyPackagesTx) Replace(values ...*model.VideoPackage) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoAppHasManyPackagesTx) Delete(values ...*model.VideoPackage) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoAppHasManyPackagesTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoAppHasManyPackagesTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoAppHasManyPackagesTx) Unscoped() *videoAppHasManyPackagesTx {
-	a.tx = a.tx.Unscoped()
-	return &a
 }
 
 type videoAppDo struct{ gen.DO }

@@ -99,7 +99,7 @@ func seedDefaults(ctx context.Context) error {
 		}
 		if err := repo.Create(ctx, &model.VideoConfig{
 			Group: d.Group, Key: d.Key, Name: d.Name, Type: d.Type, Value: d.Value,
-			Options: d.Options, Remark: d.Remark, IsPublic: d.IsPublic,
+			Options: d.Options, Remark: d.Remark,
 			Sensitive: d.Sensitive, Sort: int64(d.Sort), Editable: 1, Builtin: 1,
 		}); err != nil {
 			return err

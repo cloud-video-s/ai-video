@@ -27,7 +27,6 @@ type VideoApp struct {
 	CreatedAt   time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
 	UpdatedAt   time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
-	Packages    []VideoPackage `gorm:"foreignKey:AppCode;references:AppCode" json:"packages"`
 }
 
 // TableName VideoApp's table name

@@ -24,7 +24,7 @@ type VideoUser struct {
 	LastOpenedAt             *time.Time     `gorm:"column:last_opened_at;type:datetime(3);index:idx_video_user_last_opened_at,priority:1;comment:上次打开时间" json:"last_opened_at"`                                                      // 上次打开时间
 	LoginType                uint8          `gorm:"column:login_type;type:tinyint unsigned;not null;index:idx_video_user_login_type,priority:1;default:1;comment:登录方式 1=未登录 2=google 3=appid" json:"login_type"`                     // 登录方式 1=未登录 2=google 3=appid
 	UserType                 uint8          `gorm:"column:user_type;type:tinyint unsigned;not null;index:idx_video_user_user_type,priority:1;default:1;comment:用户类型 1=免费 2=付费" json:"user_type"`                                     // 用户类型 1=免费 2=付费
-	ActiveDays               uint32         `gorm:"column:active_days;type:int unsigned;not null;comment:活跃天数" json:"active_days"`                                                                                                   // 活跃天数
+	ActiveDays               uint           `gorm:"column:active_days;type:int unsigned;not null;comment:活跃天数" json:"active_days"`                                                                                                   // 活跃天数
 	AvgDailyUsageSeconds     uint64         `gorm:"column:avg_daily_usage_seconds;type:bigint unsigned;not null;comment:平均日使用时长" json:"avg_daily_usage_seconds"`                                                                     // 平均日使用时长
 	VipExpiresAt             *time.Time     `gorm:"column:vip_expires_at;type:datetime(3);index:idx_video_user_vip_expires_at,priority:1;comment:vip 到期时间" json:"vip_expires_at"`                                                    // vip 到期时间
 	PointsBalance            uint64         `gorm:"column:points_balance;type:bigint unsigned;not null;comment:积分" json:"points_balance"`                                                                                            // 积分
@@ -39,13 +39,13 @@ type VideoUser struct {
 	ActualAmountMoney        float64        `gorm:"column:actual_amount_money;type:decimal(10,2) unsigned zerofill;not null;default:00000000.00;comment:累计税后金额" json:"actual_amount_money"`                                          // 累计税后金额
 	LastPaidAt               *time.Time     `gorm:"column:last_paid_at;type:datetime(3);index:idx_video_user_last_paid_at,priority:1;comment:最后付费时间" json:"last_paid_at"`                                                            // 最后付费时间
 	RefundAmountMoney        float64        `gorm:"column:refund_amount_money;type:decimal(10,2);not null;default:0.00;comment:累计退款金额" json:"refund_amount_money"`                                                                   // 累计退款金额
-	PointsMoney              float64        `gorm:"column:points_money;type:decimal(10,0) unsigned;not null;default:0;comment:累计积分成本" json:"points_money"`                                                                           // 累计积分成本
+	PointsMoney              uint64         `gorm:"column:points_money;type:decimal(10,0) unsigned;not null;default:0;comment:累计积分成本" json:"points_money"`                                                                           // 累计积分成本
 	AiCotsMoney              float64        `gorm:"column:ai_cots_money;type:decimal(10,2) unsigned zerofill;not null;index:idx_video_user_ai_version,priority:1;comment:累计ai成本" json:"ai_cots_money"`                               // 累计ai成本
-	Activated                uint32         `gorm:"column:activated;type:int unsigned;not null;index:idx_video_user_activated,priority:1;comment:是否激活达标 1 是 0否" json:"activated"`                                                    // 是否激活达标 1 是 0否
-	KeyBehaviorMet           uint32         `gorm:"column:key_behavior_met;type:int unsigned;not null;index:idx_video_user_key_behavior_met,priority:1;comment:关键行为是否达标 1 是 0否" json:"key_behavior_met"`                             // 关键行为是否达标 1 是 0否
-	PaymentMet               bool           `gorm:"column:payment_met;type:tinyint(1);not null;index:idx_video_user_payment_met,priority:1;comment:付费是否达标 1 是 0否" json:"payment_met"`                                                // 付费是否达标 1 是 0否
-	FirstPaymentMet          bool           `gorm:"column:first_payment_met;type:tinyint(1);not null;index:idx_video_user_first_payment_met,priority:1;comment:首次付费是否达标 1 是 0否" json:"first_payment_met"`                            // 首次付费是否达标 1 是 0否
-	Registered               bool           `gorm:"column:registered;type:tinyint(1);not null;index:idx_video_user_registered,priority:1;comment:注册达标 1 是 0否" json:"registered"`                                                     // 注册达标 1 是 0否
+	Activated                uint           `gorm:"column:activated;type:int unsigned;not null;index:idx_video_user_activated,priority:1;comment:是否激活达标 1 是 0否" json:"activated"`                                                    // 是否激活达标 1 是 0否
+	KeyBehaviorMet           uint           `gorm:"column:key_behavior_met;type:int unsigned;not null;index:idx_video_user_key_behavior_met,priority:1;comment:关键行为是否达标 1 是 0否" json:"key_behavior_met"`                             // 关键行为是否达标 1 是 0否
+	PaymentMet               int8           `gorm:"column:payment_met;type:tinyint(1);not null;index:idx_video_user_payment_met,priority:1;comment:付费是否达标 1 是 0否" json:"payment_met"`                                                // 付费是否达标 1 是 0否
+	FirstPaymentMet          int8           `gorm:"column:first_payment_met;type:tinyint(1);not null;index:idx_video_user_first_payment_met,priority:1;comment:首次付费是否达标 1 是 0否" json:"first_payment_met"`                            // 首次付费是否达标 1 是 0否
+	Registered               int8           `gorm:"column:registered;type:tinyint(1);not null;index:idx_video_user_registered,priority:1;comment:注册达标 1 是 0否" json:"registered"`                                                     // 注册达标 1 是 0否
 	AttributionClickedAt     *time.Time     `gorm:"column:attribution_clicked_at;type:datetime(3);index:idx_video_user_attribution_clicked_at,priority:1;comment:归因点击时间" json:"attribution_clicked_at"`                              // 归因点击时间
 	PhoneModel               string         `gorm:"column:phone_model;type:varchar(128);index:idx_video_user_phone_model,priority:1;comment:手机品牌、型号" json:"phone_model"`                                                             // 手机品牌、型号
 	ReRegisteredFromID       uint64         `gorm:"column:re_registered_from_id;type:bigint unsigned;index:idx_video_user_re_registered_from_id,priority:1;comment:原用户ID" json:"re_registered_from_id"`                              // 原用户ID
@@ -64,11 +64,11 @@ type VideoUser struct {
 	UpdatedAt                time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt                gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_user_deleted_at,priority:1" json:"deleted_at"`
 	Phone                    string         `gorm:"column:phone;type:varchar(32);not null;index:idx_video_user_phone,priority:1" json:"phone"`
-	VIPLevel                 uint32         `gorm:"column:vip_level;type:int unsigned;not null;index:idx_video_user_vip_level,priority:1" json:"vip_level"`
+	VIPLevel                 uint           `gorm:"column:vip_level;type:int unsigned;not null;index:idx_video_user_vip_level,priority:1" json:"vip_level"`
 	VIPStartedAt             *time.Time     `gorm:"column:vip_started_at;type:datetime(3)" json:"vip_started_at"`
-	IsFrozen                 bool           `gorm:"column:is_frozen;type:tinyint(1);not null;index:idx_video_user_is_frozen,priority:1" json:"is_frozen"`
-	IsBlacklisted            bool           `gorm:"column:is_blacklisted;type:tinyint(1);not null;index:idx_video_user_is_blacklisted,priority:1" json:"is_blacklisted"`
-	Channel                  *VideoChannel  `gorm:"foreignKey:ChannelID;references:ChannelCode" json:"channel"`
+	IsFrozen                 int8           `gorm:"column:is_frozen;type:tinyint(1);not null;index:idx_video_user_is_frozen,priority:1" json:"is_frozen"`
+	IsBlacklisted            int8           `gorm:"column:is_blacklisted;type:tinyint(1);not null;index:idx_video_user_is_blacklisted,priority:1" json:"is_blacklisted"`
+	Channel                  VideoChannel   `gorm:"foreignKey:ChannelID;references:ChannelCode" json:"channel"`
 }
 
 // TableName VideoUser's table name

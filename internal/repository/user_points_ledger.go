@@ -29,11 +29,17 @@ type UserPointsLedgerSummary struct {
 	ExpenseTotal int64 `json:"expense_total"`
 }
 
+type UserPointsLedgerRecord struct {
+	model.VideoUserPointsLedger
+	User          model.VideoUser           `json:"user"`
+	PointsPackage *model.VideoPointsPackage `json:"points_package,omitempty"`
+}
+
 func (r *UserPointsLedgerRepo) Create(ctx context.Context, item *model.VideoUserPointsLedger) error {
 	return qFrom(ctx).VideoUserPointsLedger.WithContext(ctx).Create(item)
 }
 
-func (r *UserPointsLedgerRepo) PageList(ctx context.Context, page, pageSize int, filter *UserPointsLedgerFilter) ([]model.VideoUserPointsLedger, int64, UserPointsLedgerSummary, error) {
+func (r *UserPointsLedgerRepo) PageList(ctx context.Context, page, pageSize int, filter *UserPointsLedgerFilter) ([]UserPointsLedgerRecord, int64, UserPointsLedgerSummary, error) {
 	q := qFrom(ctx)
 	ledger := q.VideoUserPointsLedger
 	user := q.VideoUser
@@ -91,12 +97,70 @@ func (r *UserPointsLedgerRepo) PageList(ctx context.Context, page, pageSize int,
 	).Scan(&summary); err != nil {
 		return nil, 0, UserPointsLedgerSummary{}, err
 	}
-	rows, err := dao.Preload(ledger.User, ledger.PointsPackage).
-		Order(ledger.OccurredAt.Desc(), ledger.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
-	return valuesOf(rows), total, summary, err
+	rows, err := dao.Order(ledger.OccurredAt.Desc(), ledger.ID.Desc()).
+		Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	if err != nil {
+		return nil, 0, UserPointsLedgerSummary{}, err
+	}
+	records, err := r.loadRecords(ctx, valuesOf(rows))
+	return records, total, summary, err
 }
 
-func (r *UserPointsLedgerRepo) GetDetail(ctx context.Context, id uint64) (*model.VideoUserPointsLedger, error) {
+func (r *UserPointsLedgerRepo) GetDetail(ctx context.Context, id uint64) (*UserPointsLedgerRecord, error) {
 	q := qFrom(ctx).VideoUserPointsLedger
-	return q.WithContext(ctx).Preload(q.User, q.PointsPackage).Where(q.ID.Eq(id)).First()
+	item, err := q.WithContext(ctx).Where(q.ID.Eq(id)).First()
+	if err != nil {
+		return nil, err
+	}
+	records, err := r.loadRecords(ctx, []model.VideoUserPointsLedger{*item})
+	if err != nil {
+		return nil, err
+	}
+	return &records[0], nil
+}
+
+func (r *UserPointsLedgerRepo) loadRecords(ctx context.Context, items []model.VideoUserPointsLedger) ([]UserPointsLedgerRecord, error) {
+	result := make([]UserPointsLedgerRecord, 0, len(items))
+	if len(items) == 0 {
+		return result, nil
+	}
+	userIDs := make([]uint64, 0, len(items))
+	packageIDs := make([]uint64, 0, len(items))
+	for i := range items {
+		userIDs = append(userIDs, items[i].UserID)
+		if items[i].PointsPackageID != nil {
+			packageIDs = append(packageIDs, *items[i].PointsPackageID)
+		}
+	}
+	q := qFrom(ctx)
+	users, err := q.VideoUser.WithContext(ctx).Where(q.VideoUser.ID.In(userIDs...)).Find()
+	if err != nil {
+		return nil, err
+	}
+	userByID := make(map[uint64]model.VideoUser, len(users))
+	for _, user := range users {
+		if user != nil {
+			userByID[user.ID] = *user
+		}
+	}
+	packageByID := make(map[uint64]*model.VideoPointsPackage, len(packageIDs))
+	if len(packageIDs) > 0 {
+		packages, err := q.VideoPointsPackage.WithContext(ctx).Where(q.VideoPointsPackage.ID.In(packageIDs...)).Find()
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range packages {
+			if item != nil {
+				packageByID[item.ID] = item
+			}
+		}
+	}
+	for i := range items {
+		record := UserPointsLedgerRecord{VideoUserPointsLedger: items[i], User: userByID[items[i].UserID]}
+		if items[i].PointsPackageID != nil {
+			record.PointsPackage = packageByID[*items[i].PointsPackageID]
+		}
+		result = append(result, record)
+	}
+	return result, nil
 }

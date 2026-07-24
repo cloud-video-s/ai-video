@@ -49,245 +49,6 @@ func newVideoTemplate(db *gorm.DB, opts ...gen.DOOption) videoTemplate {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("VideoTemplateType", "model.VideoTemplateType"),
-		Templates: struct {
-			field.RelationField
-			VideoTemplateType struct {
-				field.RelationField
-			}
-		}{
-			RelationField: field.NewRelation("VideoTemplateType.Templates", "model.VideoTemplate"),
-			VideoTemplateType: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("VideoTemplateType.Templates.VideoTemplateType", "model.VideoTemplateType"),
-			},
-		},
-		DisplayPositions: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("VideoTemplateType.DisplayPositions", "model.VideoDisplayPosition"),
-		},
-		Countries: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("VideoTemplateType.Countries", "model.VideoCountry"),
-		},
-		Apps: struct {
-			field.RelationField
-			Packages struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}
-		}{
-			RelationField: field.NewRelation("VideoTemplateType.Apps", "model.VideoApp"),
-			Packages: struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}{
-				RelationField: field.NewRelation("VideoTemplateType.Apps.Packages", "model.VideoPackage"),
-				App: struct {
-					field.RelationField
-				}{
-					RelationField: field.NewRelation("VideoTemplateType.Apps.Packages.App", "model.VideoApp"),
-				},
-			},
-		},
-		Packages: struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-				Packages struct {
-					field.RelationField
-					App struct {
-						field.RelationField
-					}
-				}
-			}
-			Versions struct {
-				field.RelationField
-				Package struct {
-					field.RelationField
-					App struct {
-						field.RelationField
-					}
-				}
-			}
-		}{
-			RelationField: field.NewRelation("VideoTemplateType.Packages", "model.VideoPackage"),
-			App: struct {
-				field.RelationField
-				Packages struct {
-					field.RelationField
-					App struct {
-						field.RelationField
-					}
-				}
-			}{
-				RelationField: field.NewRelation("VideoTemplateType.Packages.App", "model.VideoApp"),
-				Packages: struct {
-					field.RelationField
-					App struct {
-						field.RelationField
-					}
-				}{
-					RelationField: field.NewRelation("VideoTemplateType.Packages.App.Packages", "model.VideoPackage"),
-					App: struct {
-						field.RelationField
-					}{
-						RelationField: field.NewRelation("VideoTemplateType.Packages.App.Packages.App", "model.VideoApp"),
-					},
-				},
-			},
-			Versions: struct {
-				field.RelationField
-				Package struct {
-					field.RelationField
-					App struct {
-						field.RelationField
-					}
-				}
-			}{
-				RelationField: field.NewRelation("VideoTemplateType.Packages.Versions", "model.VideoPackageVersion"),
-				Package: struct {
-					field.RelationField
-					App struct {
-						field.RelationField
-					}
-				}{
-					RelationField: field.NewRelation("VideoTemplateType.Packages.Versions.Package", "model.VideoPackage"),
-					App: struct {
-						field.RelationField
-					}{
-						RelationField: field.NewRelation("VideoTemplateType.Packages.Versions.Package.App", "model.VideoApp"),
-					},
-				},
-			},
-		},
-		Versions: struct {
-			field.RelationField
-			Package struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-					Packages struct {
-						field.RelationField
-						App struct {
-							field.RelationField
-						}
-					}
-				}
-				Versions struct {
-					field.RelationField
-					Package struct {
-						field.RelationField
-						App struct {
-							field.RelationField
-						}
-					}
-				}
-			}
-		}{
-			RelationField: field.NewRelation("VideoTemplateType.Versions", "model.VideoPackageVersion"),
-			Package: struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-					Packages struct {
-						field.RelationField
-						App struct {
-							field.RelationField
-						}
-					}
-				}
-				Versions struct {
-					field.RelationField
-					Package struct {
-						field.RelationField
-						App struct {
-							field.RelationField
-						}
-					}
-				}
-			}{
-				RelationField: field.NewRelation("VideoTemplateType.Versions.Package", "model.VideoPackage"),
-				App: struct {
-					field.RelationField
-					Packages struct {
-						field.RelationField
-						App struct {
-							field.RelationField
-						}
-					}
-				}{
-					RelationField: field.NewRelation("VideoTemplateType.Versions.Package.App", "model.VideoApp"),
-					Packages: struct {
-						field.RelationField
-						App struct {
-							field.RelationField
-						}
-					}{
-						RelationField: field.NewRelation("VideoTemplateType.Versions.Package.App.Packages", "model.VideoPackage"),
-						App: struct {
-							field.RelationField
-						}{
-							RelationField: field.NewRelation("VideoTemplateType.Versions.Package.App.Packages.App", "model.VideoApp"),
-						},
-					},
-				},
-				Versions: struct {
-					field.RelationField
-					Package struct {
-						field.RelationField
-						App struct {
-							field.RelationField
-						}
-					}
-				}{
-					RelationField: field.NewRelation("VideoTemplateType.Versions.Package.Versions", "model.VideoPackageVersion"),
-					Package: struct {
-						field.RelationField
-						App struct {
-							field.RelationField
-						}
-					}{
-						RelationField: field.NewRelation("VideoTemplateType.Versions.Package.Versions.Package", "model.VideoPackage"),
-						App: struct {
-							field.RelationField
-						}{
-							RelationField: field.NewRelation("VideoTemplateType.Versions.Package.Versions.Package.App", "model.VideoApp"),
-						},
-					},
-				},
-			},
-		},
-	}
-
-	_videoTemplate.PlacementConfigs = videoTemplateHasManyPlacementConfigs{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("PlacementConfigs", "model.VideoTemplatePlacementConfig"),
-		Template: struct {
-			field.RelationField
-			VideoTemplateType struct {
-				field.RelationField
-			}
-		}{
-			RelationField: field.NewRelation("PlacementConfigs.Template", "model.VideoTemplate"),
-			VideoTemplateType: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("PlacementConfigs.Template.VideoTemplateType", "model.VideoTemplateType"),
-			},
-		},
-		Placement: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("PlacementConfigs.Placement", "model.VideoTemplatePlacement"),
-		},
 	}
 
 	_videoTemplate.fillFieldMap()
@@ -317,8 +78,6 @@ type videoTemplate struct {
 	UpdatedAt           field.Time
 	DeletedAt           field.Field
 	VideoTemplateType   videoTemplateBelongsToVideoTemplateType
-
-	PlacementConfigs videoTemplateHasManyPlacementConfigs
 
 	fieldMap map[string]field.Expr
 }
@@ -380,7 +139,7 @@ func (v *videoTemplate) GetFieldByName(fieldName string) (field.OrderExpr, bool)
 }
 
 func (v *videoTemplate) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 19)
+	v.fieldMap = make(map[string]field.Expr, 18)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["video_template_type_id"] = v.VideoTemplateTypeID
 	v.fieldMap["name"] = v.Name
@@ -405,15 +164,12 @@ func (v videoTemplate) clone(db *gorm.DB) videoTemplate {
 	v.videoTemplateDo.ReplaceConnPool(db.Statement.ConnPool)
 	v.VideoTemplateType.db = db.Session(&gorm.Session{Initialized: true})
 	v.VideoTemplateType.db.Statement.ConnPool = db.Statement.ConnPool
-	v.PlacementConfigs.db = db.Session(&gorm.Session{Initialized: true})
-	v.PlacementConfigs.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoTemplate) replaceDB(db *gorm.DB) videoTemplate {
 	v.videoTemplateDo.ReplaceDB(db)
 	v.VideoTemplateType.db = db.Session(&gorm.Session{})
-	v.PlacementConfigs.db = db.Session(&gorm.Session{})
 	return v
 }
 
@@ -421,73 +177,6 @@ type videoTemplateBelongsToVideoTemplateType struct {
 	db *gorm.DB
 
 	field.RelationField
-
-	Templates struct {
-		field.RelationField
-		VideoTemplateType struct {
-			field.RelationField
-		}
-	}
-	DisplayPositions struct {
-		field.RelationField
-	}
-	Countries struct {
-		field.RelationField
-	}
-	Apps struct {
-		field.RelationField
-		Packages struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}
-	}
-	Packages struct {
-		field.RelationField
-		App struct {
-			field.RelationField
-			Packages struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}
-		}
-		Versions struct {
-			field.RelationField
-			Package struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}
-		}
-	}
-	Versions struct {
-		field.RelationField
-		Package struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-				Packages struct {
-					field.RelationField
-					App struct {
-						field.RelationField
-					}
-				}
-			}
-			Versions struct {
-				field.RelationField
-				Package struct {
-					field.RelationField
-					App struct {
-						field.RelationField
-					}
-				}
-			}
-		}
-	}
 }
 
 func (a videoTemplateBelongsToVideoTemplateType) Where(conds ...field.Expr) *videoTemplateBelongsToVideoTemplateType {
@@ -561,97 +250,6 @@ func (a videoTemplateBelongsToVideoTemplateTypeTx) Count() int64 {
 }
 
 func (a videoTemplateBelongsToVideoTemplateTypeTx) Unscoped() *videoTemplateBelongsToVideoTemplateTypeTx {
-	a.tx = a.tx.Unscoped()
-	return &a
-}
-
-type videoTemplateHasManyPlacementConfigs struct {
-	db *gorm.DB
-
-	field.RelationField
-
-	Template struct {
-		field.RelationField
-		VideoTemplateType struct {
-			field.RelationField
-		}
-	}
-	Placement struct {
-		field.RelationField
-	}
-}
-
-func (a videoTemplateHasManyPlacementConfigs) Where(conds ...field.Expr) *videoTemplateHasManyPlacementConfigs {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoTemplateHasManyPlacementConfigs) WithContext(ctx context.Context) *videoTemplateHasManyPlacementConfigs {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoTemplateHasManyPlacementConfigs) Session(session *gorm.Session) *videoTemplateHasManyPlacementConfigs {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoTemplateHasManyPlacementConfigs) Model(m *model.VideoTemplate) *videoTemplateHasManyPlacementConfigsTx {
-	return &videoTemplateHasManyPlacementConfigsTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoTemplateHasManyPlacementConfigs) Unscoped() *videoTemplateHasManyPlacementConfigs {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoTemplateHasManyPlacementConfigsTx struct{ tx *gorm.Association }
-
-func (a videoTemplateHasManyPlacementConfigsTx) Find() (result []*model.VideoTemplatePlacementConfig, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoTemplateHasManyPlacementConfigsTx) Append(values ...*model.VideoTemplatePlacementConfig) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoTemplateHasManyPlacementConfigsTx) Replace(values ...*model.VideoTemplatePlacementConfig) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoTemplateHasManyPlacementConfigsTx) Delete(values ...*model.VideoTemplatePlacementConfig) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoTemplateHasManyPlacementConfigsTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoTemplateHasManyPlacementConfigsTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoTemplateHasManyPlacementConfigsTx) Unscoped() *videoTemplateHasManyPlacementConfigsTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }

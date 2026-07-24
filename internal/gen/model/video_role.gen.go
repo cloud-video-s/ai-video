@@ -23,7 +23,7 @@ type VideoRole struct {
 	CreatedAt time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_sys_role_created_at,priority:1;index:idx_video_role_created_at,priority:1" json:"created_at"`
 	UpdatedAt time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_sys_role_deleted_at,priority:1;index:idx_video_role_deleted_at,priority:1" json:"deleted_at"`
-	Menus     []VideoMenu    `gorm:"foreignKey:ID;joinForeignKey:VideoRoleID;joinReferences:VideoMenuID;many2many:video_role_menu;references:ID" json:"menus"`
+	Menus     []*VideoMenu   `gorm:"References:ID;foreignKey:ID;joinForeignKey:video_role_id;joinReferences:video_menu_id;many2many:video_role_menu" json:"menus"`
 }
 
 // TableName VideoRole's table name

@@ -75,8 +75,7 @@ func (r *PointsPackageRepo) PageList(ctx context.Context, page, pageSize int, fi
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Preload(points.Packages, points.Channels).
-		Order(points.Sort.Asc(), points.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	rows, err := dao.Order(points.Sort.Asc(), points.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
 }
 
@@ -110,7 +109,7 @@ func (r *PointsPackageRepo) productCodesByChannelID(ctx context.Context, channel
 
 func (r *PointsPackageRepo) GetDetail(ctx context.Context, id uint64) (*model.VideoPointsPackage, error) {
 	q := qFrom(ctx).VideoPointsPackage
-	return q.WithContext(ctx).Preload(q.Packages, q.Channels).Where(q.ID.Eq(id)).First()
+	return q.WithContext(ctx).Where(q.ID.Eq(id)).First()
 }
 
 func (r *PointsPackageRepo) GetByProductID(ctx context.Context, productID string) (*model.VideoPointsPackage, error) {
@@ -133,8 +132,7 @@ func (r *PointsPackageRepo) GetAppleProduct(ctx context.Context, productID, pack
 
 func (r *PointsPackageRepo) ListOptions(ctx context.Context) ([]model.VideoPointsPackage, error) {
 	q := qFrom(ctx).VideoPointsPackage
-	rows, err := q.WithContext(ctx).Preload(q.Packages, q.Channels).
-		Where(q.Status.Eq(1)).Order(q.Sort.Asc(), q.ID.Asc()).Find()
+	rows, err := q.WithContext(ctx).Where(q.Status.Eq(1)).Order(q.Sort.Asc(), q.ID.Asc()).Find()
 	return valuesOf(rows), err
 }
 

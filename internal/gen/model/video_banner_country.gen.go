@@ -20,8 +20,6 @@ type VideoBannerCountry struct {
 	CreatedAt   time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
 	UpdatedAt   time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);uniqueIndex:idx_index,priority:3" json:"deleted_at"`
-	Banner      VideoBanner    `gorm:"foreignKey:BannerID;references:ID" json:"banner"`
-	Country     VideoCountry   `gorm:"foreignKey:CountryCode;references:Code" json:"country"`
 }
 
 // TableName VideoBannerCountry's table name

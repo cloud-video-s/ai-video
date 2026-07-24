@@ -26,7 +26,12 @@ type UserAttributionListFilter struct {
 	EndedAt     *time.Time
 }
 
-func (r *UserAttributionRepo) PageList(ctx context.Context, page, pageSize int, filter *UserAttributionListFilter) ([]model.VideoUserAttribution, int64, error) {
+type UserAttributionRecord struct {
+	model.VideoUserAttribution
+	User model.VideoUser `json:"user"`
+}
+
+func (r *UserAttributionRepo) PageList(ctx context.Context, page, pageSize int, filter *UserAttributionListFilter) ([]UserAttributionRecord, int64, error) {
 	q := qFrom(ctx)
 	attribution := q.VideoUserAttribution
 	user := q.VideoUser
@@ -54,25 +59,22 @@ func (r *UserAttributionRepo) PageList(ctx context.Context, page, pageSize int, 
 		}
 		if filter.Reached != nil {
 			reached := *filter.Reached
+			value := uint(0)
+			if reached {
+				value = 1
+			}
 			switch strings.TrimSpace(filter.Event) {
 			case domain.AttributionEventActivation:
-				value := uint32(0)
-				if reached {
-					value = 1
-				}
 				dao = dao.Where(user.Activated.Eq(value))
 			case domain.AttributionEventKeyBehavior:
-				value := uint32(0)
-				if reached {
-					value = 1
-				}
+
 				dao = dao.Where(user.KeyBehaviorMet.Eq(value))
 			case domain.AttributionEventPayment:
-				dao = dao.Where(user.PaymentMet.Eq(reached))
+				dao = dao.Where(user.PaymentMet.Eq(int8(value)))
 			case domain.AttributionEventFirstPayment:
-				dao = dao.Where(user.FirstPaymentMet.Eq(reached))
+				dao = dao.Where(user.FirstPaymentMet.Eq(int8(value)))
 			case domain.AttributionEventRegistration:
-				dao = dao.Where(user.Registered.Eq(reached))
+				dao = dao.Where(user.Registered.Eq(int8(value)))
 			}
 		}
 	}
@@ -80,18 +82,58 @@ func (r *UserAttributionRepo) PageList(ctx context.Context, page, pageSize int, 
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Select(attribution.ALL).Preload(attribution.User).
+	rows, err := dao.Select(attribution.ALL).
 		Order(attribution.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
-	return valuesOf(rows), total, err
+	if err != nil {
+		return nil, 0, err
+	}
+	records, err := r.loadRecords(ctx, valuesOf(rows))
+	return records, total, err
 }
 
-func (r *UserAttributionRepo) GetByID(ctx context.Context, id uint64, lock bool) (*model.VideoUserAttribution, error) {
+func (r *UserAttributionRepo) GetByID(ctx context.Context, id uint64, lock bool) (*UserAttributionRecord, error) {
 	q := qFrom(ctx).VideoUserAttribution
-	dao := q.WithContext(ctx).Preload(q.User).Where(q.ID.Eq(id))
+	dao := q.WithContext(ctx).Where(q.ID.Eq(id))
 	if lock {
 		dao = dao.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
-	return dao.First()
+	item, err := dao.First()
+	if err != nil {
+		return nil, err
+	}
+	records, err := r.loadRecords(ctx, []model.VideoUserAttribution{*item})
+	if err != nil {
+		return nil, err
+	}
+	return &records[0], nil
+}
+
+func (r *UserAttributionRepo) loadRecords(ctx context.Context, items []model.VideoUserAttribution) ([]UserAttributionRecord, error) {
+	result := make([]UserAttributionRecord, 0, len(items))
+	if len(items) == 0 {
+		return result, nil
+	}
+	userIDs := make([]uint64, 0, len(items))
+	for i := range items {
+		userIDs = append(userIDs, items[i].UserID)
+	}
+	userQuery := qFrom(ctx).VideoUser
+	users, err := userQuery.WithContext(ctx).Where(userQuery.ID.In(userIDs...)).Find()
+	if err != nil {
+		return nil, err
+	}
+	userByID := make(map[uint64]model.VideoUser, len(users))
+	for _, user := range users {
+		if user != nil {
+			userByID[user.ID] = *user
+		}
+	}
+	for i := range items {
+		result = append(result, UserAttributionRecord{
+			VideoUserAttribution: items[i], User: userByID[items[i].UserID],
+		})
+	}
+	return result, nil
 }
 
 func (r *UserAttributionRepo) GetByUserID(ctx context.Context, userID uint64) (*model.VideoUserAttribution, error) {
@@ -194,13 +236,15 @@ func (r *UserAttributionRepo) SyncUsers(ctx context.Context) (int64, error) {
 			if _, ok := existing[item.ID]; ok {
 				continue
 			}
-			attributedAt := item.AttributionClickedAt
-			if attributedAt.IsZero() {
-				attributedAt = item.FirstOpenedAt
+			var attributedAt time.Time
+			if item.AttributionClickedAt != nil {
+				attributedAt = *item.AttributionClickedAt
+			} else if item.FirstOpenedAt != nil {
+				attributedAt = *item.FirstOpenedAt
 			}
 			rows = append(rows, &model.VideoUserAttribution{
 				UserID: item.ID, ChannelCode: item.ChannelID,
-				IMEI: item.DeviceCode, IP: item.LastLoginIP, AttributedAt: attributedAt,
+				IMEI: item.DeviceCode, IP: item.LastLoginIP, AttributedAt: &attributedAt,
 			})
 		}
 		if len(rows) == 0 {

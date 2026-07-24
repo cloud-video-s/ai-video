@@ -60,7 +60,7 @@ type TemplateTypePayload struct {
 	Description          string                       `json:"description" binding:"max=500"`
 }
 
-func (s *TemplateTypeService) List(ctx context.Context, page, pageSize int, req *ListTemplateTypeRequest) ([]model.VideoTemplateType, int64, error) {
+func (s *TemplateTypeService) List(ctx context.Context, page, pageSize int, req *ListTemplateTypeRequest) ([]repository.TemplateTypeRecord, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateTypeListFilter{
 		Status: req.Status, PositionKey: strings.TrimSpace(req.PositionKey),
 		CountryID: req.CountryID, AppCode: strings.TrimSpace(req.AppCode),
@@ -69,11 +69,11 @@ func (s *TemplateTypeService) List(ctx context.Context, page, pageSize int, req 
 	})
 }
 
-func (s *TemplateTypeService) ListOptions(ctx context.Context) ([]model.VideoTemplateType, error) {
+func (s *TemplateTypeService) ListOptions(ctx context.Context) ([]repository.TemplateTypeRecord, error) {
 	return s.repo.ListOptions(ctx)
 }
 
-func (s *TemplateTypeService) GetByID(ctx context.Context, id uint64) (*model.VideoTemplateType, error) {
+func (s *TemplateTypeService) GetByID(ctx context.Context, id uint64) (*repository.TemplateTypeRecord, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "模板分类不存在")
@@ -81,7 +81,7 @@ func (s *TemplateTypeService) GetByID(ctx context.Context, id uint64) (*model.Vi
 	return item, nil
 }
 
-func (s *TemplateTypeService) Create(ctx context.Context, req *TemplateTypePayload) (*model.VideoTemplateType, error) {
+func (s *TemplateTypeService) Create(ctx context.Context, req *TemplateTypePayload) (*repository.TemplateTypeRecord, error) {
 	if err := s.prepareTargets(ctx, req); err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (s *TemplateTypeService) Create(ctx context.Context, req *TemplateTypePaylo
 	return s.repo.GetDetail(ctx, item.ID)
 }
 
-func (s *TemplateTypeService) Update(ctx context.Context, id uint64, req *TemplateTypePayload) (*model.VideoTemplateType, error) {
+func (s *TemplateTypeService) Update(ctx context.Context, id uint64, req *TemplateTypePayload) (*repository.TemplateTypeRecord, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "模板分类不存在")
@@ -106,12 +106,12 @@ func (s *TemplateTypeService) Update(ctx context.Context, id uint64, req *Templa
 	if err := s.prepareTargets(ctx, req); err != nil {
 		return nil, err
 	}
-	applyTemplateTypePayload(item, req)
+	applyTemplateTypePayload(&item.VideoTemplateType, req)
 	if err := repository.Transaction(ctx, func(ctx context.Context) error {
-		if err := s.repo.UpdateFields(ctx, item); err != nil {
+		if err := s.repo.UpdateFields(ctx, &item.VideoTemplateType); err != nil {
 			return err
 		}
-		return s.repo.ReplaceTargets(ctx, item, templateTypeTargetIDs(req))
+		return s.repo.ReplaceTargets(ctx, &item.VideoTemplateType, templateTypeTargetIDs(req))
 	}); err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ type TemplatePayload struct {
 	Description          string   `json:"description" binding:"max=500"`
 }
 
-func (s *TemplateService) List(ctx context.Context, page, pageSize int, req *ListTemplateRequest) ([]model.VideoTemplate, int64, error) {
+func (s *TemplateService) List(ctx context.Context, page, pageSize int, req *ListTemplateRequest) ([]repository.TemplateRecord, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateListFilter{
 		VideoTemplateTypeID: req.VideoTemplateTypeID,
 		PositionKey:         strings.TrimSpace(req.PositionKey),
@@ -268,7 +268,7 @@ func (s *TemplateService) List(ctx context.Context, page, pageSize int, req *Lis
 	})
 }
 
-func (s *TemplateService) GetByID(ctx context.Context, id uint64) (*model.VideoTemplate, error) {
+func (s *TemplateService) GetByID(ctx context.Context, id uint64) (*repository.TemplateRecord, error) {
 	item, err := s.repo.GetWithType(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "模板不存在")
@@ -276,11 +276,11 @@ func (s *TemplateService) GetByID(ctx context.Context, id uint64) (*model.VideoT
 	return item, nil
 }
 
-func (s *TemplateService) ListOptions(ctx context.Context) ([]model.VideoTemplate, error) {
+func (s *TemplateService) ListOptions(ctx context.Context) ([]repository.TemplateRecord, error) {
 	return s.repo.ListOptions(ctx)
 }
 
-func (s *TemplateService) Create(ctx context.Context, req *TemplatePayload) (*model.VideoTemplate, error) {
+func (s *TemplateService) Create(ctx context.Context, req *TemplatePayload) (*repository.TemplateRecord, error) {
 	if err := s.ensureTypeExists(ctx, req.VideoTemplateTypeID); err != nil {
 		return nil, err
 	}
@@ -295,7 +295,7 @@ func (s *TemplateService) Create(ctx context.Context, req *TemplatePayload) (*mo
 	return s.repo.GetWithType(ctx, item.ID)
 }
 
-func (s *TemplateService) Update(ctx context.Context, id uint64, req *TemplatePayload) (*model.VideoTemplate, error) {
+func (s *TemplateService) Update(ctx context.Context, id uint64, req *TemplatePayload) (*repository.TemplateRecord, error) {
 	item, err := s.repo.GetWithType(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "模板不存在")
@@ -306,8 +306,8 @@ func (s *TemplateService) Update(ctx context.Context, id uint64, req *TemplatePa
 	if err := prepareTemplateAudience(req); err != nil {
 		return nil, err
 	}
-	applyTemplatePayload(item, req)
-	if err := s.repo.UpdateFields(ctx, item); err != nil {
+	applyTemplatePayload(&item.VideoTemplate, req)
+	if err := s.repo.UpdateFields(ctx, &item.VideoTemplate); err != nil {
 		return nil, err
 	}
 	return s.repo.GetWithType(ctx, item.ID)

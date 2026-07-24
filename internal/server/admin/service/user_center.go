@@ -70,14 +70,14 @@ func (s *AppUserService) GetCenter(ctx context.Context, id uint64) (*UserCenterD
 	} else if err != nil {
 		return nil, err
 	}
-	ledgers, _, summary, err := repository.NewUserPointsLedgerRepo().PageList(ctx, 1, 20, &repository.UserPointsLedgerFilter{UserID: id})
+	_, _, summary, err := repository.NewUserPointsLedgerRepo().PageList(ctx, 1, 20, &repository.UserPointsLedgerFilter{UserID: id})
 	if err != nil {
 		return nil, err
 	}
 	now := time.Now()
 	return &UserCenterDetail{
 		User: user, IsMember: user.VIPLevel > 0 && user.VipExpiresAt != nil && user.VipExpiresAt.After(now),
-		Identities: identities, Attribution: attribution, PointsLedgers: ledgers, PointsSummary: summary,
+		Identities: identities, Attribution: attribution, PointsSummary: summary,
 	}, nil
 }
 

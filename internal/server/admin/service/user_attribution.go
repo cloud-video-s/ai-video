@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"ai-video/internal/domain"
-	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -52,7 +51,7 @@ type RecordAttributionEventRequest struct {
 
 func (s *UserAttributionService) List(
 	ctx context.Context, page, pageSize int, req *ListUserAttributionRequest,
-) ([]model.VideoUserAttribution, int64, error) {
+) ([]repository.UserAttributionRecord, int64, error) {
 	startedAt, err := parseAttributionDate(req.StartedAt, false)
 	if err != nil {
 		return nil, 0, err
@@ -77,7 +76,7 @@ func (s *UserAttributionService) List(
 	return list, total, nil
 }
 
-func (s *UserAttributionService) GetByID(ctx context.Context, id uint64) (*model.VideoUserAttribution, error) {
+func (s *UserAttributionService) GetByID(ctx context.Context, id uint64) (*repository.UserAttributionRecord, error) {
 	item, err := s.repo.GetByID(ctx, id, false)
 	if err != nil {
 		return nil, notFoundOr(err, "归因记录不存在")
@@ -88,7 +87,7 @@ func (s *UserAttributionService) GetByID(ctx context.Context, id uint64) (*model
 
 func (s *UserAttributionService) Update(
 	ctx context.Context, id uint64, req *UpdateUserAttributionRequest,
-) (*model.VideoUserAttribution, error) {
+) (*repository.UserAttributionRecord, error) {
 	item, err := s.repo.GetByID(ctx, id, false)
 	if err != nil {
 		return nil, notFoundOr(err, "归因记录不存在")
@@ -108,9 +107,8 @@ func (s *UserAttributionService) Update(
 	item.AndroidID = strings.TrimSpace(req.AndroidID)
 	item.IP = strings.TrimSpace(req.IP)
 	item.UserAgent = strings.TrimSpace(req.UserAgent)
-	item.AttributedAt = req.AttributedAt
 	item.Remark = strings.TrimSpace(req.Remark)
-	if err := s.repo.Update(ctx, item); err != nil {
+	if err := s.repo.Update(ctx, &item.VideoUserAttribution); err != nil {
 		return nil, err
 	}
 	return s.GetByID(ctx, id)
@@ -118,7 +116,7 @@ func (s *UserAttributionService) Update(
 
 func (s *UserAttributionService) RecordEvent(
 	ctx context.Context, id uint64, req *RecordAttributionEventRequest,
-) (*model.VideoUserAttribution, error) {
+) (*repository.UserAttributionRecord, error) {
 	err := repository.Transaction(ctx, func(ctx context.Context) error {
 		item, err := s.repo.GetByID(ctx, id, true)
 		if err != nil {
@@ -150,7 +148,7 @@ func (s *UserAttributionService) SyncUsers(ctx context.Context) (int64, error) {
 	return s.repo.SyncUsers(ctx)
 }
 
-func (s *UserAttributionService) enrichChannel(ctx context.Context, item *model.VideoUserAttribution) {
+func (s *UserAttributionService) enrichChannel(ctx context.Context, item *repository.UserAttributionRecord) {
 	code := strings.TrimSpace(item.ChannelCode)
 	if code == "" {
 		code = strings.TrimSpace(item.User.ChannelID)
@@ -176,7 +174,7 @@ func parseAttributionDate(value string, endOfDay bool) (*time.Time, error) {
 	return &parsed, nil
 }
 
-func attributionEventState(item *model.VideoUserAttribution, event string) (uint64, uint64, bool, error) {
+func attributionEventState(item *repository.UserAttributionRecord, event string) (uint64, uint64, bool, error) {
 	switch event {
 	case domain.AttributionEventActivation:
 		return item.ActivationCallbackCount, item.ActivationDeductCount, item.User.Activated != 0, nil

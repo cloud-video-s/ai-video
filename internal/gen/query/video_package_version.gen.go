@@ -46,51 +46,8 @@ func newVideoPackageVersion(db *gorm.DB, opts ...gen.DOOption) videoPackageVersi
 		RelationField: field.NewRelation("Package", "model.VideoPackage"),
 		App: struct {
 			field.RelationField
-			Packages struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}
 		}{
 			RelationField: field.NewRelation("Package.App", "model.VideoApp"),
-			Packages: struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}{
-				RelationField: field.NewRelation("Package.App.Packages", "model.VideoPackage"),
-				App: struct {
-					field.RelationField
-				}{
-					RelationField: field.NewRelation("Package.App.Packages.App", "model.VideoApp"),
-				},
-			},
-		},
-		Versions: struct {
-			field.RelationField
-			Package struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}
-		}{
-			RelationField: field.NewRelation("Package.Versions", "model.VideoPackageVersion"),
-			Package: struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}{
-				RelationField: field.NewRelation("Package.Versions.Package", "model.VideoPackage"),
-				App: struct {
-					field.RelationField
-				}{
-					RelationField: field.NewRelation("Package.Versions.Package.App", "model.VideoApp"),
-				},
-			},
 		},
 	}
 
@@ -208,21 +165,6 @@ type videoPackageVersionBelongsToPackage struct {
 
 	App struct {
 		field.RelationField
-		Packages struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}
-	}
-	Versions struct {
-		field.RelationField
-		Package struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}
 	}
 }
 

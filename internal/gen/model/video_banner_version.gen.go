@@ -14,14 +14,12 @@ const TableNameVideoBannerVersion = "video_banner_version"
 
 // VideoBannerVersion mapped from table <video_banner_version>
 type VideoBannerVersion struct {
-	ID          uint64              `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:channel ID" json:"id"` // channel ID
-	BannerID    uint64              `gorm:"column:banner_id;type:bigint unsigned;not null" json:"banner_id"`
-	VersionCode string              `gorm:"column:version_code;type:varchar(50);not null" json:"version_code"`
-	CreatedAt   time.Time           `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
-	UpdatedAt   time.Time           `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt   gorm.DeletedAt      `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
-	Banner      VideoBanner         `gorm:"foreignKey:BannerID;references:ID" json:"banner"`
-	Version     VideoPackageVersion `gorm:"foreignKey:VersionCode;references:VersionCode" json:"version"`
+	ID          uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:channel ID" json:"id"` // channel ID
+	BannerID    uint64         `gorm:"column:banner_id;type:bigint unsigned;not null" json:"banner_id"`
+	VersionCode string         `gorm:"column:version_code;type:varchar(50);not null" json:"version_code"`
+	CreatedAt   time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
+	UpdatedAt   time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
 }
 
 // TableName VideoBannerVersion's table name

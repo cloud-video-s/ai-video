@@ -34,8 +34,6 @@ type VideoPointsPackage struct {
 	CreatedAt     time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_video_points_package_created_at,priority:1" json:"created_at"`
 	UpdatedAt     time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_points_package_deleted_at,priority:1" json:"deleted_at"`
-	Packages      []VideoPackage `gorm:"foreignKey:ProductCode;joinForeignKey:ProductCode;joinReferences:PackageCode;many2many:video_points_package_package;references:PackageCode" json:"packages"`
-	Channels      []VideoChannel `gorm:"foreignKey:ProductCode;joinForeignKey:ProductCode;joinReferences:ChannelCode;many2many:video_points_package_channel;references:ChannelCode" json:"channels"`
 }
 
 // TableName VideoPointsPackage's table name

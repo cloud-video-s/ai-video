@@ -34,7 +34,7 @@ func newVideoGenerationTask(db *gorm.DB, opts ...gen.DOOption) videoGenerationTa
 	_videoGenerationTask.ClientRequestID = field.NewString(tableName, "client_request_id")
 	_videoGenerationTask.ExternalTaskID = field.NewString(tableName, "external_task_id")
 	_videoGenerationTask.Status = field.NewString(tableName, "status")
-	_videoGenerationTask.Progress = field.NewUint8(tableName, "progress")
+	_videoGenerationTask.Progress = field.NewUint32(tableName, "progress")
 	_videoGenerationTask.Prompt = field.NewString(tableName, "prompt")
 	_videoGenerationTask.RequestPayload = field.NewString(tableName, "request_payload")
 	_videoGenerationTask.ProviderResponse = field.NewString(tableName, "provider_response")
@@ -49,11 +49,6 @@ func newVideoGenerationTask(db *gorm.DB, opts ...gen.DOOption) videoGenerationTa
 	_videoGenerationTask.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoGenerationTask.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoGenerationTask.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoGenerationTask.ModelConfig = videoGenerationTaskBelongsToModelConfig{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("ModelConfig", "model.VideoAiModel"),
-	}
 
 	_videoGenerationTask.fillFieldMap()
 
@@ -70,7 +65,7 @@ type videoGenerationTask struct {
 	ClientRequestID  field.String
 	ExternalTaskID   field.String
 	Status           field.String
-	Progress         field.Uint8
+	Progress         field.Uint32
 	Prompt           field.String
 	RequestPayload   field.String
 	ProviderResponse field.String
@@ -85,7 +80,6 @@ type videoGenerationTask struct {
 	CreatedAt        field.Time
 	UpdatedAt        field.Time
 	DeletedAt        field.Field
-	ModelConfig      videoGenerationTaskBelongsToModelConfig
 
 	fieldMap map[string]field.Expr
 }
@@ -108,7 +102,7 @@ func (v *videoGenerationTask) updateTableName(table string) *videoGenerationTask
 	v.ClientRequestID = field.NewString(table, "client_request_id")
 	v.ExternalTaskID = field.NewString(table, "external_task_id")
 	v.Status = field.NewString(table, "status")
-	v.Progress = field.NewUint8(table, "progress")
+	v.Progress = field.NewUint32(table, "progress")
 	v.Prompt = field.NewString(table, "prompt")
 	v.RequestPayload = field.NewString(table, "request_payload")
 	v.ProviderResponse = field.NewString(table, "provider_response")
@@ -151,7 +145,7 @@ func (v *videoGenerationTask) GetFieldByName(fieldName string) (field.OrderExpr,
 }
 
 func (v *videoGenerationTask) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 22)
+	v.fieldMap = make(map[string]field.Expr, 21)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["model_config_id"] = v.ModelConfigID
@@ -173,101 +167,16 @@ func (v *videoGenerationTask) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-
 }
 
 func (v videoGenerationTask) clone(db *gorm.DB) videoGenerationTask {
 	v.videoGenerationTaskDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.ModelConfig.db = db.Session(&gorm.Session{Initialized: true})
-	v.ModelConfig.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoGenerationTask) replaceDB(db *gorm.DB) videoGenerationTask {
 	v.videoGenerationTaskDo.ReplaceDB(db)
-	v.ModelConfig.db = db.Session(&gorm.Session{})
 	return v
-}
-
-type videoGenerationTaskBelongsToModelConfig struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a videoGenerationTaskBelongsToModelConfig) Where(conds ...field.Expr) *videoGenerationTaskBelongsToModelConfig {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoGenerationTaskBelongsToModelConfig) WithContext(ctx context.Context) *videoGenerationTaskBelongsToModelConfig {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoGenerationTaskBelongsToModelConfig) Session(session *gorm.Session) *videoGenerationTaskBelongsToModelConfig {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoGenerationTaskBelongsToModelConfig) Model(m *model.VideoGenerationTask) *videoGenerationTaskBelongsToModelConfigTx {
-	return &videoGenerationTaskBelongsToModelConfigTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoGenerationTaskBelongsToModelConfig) Unscoped() *videoGenerationTaskBelongsToModelConfig {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoGenerationTaskBelongsToModelConfigTx struct{ tx *gorm.Association }
-
-func (a videoGenerationTaskBelongsToModelConfigTx) Find() (result *model.VideoAiModel, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoGenerationTaskBelongsToModelConfigTx) Append(values ...*model.VideoAiModel) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoGenerationTaskBelongsToModelConfigTx) Replace(values ...*model.VideoAiModel) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoGenerationTaskBelongsToModelConfigTx) Delete(values ...*model.VideoAiModel) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoGenerationTaskBelongsToModelConfigTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoGenerationTaskBelongsToModelConfigTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoGenerationTaskBelongsToModelConfigTx) Unscoped() *videoGenerationTaskBelongsToModelConfigTx {
-	a.tx = a.tx.Unscoped()
-	return &a
 }
 
 type videoGenerationTaskDo struct{ gen.DO }

@@ -59,9 +59,6 @@ func (d *ConfigRepo) List(ctx context.Context, opts *QueryOptions) ([]model.Vide
 		if group, ok := opts.Where["group"].(string); ok {
 			dao = dao.Where(q.Group.Eq(group))
 		}
-		if isPublic, ok := opts.Where["is_public"].(bool); ok {
-			dao = dao.Where(q.IsPublic.Eq(isPublic))
-		}
 	}
 	var list []model.VideoConfig
 	if err := dao.Order(q.Sort.Asc(), q.ID.Asc()).Scan(&list); err != nil {

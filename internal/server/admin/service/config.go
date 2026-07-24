@@ -225,7 +225,7 @@ func (s *ConfigService) Create(ctx context.Context, req *CreateConfigRequest) er
 	}
 	c := &model.VideoConfig{
 		Group: req.Group, Key: req.Key, Name: req.Name, Value: req.Value,
-		Type: typ, Options: req.Options, IsPublic: req.IsPublic,
+		Type: typ, Options: req.Options, IsPublic: boolToInt8(req.IsPublic),
 		Sensitive: int8(sensitive), Remark: req.Remark, Sort: int64(req.Sort), Editable: 1, Builtin: 0,
 	}
 	if err := s.repo.Create(ctx, c); err != nil {
@@ -271,7 +271,7 @@ func (s *ConfigService) Update(ctx context.Context, id uint, req *UpdateConfigRe
 	}
 	c.Type = typ
 	c.Options = req.Options
-	c.IsPublic = req.IsPublic
+	c.IsPublic = boolToInt8(req.IsPublic)
 	c.Remark = req.Remark
 	c.Sort = int64(req.Sort)
 	if err := s.repo.Update(ctx, c, "Group", "Name", "Value", "Type", "Options", "IsPublic", "Remark", "Sort"); err != nil {

@@ -51,7 +51,7 @@ func (r *BannerRepo) PageList(ctx context.Context, page, pageSize int, filter *B
 		if filter.AppCode != "" {
 			dao = dao.Where(bannerSQLCondition(`EXISTS (
 				SELECT 1 FROM video_banner_app vba
-				JOIN video_app app ON app.id = vba.app_id AND app.deleted_at IS NULL
+				JOIN video_app app ON app.app_code = vba.app_code AND app.deleted_at IS NULL
 				WHERE vba.banner_id = video_banner.id AND app.app_code = ? AND vba.deleted_at IS NULL
 			)`, filter.AppCode)...)
 		}
@@ -228,7 +228,7 @@ func (r *BannerRepo) ListForClient(ctx context.Context, targets ClientBannerTarg
 			)
 			OR EXISTS (
 				SELECT 1 FROM video_banner_app relation
-				JOIN video_app app ON app.id = relation.app_id AND app.deleted_at IS NULL
+				JOIN video_app app ON app.app_code = relation.app_code AND app.deleted_at IS NULL
 				WHERE relation.banner_id = video_banner.id
 					AND app.app_code = ? AND relation.deleted_at IS NULL
 			)
@@ -247,7 +247,7 @@ func (r *BannerRepo) ListForClient(ctx context.Context, targets ClientBannerTarg
 			)
 			OR EXISTS (
 				SELECT 1 FROM video_banner_package relation
-				JOIN video_package package_item ON package_item.id = relation.package_id AND package_item.deleted_at IS NULL
+				JOIN video_package package_item ON package_item.package_code = relation.package_code AND package_item.deleted_at IS NULL
 				WHERE relation.banner_id = video_banner.id
 					AND package_item.package_code = ? AND relation.deleted_at IS NULL
 			)
@@ -266,13 +266,13 @@ func (r *BannerRepo) ListForClient(ctx context.Context, targets ClientBannerTarg
 			)
 			OR EXISTS (
 				SELECT 1 FROM video_banner_version relation
-				JOIN video_package_version version_item ON version_item.id = relation.version_id AND version_item.deleted_at IS NULL
+				JOIN video_package_version version_item ON version_item.version_code = relation.version_code AND version_item.deleted_at IS NULL
 				WHERE relation.banner_id = video_banner.id
 					AND version_item.version_code = ? AND relation.deleted_at IS NULL
 			)
 		)`, targets.VersionCode)...)
 	}
-	rows, err := dao.Preload(q.Template).Order(q.Sort.Asc(), q.ID.Desc()).Find()
+	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).Find()
 	if err != nil {
 		return nil, err
 	}

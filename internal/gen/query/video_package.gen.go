@@ -34,7 +34,7 @@ func newVideoPackage(db *gorm.DB, opts ...gen.DOOption) videoPackage {
 	_videoPackage.AppCode = field.NewString(tableName, "app_code")
 	_videoPackage.Description = field.NewString(tableName, "description")
 	_videoPackage.Sort = field.NewInt64(tableName, "sort")
-	_videoPackage.Status = field.NewInt8(tableName, "status")
+	_videoPackage.Status = field.NewUint8(tableName, "status")
 	_videoPackage.SystemType = field.NewUint8(tableName, "system_type")
 	_videoPackage.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoPackage.UpdatedAt = field.NewTime(tableName, "updated_at")
@@ -43,38 +43,6 @@ func newVideoPackage(db *gorm.DB, opts ...gen.DOOption) videoPackage {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("App", "model.VideoApp"),
-		Packages: struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}{
-			RelationField: field.NewRelation("App.Packages", "model.VideoPackage"),
-			App: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("App.Packages.App", "model.VideoApp"),
-			},
-		},
-	}
-
-	_videoPackage.Versions = videoPackageHasManyVersions{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("Versions", "model.VideoPackageVersion"),
-		Package: struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}{
-			RelationField: field.NewRelation("Versions.Package", "model.VideoPackage"),
-			App: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("Versions.Package.App", "model.VideoApp"),
-			},
-		},
 	}
 
 	_videoPackage.fillFieldMap()
@@ -92,14 +60,12 @@ type videoPackage struct {
 	AppCode     field.String // app_code
 	Description field.String // package description
 	Sort        field.Int64  // sort order
-	Status      field.Int8   // status: 0 disabled, 1 enabled
+	Status      field.Uint8  // status: 0 disabled, 1 enabled
 	SystemType  field.Uint8  // 系统类型 1=ios 2=android
 	CreatedAt   field.Time
 	UpdatedAt   field.Time
 	DeletedAt   field.Field
 	App         videoPackageBelongsToApp
-
-	Versions videoPackageHasManyVersions
 
 	fieldMap map[string]field.Expr
 }
@@ -122,7 +88,7 @@ func (v *videoPackage) updateTableName(table string) *videoPackage {
 	v.AppCode = field.NewString(table, "app_code")
 	v.Description = field.NewString(table, "description")
 	v.Sort = field.NewInt64(table, "sort")
-	v.Status = field.NewInt8(table, "status")
+	v.Status = field.NewUint8(table, "status")
 	v.SystemType = field.NewUint8(table, "system_type")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
@@ -155,7 +121,7 @@ func (v *videoPackage) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (v *videoPackage) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 13)
+	v.fieldMap = make(map[string]field.Expr, 12)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["package_name"] = v.PackageName
 	v.fieldMap["package_code"] = v.PackageCode
@@ -174,15 +140,12 @@ func (v videoPackage) clone(db *gorm.DB) videoPackage {
 	v.videoPackageDo.ReplaceConnPool(db.Statement.ConnPool)
 	v.App.db = db.Session(&gorm.Session{Initialized: true})
 	v.App.db.Statement.ConnPool = db.Statement.ConnPool
-	v.Versions.db = db.Session(&gorm.Session{Initialized: true})
-	v.Versions.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoPackage) replaceDB(db *gorm.DB) videoPackage {
 	v.videoPackageDo.ReplaceDB(db)
 	v.App.db = db.Session(&gorm.Session{})
-	v.Versions.db = db.Session(&gorm.Session{})
 	return v
 }
 
@@ -190,13 +153,6 @@ type videoPackageBelongsToApp struct {
 	db *gorm.DB
 
 	field.RelationField
-
-	Packages struct {
-		field.RelationField
-		App struct {
-			field.RelationField
-		}
-	}
 }
 
 func (a videoPackageBelongsToApp) Where(conds ...field.Expr) *videoPackageBelongsToApp {
@@ -270,94 +226,6 @@ func (a videoPackageBelongsToAppTx) Count() int64 {
 }
 
 func (a videoPackageBelongsToAppTx) Unscoped() *videoPackageBelongsToAppTx {
-	a.tx = a.tx.Unscoped()
-	return &a
-}
-
-type videoPackageHasManyVersions struct {
-	db *gorm.DB
-
-	field.RelationField
-
-	Package struct {
-		field.RelationField
-		App struct {
-			field.RelationField
-		}
-	}
-}
-
-func (a videoPackageHasManyVersions) Where(conds ...field.Expr) *videoPackageHasManyVersions {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoPackageHasManyVersions) WithContext(ctx context.Context) *videoPackageHasManyVersions {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoPackageHasManyVersions) Session(session *gorm.Session) *videoPackageHasManyVersions {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoPackageHasManyVersions) Model(m *model.VideoPackage) *videoPackageHasManyVersionsTx {
-	return &videoPackageHasManyVersionsTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoPackageHasManyVersions) Unscoped() *videoPackageHasManyVersions {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoPackageHasManyVersionsTx struct{ tx *gorm.Association }
-
-func (a videoPackageHasManyVersionsTx) Find() (result []*model.VideoPackageVersion, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoPackageHasManyVersionsTx) Append(values ...*model.VideoPackageVersion) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoPackageHasManyVersionsTx) Replace(values ...*model.VideoPackageVersion) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoPackageHasManyVersionsTx) Delete(values ...*model.VideoPackageVersion) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoPackageHasManyVersionsTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoPackageHasManyVersionsTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoPackageHasManyVersionsTx) Unscoped() *videoPackageHasManyVersionsTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }

@@ -21,7 +21,7 @@ type VideoConfig struct {
 	Value     string         `gorm:"column:value;type:text;comment:值(统一字符串存储)" json:"value"`                                                                              // 值(统一字符串存储)
 	Type      string         `gorm:"column:type;type:varchar(16);default:string;comment:string/int/bool/float/json/text/select/password/color" json:"type"`               // string/int/bool/float/json/text/select/password/color
 	Options   string         `gorm:"column:options;type:text;comment:select 选项或校验规则(JSON)" json:"options"`                                                                // select 选项或校验规则(JSON)
-	IsPublic  bool           `gorm:"column:is_public;type:tinyint(1);comment:是否免鉴权可读" json:"is_public"`                                                                   // 是否免鉴权可读
+	IsPublic  int8           `gorm:"column:is_public;type:tinyint(1);comment:是否免鉴权可读" json:"is_public"`                                                                   // 是否免鉴权可读
 	Editable  int8           `gorm:"column:editable;type:tinyint(1);default:1;comment:是否允许后台编辑" json:"editable"`                                                          // 是否允许后台编辑
 	Builtin   int8           `gorm:"column:builtin;type:tinyint(1);comment:内置(不可删除)" json:"builtin"`                                                                      // 内置(不可删除)
 	Sort      int64          `gorm:"column:sort;type:bigint" json:"sort"`

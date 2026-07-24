@@ -151,7 +151,7 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	task.ProviderResponse = result.RawResponse
 	task.Status = TaskStatusSubmitted
 	task.Progress = 5
-	task.SubmittedAt = &now
+	task.SubmittedAt = now
 	task.ErrorMessage = ""
 	if err := m.taskRepo.UpdateFields(ctx, task,
 		"ExternalTaskID", "ProviderResponse", "Status", "Progress", "SubmittedAt", "ErrorMessage",
@@ -235,7 +235,7 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoGenerationTa
 	if pollInterval <= 0 {
 		pollInterval = 3 * time.Second
 	}
-	if task.LastPolledAt != nil && time.Since(*task.LastPolledAt) < pollInterval {
+	if task.LastPolledAt.IsZero() && time.Since(task.LastPolledAt) < pollInterval {
 		return nil
 	}
 	timeout := time.Duration(modelConfig.TaskTimeoutSeconds) * time.Second
@@ -243,8 +243,8 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoGenerationTa
 		timeout = 30 * time.Minute
 	}
 	started := task.CreatedAt
-	if task.SubmittedAt != nil {
-		started = *task.SubmittedAt
+	if task.SubmittedAt.IsZero() {
+		started = task.SubmittedAt
 	}
 	if time.Since(started) > timeout {
 		return m.failTask(ctx, task, "生成任务超时")
@@ -253,7 +253,7 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoGenerationTa
 	if err := m.taskRepo.MarkPolling(ctx, task.ID, now); err != nil {
 		return err
 	}
-	task.LastPolledAt = &now
+	task.LastPolledAt = now
 	provider, err := providerFor(modelConfig.Provider)
 	if err != nil {
 		return m.failTask(ctx, task, err.Error())
@@ -275,8 +275,8 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoGenerationTa
 		task.Status, task.Progress = TaskStatusPending, 10
 	case "running":
 		task.Status, task.Progress = TaskStatusRunning, 50
-		if task.StartedAt == nil {
-			task.StartedAt = &now
+		if task.StartedAt.IsZero() {
+			task.StartedAt = now
 		}
 	case "success":
 		if len(status.URLs) == 0 {
@@ -287,7 +287,7 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoGenerationTa
 		task.Status, task.Progress = TaskStatusDownloading, 90
 		if status.FinishTime > 0 {
 			finishedAt := time.Unix(status.FinishTime, 0)
-			task.FinishedAt = &finishedAt
+			task.FinishedAt = finishedAt
 		}
 		if err := m.taskRepo.UpdateFields(ctx, task,
 			"ProviderResponse", "UsageDuration", "ErrorMessage", "RemoteUrls", "Status", "Progress", "FinishedAt", "LastPolledAt",
@@ -325,7 +325,7 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoGenera
 	task.Status = TaskStatusSuccess
 	task.Progress = 100
 	task.ErrorMessage = ""
-	task.FinishedAt = &now
+	task.FinishedAt = now
 	if err := m.taskRepo.UpdateFields(ctx, task, "LocalUrls", "Status", "Progress", "ErrorMessage", "FinishedAt"); err != nil {
 		return err
 	}
@@ -338,7 +338,7 @@ func (m *Manager) failTask(ctx context.Context, task *model.VideoGenerationTask,
 	task.Status = TaskStatusFailure
 	task.Progress = 100
 	task.ErrorMessage = strings.TrimSpace(message)
-	task.FinishedAt = &now
+	task.FinishedAt = now
 	err := m.taskRepo.UpdateFields(ctx, task, "Status", "Progress", "ErrorMessage", "FinishedAt")
 	m.hub.Publish(task)
 	if err != nil {

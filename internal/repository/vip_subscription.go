@@ -32,7 +32,18 @@ type VIPSubscriptionListFilter struct {
 	Keyword        string
 }
 
-func (r *VIPSubscriptionRepo) PageList(ctx context.Context, page, pageSize int, filter *VIPSubscriptionListFilter) ([]model.VideoVipSubscription, int64, error) {
+type VIPSubscriptionRecord struct {
+	model.VideoVipSubscription
+	Placement         *model.VideoVipPlacement         `json:"placement,omitempty"`
+	SubscriptionLevel *model.VideoVipSubscriptionLevel `json:"subscription_level,omitempty"`
+	Apps              []model.VideoApp                 `json:"apps"`
+	Packages          []model.VideoPackage             `json:"packages"`
+	Versions          []model.VideoPackageVersion      `json:"versions"`
+	Countries         []model.VideoCountry             `json:"countries"`
+	Channels          []model.VideoChannel             `json:"channels"`
+}
+
+func (r *VIPSubscriptionRepo) PageList(ctx context.Context, page, pageSize int, filter *VIPSubscriptionListFilter) ([]VIPSubscriptionRecord, int64, error) {
 	q := qFrom(ctx)
 	vip := q.VideoVipSubscription
 	dao := vip.WithContext(ctx)
@@ -48,21 +59,17 @@ func (r *VIPSubscriptionRepo) PageList(ctx context.Context, page, pageSize int, 
 			err = relation.WithContext(ctx).Where(relation.PackageCode.Eq(filter.PackageCode)).Pluck(relation.SubscriptionID, &ids)
 		case filter.VersionCode != "":
 			relation := q.VideoVipSubscriptionVersion
-			var rawIDs []int64
-			err = relation.WithContext(ctx).Where(relation.VersionCode.Eq(filter.VersionCode)).Pluck(relation.SubscriptionID, &rawIDs)
-			ids = int64IDsToUint64(rawIDs)
+			err = relation.WithContext(ctx).Where(relation.VersionCode.Eq(filter.VersionCode)).Pluck(relation.SubscriptionID, &ids)
 		case filter.CountryCode != "":
 			relation := q.VideoVipSubscriptionCountry
-			var rawIDs []int64
-			err = relation.WithContext(ctx).Where(relation.CountryCode.Eq(filter.CountryCode)).Pluck(relation.SubscriptionID, &rawIDs)
-			ids = int64IDsToUint64(rawIDs)
+			err = relation.WithContext(ctx).Where(relation.CountryCode.Eq(filter.CountryCode)).Pluck(relation.SubscriptionID, &ids)
 		}
 		if err != nil {
 			return nil, 0, err
 		}
 		if filter.AppCode != "" || filter.PackageCode != "" || filter.VersionCode != "" || filter.CountryCode != "" {
 			if len(ids) == 0 {
-				return []model.VideoVipSubscription{}, 0, nil
+				return []VIPSubscriptionRecord{}, 0, nil
 			}
 			dao = dao.Where(vip.ID.In(ids...))
 		}
@@ -103,9 +110,12 @@ func (r *VIPSubscriptionRepo) PageList(ctx context.Context, page, pageSize int, 
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Preload(vip.Placement, vip.SubscriptionLevel, vip.Apps, vip.Packages, vip.Versions, vip.Countries).
-		Order(vip.Sort.Asc(), vip.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
-	return valuesOf(rows), total, err
+	rows, err := dao.Order(vip.Sort.Asc(), vip.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	if err != nil {
+		return nil, 0, err
+	}
+	records, err := r.loadRecords(ctx, valuesOf(rows))
+	return records, total, err
 }
 
 func (r *VIPSubscriptionRepo) Recommend(ctx context.Context, req *VIPSubscriptionListFilter) (*model.VideoVipSubscription, error) {
@@ -124,14 +134,10 @@ func (r *VIPSubscriptionRepo) Recommend(ctx context.Context, req *VIPSubscriptio
 		err = relation.WithContext(ctx).Where(relation.PackageCode.Eq(req.PackageCode)).Pluck(relation.SubscriptionID, &ids)
 	case req.VersionCode != "":
 		relation := sql.VideoVipSubscriptionVersion
-		var rawIDs []int64
-		err = relation.WithContext(ctx).Where(relation.VersionCode.Eq(req.VersionCode)).Pluck(relation.SubscriptionID, &rawIDs)
-		ids = int64IDsToUint64(rawIDs)
+		err = relation.WithContext(ctx).Where(relation.VersionCode.Eq(req.VersionCode)).Pluck(relation.SubscriptionID, &ids)
 	case req.CountryCode != "":
 		relation := sql.VideoVipSubscriptionCountry
-		var rawIDs []int64
-		err = relation.WithContext(ctx).Where(relation.CountryCode.Eq(req.CountryCode)).Pluck(relation.SubscriptionID, &rawIDs)
-		ids = int64IDsToUint64(rawIDs)
+		err = relation.WithContext(ctx).Where(relation.CountryCode.Eq(req.CountryCode)).Pluck(relation.SubscriptionID, &ids)
 	}
 	if err != nil {
 		return nil, err
@@ -177,26 +183,161 @@ func (r *VIPSubscriptionRepo) Recommend(ctx context.Context, req *VIPSubscriptio
 	return dao.Order(q.Sort.Desc()).First()
 }
 
-func int64IDsToUint64(values []int64) []uint64 {
-	result := make([]uint64, 0, len(values))
-	for _, value := range values {
-		if value > 0 {
-			result = append(result, uint64(value))
-		}
+func (r *VIPSubscriptionRepo) GetDetail(ctx context.Context, id uint64) (*VIPSubscriptionRecord, error) {
+	q := qFrom(ctx).VideoVipSubscription
+	item, err := q.WithContext(ctx).Where(q.ID.Eq(id)).First()
+	if err != nil {
+		return nil, err
 	}
-	return result
+	records, err := r.loadRecords(ctx, []model.VideoVipSubscription{*item})
+	if err != nil {
+		return nil, err
+	}
+	return &records[0], nil
 }
 
-func (r *VIPSubscriptionRepo) GetDetail(ctx context.Context, id uint64) (*model.VideoVipSubscription, error) {
-	q := qFrom(ctx).VideoVipSubscription
-	return q.WithContext(ctx).Preload(q.Placement, q.SubscriptionLevel, q.Apps, q.Packages, q.Versions, q.Countries).
-		Where(q.ID.Eq(id)).First()
+func (r *VIPSubscriptionRepo) loadRecords(ctx context.Context, items []model.VideoVipSubscription) ([]VIPSubscriptionRecord, error) {
+	result := make([]VIPSubscriptionRecord, len(items))
+	if len(items) == 0 {
+		return result, nil
+	}
+	subscriptionIDs := make([]uint64, 0, len(items))
+	placementKeys := make([]string, 0, len(items))
+	levelIDs := make([]uint64, 0, len(items))
+	for i := range items {
+		result[i].VideoVipSubscription = items[i]
+		subscriptionIDs = append(subscriptionIDs, items[i].ID)
+		placementKeys = append(placementKeys, items[i].PlacementKey)
+		if items[i].LevelID > 0 {
+			levelIDs = append(levelIDs, uint64(items[i].LevelID))
+		}
+	}
+	indexByID := make(map[uint64]int, len(items))
+	for i := range items {
+		indexByID[items[i].ID] = i
+	}
+
+	q := qFrom(ctx)
+	placements, err := q.VideoVipPlacement.WithContext(ctx).Where(q.VideoVipPlacement.PlacementKey.In(placementKeys...)).Find()
+	if err != nil {
+		return nil, err
+	}
+	placementByKey := make(map[string]*model.VideoVipPlacement, len(placements))
+	for _, item := range placements {
+		if item != nil {
+			placementByKey[item.PlacementKey] = item
+		}
+	}
+	levels, err := q.VideoVipSubscriptionLevel.WithContext(ctx).Where(q.VideoVipSubscriptionLevel.ID.In(levelIDs...)).Find()
+	if err != nil {
+		return nil, err
+	}
+	levelByID := make(map[uint64]*model.VideoVipSubscriptionLevel, len(levels))
+	for _, item := range levels {
+		if item != nil {
+			levelByID[item.ID] = item
+		}
+	}
+	for i := range items {
+		result[i].Placement = placementByKey[items[i].PlacementKey]
+		if items[i].LevelID > 0 {
+			result[i].SubscriptionLevel = levelByID[uint64(items[i].LevelID)]
+		}
+	}
+
+	appRelations, err := q.VideoVipSubscriptionApp.WithContext(ctx).
+		Where(q.VideoVipSubscriptionApp.SubscriptionID.In(subscriptionIDs...)).Find()
+	if err != nil {
+		return nil, err
+	}
+	appCodes := make([]string, 0, len(appRelations))
+	for _, relation := range appRelations {
+		appCodes = append(appCodes, relation.AppCode)
+	}
+	appByCode := make(map[string]model.VideoApp, len(appCodes))
+	if len(appCodes) > 0 {
+		apps, err := q.VideoApp.WithContext(ctx).Where(q.VideoApp.AppCode.In(appCodes...)).Find()
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range apps {
+			if item != nil {
+				appByCode[item.AppCode] = *item
+			}
+		}
+	}
+	for _, relation := range appRelations {
+		if index, ok := indexByID[relation.SubscriptionID]; ok {
+			if item, found := appByCode[relation.AppCode]; found {
+				result[index].Apps = append(result[index].Apps, item)
+			}
+		}
+	}
+
+	packageRelations, err := q.VideoVipSubscriptionPackage.WithContext(ctx).
+		Where(q.VideoVipSubscriptionPackage.SubscriptionID.In(subscriptionIDs...)).Find()
+	if err != nil {
+		return nil, err
+	}
+	packageCodes := make([]string, 0, len(packageRelations))
+	for _, relation := range packageRelations {
+		packageCodes = append(packageCodes, relation.PackageCode)
+	}
+	packageByCode := make(map[string]model.VideoPackage, len(packageCodes))
+	if len(packageCodes) > 0 {
+		packages, err := q.VideoPackage.WithContext(ctx).Where(q.VideoPackage.PackageCode.In(packageCodes...)).Find()
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range packages {
+			if item != nil {
+				packageByCode[item.PackageCode] = *item
+			}
+		}
+	}
+	for _, relation := range packageRelations {
+		if index, ok := indexByID[relation.SubscriptionID]; ok {
+			if item, found := packageByCode[relation.PackageCode]; found {
+				result[index].Packages = append(result[index].Packages, item)
+			}
+		}
+	}
+
+	versionRelations, err := q.VideoVipSubscriptionVersion.WithContext(ctx).
+		Where(q.VideoVipSubscriptionVersion.SubscriptionID.In(subscriptionIDs...)).Find()
+	if err != nil {
+		return nil, err
+	}
+	versionCodes := make([]string, 0, len(versionRelations))
+	for _, relation := range versionRelations {
+		versionCodes = append(versionCodes, relation.VersionCode)
+	}
+	versionByCode := make(map[string]model.VideoPackageVersion, len(versionCodes))
+	if len(versionCodes) > 0 {
+		versions, err := q.VideoPackageVersion.WithContext(ctx).Where(q.VideoPackageVersion.VersionCode.In(versionCodes...)).Find()
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range versions {
+			if item != nil {
+				versionByCode[item.VersionCode] = *item
+			}
+		}
+	}
+	for _, relation := range versionRelations {
+		if index, ok := indexByID[relation.SubscriptionID]; ok {
+			if item, found := versionByCode[relation.VersionCode]; found {
+				result[index].Versions = append(result[index].Versions, item)
+			}
+		}
+	}
+	return result, nil
 }
 
 // GetAppleProduct 按 iOS SKU 和调用方包名解析启用的 VIP 商品。
 func (r *VIPSubscriptionRepo) GetAppleProduct(ctx context.Context, productID, packageCode string) (*model.VideoVipSubscription, error) {
 	q := qFrom(ctx)
-	appPackage, err := q.VideoPackage.WithContext(ctx).Select(q.VideoPackage.ID).
+	appPackage, err := q.VideoPackage.WithContext(ctx).Select(q.VideoPackage.PackageCode).
 		Where(q.VideoPackage.PackageCode.Eq(packageCode)).First()
 	if err != nil {
 		return nil, err
@@ -234,6 +375,7 @@ type VIPSubscriptionTargets struct {
 	PackageCodes []string
 	VersionCdes  []string
 	CountryCode  []string
+	ChannelCodes []string
 }
 
 func (r *VIPSubscriptionRepo) ReplaceTargets(ctx context.Context, item *model.VideoVipSubscription, targets VIPSubscriptionTargets) error {
@@ -261,6 +403,12 @@ func (r *VIPSubscriptionRepo) ReplaceTargets(ctx context.Context, item *model.Vi
 		return len(rows), err
 	}); err != nil {
 		return fmt.Errorf("countries: %w", err)
+	}
+	if err := validateVIPTargetIDs(targets.ChannelCodes, func(codes []string) (int, error) {
+		rows, err := q.VideoChannel.WithContext(ctx).Select(q.VideoChannel.ChannelCode).Where(q.VideoChannel.ChannelCode.In(codes...)).Find()
+		return len(rows), err
+	}); err != nil {
+		return fmt.Errorf("channels: %w", err)
 	}
 
 	now := time.Now()
@@ -306,18 +454,6 @@ func (r *VIPSubscriptionRepo) ReplaceTargets(ctx context.Context, item *model.Vi
 		if err := versionRelation.WithContext(ctx).Create(versions...); err != nil {
 			return err
 		}
-	}
-
-	countryRelation := q.VideoVipSubscriptionCountry
-	if _, err := countryRelation.WithContext(ctx).Unscoped().Where(countryRelation.SubscriptionID.Eq(int64(item.ID))).Delete(); err != nil {
-		return err
-	}
-	countries := make([]*model.VideoVipSubscriptionCountry, 0, len(targets.CountryCode))
-	for _, id := range targets.CountryCode {
-		countries = append(countries, &model.VideoVipSubscriptionCountry{SubscriptionID: int64(item.ID), CountryCode: id, CreatedAt: now, UpdatedAt: now})
-	}
-	if len(countries) > 0 {
-		return countryRelation.WithContext(ctx).Create(countries...)
 	}
 	return nil
 }
@@ -383,7 +519,7 @@ func (r *VIPSubscriptionRepo) UpdateDisplayMode(ctx context.Context, id uint64, 
 	return err
 }
 
-func (r *VIPSubscriptionRepo) SetDefault(ctx context.Context, item *model.VideoVipSubscription) error {
+func (r *VIPSubscriptionRepo) SetDefault(ctx context.Context, item *VIPSubscriptionRecord) error {
 	if len(item.Packages) == 0 {
 		return fmt.Errorf("VIP subscription must be associated with at least one package")
 	}

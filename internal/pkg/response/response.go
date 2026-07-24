@@ -69,6 +69,7 @@ func NotFound(c *gin.Context, msg string) {
 }
 
 func localizedError(c *gin.Context, code, httpStatus int, fallback string) string {
+	return fallback
 	if !i18n.IsAPI(c) {
 		return fallback
 	}

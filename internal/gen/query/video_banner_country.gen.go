@@ -34,74 +34,6 @@ func newVideoBannerCountry(db *gorm.DB, opts ...gen.DOOption) videoBannerCountry
 	_videoBannerCountry.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoBannerCountry.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoBannerCountry.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoBannerCountry.Banner = videoBannerCountryBelongsToBanner{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("Banner", "model.VideoBanner"),
-		Template: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Banner.Template", "model.VideoTemplate"),
-		},
-		Placement: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Banner.Placement", "model.VideoBannerPlacementAssociation"),
-		},
-		Countrys: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Banner.Countrys", "model.VideoCountry"),
-		},
-		App: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Banner.App", "model.VideoApp"),
-		},
-		Package: struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}{
-			RelationField: field.NewRelation("Banner.Package", "model.VideoPackage"),
-			App: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("Banner.Package.App", "model.VideoApp"),
-			},
-		},
-		Version: struct {
-			field.RelationField
-			Package struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}
-		}{
-			RelationField: field.NewRelation("Banner.Version", "model.VideoPackageVersion"),
-			Package: struct {
-				field.RelationField
-				App struct {
-					field.RelationField
-				}
-			}{
-				RelationField: field.NewRelation("Banner.Version.Package", "model.VideoPackage"),
-				App: struct {
-					field.RelationField
-				}{
-					RelationField: field.NewRelation("Banner.Version.Package.App", "model.VideoApp"),
-				},
-			},
-		},
-	}
-
-	_videoBannerCountry.Country = videoBannerCountryBelongsToCountry{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("Country", "model.VideoCountry"),
-	}
 
 	_videoBannerCountry.fillFieldMap()
 
@@ -118,9 +50,6 @@ type videoBannerCountry struct {
 	CreatedAt   field.Time
 	UpdatedAt   field.Time
 	DeletedAt   field.Field
-	Banner      videoBannerCountryBelongsToBanner
-
-	Country videoBannerCountryBelongsToCountry
 
 	fieldMap map[string]field.Expr
 }
@@ -171,220 +100,23 @@ func (v *videoBannerCountry) GetFieldByName(fieldName string) (field.OrderExpr, 
 }
 
 func (v *videoBannerCountry) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 8)
+	v.fieldMap = make(map[string]field.Expr, 6)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["banner_id"] = v.BannerID
 	v.fieldMap["country_code"] = v.CountryCode
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-
 }
 
 func (v videoBannerCountry) clone(db *gorm.DB) videoBannerCountry {
 	v.videoBannerCountryDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.Banner.db = db.Session(&gorm.Session{Initialized: true})
-	v.Banner.db.Statement.ConnPool = db.Statement.ConnPool
-	v.Country.db = db.Session(&gorm.Session{Initialized: true})
-	v.Country.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoBannerCountry) replaceDB(db *gorm.DB) videoBannerCountry {
 	v.videoBannerCountryDo.ReplaceDB(db)
-	v.Banner.db = db.Session(&gorm.Session{})
-	v.Country.db = db.Session(&gorm.Session{})
 	return v
-}
-
-type videoBannerCountryBelongsToBanner struct {
-	db *gorm.DB
-
-	field.RelationField
-
-	Template struct {
-		field.RelationField
-	}
-	Placement struct {
-		field.RelationField
-	}
-	Countrys struct {
-		field.RelationField
-	}
-	App struct {
-		field.RelationField
-	}
-	Package struct {
-		field.RelationField
-		App struct {
-			field.RelationField
-		}
-	}
-	Version struct {
-		field.RelationField
-		Package struct {
-			field.RelationField
-			App struct {
-				field.RelationField
-			}
-		}
-	}
-}
-
-func (a videoBannerCountryBelongsToBanner) Where(conds ...field.Expr) *videoBannerCountryBelongsToBanner {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoBannerCountryBelongsToBanner) WithContext(ctx context.Context) *videoBannerCountryBelongsToBanner {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoBannerCountryBelongsToBanner) Session(session *gorm.Session) *videoBannerCountryBelongsToBanner {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoBannerCountryBelongsToBanner) Model(m *model.VideoBannerCountry) *videoBannerCountryBelongsToBannerTx {
-	return &videoBannerCountryBelongsToBannerTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoBannerCountryBelongsToBanner) Unscoped() *videoBannerCountryBelongsToBanner {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoBannerCountryBelongsToBannerTx struct{ tx *gorm.Association }
-
-func (a videoBannerCountryBelongsToBannerTx) Find() (result *model.VideoBanner, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoBannerCountryBelongsToBannerTx) Append(values ...*model.VideoBanner) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoBannerCountryBelongsToBannerTx) Replace(values ...*model.VideoBanner) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoBannerCountryBelongsToBannerTx) Delete(values ...*model.VideoBanner) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoBannerCountryBelongsToBannerTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoBannerCountryBelongsToBannerTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoBannerCountryBelongsToBannerTx) Unscoped() *videoBannerCountryBelongsToBannerTx {
-	a.tx = a.tx.Unscoped()
-	return &a
-}
-
-type videoBannerCountryBelongsToCountry struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a videoBannerCountryBelongsToCountry) Where(conds ...field.Expr) *videoBannerCountryBelongsToCountry {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoBannerCountryBelongsToCountry) WithContext(ctx context.Context) *videoBannerCountryBelongsToCountry {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoBannerCountryBelongsToCountry) Session(session *gorm.Session) *videoBannerCountryBelongsToCountry {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoBannerCountryBelongsToCountry) Model(m *model.VideoBannerCountry) *videoBannerCountryBelongsToCountryTx {
-	return &videoBannerCountryBelongsToCountryTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoBannerCountryBelongsToCountry) Unscoped() *videoBannerCountryBelongsToCountry {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoBannerCountryBelongsToCountryTx struct{ tx *gorm.Association }
-
-func (a videoBannerCountryBelongsToCountryTx) Find() (result *model.VideoCountry, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoBannerCountryBelongsToCountryTx) Append(values ...*model.VideoCountry) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoBannerCountryBelongsToCountryTx) Replace(values ...*model.VideoCountry) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoBannerCountryBelongsToCountryTx) Delete(values ...*model.VideoCountry) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoBannerCountryBelongsToCountryTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoBannerCountryBelongsToCountryTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoBannerCountryBelongsToCountryTx) Unscoped() *videoBannerCountryBelongsToCountryTx {
-	a.tx = a.tx.Unscoped()
-	return &a
 }
 
 type videoBannerCountryDo struct{ gen.DO }

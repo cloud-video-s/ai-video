@@ -85,7 +85,7 @@ type CloneVIPSubscriptionRequest struct {
 	Name        string `json:"name" binding:"omitempty,max=128"`
 }
 
-func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]model.VideoVipSubscription, int64, error) {
+func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]repository.VIPSubscriptionRecord, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.VIPSubscriptionListFilter{
 		AppCode: req.AppCode, PackageCode: req.PackageCode, VersionCode: req.VersionCode, CountryCode: req.CountryCode,
 		PlacementKey: strings.TrimSpace(req.PlacementKey), LevelID: req.LevelID,
@@ -95,7 +95,7 @@ func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, r
 	})
 }
 
-func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*repository.VIPSubscriptionRecord, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -103,7 +103,7 @@ func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*model
 	return item, nil
 }
 
-func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptionPayload) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptionPayload) (*repository.VIPSubscriptionRecord, error) {
 	if err := s.prepareAndValidate(ctx, req); err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptio
 	return s.repo.GetDetail(ctx, item.ID)
 }
 
-func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIPSubscriptionPayload) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIPSubscriptionPayload) (*repository.VIPSubscriptionRecord, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -138,12 +138,12 @@ func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIP
 	if err := s.prepareAndValidate(ctx, req); err != nil {
 		return nil, err
 	}
-	applyVIPSubscriptionPayload(item, req)
+	applyVIPSubscriptionPayload(&item.VideoVipSubscription, req)
 	err = repository.Transaction(ctx, func(txCtx context.Context) error {
-		if err := s.repo.UpdateFields(txCtx, item); err != nil {
+		if err := s.repo.UpdateFields(txCtx, &item.VideoVipSubscription); err != nil {
 			return err
 		}
-		if err := s.repo.ReplaceTargets(txCtx, item, vipSubscriptionTargets(req)); err != nil {
+		if err := s.repo.ReplaceTargets(txCtx, &item.VideoVipSubscription, vipSubscriptionTargets(req)); err != nil {
 			return err
 		}
 		if item.IsDefault == 1 {
@@ -198,7 +198,7 @@ func (s *VIPSubscriptionService) SetDefault(ctx context.Context, id uint64) erro
 	return s.repo.SetDefault(ctx, item)
 }
 
-func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *CloneVIPSubscriptionRequest) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *CloneVIPSubscriptionRequest) (*repository.VIPSubscriptionRecord, error) {
 	source, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -287,7 +287,7 @@ func vipSubscriptionTargets(req *VIPSubscriptionPayload) repository.VIPSubscript
 	}
 }
 
-func vipSubscriptionPayloadFromModel(item *model.VideoVipSubscription) *VIPSubscriptionPayload {
+func vipSubscriptionPayloadFromModel(item *repository.VIPSubscriptionRecord) *VIPSubscriptionPayload {
 	return &VIPSubscriptionPayload{
 		AppCodes: appIDs(item.Apps), PackageCodes: packageIDs(item.Packages), VersionCodes: versionIDs(item.Versions), CountryCodes: countryIDs(item.Countries),
 		PlacementKey: item.PlacementKey, LevelID: item.LevelID, VipType: item.VipType, ProductCode: item.ProductCode,

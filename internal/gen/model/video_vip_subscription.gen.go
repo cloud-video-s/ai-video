@@ -49,11 +49,12 @@ type VideoVipSubscription struct {
 	UpdatedAt                time.Time                 `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt                gorm.DeletedAt            `gorm:"column:deleted_at;type:datetime(3);index:idx_video_vip_subscription_deleted_at,priority:1" json:"deleted_at"`
 	Placement                VideoVipPlacement         `gorm:"foreignKey:PlacementKey;references:PlacementKey" json:"placement"`
-	SubscriptionLevel        VideoVipSubscriptionLevel `gorm:"foreignKey:LevelID;references:ID" json:"subscription_level"`
-	Apps                     []VideoApp                `gorm:"foreignKey:ID;joinForeignKey:SubscriptionID;joinReferences:AppID;many2many:video_vip_subscription_app;references:ID" json:"apps"`
-	Packages                 []VideoPackage            `gorm:"foreignKey:ID;joinForeignKey:SubscriptionID;joinReferences:PackageID;many2many:video_vip_subscription_package;references:ID" json:"packages"`
-	Versions                 []VideoPackageVersion     `gorm:"foreignKey:ID;joinForeignKey:SubscriptionID;joinReferences:VersionID;many2many:video_vip_subscription_version;references:ID" json:"versions"`
-	Countries                []VideoCountry            `gorm:"foreignKey:ID;joinForeignKey:SubscriptionID;joinReferences:CountryID;many2many:video_vip_subscription_country;references:ID" json:"countries"`
+	SubscriptionLevel        VideoVipSubscriptionLevel `gorm:"foreignKey:LevelId;references:ID" json:"subscription_level"`
+	Apps                     []*VideoApp               `gorm:"References:AppCode;foreignKey:ID;joinForeignKey:SubscriptionID;joinReferences:AppCode;many2many:video_vip_subscription_app" json:"apps"`
+	Packages                 []*VideoPackage           `gorm:"References:PackageCode;foreignKey:ID;joinForeignKey:SubscriptionID;joinReferences:PackageCode;many2many:video_vip_subscription_package" json:"packages"`
+	PackageVersion           []*VideoPackageVersion    `gorm:"References:VersionCode;foreignKey:ID;joinForeignKey:SubscriptionID;joinReferences:VersionCode;many2many:video_vip_subscription_version" json:"package_version"`
+	Country                  []*VideoCountry           `gorm:"References:Code;foreignKey:ID;joinForeignKey:SubscriptionID;joinReferences:CountryCode;many2many:video_vip_subscription_country" json:"country"`
+	Channels                 []*VideoChannel           `gorm:"References:ChannelCode;foreignKey:ID;joinForeignKey:SubscriptionID;joinReferences:ChannelCode;many2many:video_vip_subscription_channel" json:"channels"`
 }
 
 // TableName VideoVipSubscription's table name

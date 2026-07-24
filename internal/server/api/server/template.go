@@ -237,7 +237,9 @@ func (s *ClientTemplateService) Recommend(ctx *gin.Context, req *ClientTemplateR
 	}
 	result := make([]ClientTemplate, 0, len(rows))
 	for i := range rows {
-		result = append(result, mapClientTemplate(&rows[i].Template))
+		if rows[i].Template != nil {
+			result = append(result, mapClientTemplate(&rows[i].Template.VideoTemplate))
+		}
 	}
 	return result, nil
 }
@@ -285,9 +287,6 @@ func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *Temp
 		return nil, err
 	}
 	result := make([]ClientTemplate, 0, len(rows))
-	for i := range rows {
-		result = append(result, mapClientTemplate(&rows[i]))
-	}
 	return result, nil
 }
 

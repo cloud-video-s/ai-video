@@ -85,17 +85,13 @@ func (s *ClientBannerService) List(ctx *gin.Context, req *ClientBannerRequest) (
 }
 
 func mapClientBanner(item *model.VideoBanner) ClientBanner {
-	positionKeys := clientBannerPositionKeys(item.DisplayPositions)
 	positionKey := ""
-	if len(positionKeys) > 0 {
-		positionKey = positionKeys[0]
-	}
 	result := ClientBanner{
 		ID: item.ID, Name: item.Name, PositionKey: positionKey,
-		Status: int8(item.Status), JumpType: uint8(item.JumpType),
+		Status: item.Status, JumpType: item.JumpType,
 		CoverImage: item.CoverImage, Route: clientBannerRoute(item), TemplateID: item.TemplateID, Sort: item.Sort,
 	}
-	if item.Template != nil {
+	if item.Template.ID != 0 {
 		result.TargetTemplate = &ClientBannerTemplate{
 			ID: item.Template.ID, Name: item.Template.Name, TemplateType: item.Template.TemplateType,
 			CoverImage: item.Template.CoverImage, TemplateVideo: item.Template.TemplateVideo,

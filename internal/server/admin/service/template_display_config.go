@@ -40,7 +40,7 @@ type TemplateDisplayConfigPayload struct {
 	Description  string `json:"description" binding:"max=500"`
 }
 
-func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize int, req *ListTemplateDisplayConfigRequest) ([]model.VideoTemplatePlacementConfig, int64, error) {
+func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize int, req *ListTemplateDisplayConfigRequest) ([]repository.TemplateDisplayConfigRecord, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateDisplayConfigListFilter{
 		TemplateID: req.TemplateID, VideoTemplateTypeID: req.VideoTemplateTypeID,
 		PositionKey: strings.TrimSpace(req.PositionKey), Status: req.Status,
@@ -48,7 +48,7 @@ func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize 
 	})
 }
 
-func (s *TemplateDisplayConfigService) GetByID(ctx context.Context, id uint64) (*model.VideoTemplatePlacementConfig, error) {
+func (s *TemplateDisplayConfigService) GetByID(ctx context.Context, id uint64) (*repository.TemplateDisplayConfigRecord, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "模板展示配置不存在")
@@ -56,7 +56,7 @@ func (s *TemplateDisplayConfigService) GetByID(ctx context.Context, id uint64) (
 	return item, nil
 }
 
-func (s *TemplateDisplayConfigService) Create(ctx context.Context, req *TemplateDisplayConfigPayload) (*model.VideoTemplatePlacementConfig, error) {
+func (s *TemplateDisplayConfigService) Create(ctx context.Context, req *TemplateDisplayConfigPayload) (*repository.TemplateDisplayConfigRecord, error) {
 	if err := s.prepare(ctx, req, 0); err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (s *TemplateDisplayConfigService) Create(ctx context.Context, req *Template
 	return s.repo.GetDetail(ctx, item.ID)
 }
 
-func (s *TemplateDisplayConfigService) Update(ctx context.Context, id uint64, req *TemplateDisplayConfigPayload) (*model.VideoTemplatePlacementConfig, error) {
+func (s *TemplateDisplayConfigService) Update(ctx context.Context, id uint64, req *TemplateDisplayConfigPayload) (*repository.TemplateDisplayConfigRecord, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "模板展示配置不存在")
@@ -79,8 +79,8 @@ func (s *TemplateDisplayConfigService) Update(ctx context.Context, id uint64, re
 	if err := s.prepare(ctx, req, id); err != nil {
 		return nil, err
 	}
-	applyTemplateDisplayConfigPayload(item, req)
-	if err := s.repo.UpdateFields(ctx, item); err != nil {
+	applyTemplateDisplayConfigPayload(&item.VideoTemplatePlacementConfig, req)
+	if err := s.repo.UpdateFields(ctx, &item.VideoTemplatePlacementConfig); err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, errors.New("该模板已配置到此展示位置")
 		}
@@ -105,7 +105,7 @@ func (s *TemplateDisplayConfigService) prepare(ctx context.Context, req *Templat
 	if _, err := s.templateRepo.GetWithType(ctx, req.TemplateID); err != nil {
 		return notFoundOr(err, "模板不存在")
 	}
-	position, err := s.positionRepo.GetTemplatePlacementByKey(ctx, req.PlacementKey)
+	position, err := s.positionRepo.GetByKey(ctx, req.PlacementKey)
 	if err != nil {
 		return notFoundOr(err, "展示位置不存在")
 	}

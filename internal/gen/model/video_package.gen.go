@@ -14,19 +14,18 @@ const TableNameVideoPackage = "video_package"
 
 // VideoPackage mapped from table <video_package>
 type VideoPackage struct {
-	ID          uint64                `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	PackageName string                `gorm:"column:package_name;type:varchar(128);not null;index:idx_video_package_package_name,priority:1;comment:package name" json:"package_name"`                                                            // package name
-	PackageCode string                `gorm:"column:package_code;type:varchar(128);not null;uniqueIndex:uk_video_package_code_version,priority:1;index:idx_video_package_package_code,priority:1;comment:package identifier" json:"package_code"` // package identifier
-	AppCode     string                `gorm:"column:app_code;type:varchar(50);not null;comment:app_code" json:"app_code"`                                                                                                                         // app_code
-	Description string                `gorm:"column:description;type:text;comment:package description" json:"description"`                                                                                                                        // package description
-	Sort        int64                 `gorm:"column:sort;type:bigint;not null;index:idx_video_package_sort,priority:1;comment:sort order" json:"sort"`                                                                                            // sort order
-	Status      int8                  `gorm:"column:status;type:tinyint unsigned;not null;index:idx_video_package_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                                               // status: 0 disabled, 1 enabled
-	SystemType  uint8                 `gorm:"column:system_type;type:tinyint unsigned;not null;default:1;comment:系统类型 1=ios 2=android" json:"system_type"`                                                                                        // 系统类型 1=ios 2=android
-	CreatedAt   time.Time             `gorm:"column:created_at;type:datetime(3);index:idx_video_package_created_at,priority:1" json:"created_at"`
-	UpdatedAt   time.Time             `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt   gorm.DeletedAt        `gorm:"column:deleted_at;type:datetime(3);index:idx_video_package_deleted_at,priority:1" json:"deleted_at"`
-	App         VideoApp              `gorm:"foreignKey:AppCode;references:AppCode" json:"app"`
-	Versions    []VideoPackageVersion `gorm:"foreignKey:PackageCode;references:PackageCode" json:"versions"`
+	ID          uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
+	PackageName string         `gorm:"column:package_name;type:varchar(128);not null;index:idx_video_package_package_name,priority:1;comment:package name" json:"package_name"`                                                            // package name
+	PackageCode string         `gorm:"column:package_code;type:varchar(128);not null;uniqueIndex:uk_video_package_code_version,priority:1;index:idx_video_package_package_code,priority:1;comment:package identifier" json:"package_code"` // package identifier
+	AppCode     string         `gorm:"column:app_code;type:varchar(50);not null;comment:app_code" json:"app_code"`                                                                                                                         // app_code
+	Description string         `gorm:"column:description;type:text;comment:package description" json:"description"`                                                                                                                        // package description
+	Sort        int64          `gorm:"column:sort;type:bigint;not null;index:idx_video_package_sort,priority:1;comment:sort order" json:"sort"`                                                                                            // sort order
+	Status      uint8          `gorm:"column:status;type:tinyint unsigned;not null;index:idx_video_package_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                                               // status: 0 disabled, 1 enabled
+	SystemType  uint8          `gorm:"column:system_type;type:tinyint unsigned;not null;default:1;comment:系统类型 1=ios 2=android" json:"system_type"`                                                                                        // 系统类型 1=ios 2=android
+	CreatedAt   time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_video_package_created_at,priority:1" json:"created_at"`
+	UpdatedAt   time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_package_deleted_at,priority:1" json:"deleted_at"`
+	App         VideoApp       `gorm:"foreignKey:AppCode;references:AppCode" json:"app"`
 }
 
 // TableName VideoPackage's table name
