@@ -116,6 +116,16 @@ var responseDataExamples = map[string]any{
 		SubscriptionPoints: 0, SubscriptionPeriod: 1, Sort: 0, Description: "", Remark: "",
 		CreatedAt: 1784859297, UpdatedAt: 1784835434,
 	},
+	"GET /api/vip/list": []apiservice.VIPRecommendResponse{
+		{
+			ID: 2, VipType: 2, SukCode: "222222", Name: "首页OB拦截套餐", LevelName: "普通套餐", Currency: "USD",
+			VIPDurationDays: 1, TrialDays: 0, BadgeText: "", AgreementDefaultChecked: 0,
+			DisplayMode: 1, Status: 1, FreeTrial: 0, IsSubscription: 1, IsDefault: 0,
+			SubscriptionDescription: "", SubscriptionPrice: 0, OriginalPrice: 0,
+			SubscriptionPoints: 0, SubscriptionPeriod: 1, Sort: 0, Description: "", Remark: "",
+			CreatedAt: 1784859371, UpdatedAt: 1784835434,
+		},
+	},
 }
 
 var endpointTypes = map[string]endpointType{
@@ -143,6 +153,7 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/generation/tasks/:id/events":             {response: typeOf[generation.TaskView]()},
 	"DELETE /api/generation/tasks/:id":                 {},
 	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[apiservice.VIPRecommendResponse]()},
+	"GET /api/vip/list":                                {query: typeOf[apiservice.VipVipListRequest](), response: typeOf[[]apiservice.VIPRecommendResponse]()},
 	"POST /api/payments/apple/confirm":                 {body: typeOf[commerce.ApplePurchaseRequest](), response: typeOf[commerce.ApplePurchaseResponse]()},
 	"POST /api/uploads/images/batches":                 {response: typeOf[uploadBatchResponse]()},
 	"POST /api/uploads/videos/batches":                 {response: typeOf[uploadBatchResponse]()},
@@ -171,6 +182,7 @@ var operationDescriptions = map[string]string{
 	"GET /api/generation/tasks": "分页查询当前用户的生成任务。", "GET /api/generation/tasks/:id": "查询指定生成任务详情。",
 	"GET /api/generation/tasks/:id/events": "通过 SSE 实时订阅生成任务状态，任务结束后连接关闭。", "DELETE /api/generation/tasks/:id": "删除指定生成任务。",
 	"GET /api/vip/recommend":           "查询当前用户适用的推荐 VIP 套餐。",
+	"GET /api/vip/list":                "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
 	"POST /api/payments/apple/confirm": "校验 StoreKit 交易、创建订单并发放对应商品。",
 }
 
@@ -185,6 +197,7 @@ var operationSummaries = map[string]string{
 	"GET /api/templates/template_list": "查询分类模板", "GET /api/templates/template_info": "查询模板详情",
 	"POST /api/templates/:id/favorite":   "收藏模板",
 	"DELETE /api/templates/:id/favorite": "取消收藏模板", "GET /api/vip/recommend": "查询推荐 VIP 套餐",
+	"GET /api/vip/list":          "查询 VIP 套餐列表",
 	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务",
 	"GET /api/generation/tasks": "查询生成任务", "GET /api/generation/tasks/:id": "获取生成任务",
 	"GET /api/generation/tasks/:id/events": "订阅生成任务事件", "DELETE /api/generation/tasks/:id": "删除生成任务",
@@ -225,7 +238,7 @@ var fieldDescriptions = map[string]string{
 	"bundleID": "Apple Bundle ID", "productID": "Apple 商品 ID", "transactionID": "Apple 交易 ID",
 	"originalTransactionID": "Apple 原始交易 ID", "signedTransactionInfo": "Apple 签名交易 JWS",
 	"purchaseDate": "购买时间", "expirationDate": "订阅到期时间", "revocationDate": "撤销时间", "isActive": "订阅是否有效",
-	"vip_type": "VIP 套餐类型",
+	"vip_type": "VIP 套餐类型", "vip_types": "VIP 套餐类型数组；使用重复 Query 参数传递，例如 vip_types=1&vip_types=2",
 	"suk_code": "商店产品 SKU", "level_name": "会员等级名称", "currency": "ISO 货币代码",
 	"vip_duration_days": "VIP 权益持续天数", "trial_days": "免费试用天数", "badge_text": "徽章文案",
 	"agreement_default_checked": "订阅协议是否默认勾选", "display_mode": "展示模式：0 隐藏，1 正常",

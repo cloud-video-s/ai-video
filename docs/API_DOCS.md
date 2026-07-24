@@ -98,6 +98,7 @@ JWT 由 `POST /api/auth/login` 返回。`Authorization` 属于鉴权信息，不
 | POST | `/api/templates/:id/favorite` | 收藏模板 |
 | DELETE | `/api/templates/:id/favorite` | 取消收藏模板 |
 | GET | `/api/vip/recommend` | 查询推荐 VIP 套餐 |
+| GET | `/api/vip/list` | 按 `vip_types` 查询当前客户端可展示的 VIP 套餐列表 |
 
 ### 内容生成
 

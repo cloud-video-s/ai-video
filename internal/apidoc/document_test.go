@@ -33,6 +33,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodGet, Path: "/api/generation/tasks/:id/events", Handler: "api.Generation.Events"},
 		{Method: http.MethodDelete, Path: "/api/generation/tasks/:id", Handler: "api.Generation.Delete"},
 		{Method: http.MethodGet, Path: "/api/vip/recommend", Handler: "api.Vip.Recommend"},
+		{Method: http.MethodGet, Path: "/api/vip/list", Handler: "api.Vip.List"},
 		{Method: http.MethodPost, Path: "/api/payments/apple/confirm", Handler: "api.Payment.ConfirmApple"},
 		{Method: http.MethodPost, Path: "/api/uploads/images/batches", Handler: "upload.CreateBatch"},
 		{Method: http.MethodPut, Path: "/api/uploads/images/:upload_id/chunks/:index", Handler: "upload.PutChunk"},
@@ -193,6 +194,17 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	assertResponseParameterAbsent(t, vip, "data.country")
 	assertResponseParameterAbsent(t, vip, "data.channels")
 	assertResponseParameterAbsent(t, vip, "data.deleted_at")
+	vipList := document.Paths["/api/vip/list"]["get"].(map[string]any)
+	assertParameter(t, vipList, "vip_types", "query", true)
+	assertResponseParameter(t, vipList, "data[].id", true)
+	assertResponseParameter(t, vipList, "data[].vip_type", true)
+	assertResponseParameter(t, vipList, "data[].suk_code", true)
+	assertResponseParameter(t, vipList, "data[].level_name", true)
+	assertResponseParameter(t, vipList, "data[].subscription_price", true)
+	vipListExample := vipList["x-response-example"].(responseExampleEnvelope).Data.([]apiservice.VIPRecommendResponse)
+	if len(vipListExample) != 1 || vipListExample[0].ID != 2 || vipListExample[0].SukCode != "222222" || vipListExample[0].CreatedAt != 1784859371 {
+		t.Fatalf("vip list response example is incomplete: %#v", vipListExample)
+	}
 	payment := document.Paths["/api/payments/apple/confirm"]["post"].(map[string]any)
 	assertParameter(t, payment, "bundleID", "json", true)
 	assertParameter(t, payment, "signedTransactionInfo", "json", true)

@@ -8,6 +8,7 @@
 - [第三方登录](third-party-auth.md)：Google/Apple ID Token 验证、配置与安全边界
 - [客户端 Banner API](client-banners-api.md)：Banner 展示接口
 - [Banner 管理 API](banner-management-api.md)：Banner 管理、投放选项与“全部不绑定”规则
+- [VIP 套餐列表 API](client-vip-list-api.md)：`/api/vip/list` 请求参数、筛选规则与响应示例
 - [客户端模板展示 API](client-template-display-api.md)：模板展示配置接口
 
 ## 业务配置
