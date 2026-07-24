@@ -107,21 +107,45 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 			lastOpenedAt = &now
 		}
 		if req.ForceNew {
-			user = &model.VideoUser{
-				DeviceCode: req.DeviceCode,
-				Username:   newGuestUsername(), LoginType: uint8(domain.AppUserLoginGuest),
-				UserType: uint8(domain.AppUserTypeFree), SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
-				ClientCountry: req.ClientCountry,
-				AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
-				FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
-				AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: 1,
-				Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
+			latest, err := s.userRepo.GetByDeviceCodeSubscription(ctx, req.DeviceCode, true)
+			isTrue := false
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				isTrue = true
+			} else {
+				if latest.Status != 1 {
+					isTrue = true
+				}
 			}
-			if err := s.userRepo.Create(ctx, user); err != nil {
+			if isTrue {
+				user = &model.VideoUser{
+					DeviceCode: req.DeviceCode,
+					Username:   newGuestUsername(), LoginType: uint8(domain.AppUserLoginGuest),
+					UserType: uint8(domain.AppUserTypeFree), SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
+					ClientCountry: req.ClientCountry,
+					AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
+					FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
+					AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: 1,
+					Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
+				}
+				if err := s.userRepo.Create(ctx, user); err != nil {
+					return err
+				}
+				user, _ = s.prepareLoginSession(ctx, user.ID)
+				return nil
+			}
+			updates := baseTrackingUpdates(1, &req.AccountBaseRequest, clientIP, now)
+			if err := s.userRepo.Update(ctx, latest.ID, updates); err != nil {
 				return err
 			}
-			user, _ = s.prepareLoginSession(ctx, user.ID)
+			if err := s.attributionRepo.UpsertDevice(ctx, latest.ID, attributionTrackingUpdates(&req.AccountBaseRequest, clientIP, userAgent)); err != nil {
+				return err
+			}
+			user, err = s.prepareLoginSession(ctx, latest.ID)
+			if err != nil {
+				return err
+			}
 			return nil
+
 		}
 		latest, err := s.userRepo.GetByDeviceCode(ctx, req.DeviceCode, true)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
