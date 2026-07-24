@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 
 	"gorm.io/gen"
@@ -272,7 +273,14 @@ func (r *BannerRepo) ListForClient(ctx context.Context, targets ClientBannerTarg
 			)
 		)`, targets.VersionCode)...)
 	}
-	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).Find()
+	dao = dao.Where(bannerSQLCondition(`(
+		video_banner.jump_type <> ? OR EXISTS (
+			SELECT 1 FROM video_template template_item
+			WHERE template_item.id = video_banner.template_id
+				AND template_item.status = ? AND template_item.deleted_at IS NULL
+		)
+	)`, domain.BannerJumpTypeTemplate, 1)...)
+	rows, err := dao.Preload(q.Template).Order(q.Sort.Asc(), q.ID.Desc()).Find()
 	if err != nil {
 		return nil, err
 	}
@@ -518,17 +526,17 @@ func (r *BannerRepo) LoadAppTargets(ctx context.Context, bannerIDs []uint64) (ma
 				if packageItem == nil || packageItem.AppCode != app.AppCode {
 					continue
 				}
-				versionCodess := make([]string, 0)
+				packageVersionCodes := make([]string, 0)
 				for _, versionCode := range sortedUniqueStrings(versionsByBanner[bannerID]) {
 					version := versionsByCode[versionCode]
 					if version != nil && version.PackageCode == packageItem.PackageCode {
-						versionCodess = append(versionCodess, version.VersionCode)
+						packageVersionCodes = append(packageVersionCodes, version.VersionCode)
 					}
 				}
 				result[bannerID] = append(result[bannerID], BannerAppTarget{
 					AppCode: app.AppCode, AppName: app.Name,
 					PackageCode: packageItem.PackageCode, PackageName: packageItem.PackageName,
-					VersionCodes: sortedUniqueStrings(versionCodes),
+					VersionCodes: sortedUniqueStrings(packageVersionCodes),
 				})
 			}
 		}

@@ -85,8 +85,23 @@ var delayConfigResponseExample = map[string]int64{
 	"FunctionUseLoging":          0,
 }
 
+var bannerResponseExampleTemplateID = uint64(42)
+
 var responseDataExamples = map[string]any{
 	"GET /api/ob_delay": delayConfigResponseExample,
+	"GET /api/banners/list": []apiservice.ClientBanner{
+		{
+			ID: 12, Name: "首页夏日活动", PositionKey: "home_banner", Status: 1,
+			JumpType: 2, CoverImage: "https://cdn.example.com/banners/summer.jpg",
+			Route: "/templates/42", TemplateID: &bannerResponseExampleTemplateID, Sort: 10,
+			TargetTemplate: &apiservice.ClientBannerTemplate{
+				ID: 42, Name: "夏日视频模板", TemplateType: "action",
+				CoverImage:     "https://cdn.example.com/templates/42.jpg",
+				TemplateVideo:  "https://cdn.example.com/templates/42.mp4",
+				ThumbnailVideo: "https://cdn.example.com/templates/42-thumb.mp4", Status: 1,
+			},
+		},
+	},
 	"POST /api/templates/:id/favorite": apiservice.TemplateFavoriteResponse{
 		TemplateID: 1, Favorited: true, FavoriteCount: 1,
 	},
@@ -145,7 +160,8 @@ var operationDescriptions = map[string]string{
 	"POST /api/third_binding": "为当前用户绑定或切换 Google、Apple 等第三方身份。", "POST /api/auth/logout": "注销当前 Bearer Token。",
 	"GET /api/users/me": "获取当前登录用户资料。", "PUT /api/users/me/country": "更新当前用户的设备国家或地区。",
 	"GET /api/users/me/identities": "查询当前用户已绑定的第三方身份。", "DELETE /api/users/me/identities/:provider": "解绑指定第三方身份。",
-	"GET /api/ob_delay": "获取客户端延迟配置。", "GET /api/banners/list": "按展示位置和当前用户投放条件查询 Banner。",
+	"GET /api/ob_delay":            "获取客户端延迟配置。",
+	"GET /api/banners/list":        "按必填的 position_key 查询当前客户端可见的 Banner。服务端同时使用公共请求头中的 Video_App_Code、Video_App_Package_Code、Video_App_Version、Video_Device_Country，以及登录用户的会员状态进行投放匹配。某个维度没有关联记录时表示该维度支持全部；存在关联记录时必须命中。展示位置、国家、应用、应用包、版本和会员类型之间按 AND 关系组合。",
 	"GET /api/templates/recommend": "查询指定展示位置已配置的推荐模板，仅返回模板数据。",
 	"GET /api/templates/list":      "查询首页分类及其模板。", "GET /api/templates/categories": "查询模板分类及其模板。",
 	"GET /api/templates/template_list": "分页查询指定模板分类和展示位置下的模板，仅返回模板数据。",
@@ -186,7 +202,7 @@ var fieldDescriptions = map[string]string{
 	"app_version": "应用版本号", "app_name": "应用名称", "phone_model": "设备型号", "channel_package": "渠道包标识",
 	"app_package": "应用包名", "login_type": "登录类型：1 游客，2 Google，3 Apple", "first_opened_at": "首次打开时间",
 	"last_opened_at": "最近打开时间", "attribution_clicked_at": "归因点击时间", "country": "国家或地区代码",
-	"position_key": "展示位置唯一标识", "package": "应用包名", "package_code": "应用包名", "package_version": "应用版本号",
+	"position_key": "展示位置唯一标识；Banner 查询时为必填 Query 参数", "package": "应用包名", "package_code": "应用包名", "package_version": "应用版本号",
 	"channel": "渠道标识", "user_type": "用户类型：1 免费，2 付费", "subscription_status": "订阅状态：1 未订阅，2 已订阅，3 已取消",
 	"token": "Bearer JWT", "expire_at": "Token 过期时间（Unix 秒）", "token_version": "Token 版本号",
 	"id": "记录 ID", "email": "邮箱", "vip_expires_at": "VIP 到期时间（Unix 秒）", "points_balance": "积分余额",
@@ -195,8 +211,8 @@ var fieldDescriptions = map[string]string{
 	"provider_subject": "身份提供方用户唯一标识", "issuer": "Token 签发方", "audience": "Token 受众",
 	"email_verified": "邮箱是否已验证", "is_private_email": "是否为隐私邮箱", "avatar_url": "头像地址",
 	"key": "配置键", "value": "配置值", "name": "名称", "template_type": "模板类型", "cover_image": "封面图片地址",
-	"template_video": "模板视频地址", "thumbnail_video": "缩略视频地址", "jump_type": "跳转类型", "route": "客户端跳转路由",
-	"target_template": "关联的目标模板", "template_id": "目标模板 ID", "sort": "排序值", "category_name": "分类名称",
+	"template_video": "模板视频地址", "thumbnail_video": "缩略视频地址", "jump_type": "跳转类型：1 链接，2 模板，3 文生图，4 文生视频", "route": "客户端最终跳转路由、深链或外部链接",
+	"target_template": "模板跳转时返回的目标模板摘要；其他跳转类型不返回", "template_id": "目标模板 ID；仅模板跳转时返回", "sort": "排序值", "category_name": "分类名称",
 	"description": "说明", "position_keys": "支持的展示位置", "user_types": "适用用户类型", "subscription_statuses": "适用订阅状态",
 	"templates": "模板列表", "video_template_type_id": "模板分类 ID", "prompt": "模板提示词", "usage_count": "使用次数",
 	"favorite_count": "收藏次数", "favorited": "当前用户是否已收藏", "view_count": "浏览次数", "display_config_id": "展示配置 ID", "display_sort": "展示排序",
@@ -816,12 +832,12 @@ func clientHeaderParameters() []any {
 		name, description string
 		required          bool
 	}{
-		{"Video_App_Code", "应用代码，对应应用配置中的 app_code", true},
-		{"Video_App_Package_Code", "应用包代码，对应安装包配置中的 package_code", true},
-		{"Video_App_Version", "应用版本号", true},
+		{"Video_App_Code", "应用代码，对应应用配置中的 app_code；用于 Banner 等内容的应用范围匹配", true},
+		{"Video_App_Package_Code", "应用包代码，对应安装包配置中的 package_code；用于 Banner 等内容的包范围匹配", true},
+		{"Video_App_Version", "应用版本号；用于 Banner 等内容的版本范围匹配", true},
 		{"Video_Phone_Model", "设备型号", true},
 		{"Video_Channel_Code", "渠道代码，对应渠道配置中的 channel_code", true},
-		{"Video_Device_Country", "ISO 3166-1 alpha-2 国家或地区代码；用于投放条件和国家语言配置，未传时根据客户端 IP 推断", false},
+		{"Video_Device_Country", "ISO 3166-1 alpha-2 国家或地区代码；用于 Banner 等内容的国家范围匹配和语言配置，未传时根据客户端 IP 或用户资料推断", false},
 		{"Accept-Language", "国家未配置语言时的响应语言回退值，例如 zh-CN、en-US；最终语言见响应头 Content-Language", false},
 	}
 	parameters := make([]any, 0, len(headers))

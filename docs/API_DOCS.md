@@ -89,7 +89,7 @@ JWT 由 `POST /api/auth/login` 返回。`Authorization` 属于鉴权信息，不
 |---|---|---|
 | GET | `/api/ob_delay` | 获取扁平数值格式的延迟配置对象 |
 | GET | `/api/configs/list` | 获取客户端公开配置 |
-| GET | `/api/banners/list` | 按展示位置和投放条件查询 Banner |
+| GET | `/api/banners/list` | 按展示位置、国家、应用、包、版本及会员状态查询 Banner；范围未绑定表示全部 |
 | GET | `/api/templates/categories` | 查询模板分类 |
 | GET | `/api/templates/recommend` | 查询推荐模板 |
 | GET | `/api/templates/list` | 查询分类及其模板 |

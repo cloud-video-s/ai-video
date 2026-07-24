@@ -10,22 +10,36 @@
 Authorization: Bearer <token>
 ```
 
-只返回 `status = 1` 的 Banner，并按 `sort ASC, id DESC` 排序。
+只返回 `status = 1` 且符合当前客户端投放范围的 Banner，并按 `sort ASC, id DESC` 排序。
 
 ## 查询参数
 
 | 参数 | 必填 | 说明 |
 | --- | --- | --- |
-| `position_key` | 是 | 展示位置标识，如 `home_banner`；只返回该启用位置下的 Banner |
-| `country` | 否 | APP 所在国家二字码，如 `CN`；未传时依次使用用户的设备国家、IP 国家 |
-| `channel` | 否 | 渠道唯一标识或渠道 ID；未传时使用登录用户的 `channel_id` |
-| `channel_package` | 否 | 渠道包标识，对应渠道的 `delivery_package` |
-| `package_code` / `app_package` | 否 | APP 包唯一标识，两个参数作用相同；未传时使用用户的 `app_name` |
-| `package_version` / `app_package_version` | 否 | APP 包版本，两个参数作用相同 |
+| `position_key` | 是 | 展示位置标识，如 `home_banner` |
 
-查询参数未传时，也支持从 `Video_Device_Country`、`Video_Channel_ID`、`Video_Channel_Package`、`Video_App_Package`、`Video_App_Version` 请求头读取当前 APP 环境。查询参数优先于请求头，请求头优先于登录用户保存的信息。
+除 `Authorization` 外，接口使用以下公共请求头识别客户端环境：
 
-同一投放维度未配置关联数据时，Banner 在该维度为全局可见；配置了关联数据时，客户端必须命中。国家、渠道和 APP 包三个维度之间是“并且”关系。无法识别客户端某一维度时，只返回该维度为全局的 Banner。
+| Header | 必填 | 用途 |
+| --- | ---: | --- |
+| `Video_App_Code` | 是 | 匹配 Banner 关联的应用 `app_code` |
+| `Video_App_Package_Code` | 是 | 匹配 Banner 关联的应用包 `package_code` |
+| `Video_App_Version` | 是 | 匹配 Banner 关联的包版本 `version_code` |
+| `Video_Phone_Model` | 是 | 公共客户端上下文；当前不参与 Banner 定向 |
+| `Video_Channel_Code` | 是 | 公共客户端上下文；当前不参与 Banner 定向 |
+| `Video_Device_Country` | 否 | ISO 3166-1 alpha-2 国家或地区代码；未传时依次使用登录用户国家和 IP 推断结果 |
+
+会员类型不由客户端参数指定，服务端根据当前登录用户的订阅状态自动判断为会员或非会员。
+
+## 投放匹配规则
+
+Banner 按以下维度依次匹配：展示位置、国家、应用、应用包、版本和会员类型。所有维度之间是“并且”（AND）关系。
+
+- 某个维度没有有效关联记录时，表示该维度选择“全部”，任何客户端值都可命中。
+- 某个维度存在关联记录时，客户端必须命中至少一条该维度的记录。
+- 管理端选择“全部国家”“全部展示位置”或“全部应用、包和版本”时，不写入对应关联数据。
+- 指定应用包但不选择版本时，只绑定应用和包，不绑定版本，表示该包下全部版本。
+- 客户端某个环境值无法识别时，只返回该维度未绑定关联数据的 Banner。
 
 当 `jump_type = 2` 时，目标模板也必须处于启用且未删除状态。
 

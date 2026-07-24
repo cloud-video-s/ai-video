@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	apiservice "ai-video/internal/server/api/server"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -83,6 +85,24 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	assertResponseParameter(t, banner, "data[].target_template.cover_image", false)
 	assertResponseParameter(t, banner, "data[].target_template.template_video", false)
 	assertResponseParameter(t, banner, "data[].target_template.thumbnail_video", false)
+	assertResponseParameter(t, banner, "data[].id", true)
+	assertResponseParameter(t, banner, "data[].name", true)
+	assertResponseParameter(t, banner, "data[].position_key", true)
+	assertResponseParameter(t, banner, "data[].jump_type", true)
+	assertResponseParameter(t, banner, "data[].cover_image", true)
+	assertResponseParameter(t, banner, "data[].route", true)
+	assertResponseParameter(t, banner, "data[].template_id", false)
+	assertResponseParameter(t, banner, "data[].sort", true)
+	if description, _ := banner["description"].(string); !strings.Contains(description, "Video_App_Code") ||
+		!strings.Contains(description, "没有关联记录") || !strings.Contains(description, "AND") {
+		t.Fatalf("banner targeting rules are incomplete: %q", description)
+	}
+	bannerExample := banner["x-response-example"].(responseExampleEnvelope)
+	bannerData := bannerExample.Data.([]apiservice.ClientBanner)
+	if len(bannerData) != 1 || bannerData[0].PositionKey != "home_banner" || bannerData[0].TargetTemplate == nil ||
+		bannerData[0].TargetTemplate.ID != 42 {
+		t.Fatalf("banner response example is incomplete: %#v", bannerExample)
+	}
 	loginResponse := login["responses"].(map[string]any)["200"].(map[string]any)
 	responseContent := loginResponse["content"].(map[string]any)
 	responseSchema := responseContent["application/json"].(map[string]any)["schema"].(map[string]any)
@@ -278,6 +298,10 @@ func assertCommonHeaderParameters(t *testing.T, document Document) {
 			t.Fatalf("invalid client header parameter %q: %#v", name, parameter)
 		}
 		found[name] = true
+		if (name == "Video_App_Code" || name == "Video_App_Package_Code" || name == "Video_App_Version") &&
+			!strings.Contains(parameter["description"].(string), "Banner") {
+			t.Fatalf("banner targeting purpose is missing from %q: %#v", name, parameter)
+		}
 	}
 	if len(found) != len(wantRequired) {
 		t.Fatalf("common request headers are incomplete: got %v, want %v", found, wantRequired)
