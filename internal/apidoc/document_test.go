@@ -20,9 +20,18 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodGet, Path: "/api/ob_delay", Handler: "api.DelayConfig.All"},
 		{Method: http.MethodGet, Path: "/api/banners/list", Handler: "api.Banner.List"},
 		{Method: http.MethodGet, Path: "/api/templates/recommend", Handler: "api.Template.Recommend"},
-		{Method: http.MethodGet, Path: "/api/templates/category_template_list", Handler: "api.Template.CategoryTemplateList"},
+		{Method: http.MethodGet, Path: "/api/templates/template_list", Handler: "api.Template.TemplateList"},
+		{Method: http.MethodGet, Path: "/api/templates/template_info", Handler: "api.Template.TemplateInfo"},
 		{Method: http.MethodPost, Path: "/api/templates/:id/favorite", Handler: "api.Template.Favorite"},
 		{Method: http.MethodDelete, Path: "/api/templates/:id/favorite", Handler: "api.Template.Unfavorite"},
+		{Method: http.MethodGet, Path: "/api/generation/models", Handler: "api.Generation.Models"},
+		{Method: http.MethodPost, Path: "/api/generation/tasks", Handler: "api.Generation.Create"},
+		{Method: http.MethodGet, Path: "/api/generation/tasks", Handler: "api.Generation.List"},
+		{Method: http.MethodGet, Path: "/api/generation/tasks/:id", Handler: "api.Generation.Get"},
+		{Method: http.MethodGet, Path: "/api/generation/tasks/:id/events", Handler: "api.Generation.Events"},
+		{Method: http.MethodDelete, Path: "/api/generation/tasks/:id", Handler: "api.Generation.Delete"},
+		{Method: http.MethodGet, Path: "/api/vip/recommend", Handler: "api.Vip.Recommend"},
+		{Method: http.MethodPost, Path: "/api/payments/apple/confirm", Handler: "api.Payment.ConfirmApple"},
 		{Method: http.MethodPost, Path: "/api/uploads/images/batches", Handler: "upload.CreateBatch"},
 		{Method: http.MethodPut, Path: "/api/uploads/images/:upload_id/chunks/:index", Handler: "upload.PutChunk"},
 	}
@@ -123,7 +132,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	if recommend["description"] != operationDescriptions["GET /api/templates/recommend"] {
 		t.Fatalf("recommend documentation was not regenerated: %#v", recommend["description"])
 	}
-	categoryTemplates := document.Paths["/api/templates/category_template_list"]["get"].(map[string]any)
+	categoryTemplates := document.Paths["/api/templates/template_list"]["get"].(map[string]any)
 	assertParameter(t, categoryTemplates, "page", "query", false)
 	assertParameter(t, categoryTemplates, "pageSize", "query", false)
 	assertParameter(t, categoryTemplates, "position_key", "query", true)
@@ -131,6 +140,33 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	assertResponseParameter(t, categoryTemplates, "data[].id", true)
 	assertResponseParameter(t, categoryTemplates, "data[].name", true)
 	assertResponseParameterAbsent(t, categoryTemplates, "data[].display_config_id")
+	templateInfo := document.Paths["/api/templates/template_info"]["get"].(map[string]any)
+	assertParameter(t, templateInfo, "template_id", "query", true)
+	assertResponseParameter(t, templateInfo, "data.id", true)
+	createTask := document.Paths["/api/generation/tasks"]["post"].(map[string]any)
+	assertParameter(t, createTask, "model_code", "json", true)
+	assertParameter(t, createTask, "input", "json", true)
+	assertResponseParameter(t, createTask, "data.status", true)
+	listTasks := document.Paths["/api/generation/tasks"]["get"].(map[string]any)
+	assertParameter(t, listTasks, "page", "query", false)
+	assertParameter(t, listTasks, "page_size", "query", false)
+	assertParameter(t, listTasks, "status", "query", false)
+	assertResponseParameter(t, listTasks, "data.list", true)
+	assertResponseParameter(t, listTasks, "data.total", true)
+	events := document.Paths["/api/generation/tasks/{id}/events"]["get"].(map[string]any)
+	assertParameter(t, events, "id", "path", true)
+	eventResponse := events["responses"].(map[string]any)["200"].(map[string]any)
+	eventContent := eventResponse["content"].(map[string]any)
+	if eventContent["text/event-stream"] == nil {
+		t.Fatalf("generation events must document SSE content: %#v", eventResponse)
+	}
+	assertResponseParameter(t, events, "event.data.id", true)
+	vip := document.Paths["/api/vip/recommend"]["get"].(map[string]any)
+	assertParameter(t, vip, "vip_type", "query", true)
+	payment := document.Paths["/api/payments/apple/confirm"]["post"].(map[string]any)
+	assertParameter(t, payment, "bundleID", "json", true)
+	assertParameter(t, payment, "signedTransactionInfo", "json", true)
+	assertResponseParameter(t, payment, "data.transaction_id", true)
 	thirdBinding := document.Paths["/api/third_binding"]["post"].(map[string]any)
 	assertParameter(t, thirdBinding, "third_type", "json", true)
 	assertParameter(t, thirdBinding, "third_code", "json", false)

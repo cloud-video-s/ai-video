@@ -96,7 +96,6 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 
 		vip := authenticated.Group("/vip")
 		{
-			vip.GET("/")
 			vip.GET("/recommend", vipHandler.Recommend)
 		}
 

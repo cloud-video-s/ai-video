@@ -65,4 +65,8 @@ const (
 
 	SystemTypeIos int = 1
 	SystemTypeA   int = 2
+
+	SubscriptionStatusUnsubscribed = 1
+	SubscriptionStatusSubscribed   = 2
+	SubscriptionStatusCanceled     = 3
 )

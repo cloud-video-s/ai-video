@@ -29,11 +29,10 @@ func newVideoVipSubscription(db *gorm.DB, opts ...gen.DOOption) videoVipSubscrip
 	tableName := _videoVipSubscription.videoVipSubscriptionDo.TableName()
 	_videoVipSubscription.ALL = field.NewAsterisk(tableName)
 	_videoVipSubscription.ID = field.NewUint64(tableName, "id")
-	_videoVipSubscription.VipType = field.NewString(tableName, "vip_type")
-	_videoVipSubscription.ProductCode = field.NewString(tableName, "product_code")
+	_videoVipSubscription.VipType = field.NewUint64(tableName, "vip_type")
+	_videoVipSubscription.SukCode = field.NewString(tableName, "suk_code")
 	_videoVipSubscription.Name = field.NewString(tableName, "name")
-	_videoVipSubscription.PlanType = field.NewString(tableName, "plan_type")
-	_videoVipSubscription.AppVersion = field.NewString(tableName, "app_version")
+	_videoVipSubscription.LevelID = field.NewUint64(tableName, "level_id")
 	_videoVipSubscription.Currency = field.NewString(tableName, "currency")
 	_videoVipSubscription.FirstSubscriptionPrice = field.NewFloat64(tableName, "first_subscription_price")
 	_videoVipSubscription.FirstSubscriptionRevenue = field.NewFloat64(tableName, "first_subscription_revenue")
@@ -53,21 +52,13 @@ func newVideoVipSubscription(db *gorm.DB, opts ...gen.DOOption) videoVipSubscrip
 	_videoVipSubscription.SubscriptionPrice = field.NewFloat64(tableName, "subscription_price")
 	_videoVipSubscription.SubscriptionRevenue = field.NewFloat64(tableName, "subscription_revenue")
 	_videoVipSubscription.SubscriptionPoints = field.NewUint64(tableName, "subscription_points")
-	_videoVipSubscription.SubscriptionPeriod = field.NewString(tableName, "subscription_period")
+	_videoVipSubscription.SubscriptionPeriod = field.NewUint32(tableName, "subscription_period")
 	_videoVipSubscription.Sort = field.NewInt64(tableName, "sort")
 	_videoVipSubscription.Description = field.NewString(tableName, "description")
 	_videoVipSubscription.Remark = field.NewString(tableName, "remark")
-	_videoVipSubscription.PlacementKey = field.NewString(tableName, "placement_key")
-	_videoVipSubscription.LevelID = field.NewInt64(tableName, "level_id")
 	_videoVipSubscription.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoVipSubscription.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoVipSubscription.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoVipSubscription.Placement = videoVipSubscriptionBelongsToPlacement{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("Placement", "model.VideoVipPlacement"),
-	}
-
 	_videoVipSubscription.SubscriptionLevel = videoVipSubscriptionBelongsToSubscriptionLevel{
 		db: db.Session(&gorm.Session{}),
 
@@ -127,47 +118,43 @@ func newVideoVipSubscription(db *gorm.DB, opts ...gen.DOOption) videoVipSubscrip
 	return _videoVipSubscription
 }
 
+// videoVipSubscription VIP订阅套餐表
 type videoVipSubscription struct {
 	videoVipSubscriptionDo videoVipSubscriptionDo
 
 	ALL                      field.Asterisk
 	ID                       field.Uint64
-	VipType                  field.String  // android, ios, pc or web
-	ProductCode              field.String  // store product SKU
-	Name                     field.String  // VIP plan name
-	PlanType                 field.String  // plan type
-	AppVersion               field.String  // minimum or targeted app version
-	Currency                 field.String  // ISO currency code
-	FirstSubscriptionPrice   field.Float64 // first subscription price
-	FirstSubscriptionRevenue field.Float64 // first subscription net revenue
-	FirstBonusPoints         field.Uint64  // first subscription bonus points
-	OriginalPrice            field.Float64 // strikethrough price
-	VIPDurationDays          field.Uint    // VIP entitlement duration in days
-	TrialDays                field.Uint    // free trial days
-	RenewalText              field.String  // renewal copy
-	BadgeText                field.String  // badge copy
-	AgreementDefaultChecked  field.Int8    // subscription agreement checked by default
-	DisplayMode              field.Int8    // 0 hidden, 1 normal
-	Status                   field.Int8    // 0 disabled, 1 enabled
-	FreeTrial                field.Int8    // free trial enabled
-	IsSubscription           field.Int8    // recurring subscription
-	IsDefault                field.Int8    // default plan for package and platform
-	SubscriptionDescription  field.String  // subscription description
-	SubscriptionPrice        field.Float64 // renewal subscription price
-	SubscriptionRevenue      field.Float64 // renewal net revenue
-	SubscriptionPoints       field.Uint64  // subscription points
-	SubscriptionPeriod       field.String  // subscription period, such as P1M or P1Y
-	Sort                     field.Int64   // sort order
-	Description              field.String  // plan description
-	Remark                   field.String  // internal remark
-	PlacementKey             field.String  // 展示位置
-	LevelID                  field.Int64   // 会员等级id
-	CreatedAt                field.Time
-	UpdatedAt                field.Time
-	DeletedAt                field.Field
-	Placement                videoVipSubscriptionBelongsToPlacement
-
-	SubscriptionLevel videoVipSubscriptionBelongsToSubscriptionLevel
+	VipType                  field.Uint64  // 套餐类型(展示位置)：1、OB 2、OB拦截 3、app老用户启动 4、app老用户返回拦截 5、默认付费页 6、默认付费页拦截 7、卸载拦截 8、默认订阅套餐界面（预留)
+	SukCode                  field.String  // 商店产品SKU
+	Name                     field.String  // VIP套餐名称
+	LevelID                  field.Uint64  // 会员等级ID
+	Currency                 field.String  // ISO货币代码
+	FirstSubscriptionPrice   field.Float64 // 首次订阅价格
+	FirstSubscriptionRevenue field.Float64 // 首次订阅净收入
+	FirstBonusPoints         field.Uint64  // 首次订阅奖励积分
+	OriginalPrice            field.Float64 // 原价（划线价）
+	VIPDurationDays          field.Uint    // VIP权益持续时间（天）
+	TrialDays                field.Uint    // 免费试用天数
+	RenewalText              field.String  // 续订文案
+	BadgeText                field.String  // 徽章文案
+	AgreementDefaultChecked  field.Int8    // 订阅协议是否默认勾选
+	DisplayMode              field.Int8    // 展示模式：0隐藏，1正常
+	Status                   field.Int8    // 状态：0禁用，1启用
+	FreeTrial                field.Int8    // 是否启用免费试用
+	IsSubscription           field.Int8    // 是否循环订阅
+	IsDefault                field.Int8    // 是否为该平台和套餐组合的默认选项
+	SubscriptionDescription  field.String  // 订阅描述
+	SubscriptionPrice        field.Float64 // 续订价格
+	SubscriptionRevenue      field.Float64 // 续订净收入
+	SubscriptionPoints       field.Uint64  // 订阅赠送积分
+	SubscriptionPeriod       field.Uint32  // 订阅周期 1=周 2=月 3=季 4=年
+	Sort                     field.Int64   // 排序顺序
+	Description              field.String  // 套餐描述
+	Remark                   field.String  // 内部备注
+	CreatedAt                field.Time    // 创建时间
+	UpdatedAt                field.Time    // 更新时间
+	DeletedAt                field.Field   // 删除时间（软删除）
+	SubscriptionLevel        videoVipSubscriptionBelongsToSubscriptionLevel
 
 	Apps videoVipSubscriptionManyToManyApps
 
@@ -195,11 +182,10 @@ func (v videoVipSubscription) As(alias string) *videoVipSubscription {
 func (v *videoVipSubscription) updateTableName(table string) *videoVipSubscription {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
-	v.VipType = field.NewString(table, "vip_type")
-	v.ProductCode = field.NewString(table, "product_code")
+	v.VipType = field.NewUint64(table, "vip_type")
+	v.SukCode = field.NewString(table, "suk_code")
 	v.Name = field.NewString(table, "name")
-	v.PlanType = field.NewString(table, "plan_type")
-	v.AppVersion = field.NewString(table, "app_version")
+	v.LevelID = field.NewUint64(table, "level_id")
 	v.Currency = field.NewString(table, "currency")
 	v.FirstSubscriptionPrice = field.NewFloat64(table, "first_subscription_price")
 	v.FirstSubscriptionRevenue = field.NewFloat64(table, "first_subscription_revenue")
@@ -219,12 +205,10 @@ func (v *videoVipSubscription) updateTableName(table string) *videoVipSubscripti
 	v.SubscriptionPrice = field.NewFloat64(table, "subscription_price")
 	v.SubscriptionRevenue = field.NewFloat64(table, "subscription_revenue")
 	v.SubscriptionPoints = field.NewUint64(table, "subscription_points")
-	v.SubscriptionPeriod = field.NewString(table, "subscription_period")
+	v.SubscriptionPeriod = field.NewUint32(table, "subscription_period")
 	v.Sort = field.NewInt64(table, "sort")
 	v.Description = field.NewString(table, "description")
 	v.Remark = field.NewString(table, "remark")
-	v.PlacementKey = field.NewString(table, "placement_key")
-	v.LevelID = field.NewInt64(table, "level_id")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -256,13 +240,12 @@ func (v *videoVipSubscription) GetFieldByName(fieldName string) (field.OrderExpr
 }
 
 func (v *videoVipSubscription) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 41)
+	v.fieldMap = make(map[string]field.Expr, 37)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["vip_type"] = v.VipType
-	v.fieldMap["product_code"] = v.ProductCode
+	v.fieldMap["suk_code"] = v.SukCode
 	v.fieldMap["name"] = v.Name
-	v.fieldMap["plan_type"] = v.PlanType
-	v.fieldMap["app_version"] = v.AppVersion
+	v.fieldMap["level_id"] = v.LevelID
 	v.fieldMap["currency"] = v.Currency
 	v.fieldMap["first_subscription_price"] = v.FirstSubscriptionPrice
 	v.fieldMap["first_subscription_revenue"] = v.FirstSubscriptionRevenue
@@ -286,8 +269,6 @@ func (v *videoVipSubscription) fillFieldMap() {
 	v.fieldMap["sort"] = v.Sort
 	v.fieldMap["description"] = v.Description
 	v.fieldMap["remark"] = v.Remark
-	v.fieldMap["placement_key"] = v.PlacementKey
-	v.fieldMap["level_id"] = v.LevelID
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
@@ -296,8 +277,6 @@ func (v *videoVipSubscription) fillFieldMap() {
 
 func (v videoVipSubscription) clone(db *gorm.DB) videoVipSubscription {
 	v.videoVipSubscriptionDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.Placement.db = db.Session(&gorm.Session{Initialized: true})
-	v.Placement.db.Statement.ConnPool = db.Statement.ConnPool
 	v.SubscriptionLevel.db = db.Session(&gorm.Session{Initialized: true})
 	v.SubscriptionLevel.db.Statement.ConnPool = db.Statement.ConnPool
 	v.Apps.db = db.Session(&gorm.Session{Initialized: true})
@@ -315,7 +294,6 @@ func (v videoVipSubscription) clone(db *gorm.DB) videoVipSubscription {
 
 func (v videoVipSubscription) replaceDB(db *gorm.DB) videoVipSubscription {
 	v.videoVipSubscriptionDo.ReplaceDB(db)
-	v.Placement.db = db.Session(&gorm.Session{})
 	v.SubscriptionLevel.db = db.Session(&gorm.Session{})
 	v.Apps.db = db.Session(&gorm.Session{})
 	v.Packages.db = db.Session(&gorm.Session{})
@@ -323,87 +301,6 @@ func (v videoVipSubscription) replaceDB(db *gorm.DB) videoVipSubscription {
 	v.Country.db = db.Session(&gorm.Session{})
 	v.Channels.db = db.Session(&gorm.Session{})
 	return v
-}
-
-type videoVipSubscriptionBelongsToPlacement struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a videoVipSubscriptionBelongsToPlacement) Where(conds ...field.Expr) *videoVipSubscriptionBelongsToPlacement {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoVipSubscriptionBelongsToPlacement) WithContext(ctx context.Context) *videoVipSubscriptionBelongsToPlacement {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoVipSubscriptionBelongsToPlacement) Session(session *gorm.Session) *videoVipSubscriptionBelongsToPlacement {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoVipSubscriptionBelongsToPlacement) Model(m *model.VideoVipSubscription) *videoVipSubscriptionBelongsToPlacementTx {
-	return &videoVipSubscriptionBelongsToPlacementTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoVipSubscriptionBelongsToPlacement) Unscoped() *videoVipSubscriptionBelongsToPlacement {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoVipSubscriptionBelongsToPlacementTx struct{ tx *gorm.Association }
-
-func (a videoVipSubscriptionBelongsToPlacementTx) Find() (result *model.VideoVipPlacement, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoVipSubscriptionBelongsToPlacementTx) Append(values ...*model.VideoVipPlacement) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoVipSubscriptionBelongsToPlacementTx) Replace(values ...*model.VideoVipPlacement) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoVipSubscriptionBelongsToPlacementTx) Delete(values ...*model.VideoVipPlacement) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoVipSubscriptionBelongsToPlacementTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoVipSubscriptionBelongsToPlacementTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoVipSubscriptionBelongsToPlacementTx) Unscoped() *videoVipSubscriptionBelongsToPlacementTx {
-	a.tx = a.tx.Unscoped()
-	return &a
 }
 
 type videoVipSubscriptionBelongsToSubscriptionLevel struct {

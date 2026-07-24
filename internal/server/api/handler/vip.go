@@ -24,7 +24,7 @@ func (h *VipHandler) Recommend(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	result, err := h.svc.Recommend(c, &req)
+	result, err := h.svc.VipRecommend(c, &req)
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return

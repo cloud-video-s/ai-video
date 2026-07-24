@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"ai-video/internal/commerce"
+	"ai-video/internal/generation"
 	apiservice "ai-video/internal/server/api/server"
 
 	"ai-video/internal/gen/model"
@@ -38,6 +40,28 @@ type uploadBatchResponse struct {
 
 type uploadBatchRequest struct {
 	Files []upload.FileSpec `json:"files" binding:"required,min=1"`
+}
+
+type generationModelResponse struct {
+	Code              string         `json:"code"`
+	Name              string         `json:"name"`
+	Provider          string         `json:"provider"`
+	ModelName         string         `json:"model_name"`
+	Description       string         `json:"description"`
+	DefaultParameters map[string]any `json:"default_parameters"`
+}
+
+type generationTaskListRequest struct {
+	Page     int    `form:"page" binding:"omitempty,min=1"`
+	PageSize int    `form:"page_size" binding:"omitempty,min=1,max=100"`
+	Status   string `form:"status" binding:"omitempty,max=32"`
+}
+
+type generationTaskListResponse struct {
+	List  []generation.TaskView `json:"list"`
+	Total int64                 `json:"total"`
+	Page  int                   `json:"page"`
+	Size  int                   `json:"size"`
 }
 
 type responseExampleEnvelope struct {
@@ -86,9 +110,17 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/templates/list":                          {query: typeOf[apiservice.ClientTemplateRequest](), response: typeOf[[]apiservice.ClientTemplateType]()},
 	"GET /api/templates/categories":                    {query: typeOf[apiservice.ClientTemplateRequest](), response: typeOf[[]apiservice.ClientTemplateType]()},
 	"GET /api/templates/template_list":                 {query: typeOf[apiservice.TemplateListRequest](), response: typeOf[[]apiservice.ClientTemplate]()},
+	"GET /api/templates/template_info":                 {query: typeOf[apiservice.TemplateInfoRequest](), response: typeOf[apiservice.ClientTemplate]()},
 	"POST /api/templates/:id/favorite":                 {response: typeOf[apiservice.TemplateFavoriteResponse]()},
 	"DELETE /api/templates/:id/favorite":               {response: typeOf[apiservice.TemplateFavoriteResponse]()},
-	"GET /api/vip/recommend":                           {response: typeOf[map[string]any]()},
+	"GET /api/generation/models":                       {response: typeOf[[]generationModelResponse]()},
+	"POST /api/generation/tasks":                       {body: typeOf[generation.CreateTaskRequest](), response: typeOf[generation.TaskView]()},
+	"GET /api/generation/tasks":                        {query: typeOf[generationTaskListRequest](), response: typeOf[generationTaskListResponse]()},
+	"GET /api/generation/tasks/:id":                    {response: typeOf[generation.TaskView]()},
+	"GET /api/generation/tasks/:id/events":             {response: typeOf[generation.TaskView]()},
+	"DELETE /api/generation/tasks/:id":                 {},
+	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[model.VideoVipSubscription]()},
+	"POST /api/payments/apple/confirm":                 {body: typeOf[commerce.ApplePurchaseRequest](), response: typeOf[commerce.ApplePurchaseResponse]()},
 	"POST /api/uploads/images/batches":                 {response: typeOf[uploadBatchResponse]()},
 	"POST /api/uploads/videos/batches":                 {response: typeOf[uploadBatchResponse]()},
 	"GET /api/uploads/images/:upload_id":               {response: typeOf[upload.Session]()},
@@ -106,11 +138,16 @@ var operationDescriptions = map[string]string{
 	"GET /api/users/me": "获取当前登录用户资料。", "PUT /api/users/me/country": "更新当前用户的设备国家或地区。",
 	"GET /api/users/me/identities": "查询当前用户已绑定的第三方身份。", "DELETE /api/users/me/identities/:provider": "解绑指定第三方身份。",
 	"GET /api/ob_delay": "获取客户端延迟配置。", "GET /api/banners/list": "按展示位置和当前用户投放条件查询 Banner。",
-	"GET /api/templates/recommend": "查询指定展示位置已配置的推荐模板，仅返回模板数据。", "GET /api/templates/by-position": "查询已配置到指定展示位置的模板。",
-	"GET /api/templates/list": "查询首页分类及其模板。", "GET /api/templates/categories": "查询模板分类及其模板。",
-	"GET /api/templates/category_template_list": "分页查询指定模板分类和展示位置下的模板，仅返回模板数据。",
-	"POST /api/templates/:id/favorite":          "收藏指定模板；重复收藏保持幂等。", "DELETE /api/templates/:id/favorite": "取消收藏指定模板；重复取消保持幂等。",
-	"GET /api/vip/recommend": "查询当前用户适用的推荐 VIP 套餐。",
+	"GET /api/templates/recommend": "查询指定展示位置已配置的推荐模板，仅返回模板数据。",
+	"GET /api/templates/list":      "查询首页分类及其模板。", "GET /api/templates/categories": "查询模板分类及其模板。",
+	"GET /api/templates/template_list": "分页查询指定模板分类和展示位置下的模板，仅返回模板数据。",
+	"GET /api/templates/template_info": "根据模板 ID 查询当前用户可见的模板详情。",
+	"POST /api/templates/:id/favorite": "收藏指定模板；重复收藏保持幂等。", "DELETE /api/templates/:id/favorite": "取消收藏指定模板；重复取消保持幂等。",
+	"GET /api/generation/models": "查询客户端可用的生成模型和默认参数。", "POST /api/generation/tasks": "创建并提交视频生成任务。",
+	"GET /api/generation/tasks": "分页查询当前用户的生成任务。", "GET /api/generation/tasks/:id": "查询指定生成任务详情。",
+	"GET /api/generation/tasks/:id/events": "通过 SSE 实时订阅生成任务状态，任务结束后连接关闭。", "DELETE /api/generation/tasks/:id": "删除指定生成任务。",
+	"GET /api/vip/recommend":           "查询当前用户适用的推荐 VIP 套餐。",
+	"POST /api/payments/apple/confirm": "校验 StoreKit 交易、创建订单并发放对应商品。",
 }
 
 var operationSummaries = map[string]string{
@@ -120,10 +157,14 @@ var operationSummaries = map[string]string{
 	"PUT /api/users/me/country": "更新用户国家", "GET /api/users/me/identities": "查询绑定身份",
 	"DELETE /api/users/me/identities/:provider": "解绑第三方身份", "GET /api/ob_delay": "获取延迟配置",
 	"GET /api/banners/list": "查询 Banner", "GET /api/templates/recommend": "查询推荐模板",
-	"GET /api/templates/by-position": "按位置查询模板", "GET /api/templates/list": "查询模板列表",
-	"GET /api/templates/categories": "查询模板分类", "GET /api/templates/category_template_list": "查询分类模板",
+	"GET /api/templates/list": "查询模板列表", "GET /api/templates/categories": "查询模板分类",
+	"GET /api/templates/template_list": "查询分类模板", "GET /api/templates/template_info": "查询模板详情",
 	"POST /api/templates/:id/favorite":   "收藏模板",
 	"DELETE /api/templates/:id/favorite": "取消收藏模板", "GET /api/vip/recommend": "查询推荐 VIP 套餐",
+	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务",
+	"GET /api/generation/tasks": "查询生成任务", "GET /api/generation/tasks/:id": "获取生成任务",
+	"GET /api/generation/tasks/:id/events": "订阅生成任务事件", "DELETE /api/generation/tasks/:id": "删除生成任务",
+	"POST /api/payments/apple/confirm": "确认 Apple 支付",
 	"POST /api/uploads/images/batches": "初始化图片上传", "POST /api/uploads/videos/batches": "初始化视频上传",
 	"GET /api/uploads/images/:upload_id": "查询图片上传进度", "GET /api/uploads/videos/:upload_id": "查询视频上传进度",
 	"PUT /api/uploads/images/:upload_id/chunks/:index": "上传图片分片", "PUT /api/uploads/videos/:upload_id/chunks/:index": "上传视频分片",
@@ -153,7 +194,15 @@ var fieldDescriptions = map[string]string{
 	"favorite_count": "收藏次数", "favorited": "当前用户是否已收藏", "view_count": "浏览次数", "display_config_id": "展示配置 ID", "display_sort": "展示排序",
 	"page": "页码，从 1 开始", "pageSize": "每页数量", "template_type_id": "模板分类 ID", "third_type": "第三方身份类型：google 或 apple",
 	"third_code": "第三方平台用户标识",
-	"files":      "待上传文件列表", "file_name": "文件名", "size": "文件字节数", "content_type": "MIME 类型", "sha256": "文件 SHA-256",
+	"model_code": "生成模型代码", "client_request_id": "客户端幂等请求 ID", "input": "模型输入参数", "parameters": "模型扩展参数",
+	"model_config_id": "生成模型配置 ID", "external_task_id": "第三方任务 ID", "progress": "任务进度，范围 0-100",
+	"local_urls": "生成结果的本地访问地址", "error_message": "任务失败原因", "usage_duration": "任务耗时",
+	"default_parameters": "模型默认参数", "model_name": "提供方模型名称",
+	"bundleID": "Apple Bundle ID", "productID": "Apple 商品 ID", "transactionID": "Apple 交易 ID",
+	"originalTransactionID": "Apple 原始交易 ID", "signedTransactionInfo": "Apple 签名交易 JWS",
+	"purchaseDate": "购买时间", "expirationDate": "订阅到期时间", "revocationDate": "撤销时间", "isActive": "订阅是否有效",
+	"vip_type": "VIP 套餐类型",
+	"files":    "待上传文件列表", "file_name": "文件名", "size": "文件字节数", "content_type": "MIME 类型", "sha256": "文件 SHA-256",
 	"uploads": "上传会话列表", "upload_id": "上传会话 ID", "kind": "媒体类型：image 或 video", "original_name": "原始文件名",
 	"extension": "文件扩展名", "total_size": "文件总字节数", "chunk_size": "分片字节数", "total_chunks": "分片总数",
 	"uploaded_chunks": "已上传分片序号", "expected_sha256": "预期文件 SHA-256", "uploader_type": "上传者类型",
@@ -163,7 +212,8 @@ var fieldDescriptions = map[string]string{
 
 var resourceNames = map[string]string{
 	"health": "健康检查", "configs": "系统配置", "auth": "认证", "users": "用户",
-	"banners": "Banner", "templates": "视频模板", "uploads": "文件上传", "profile": "个人资料", "identities": "第三方账号",
+	"banners": "Banner", "templates": "视频模板", "generation": "内容生成", "payments": "支付", "vip": "VIP",
+	"uploads": "文件上传", "profile": "个人资料", "identities": "第三方账号",
 }
 
 var publicRoutes = map[string]bool{
@@ -171,7 +221,11 @@ var publicRoutes = map[string]bool{
 }
 
 var paginatedRoutes = map[string]bool{
-	"/api/uploads": true,
+	"/api/generation/tasks": true,
+}
+
+var sseRoutes = map[string]bool{
+	"GET /api/generation/tasks/:id/events": true,
 }
 
 var operationIDSanitizer = regexp.MustCompile(`[^A-Za-z0-9]+`)
@@ -255,10 +309,24 @@ func buildOperation(route gin.RouteInfo, pathParams []string, tag, resource stri
 			"403": errorResponse("无权限"), "500": errorResponse("服务器错误"),
 		},
 	}
-	operation["responses"].(map[string]any)["200"] = successResponse(metadata.response)
-	responseSchema := successResponseSchema(metadata.response)
-	operation["x-response-parameters"] = flattenResponseSchema(responseSchema, "", true)
-	operation["x-response-example"] = buildResponseExample(key, responseSchema)
+	if sseRoutes[key] {
+		eventSchema := responseSchemaForType(metadata.response)
+		operation["responses"].(map[string]any)["200"] = map[string]any{
+			"description": "SSE 任务状态事件流；事件名为 task，心跳事件名为 heartbeat",
+			"content": map[string]any{"text/event-stream": map[string]any{
+				"schema": map[string]any{"type": "string", "example": "event: task\ndata: {...}\n\n"},
+			}},
+		}
+		operation["x-response-parameters"] = flattenResponseSchema(eventSchema, "event.data", true)
+		operation["x-response-example"] = map[string]any{
+			"event": "task", "data": exampleForSchema(eventSchema, "data"),
+		}
+	} else {
+		operation["responses"].(map[string]any)["200"] = successResponse(metadata.response)
+		responseSchema := successResponseSchema(metadata.response)
+		operation["x-response-parameters"] = flattenResponseSchema(responseSchema, "", true)
+		operation["x-response-example"] = buildResponseExample(key, responseSchema)
+	}
 	if !publicRoutes[key] {
 		operation["security"] = []map[string][]string{{"bearerAuth": {}}}
 	}

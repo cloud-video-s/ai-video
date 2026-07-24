@@ -59,7 +59,7 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		config.Log.Errorf("server forced to shutdown: %v", err)
 	}
-	generation.Stop()
+	//generation.Stop()
 	config.Close()
 	config.Log.Info("server stopped")
 }

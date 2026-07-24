@@ -25,10 +25,10 @@ type VIPSubscriptionListFilter struct {
 	PlacementKey   string
 	LevelID        int64
 	PlanType       string
-	VipType        string
-	DisplayMode    *int8
-	Status         *int8
-	IsSubscription *bool
+	VipType        uint64
+	DisplayMode    int8
+	Status         int8
+	IsSubscription int8
 	Keyword        string
 }
 
@@ -73,35 +73,25 @@ func (r *VIPSubscriptionRepo) PageList(ctx context.Context, page, pageSize int, 
 			}
 			dao = dao.Where(vip.ID.In(ids...))
 		}
-		if filter.PlacementKey != "" {
-			dao = dao.Where(vip.PlacementKey.Eq(filter.PlacementKey))
-		}
 		if filter.LevelID != 0 {
-			dao = dao.Where(vip.LevelID.Eq(filter.LevelID))
+			dao = dao.Where(vip.LevelID.Eq(uint64(filter.LevelID)))
 		}
-		if filter.PlanType != "" {
-			dao = dao.Where(vip.PlanType.Eq(filter.PlanType))
-		}
-		if filter.VipType != "" {
+		if filter.VipType > 0 {
 			dao = dao.Where(vip.VipType.Eq(filter.VipType))
 		}
-		if filter.DisplayMode != nil {
-			dao = dao.Where(vip.DisplayMode.Eq(*filter.DisplayMode))
+		if filter.DisplayMode > 0 {
+			dao = dao.Where(vip.DisplayMode.Eq(filter.DisplayMode))
 		}
-		if filter.Status != nil {
-			dao = dao.Where(vip.Status.Eq(*filter.Status))
+		if filter.Status > 0 {
+			dao = dao.Where(vip.Status.Eq(filter.Status))
 		}
-		if filter.IsSubscription != nil {
-			value := int8(0)
-			if *filter.IsSubscription {
-				value = 1
-			}
-			dao = dao.Where(vip.IsSubscription.Eq(value))
+		if filter.IsSubscription > 0 {
+			dao = dao.Where(vip.IsSubscription.Eq(filter.IsSubscription))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
 			dao = dao.Where(field.Or(
-				vip.ProductCode.Like(keyword), vip.Name.Like(keyword),
+				vip.SukCode.Like(keyword), vip.Name.Like(keyword),
 				vip.Description.Like(keyword), vip.Remark.Like(keyword),
 			))
 		}
@@ -143,40 +133,30 @@ func (r *VIPSubscriptionRepo) Recommend(ctx context.Context, req *VIPSubscriptio
 		return nil, err
 	}
 	if req.AppCode != "" || req.PackageCode != "" || req.VersionCode != "" || req.CountryCode != "" {
-		if len(ids) == 0 {
-			return nil, nil
+		if len(ids) > 0 {
+			dao = dao.Where(q.ID.In(ids...))
 		}
-		dao = dao.Where(q.ID.In(ids...))
 	}
-	//if req.PlacementKey != "" {
-	//	dao = dao.Where(q.PlacementKey.Eq(req.PlacementKey))
-	//}
-	if req.LevelID != 0 {
-		dao = dao.Where(q.LevelID.Eq(req.LevelID))
+	if req.LevelID > 0 {
+		dao = dao.Where(q.LevelID.Eq(uint64(req.LevelID)))
 	}
-	if req.PlanType != "" {
-		dao = dao.Where(q.PlanType.Eq(req.PlanType))
-	}
-	if req.VipType != "" {
+
+	if req.VipType > 0 {
 		dao = dao.Where(q.VipType.Eq(req.VipType))
 	}
-	if req.DisplayMode != nil {
-		dao = dao.Where(q.DisplayMode.Eq(*req.DisplayMode))
+	if req.DisplayMode > 0 {
+		dao = dao.Where(q.DisplayMode.Eq(req.DisplayMode))
 	}
-	if req.Status != nil {
-		dao = dao.Where(q.Status.Eq(*req.Status))
+	if req.Status > 0 {
+		dao = dao.Where(q.Status.Eq(req.Status))
 	}
-	if req.IsSubscription != nil {
-		value := int8(0)
-		if *req.IsSubscription {
-			value = 1
-		}
-		dao = dao.Where(q.IsSubscription.Eq(value))
+	if req.IsSubscription > 0 {
+		dao = dao.Where(q.IsSubscription.Eq(req.IsSubscription))
 	}
 	if req.Keyword != "" {
 		keyword := "%" + req.Keyword + "%"
 		dao = dao.Where(field.Or(
-			q.ProductCode.Like(keyword), q.Name.Like(keyword),
+			q.SukCode.Like(keyword), q.Name.Like(keyword),
 			q.Description.Like(keyword), q.Remark.Like(keyword),
 		))
 	}
@@ -202,14 +182,12 @@ func (r *VIPSubscriptionRepo) loadRecords(ctx context.Context, items []model.Vid
 		return result, nil
 	}
 	subscriptionIDs := make([]uint64, 0, len(items))
-	placementKeys := make([]string, 0, len(items))
 	levelIDs := make([]uint64, 0, len(items))
 	for i := range items {
 		result[i].VideoVipSubscription = items[i]
 		subscriptionIDs = append(subscriptionIDs, items[i].ID)
-		placementKeys = append(placementKeys, items[i].PlacementKey)
 		if items[i].LevelID > 0 {
-			levelIDs = append(levelIDs, uint64(items[i].LevelID))
+			levelIDs = append(levelIDs, items[i].LevelID)
 		}
 	}
 	indexByID := make(map[uint64]int, len(items))
@@ -218,16 +196,7 @@ func (r *VIPSubscriptionRepo) loadRecords(ctx context.Context, items []model.Vid
 	}
 
 	q := qFrom(ctx)
-	placements, err := q.VideoVipPlacement.WithContext(ctx).Where(q.VideoVipPlacement.PlacementKey.In(placementKeys...)).Find()
-	if err != nil {
-		return nil, err
-	}
-	placementByKey := make(map[string]*model.VideoVipPlacement, len(placements))
-	for _, item := range placements {
-		if item != nil {
-			placementByKey[item.PlacementKey] = item
-		}
-	}
+
 	levels, err := q.VideoVipSubscriptionLevel.WithContext(ctx).Where(q.VideoVipSubscriptionLevel.ID.In(levelIDs...)).Find()
 	if err != nil {
 		return nil, err
@@ -239,9 +208,8 @@ func (r *VIPSubscriptionRepo) loadRecords(ctx context.Context, items []model.Vid
 		}
 	}
 	for i := range items {
-		result[i].Placement = placementByKey[items[i].PlacementKey]
 		if items[i].LevelID > 0 {
-			result[i].SubscriptionLevel = levelByID[uint64(items[i].LevelID)]
+			result[i].SubscriptionLevel = levelByID[items[i].LevelID]
 		}
 	}
 
@@ -353,19 +321,19 @@ func (r *VIPSubscriptionRepo) GetAppleProduct(ctx context.Context, productID, pa
 	}
 	vip := q.VideoVipSubscription
 	return vip.WithContext(ctx).Where(
-		vip.ID.In(subscriptionIDs...), vip.VipType.Eq("ios"), vip.ProductCode.Eq(productID), vip.Status.Eq(1),
+		vip.ID.In(subscriptionIDs...), vip.SukCode.Eq(productID), vip.Status.Eq(1),
 	).First()
 }
 
 func (r *VIPSubscriptionRepo) UpdateFields(ctx context.Context, item *model.VideoVipSubscription) error {
 	q := qFrom(ctx).VideoVipSubscription
 	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID)).Select(
-		q.VipType, q.ProductCode, q.Name, q.LevelID, q.PlanType, q.AppVersion, q.Currency,
+		q.VipType, q.SukCode, q.Name, q.LevelID, q.Currency,
 		q.FirstSubscriptionPrice, q.FirstSubscriptionRevenue, q.FirstBonusPoints, q.OriginalPrice,
 		q.VIPDurationDays, q.TrialDays, q.RenewalText, q.BadgeText, q.AgreementDefaultChecked,
 		q.DisplayMode, q.Status, q.FreeTrial, q.IsSubscription, q.IsDefault,
 		q.SubscriptionDescription, q.SubscriptionPrice, q.SubscriptionRevenue, q.SubscriptionPoints,
-		q.SubscriptionPeriod, q.Sort, q.Description, q.Remark, q.PlacementKey,
+		q.SubscriptionPeriod, q.Sort, q.Description, q.Remark,
 	).Updates(item)
 	return err
 }
@@ -488,7 +456,7 @@ func nextVIPSubscriptionAppID() uint64 {
 	}
 }
 
-func (r *VIPSubscriptionRepo) ClearDefaults(ctx context.Context, packageCode string, vipType string, exceptID uint64) error {
+func (r *VIPSubscriptionRepo) ClearDefaults(ctx context.Context, packageCode string, vipType uint64, exceptID uint64) error {
 	q := qFrom(ctx)
 	relation := q.VideoVipSubscriptionPackage
 	var ids []uint64

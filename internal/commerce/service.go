@@ -121,7 +121,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 			if paidCount == 0 && !req.Renewal {
 				price, bonus = product.FirstSubscriptionPrice, product.FirstBonusPoints
 			}
-			order.ProductCode, order.ProductName, order.Currency = product.ProductCode, product.Name, strings.ToUpper(product.Currency)
+			order.ProductCode, order.ProductName, order.Currency = product.SukCode, product.Name, strings.ToUpper(product.Currency)
 			order.ProductAmount, order.PayableAmount, order.BonusPoints = price, price, bonus
 			order.VipLevel, order.VipDurationDays = uint(product.LevelID), product.VIPDurationDays
 		case domain.OrderProductPointsPackage:
