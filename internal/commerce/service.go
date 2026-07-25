@@ -121,7 +121,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 			if paidCount == 0 && !req.Renewal {
 				price, bonus = product.FirstSubscriptionPrice, product.FirstBonusPoints
 			}
-			order.ProductCode, order.ProductName, order.Currency = product.SukCode, product.Name, strings.ToUpper(product.Currency)
+			order.SukCode, order.ProductName, order.Currency = product.SukCode, product.Name, strings.ToUpper(product.Currency)
 			order.ProductAmount, order.PayableAmount, order.BonusPoints = price, price, bonus
 			order.VipLevel, order.VipDurationDays = uint(product.LevelID), product.VIPDurationDays
 		case domain.OrderProductPointsPackage:
@@ -132,7 +132,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 			if product.Status != 1 {
 				return errors.New("points product is disabled")
 			}
-			order.ProductCode, order.ProductName, order.Currency = product.ProductCode, product.Name, strings.ToUpper(product.Currency)
+			order.SukCode, order.ProductName, order.Currency = product.ProductCode, product.Name, strings.ToUpper(product.Currency)
 			order.ProductAmount, order.PayableAmount, order.BonusPoints = product.SalePrice, product.SalePrice, product.Points
 		default:
 			return ErrUnsupportedProduct
@@ -192,7 +192,7 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 		if order.Status != domain.OrderStatusPending {
 			return repository.ErrOrderNotPending
 		}
-		if strings.TrimSpace(result.ProductCode) != order.ProductCode ||
+		if strings.TrimSpace(result.ProductCode) != order.SukCode ||
 			strings.ToUpper(strings.TrimSpace(result.Currency)) != order.Currency ||
 			math.Abs(result.PaidAmount-order.PayableAmount) > 0.005 {
 			return ErrPaymentMismatch

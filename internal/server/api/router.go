@@ -48,6 +48,11 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 
 	rg.GET("/health", healthHandler.Health)
 	rg.POST("/auth/login", authHandler.Login)
+
+	// App Store Server Notifications V2 Webhook（公开端点，Apple 服务器调用，无需鉴权）
+	// 该 URL 必须在 App Store Connect → App → 服务中配置为版本 2 的通知地址。
+	rg.POST("/payments/apple/notification", paymentHandler.AppleServerNotification)
+
 	authenticated := rg.Group("", middleware.ApiAuth(repository.NewAppUserRepo()))
 	{
 		authenticated.GET("/ob_delay", delayConfigHandler.All)

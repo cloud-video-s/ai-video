@@ -38,3 +38,10 @@ func dbFrom(ctx context.Context) *gorm.DB {
 func qFrom(ctx context.Context) *query.Query {
 	return query.Use(dbFrom(ctx))
 }
+
+// QFrom returns the active Query helper bound to ctx (transaction-aware). This
+// is exposed so service-layer packages can build targeted queries without an
+// extra repo method per one-off lookup.
+func QFrom(ctx context.Context) *query.Query {
+	return qFrom(ctx)
+}
