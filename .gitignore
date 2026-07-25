@@ -1,4 +1,5 @@
 /logs/app.log
+/web/admin/node_modules/
 /storage/uploads/.sessions/2d84ccaca7400fc2050a013140690704.json
 /storage/uploads/.sessions/e219ce0cdc53a78b0e77aaf7c428895c.json
 /storage/uploads/files/images/2026/07/16/5fb01c6d754e8997d0c3ce18da736f7c.jpg
@@ -22389,3 +22390,5 @@
 /web/admin/node_modules/.vite/deps/element-plus_es_components_slider_style_css.js.map
 /web/admin/node_modules/.vite/deps/element-plus_es_components_upload_style_css.js
 /web/admin/node_modules/.vite/deps/element-plus_es_components_upload_style_css.js.map
+/web/admin/dist/
+/logs/
