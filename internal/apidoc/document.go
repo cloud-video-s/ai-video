@@ -155,6 +155,7 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[apiservice.VIPRecommendResponse]()},
 	"GET /api/vip/list":                                {query: typeOf[apiservice.VipVipListRequest](), response: typeOf[[]apiservice.VIPRecommendResponse]()},
 	"POST /api/payments/apple/confirm":                 {body: typeOf[commerce.ApplePurchaseRequest](), response: typeOf[commerce.ApplePurchaseResponse]()},
+	"POST /api/payments/apple/notification":            {body: typeOf[commerce.AppleNotificationRequest](), response: typeOf[commerce.AppleNotificationSummary]()},
 	"POST /api/uploads/images/batches":                 {response: typeOf[uploadBatchResponse]()},
 	"POST /api/uploads/videos/batches":                 {response: typeOf[uploadBatchResponse]()},
 	"GET /api/uploads/images/:upload_id":               {response: typeOf[upload.Session]()},
@@ -181,9 +182,10 @@ var operationDescriptions = map[string]string{
 	"GET /api/generation/models": "查询客户端可用的生成模型和默认参数。", "POST /api/generation/tasks": "创建并提交视频生成任务。",
 	"GET /api/generation/tasks": "分页查询当前用户的生成任务。", "GET /api/generation/tasks/:id": "查询指定生成任务详情。",
 	"GET /api/generation/tasks/:id/events": "通过 SSE 实时订阅生成任务状态，任务结束后连接关闭。", "DELETE /api/generation/tasks/:id": "删除指定生成任务。",
-	"GET /api/vip/recommend":           "查询当前用户适用的推荐 VIP 套餐。",
-	"GET /api/vip/list":                "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
-	"POST /api/payments/apple/confirm": "校验 StoreKit 交易、创建订单并发放对应商品。",
+	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
+	"GET /api/vip/list":                     "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
+	"POST /api/payments/apple/confirm":      "校验 StoreKit 交易、创建订单并发放对应商品。",
+	"POST /api/payments/apple/notification": "接收 App Store Server Notifications V2 回调。该公开端点由 Apple 服务器调用，不需要 Bearer Token 或客户端公共请求头；服务端按通知中的 signedPayload 验签并幂等处理退款、续费、订阅过期等事件。",
 }
 
 var operationSummaries = map[string]string{
@@ -201,7 +203,7 @@ var operationSummaries = map[string]string{
 	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务",
 	"GET /api/generation/tasks": "查询生成任务", "GET /api/generation/tasks/:id": "获取生成任务",
 	"GET /api/generation/tasks/:id/events": "订阅生成任务事件", "DELETE /api/generation/tasks/:id": "删除生成任务",
-	"POST /api/payments/apple/confirm": "确认 Apple 支付",
+	"POST /api/payments/apple/confirm": "确认 Apple 支付", "POST /api/payments/apple/notification": "接收 Apple 支付通知",
 	"POST /api/uploads/images/batches": "初始化图片上传", "POST /api/uploads/videos/batches": "初始化视频上传",
 	"GET /api/uploads/images/:upload_id": "查询图片上传进度", "GET /api/uploads/videos/:upload_id": "查询视频上传进度",
 	"PUT /api/uploads/images/:upload_id/chunks/:index": "上传图片分片", "PUT /api/uploads/videos/:upload_id/chunks/:index": "上传视频分片",
@@ -237,6 +239,11 @@ var fieldDescriptions = map[string]string{
 	"default_parameters": "模型默认参数", "model_name": "提供方模型名称",
 	"bundleID": "Apple Bundle ID", "productID": "Apple 商品 ID", "transactionID": "Apple 交易 ID",
 	"originalTransactionID": "Apple 原始交易 ID", "signedTransactionInfo": "Apple 签名交易 JWS",
+	"signedPayload": "App Store Server Notifications V2 签名载荷 JWS", "notification_type": "Apple 通知类型",
+	"subtype": "Apple 通知子类型", "notification_uuid": "Apple 通知唯一标识", "bundle_id": "Apple Bundle ID",
+	"environment": "App Store 环境", "original_transaction_id": "Apple 原始交易 ID", "transaction_id": "Apple 交易 ID",
+	"product_id": "Apple 商品 ID", "processed": "是否已完成对应业务处理", "affected_user_id": "受影响的用户 ID",
+	"affected_order_no": "受影响的订单号", "action": "本次通知执行的业务动作", "message": "处理结果说明",
 	"purchaseDate": "购买时间", "expirationDate": "订阅到期时间", "revocationDate": "撤销时间", "isActive": "订阅是否有效",
 	"vip_type": "VIP 套餐类型", "vip_types": "VIP 套餐类型数组；使用重复 Query 参数传递，例如 vip_types=1&vip_types=2",
 	"suk_code": "商店产品 SKU", "level_name": "会员等级名称", "currency": "ISO 货币代码",
@@ -260,7 +267,7 @@ var resourceNames = map[string]string{
 }
 
 var publicRoutes = map[string]bool{
-	"GET /api/health": true, "POST /api/auth/login": true,
+	"GET /api/health": true, "POST /api/auth/login": true, "POST /api/payments/apple/notification": true,
 }
 
 var paginatedRoutes = map[string]bool{
@@ -908,6 +915,10 @@ func successResponseSchema(responseType reflect.Type) map[string]any {
 }
 
 func responseSchemaForType(valueType reflect.Type) map[string]any {
+	return responseSchemaForTypeWithTrail(valueType, make(map[reflect.Type]bool))
+}
+
+func responseSchemaForTypeWithTrail(valueType reflect.Type, trail map[reflect.Type]bool) map[string]any {
 	nullable := false
 	for valueType.Kind() == reflect.Pointer {
 		nullable = true
@@ -915,6 +926,13 @@ func responseSchemaForType(valueType reflect.Type) map[string]any {
 	}
 	if valueType == reflect.TypeOf(time.Time{}) {
 		return map[string]any{"type": "string", "format": "date-time", "nullable": nullable}
+	}
+	if valueType.Kind() == reflect.Struct {
+		if trail[valueType] {
+			return map[string]any{"type": "object", "nullable": nullable}
+		}
+		trail[valueType] = true
+		defer delete(trail, valueType)
 	}
 	var schema map[string]any
 	switch valueType.Kind() {
@@ -930,7 +948,7 @@ func responseSchemaForType(valueType reflect.Type) map[string]any {
 			if name == "-" {
 				continue
 			}
-			fieldSchema := responseSchemaForType(field.Type)
+			fieldSchema := responseSchemaForTypeWithTrail(field.Type, trail)
 			applyBindingConstraints(fieldSchema, field.Tag.Get("binding"))
 			applyFieldDescription(fieldSchema, name)
 			if field.Anonymous && !tagged {
@@ -954,7 +972,7 @@ func responseSchemaForType(valueType reflect.Type) map[string]any {
 			schema["required"] = uniqueStrings(required)
 		}
 	case reflect.Slice, reflect.Array:
-		schema = map[string]any{"type": "array", "items": responseSchemaForType(valueType.Elem())}
+		schema = map[string]any{"type": "array", "items": responseSchemaForTypeWithTrail(valueType.Elem(), trail)}
 	default:
 		schema = schemaForType(valueType)
 	}

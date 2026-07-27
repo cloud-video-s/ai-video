@@ -36,6 +36,7 @@ var sensitiveKeys = map[string]struct{}{
 	"refresh_token":     {},
 	"access_key_id":     {},
 	"access_key_secret": {},
+	"api_key":           {},
 }
 
 type apiMeta struct {

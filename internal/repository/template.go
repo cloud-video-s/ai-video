@@ -154,7 +154,7 @@ func (r *TemplateTypeRepo) GetDetail(ctx context.Context, id uint64) (*TemplateT
 
 func (r *TemplateTypeRepo) UpdateFields(ctx context.Context, item *model.VideoTemplateType) error {
 	return r.BaseRepo.Update(ctx, item,
-		"CategoryName", "Sort", "Status", "Description", "IsSubscribed", "UserTypes", "SubscriptionStatuses",
+		"CategoryName", "Sort", "Status", "Description",
 	)
 }
 
@@ -587,9 +587,7 @@ func (r *TemplateRepo) ListOptions(ctx context.Context) ([]TemplateRecord, error
 }
 
 type ClientTemplateTargets struct {
-	TemplateTypeIDs    []uint64
-	UserType           uint8
-	SubscriptionStatus string
+	TemplateTypeIDs []uint64
 }
 
 func (r *TemplateRepo) ListForClient(ctx context.Context, targets ClientTemplateTargets) ([]model.VideoTemplate, error) {

@@ -515,7 +515,7 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 	}
 
 	if existing, lookupErr := s.orders.GetByPaymentTransaction(ctx, domain.PaymentMethodAppleIAP, verified.TransactionID); lookupErr == nil {
-		if existing.UserID != userID || existing.SukCode != verified.ProductID {
+		if existing.UserID != userID || existing.ProductCode != verified.ProductID {
 			return nil, ErrPaymentTransactionUsed
 		}
 		return applePurchaseResponse(existing, verified), nil
@@ -731,7 +731,7 @@ func applePurchaseResponse(order *model.VideoOrder, transaction *verifiedAppleTr
 	}
 	return &ApplePurchaseResponse{
 		OrderNo: order.OrderNo, Status: order.Status, ProductType: order.ProductType,
-		ProductID: order.ProductID, ProductCode: order.SukCode,
+		ProductID: order.ProductID, ProductCode: order.ProductCode,
 		TransactionID: transaction.TransactionID, OriginalTransactionID: transaction.OriginalTransactionID,
 		Currency: transaction.Currency, PaidAmount: transaction.PaidAmount,
 		PurchaseDate: transaction.PurchaseAt, ExpirationDate: transaction.ExpiresAt,

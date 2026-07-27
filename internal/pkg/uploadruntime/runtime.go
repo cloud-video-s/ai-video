@@ -83,6 +83,7 @@ func (f *storageFactory) resolve() (upload.Storage, error) {
 	values := []string{
 		provider,
 		configured("upload.local_base_url", cfg.LocalBaseURL),
+		configured("upload.oss.region", cfg.OSSRegion),
 		configured("upload.oss.endpoint", cfg.OSSEndpoint),
 		configured("upload.oss.access_key_id", cfg.OSSAccessKeyID),
 		configured("upload.oss.access_key_secret", cfg.OSSAccessKeySecret),
@@ -107,8 +108,8 @@ func (f *storageFactory) resolve() (upload.Storage, error) {
 		storage, err = upload.NewLocalStorage(cfg.LocalRootDir, values[1])
 	case upload.StorageAliyunOSS:
 		storage, err = upload.NewOSSStorage(upload.OSSConfig{
-			Endpoint: values[2], AccessKeyID: values[3], AccessKeySecret: values[4],
-			Bucket: values[5], ObjectPrefix: values[6], BaseURL: values[7],
+			Region: values[2], Endpoint: values[3], AccessKeyID: values[4], AccessKeySecret: values[5],
+			Bucket: values[6], ObjectPrefix: values[7], BaseURL: values[8],
 		})
 	default:
 		err = fmt.Errorf("unsupported upload storage provider %q", provider)

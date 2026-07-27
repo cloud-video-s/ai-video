@@ -35,6 +35,7 @@ type VideoGenerationTask struct {
 	CreatedAt        time.Time      `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_generation_task_user,priority:2" json:"created_at"`
 	UpdatedAt        time.Time      `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt        gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_generation_task_deleted_at,priority:1" json:"deleted_at"`
+	User             VideoUser      `gorm:"foreignKey:UserID;references:ID" json:"user"`
 }
 
 // TableName VideoGenerationTask's table name

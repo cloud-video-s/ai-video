@@ -43,6 +43,37 @@ func newVideoUserTemplateFavorite(db *gorm.DB, opts ...gen.DOOption) videoUserTe
 		}{
 			RelationField: field.NewRelation("User.Channel", "model.VideoChannel"),
 		},
+		PointsLedgers: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.PointsLedgers", "model.VideoUserPointsLedger"),
+		},
+		Works: struct {
+			field.RelationField
+			User struct {
+				field.RelationField
+			}
+		}{
+			RelationField: field.NewRelation("User.Works", "model.VideoGenerationTask"),
+			User: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("User.Works.User", "model.VideoUser"),
+			},
+		},
+		Orders: struct {
+			field.RelationField
+			User struct {
+				field.RelationField
+			}
+		}{
+			RelationField: field.NewRelation("User.Orders", "model.VideoOrder"),
+			User: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("User.Orders.User", "model.VideoUser"),
+			},
+		},
 	}
 
 	_videoUserTemplateFavorite.Template = videoUserTemplateFavoriteBelongsToTemplate{
@@ -159,6 +190,21 @@ type videoUserTemplateFavoriteBelongsToUser struct {
 
 	Channel struct {
 		field.RelationField
+	}
+	PointsLedgers struct {
+		field.RelationField
+	}
+	Works struct {
+		field.RelationField
+		User struct {
+			field.RelationField
+		}
+	}
+	Orders struct {
+		field.RelationField
+		User struct {
+			field.RelationField
+		}
 	}
 }
 

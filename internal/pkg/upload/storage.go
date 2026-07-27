@@ -9,7 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/aliyun/aliyun-oss-go-sdk/oss"
+	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss"
+	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss/credentials"
 )
 
 const (
@@ -104,6 +105,7 @@ func (s *LocalStorage) Store(ctx context.Context, objectKey, sourcePath, _ strin
 }
 
 type OSSConfig struct {
+	Region          string
 	Endpoint        string
 	AccessKeyID     string
 	AccessKeySecret string
@@ -112,28 +114,37 @@ type OSSConfig struct {
 	BaseURL         string
 }
 
+type ossObjectUploader interface {
+	PutObjectFromFile(context.Context, *oss.PutObjectRequest, string, ...func(*oss.Options)) (*oss.PutObjectResult, error)
+}
+
 type OSSStorage struct {
-	bucket       *oss.Bucket
+	client       ossObjectUploader
+	bucket       string
 	objectPrefix string
 	baseURL      string
 }
 
 func NewOSSStorage(config OSSConfig) (*OSSStorage, error) {
-	if strings.TrimSpace(config.Endpoint) == "" || strings.TrimSpace(config.AccessKeyID) == "" ||
+	if strings.TrimSpace(config.Region) == "" || strings.TrimSpace(config.Endpoint) == "" || strings.TrimSpace(config.AccessKeyID) == "" ||
 		strings.TrimSpace(config.AccessKeySecret) == "" || strings.TrimSpace(config.Bucket) == "" {
-		return nil, uploadError(ErrInvalidRequest, "OSS endpoint, credentials and bucket are required")
+		return nil, uploadError(ErrInvalidRequest, "OSS region, endpoint, credentials and bucket are required")
 	}
-	client, err := oss.New(config.Endpoint, config.AccessKeyID, config.AccessKeySecret)
-	if err != nil {
-		return nil, fmt.Errorf("create Aliyun OSS client: %w", err)
-	}
-	bucket, err := client.Bucket(config.Bucket)
-	if err != nil {
-		return nil, fmt.Errorf("open Aliyun OSS bucket: %w", err)
-	}
+	region := strings.TrimSpace(config.Region)
+	endpoint := strings.TrimSpace(config.Endpoint)
+	bucket := strings.TrimSpace(config.Bucket)
+	sdkConfig := oss.LoadDefaultConfig().
+		WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+			strings.TrimSpace(config.AccessKeyID),
+			strings.TrimSpace(config.AccessKeySecret),
+		)).
+		WithRegion(region).
+		WithEndpoint(endpoint)
+	client := oss.NewClient(sdkConfig)
+
 	baseURL := strings.TrimRight(strings.TrimSpace(config.BaseURL), "/")
 	if baseURL == "" {
-		endpoint := strings.TrimRight(strings.TrimSpace(config.Endpoint), "/")
+		endpoint = strings.TrimRight(endpoint, "/")
 		if !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
 			endpoint = "https://" + endpoint
 		}
@@ -141,11 +152,12 @@ func NewOSSStorage(config OSSConfig) (*OSSStorage, error) {
 		if parseErr != nil || parsed.Host == "" {
 			return nil, uploadError(ErrInvalidRequest, "invalid OSS endpoint %q", config.Endpoint)
 		}
-		parsed.Host = config.Bucket + "." + parsed.Host
+		parsed.Host = bucket + "." + parsed.Host
 		baseURL = strings.TrimRight(parsed.String(), "/")
 	}
 	return &OSSStorage{
-		bucket: bucket, objectPrefix: strings.Trim(strings.TrimSpace(config.ObjectPrefix), "/"), baseURL: baseURL,
+		client: client, bucket: bucket,
+		objectPrefix: strings.Trim(strings.TrimSpace(config.ObjectPrefix), "/"), baseURL: baseURL,
 	}, nil
 }
 
@@ -160,11 +172,14 @@ func (s *OSSStorage) Store(ctx context.Context, objectKey, sourcePath, contentTy
 	if strings.Contains(key, "../") || key == "" {
 		return nil, uploadError(ErrInvalidRequest, "invalid OSS object key")
 	}
-	options := []oss.Option{}
-	if contentType != "" {
-		options = append(options, oss.ContentType(contentType))
+	request := &oss.PutObjectRequest{
+		Bucket: oss.Ptr(s.bucket),
+		Key:    oss.Ptr(key),
 	}
-	if err := s.bucket.PutObjectFromFile(key, sourcePath, options...); err != nil {
+	if contentType != "" {
+		request.ContentType = oss.Ptr(contentType)
+	}
+	if _, err := s.client.PutObjectFromFile(ctx, request, sourcePath); err != nil {
 		return nil, fmt.Errorf("upload to Aliyun OSS: %w", err)
 	}
 	return &StoredFile{Provider: StorageAliyunOSS, Path: key, URL: joinPublicURL(s.baseURL, key)}, nil

@@ -14,3 +14,13 @@ func TestRedactJSONMasksConfigEntrySecrets(t *testing.T) {
 		t.Fatalf("redacted value count = %d, want 2: %s", count, result)
 	}
 }
+
+func TestRedactJSONMasksModelAPIKey(t *testing.T) {
+	result := redactJSON([]byte(`{"name":"demo","api_key":"model-secret"}`))
+	if strings.Contains(result, "model-secret") {
+		t.Fatalf("model API key was not redacted: %s", result)
+	}
+	if !strings.Contains(result, `"api_key":"***"`) {
+		t.Fatalf("redacted API key missing: %s", result)
+	}
+}

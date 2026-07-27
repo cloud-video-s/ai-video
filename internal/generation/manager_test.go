@@ -33,7 +33,7 @@ func TestModelVerseSubmitUsesMergedParameters(t *testing.T) {
 	}
 	parameters["external_task_id"] = "client-1"
 	modelConfig := &model.VideoAiModel{
-		ModelName: "kling-v3-omni",
+		ModelName: "ucloud-v3-omni",
 		BaseURL:   server.URL, SubmitPath: "/v1/tasks/submit", StatusPath: "/v1/tasks/status",
 		APIKey: "test-key", HTTPTimeoutSeconds: 3,
 	}
@@ -46,7 +46,7 @@ func TestModelVerseSubmitUsesMergedParameters(t *testing.T) {
 	if result.TaskID != "remote-1" {
 		t.Fatalf("unexpected result: %#v", result)
 	}
-	if received.Model != "kling-v3-omni" || received.Parameters["mode"] != "pro" || received.Parameters["duration"] != float64(8) {
+	if received.Model != "ucloud-v3-omni" || received.Parameters["mode"] != "pro" || received.Parameters["duration"] != float64(8) {
 		t.Fatalf("unexpected upstream request: %#v", received)
 	}
 	if received.Parameters["external_task_id"] != "client-1" {

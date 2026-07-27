@@ -281,3 +281,21 @@ func normalizeSystemTypes(values []string) ([]string, error) {
 	}
 	return result, nil
 }
+
+func normalizeUserTypes(values []int) ([]int, error) {
+	result := make([]int, 0, 2)
+	seen := map[int]bool{}
+	for _, value := range values {
+		if value != 1 && value != 2 {
+			return nil, errors.New("用户类型无效")
+		}
+		if !seen[value] {
+			seen[value] = true
+			result = append(result, value)
+		}
+	}
+	if len(result) == 0 {
+		return nil, errors.New("请至少选择一种用户类型")
+	}
+	return result, nil
+}

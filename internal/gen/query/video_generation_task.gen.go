@@ -49,6 +49,11 @@ func newVideoGenerationTask(db *gorm.DB, opts ...gen.DOOption) videoGenerationTa
 	_videoGenerationTask.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoGenerationTask.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoGenerationTask.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoGenerationTask.User = videoGenerationTaskBelongsToUser{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("User", "model.VideoUser"),
+	}
 
 	_videoGenerationTask.fillFieldMap()
 
@@ -80,6 +85,7 @@ type videoGenerationTask struct {
 	CreatedAt        field.Time
 	UpdatedAt        field.Time
 	DeletedAt        field.Field
+	User             videoGenerationTaskBelongsToUser
 
 	fieldMap map[string]field.Expr
 }
@@ -145,7 +151,7 @@ func (v *videoGenerationTask) GetFieldByName(fieldName string) (field.OrderExpr,
 }
 
 func (v *videoGenerationTask) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 21)
+	v.fieldMap = make(map[string]field.Expr, 22)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["model_config_id"] = v.ModelConfigID
@@ -167,16 +173,101 @@ func (v *videoGenerationTask) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoGenerationTask) clone(db *gorm.DB) videoGenerationTask {
 	v.videoGenerationTaskDo.ReplaceConnPool(db.Statement.ConnPool)
+	v.User.db = db.Session(&gorm.Session{Initialized: true})
+	v.User.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoGenerationTask) replaceDB(db *gorm.DB) videoGenerationTask {
 	v.videoGenerationTaskDo.ReplaceDB(db)
+	v.User.db = db.Session(&gorm.Session{})
 	return v
+}
+
+type videoGenerationTaskBelongsToUser struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoGenerationTaskBelongsToUser) Where(conds ...field.Expr) *videoGenerationTaskBelongsToUser {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoGenerationTaskBelongsToUser) WithContext(ctx context.Context) *videoGenerationTaskBelongsToUser {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoGenerationTaskBelongsToUser) Session(session *gorm.Session) *videoGenerationTaskBelongsToUser {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoGenerationTaskBelongsToUser) Model(m *model.VideoGenerationTask) *videoGenerationTaskBelongsToUserTx {
+	return &videoGenerationTaskBelongsToUserTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoGenerationTaskBelongsToUser) Unscoped() *videoGenerationTaskBelongsToUser {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoGenerationTaskBelongsToUserTx struct{ tx *gorm.Association }
+
+func (a videoGenerationTaskBelongsToUserTx) Find() (result *model.VideoUser, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoGenerationTaskBelongsToUserTx) Append(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoGenerationTaskBelongsToUserTx) Replace(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoGenerationTaskBelongsToUserTx) Delete(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoGenerationTaskBelongsToUserTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoGenerationTaskBelongsToUserTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoGenerationTaskBelongsToUserTx) Unscoped() *videoGenerationTaskBelongsToUserTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type videoGenerationTaskDo struct{ gen.DO }

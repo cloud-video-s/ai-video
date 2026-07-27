@@ -29,9 +29,7 @@ func NewClientTemplateService() *ClientTemplateService {
 	}
 }
 
-// ClientTemplateRequest accepts explicit delivery targets for diagnostics and
-// API clients. UserType and SubscriptionStatus may only repeat the authenticated
-// user's current values; they cannot be used to elevate template visibility.
+// ClientTemplateRequest 使用公共客户端上下文匹配模板分类投放范围。
 type ClientTemplateRequest struct {
 	PositionKey string `form:"position_key"`
 	AccountBaseRequest
@@ -134,7 +132,7 @@ func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplate
 		return nil, err
 	}
 	rows, err := s.templateRepo.ListForClient(ctx, repository.ClientTemplateTargets{
-		TemplateTypeIDs: templateTypeIDs(types), UserType: user.UserType,
+		TemplateTypeIDs: templateTypeIDs(types),
 	})
 	if err != nil {
 		return nil, err

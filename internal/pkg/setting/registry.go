@@ -68,6 +68,7 @@ var registry = []definition{
 	{Group: "文件上传", Key: "upload.image_max_file_size", Name: "单张图片大小", Type: "int", Value: "20971520", Remark: "单个图片文件上限，界面单位 MB", Sort: 103},
 	{Group: "文件上传", Key: "upload.video_extensions", Name: "视频允许格式", Type: "string", Value: ".mp4,.mov,.webm,.mkv", Options: `[{"label":"MP4","value":".mp4"},{"label":"MOV","value":".mov"},{"label":"WebM","value":".webm"},{"label":"MKV","value":".mkv"}]`, Remark: "至少选择一种；保存后新上传立即生效", Sort: 104},
 	{Group: "文件上传", Key: "upload.video_max_file_size", Name: "单个视频大小", Type: "int", Value: "2147483648", Remark: "单个视频文件上限，界面单位 MB", Sort: 105},
+	{Group: "文件上传", Key: "upload.oss.region", Name: "OSS Region", Type: "string", Value: "", Remark: "例如 cn-hangzhou；OSS SDK v2 必填", Sort: 109},
 	{Group: "文件上传", Key: "upload.oss.endpoint", Name: "OSS Endpoint", Type: "string", Value: "", Remark: "例如 oss-cn-hangzhou.aliyuncs.com", Sort: 110},
 	{Group: "文件上传", Key: "upload.oss.access_key_id", Name: "OSS AccessKey ID", Type: "password", Value: "", Sensitive: 1, Sort: 111},
 	{Group: "文件上传", Key: "upload.oss.access_key_secret", Name: "OSS AccessKey Secret", Type: "password", Value: "", Sensitive: 1, Sort: 112},

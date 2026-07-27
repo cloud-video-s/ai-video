@@ -88,6 +88,34 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 		RelationField: field.NewRelation("Channel", "model.VideoChannel"),
 	}
 
+	_videoUser.PointsLedgers = videoUserHasManyPointsLedgers{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("PointsLedgers", "model.VideoUserPointsLedger"),
+	}
+
+	_videoUser.Works = videoUserHasManyWorks{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Works", "model.VideoGenerationTask"),
+		User: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Works.User", "model.VideoUser"),
+		},
+	}
+
+	_videoUser.Orders = videoUserHasManyOrders{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Orders", "model.VideoOrder"),
+		User: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Orders.User", "model.VideoUser"),
+		},
+	}
+
 	_videoUser.fillFieldMap()
 
 	return _videoUser
@@ -152,6 +180,12 @@ type videoUser struct {
 	IsFrozen                 field.Int8
 	IsBlacklisted            field.Int8
 	Channel                  videoUserBelongsToChannel
+
+	PointsLedgers videoUserHasManyPointsLedgers
+
+	Works videoUserHasManyWorks
+
+	Orders videoUserHasManyOrders
 
 	fieldMap map[string]field.Expr
 }
@@ -248,7 +282,7 @@ func (v *videoUser) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoUser) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 55)
+	v.fieldMap = make(map[string]field.Expr, 58)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["device_code"] = v.DeviceCode
 	v.fieldMap["username"] = v.Username
@@ -310,12 +344,21 @@ func (v videoUser) clone(db *gorm.DB) videoUser {
 	v.videoUserDo.ReplaceConnPool(db.Statement.ConnPool)
 	v.Channel.db = db.Session(&gorm.Session{Initialized: true})
 	v.Channel.db.Statement.ConnPool = db.Statement.ConnPool
+	v.PointsLedgers.db = db.Session(&gorm.Session{Initialized: true})
+	v.PointsLedgers.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Works.db = db.Session(&gorm.Session{Initialized: true})
+	v.Works.db.Statement.ConnPool = db.Statement.ConnPool
+	v.Orders.db = db.Session(&gorm.Session{Initialized: true})
+	v.Orders.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoUser) replaceDB(db *gorm.DB) videoUser {
 	v.videoUserDo.ReplaceDB(db)
 	v.Channel.db = db.Session(&gorm.Session{})
+	v.PointsLedgers.db = db.Session(&gorm.Session{})
+	v.Works.db = db.Session(&gorm.Session{})
+	v.Orders.db = db.Session(&gorm.Session{})
 	return v
 }
 
@@ -396,6 +439,257 @@ func (a videoUserBelongsToChannelTx) Count() int64 {
 }
 
 func (a videoUserBelongsToChannelTx) Unscoped() *videoUserBelongsToChannelTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoUserHasManyPointsLedgers struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoUserHasManyPointsLedgers) Where(conds ...field.Expr) *videoUserHasManyPointsLedgers {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoUserHasManyPointsLedgers) WithContext(ctx context.Context) *videoUserHasManyPointsLedgers {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoUserHasManyPointsLedgers) Session(session *gorm.Session) *videoUserHasManyPointsLedgers {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoUserHasManyPointsLedgers) Model(m *model.VideoUser) *videoUserHasManyPointsLedgersTx {
+	return &videoUserHasManyPointsLedgersTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoUserHasManyPointsLedgers) Unscoped() *videoUserHasManyPointsLedgers {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoUserHasManyPointsLedgersTx struct{ tx *gorm.Association }
+
+func (a videoUserHasManyPointsLedgersTx) Find() (result []*model.VideoUserPointsLedger, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoUserHasManyPointsLedgersTx) Append(values ...*model.VideoUserPointsLedger) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoUserHasManyPointsLedgersTx) Replace(values ...*model.VideoUserPointsLedger) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoUserHasManyPointsLedgersTx) Delete(values ...*model.VideoUserPointsLedger) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoUserHasManyPointsLedgersTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoUserHasManyPointsLedgersTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoUserHasManyPointsLedgersTx) Unscoped() *videoUserHasManyPointsLedgersTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoUserHasManyWorks struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	User struct {
+		field.RelationField
+	}
+}
+
+func (a videoUserHasManyWorks) Where(conds ...field.Expr) *videoUserHasManyWorks {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoUserHasManyWorks) WithContext(ctx context.Context) *videoUserHasManyWorks {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoUserHasManyWorks) Session(session *gorm.Session) *videoUserHasManyWorks {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoUserHasManyWorks) Model(m *model.VideoUser) *videoUserHasManyWorksTx {
+	return &videoUserHasManyWorksTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoUserHasManyWorks) Unscoped() *videoUserHasManyWorks {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoUserHasManyWorksTx struct{ tx *gorm.Association }
+
+func (a videoUserHasManyWorksTx) Find() (result []*model.VideoGenerationTask, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoUserHasManyWorksTx) Append(values ...*model.VideoGenerationTask) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoUserHasManyWorksTx) Replace(values ...*model.VideoGenerationTask) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoUserHasManyWorksTx) Delete(values ...*model.VideoGenerationTask) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoUserHasManyWorksTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoUserHasManyWorksTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoUserHasManyWorksTx) Unscoped() *videoUserHasManyWorksTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoUserHasManyOrders struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	User struct {
+		field.RelationField
+	}
+}
+
+func (a videoUserHasManyOrders) Where(conds ...field.Expr) *videoUserHasManyOrders {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoUserHasManyOrders) WithContext(ctx context.Context) *videoUserHasManyOrders {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoUserHasManyOrders) Session(session *gorm.Session) *videoUserHasManyOrders {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoUserHasManyOrders) Model(m *model.VideoUser) *videoUserHasManyOrdersTx {
+	return &videoUserHasManyOrdersTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoUserHasManyOrders) Unscoped() *videoUserHasManyOrders {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoUserHasManyOrdersTx struct{ tx *gorm.Association }
+
+func (a videoUserHasManyOrdersTx) Find() (result []*model.VideoOrder, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoUserHasManyOrdersTx) Append(values ...*model.VideoOrder) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoUserHasManyOrdersTx) Replace(values ...*model.VideoOrder) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoUserHasManyOrdersTx) Delete(values ...*model.VideoOrder) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoUserHasManyOrdersTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoUserHasManyOrdersTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoUserHasManyOrdersTx) Unscoped() *videoUserHasManyOrdersTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }

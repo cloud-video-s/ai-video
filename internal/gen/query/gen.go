@@ -27,6 +27,7 @@ var (
 	VideoBannerApp                   *videoBannerApp
 	VideoBannerCountry               *videoBannerCountry
 	VideoBannerPackage               *videoBannerPackage
+	VideoBannerPlacement             *videoBannerPlacement
 	VideoBannerPlacementAssociation  *videoBannerPlacementAssociation
 	VideoBannerVersion               *videoBannerVersion
 	VideoChannel                     *videoChannel
@@ -37,10 +38,13 @@ var (
 	VideoGenerationTask              *videoGenerationTask
 	VideoMenu                        *videoMenu
 	VideoMenuAPI                     *videoMenuAPI
+	VideoModel                       *videoModel
+	VideoModelParameter              *videoModelParameter
 	VideoOperationLog                *videoOperationLog
 	VideoOrder                       *videoOrder
 	VideoPackage                     *videoPackage
 	VideoPackageVersion              *videoPackageVersion
+	VideoPlatform                    *videoPlatform
 	VideoPointsPackage               *videoPointsPackage
 	VideoPointsPackageChannel        *videoPointsPackageChannel
 	VideoPointsPackagePackage        *videoPointsPackagePackage
@@ -83,6 +87,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoBannerApp = &Q.VideoBannerApp
 	VideoBannerCountry = &Q.VideoBannerCountry
 	VideoBannerPackage = &Q.VideoBannerPackage
+	VideoBannerPlacement = &Q.VideoBannerPlacement
 	VideoBannerPlacementAssociation = &Q.VideoBannerPlacementAssociation
 	VideoBannerVersion = &Q.VideoBannerVersion
 	VideoChannel = &Q.VideoChannel
@@ -93,10 +98,13 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoGenerationTask = &Q.VideoGenerationTask
 	VideoMenu = &Q.VideoMenu
 	VideoMenuAPI = &Q.VideoMenuAPI
+	VideoModel = &Q.VideoModel
+	VideoModelParameter = &Q.VideoModelParameter
 	VideoOperationLog = &Q.VideoOperationLog
 	VideoOrder = &Q.VideoOrder
 	VideoPackage = &Q.VideoPackage
 	VideoPackageVersion = &Q.VideoPackageVersion
+	VideoPlatform = &Q.VideoPlatform
 	VideoPointsPackage = &Q.VideoPointsPackage
 	VideoPointsPackageChannel = &Q.VideoPointsPackageChannel
 	VideoPointsPackagePackage = &Q.VideoPointsPackagePackage
@@ -140,6 +148,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoBannerApp:                   newVideoBannerApp(db, opts...),
 		VideoBannerCountry:               newVideoBannerCountry(db, opts...),
 		VideoBannerPackage:               newVideoBannerPackage(db, opts...),
+		VideoBannerPlacement:             newVideoBannerPlacement(db, opts...),
 		VideoBannerPlacementAssociation:  newVideoBannerPlacementAssociation(db, opts...),
 		VideoBannerVersion:               newVideoBannerVersion(db, opts...),
 		VideoChannel:                     newVideoChannel(db, opts...),
@@ -150,10 +159,13 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoGenerationTask:              newVideoGenerationTask(db, opts...),
 		VideoMenu:                        newVideoMenu(db, opts...),
 		VideoMenuAPI:                     newVideoMenuAPI(db, opts...),
+		VideoModel:                       newVideoModel(db, opts...),
+		VideoModelParameter:              newVideoModelParameter(db, opts...),
 		VideoOperationLog:                newVideoOperationLog(db, opts...),
 		VideoOrder:                       newVideoOrder(db, opts...),
 		VideoPackage:                     newVideoPackage(db, opts...),
 		VideoPackageVersion:              newVideoPackageVersion(db, opts...),
+		VideoPlatform:                    newVideoPlatform(db, opts...),
 		VideoPointsPackage:               newVideoPointsPackage(db, opts...),
 		VideoPointsPackageChannel:        newVideoPointsPackageChannel(db, opts...),
 		VideoPointsPackagePackage:        newVideoPointsPackagePackage(db, opts...),
@@ -198,6 +210,7 @@ type Query struct {
 	VideoBannerApp                   videoBannerApp
 	VideoBannerCountry               videoBannerCountry
 	VideoBannerPackage               videoBannerPackage
+	VideoBannerPlacement             videoBannerPlacement
 	VideoBannerPlacementAssociation  videoBannerPlacementAssociation
 	VideoBannerVersion               videoBannerVersion
 	VideoChannel                     videoChannel
@@ -208,10 +221,13 @@ type Query struct {
 	VideoGenerationTask              videoGenerationTask
 	VideoMenu                        videoMenu
 	VideoMenuAPI                     videoMenuAPI
+	VideoModel                       videoModel
+	VideoModelParameter              videoModelParameter
 	VideoOperationLog                videoOperationLog
 	VideoOrder                       videoOrder
 	VideoPackage                     videoPackage
 	VideoPackageVersion              videoPackageVersion
+	VideoPlatform                    videoPlatform
 	VideoPointsPackage               videoPointsPackage
 	VideoPointsPackageChannel        videoPointsPackageChannel
 	VideoPointsPackagePackage        videoPointsPackagePackage
@@ -259,6 +275,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoBannerApp:                   q.VideoBannerApp.clone(db),
 		VideoBannerCountry:               q.VideoBannerCountry.clone(db),
 		VideoBannerPackage:               q.VideoBannerPackage.clone(db),
+		VideoBannerPlacement:             q.VideoBannerPlacement.clone(db),
 		VideoBannerPlacementAssociation:  q.VideoBannerPlacementAssociation.clone(db),
 		VideoBannerVersion:               q.VideoBannerVersion.clone(db),
 		VideoChannel:                     q.VideoChannel.clone(db),
@@ -269,10 +286,13 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoGenerationTask:              q.VideoGenerationTask.clone(db),
 		VideoMenu:                        q.VideoMenu.clone(db),
 		VideoMenuAPI:                     q.VideoMenuAPI.clone(db),
+		VideoModel:                       q.VideoModel.clone(db),
+		VideoModelParameter:              q.VideoModelParameter.clone(db),
 		VideoOperationLog:                q.VideoOperationLog.clone(db),
 		VideoOrder:                       q.VideoOrder.clone(db),
 		VideoPackage:                     q.VideoPackage.clone(db),
 		VideoPackageVersion:              q.VideoPackageVersion.clone(db),
+		VideoPlatform:                    q.VideoPlatform.clone(db),
 		VideoPointsPackage:               q.VideoPointsPackage.clone(db),
 		VideoPointsPackageChannel:        q.VideoPointsPackageChannel.clone(db),
 		VideoPointsPackagePackage:        q.VideoPointsPackagePackage.clone(db),
@@ -325,6 +345,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoBannerApp:                   q.VideoBannerApp.replaceDB(db),
 		VideoBannerCountry:               q.VideoBannerCountry.replaceDB(db),
 		VideoBannerPackage:               q.VideoBannerPackage.replaceDB(db),
+		VideoBannerPlacement:             q.VideoBannerPlacement.replaceDB(db),
 		VideoBannerPlacementAssociation:  q.VideoBannerPlacementAssociation.replaceDB(db),
 		VideoBannerVersion:               q.VideoBannerVersion.replaceDB(db),
 		VideoChannel:                     q.VideoChannel.replaceDB(db),
@@ -335,10 +356,13 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoGenerationTask:              q.VideoGenerationTask.replaceDB(db),
 		VideoMenu:                        q.VideoMenu.replaceDB(db),
 		VideoMenuAPI:                     q.VideoMenuAPI.replaceDB(db),
+		VideoModel:                       q.VideoModel.replaceDB(db),
+		VideoModelParameter:              q.VideoModelParameter.replaceDB(db),
 		VideoOperationLog:                q.VideoOperationLog.replaceDB(db),
 		VideoOrder:                       q.VideoOrder.replaceDB(db),
 		VideoPackage:                     q.VideoPackage.replaceDB(db),
 		VideoPackageVersion:              q.VideoPackageVersion.replaceDB(db),
+		VideoPlatform:                    q.VideoPlatform.replaceDB(db),
 		VideoPointsPackage:               q.VideoPointsPackage.replaceDB(db),
 		VideoPointsPackageChannel:        q.VideoPointsPackageChannel.replaceDB(db),
 		VideoPointsPackagePackage:        q.VideoPointsPackagePackage.replaceDB(db),
@@ -381,6 +405,7 @@ type queryCtx struct {
 	VideoBannerApp                   IVideoBannerAppDo
 	VideoBannerCountry               IVideoBannerCountryDo
 	VideoBannerPackage               IVideoBannerPackageDo
+	VideoBannerPlacement             IVideoBannerPlacementDo
 	VideoBannerPlacementAssociation  IVideoBannerPlacementAssociationDo
 	VideoBannerVersion               IVideoBannerVersionDo
 	VideoChannel                     IVideoChannelDo
@@ -391,10 +416,13 @@ type queryCtx struct {
 	VideoGenerationTask              IVideoGenerationTaskDo
 	VideoMenu                        IVideoMenuDo
 	VideoMenuAPI                     IVideoMenuAPIDo
+	VideoModel                       IVideoModelDo
+	VideoModelParameter              IVideoModelParameterDo
 	VideoOperationLog                IVideoOperationLogDo
 	VideoOrder                       IVideoOrderDo
 	VideoPackage                     IVideoPackageDo
 	VideoPackageVersion              IVideoPackageVersionDo
+	VideoPlatform                    IVideoPlatformDo
 	VideoPointsPackage               IVideoPointsPackageDo
 	VideoPointsPackageChannel        IVideoPointsPackageChannelDo
 	VideoPointsPackagePackage        IVideoPointsPackagePackageDo
@@ -437,6 +465,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoBannerApp:                   q.VideoBannerApp.WithContext(ctx),
 		VideoBannerCountry:               q.VideoBannerCountry.WithContext(ctx),
 		VideoBannerPackage:               q.VideoBannerPackage.WithContext(ctx),
+		VideoBannerPlacement:             q.VideoBannerPlacement.WithContext(ctx),
 		VideoBannerPlacementAssociation:  q.VideoBannerPlacementAssociation.WithContext(ctx),
 		VideoBannerVersion:               q.VideoBannerVersion.WithContext(ctx),
 		VideoChannel:                     q.VideoChannel.WithContext(ctx),
@@ -447,10 +476,13 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoGenerationTask:              q.VideoGenerationTask.WithContext(ctx),
 		VideoMenu:                        q.VideoMenu.WithContext(ctx),
 		VideoMenuAPI:                     q.VideoMenuAPI.WithContext(ctx),
+		VideoModel:                       q.VideoModel.WithContext(ctx),
+		VideoModelParameter:              q.VideoModelParameter.WithContext(ctx),
 		VideoOperationLog:                q.VideoOperationLog.WithContext(ctx),
 		VideoOrder:                       q.VideoOrder.WithContext(ctx),
 		VideoPackage:                     q.VideoPackage.WithContext(ctx),
 		VideoPackageVersion:              q.VideoPackageVersion.WithContext(ctx),
+		VideoPlatform:                    q.VideoPlatform.WithContext(ctx),
 		VideoPointsPackage:               q.VideoPointsPackage.WithContext(ctx),
 		VideoPointsPackageChannel:        q.VideoPointsPackageChannel.WithContext(ctx),
 		VideoPointsPackagePackage:        q.VideoPointsPackagePackage.WithContext(ctx),

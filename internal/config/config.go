@@ -108,6 +108,7 @@ type UploadConfig struct {
 	LocalRootDir       string   `mapstructure:"local_root_dir"`
 	LocalBaseURL       string   `mapstructure:"local_base_url"`
 	StorageProvider    string   `mapstructure:"storage_provider"`
+	OSSRegion          string   `mapstructure:"oss_region"`
 	OSSEndpoint        string   `mapstructure:"oss_endpoint"`
 	OSSAccessKeyID     string   `mapstructure:"oss_access_key_id"`
 	OSSAccessKeySecret string   `mapstructure:"oss_access_key_secret"`

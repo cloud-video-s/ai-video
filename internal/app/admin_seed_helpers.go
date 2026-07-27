@@ -161,12 +161,23 @@ func upsertTemplateMenu(tx *gorm.DB, desired model.VideoMenu) (*model.VideoMenu,
 	if desired.Permission != "" {
 		query = query.Where("permission = ?", desired.Permission)
 	} else {
-		query = query.Where("path = ? AND type = ?", desired.Path, desired.Type)
+		// A path identifies a visible menu node. Do not include type here: older
+		// GORM creates could let the database default turn a requested directory
+		// type (0) into menu type (1), and matching on type would then create a
+		// duplicate instead of repairing that row.
+		query = query.Where("path = ?", desired.Path)
 	}
 	err := query.Unscoped().First(&menu).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		if err := tx.Omit("ParentMenu", "ChildMenus", "APIs").Create(&desired).Error; err != nil {
 			return nil, err
+		}
+		// VideoMenu.Type has database default 1. GORM omits a zero value on
+		// Create, so explicitly restore directory type 0 after the insert.
+		if desired.Type == 0 {
+			if err := tx.Model(&model.VideoMenu{}).Where("id = ?", desired.ID).Update("type", 0).Error; err != nil {
+				return nil, err
+			}
 		}
 		return &desired, nil
 	}

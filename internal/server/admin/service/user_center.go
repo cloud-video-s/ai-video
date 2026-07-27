@@ -14,12 +14,67 @@ import (
 )
 
 type UserCenterDetail struct {
-	User          *model.VideoUser                   `json:"user"`
-	IsMember      bool                               `json:"is_member"`
-	Identities    []model.VideoUserIdentity          `json:"identities"`
-	Attribution   *model.VideoUserAttribution        `json:"attribution"`
-	PointsLedgers []model.VideoUserPointsLedger      `json:"points_ledgers"`
-	PointsSummary repository.UserPointsLedgerSummary `json:"points_summary"`
+	User              *model.VideoUser                   `json:"user"`
+	IsMember          bool                               `json:"is_member"`
+	Identities        []model.VideoUserIdentity          `json:"identities"`
+	Attribution       *model.VideoUserAttribution        `json:"attribution"`
+	PointsLedgers     []UserCenterPointsLedger           `json:"points_ledgers"`
+	PointsLedgerTotal int64                              `json:"points_ledger_total"`
+	PointsSummary     repository.UserPointsLedgerSummary `json:"points_summary"`
+	Works             []UserCenterWork                   `json:"works"`
+	WorkTotal         int64                              `json:"work_total"`
+	Orders            []UserCenterOrder                  `json:"orders"`
+	OrderTotal        int64                              `json:"order_total"`
+}
+
+type UserCenterPointsLedger struct {
+	ID              uint64    `json:"id"`
+	Direction       int8      `json:"direction"`
+	PointsChange    int64     `json:"points_change"`
+	BalanceBefore   uint64    `json:"balance_before"`
+	BalanceAfter    uint64    `json:"balance_after"`
+	SourceType      string    `json:"source_type"`
+	BusinessID      string    `json:"business_id"`
+	PointsPackageID *uint64   `json:"points_package_id"`
+	OrderID         uint64    `json:"order_id"`
+	WorkID          string    `json:"work_id"`
+	ModeKey         string    `json:"mode_key"`
+	Description     string    `json:"description"`
+	OccurredAt      time.Time `json:"occurred_at"`
+}
+
+type UserCenterWork struct {
+	ID              uint64     `json:"id"`
+	ModelConfigID   uint64     `json:"model_config_id"`
+	ClientRequestID string     `json:"client_request_id"`
+	ExternalTaskID  string     `json:"external_task_id"`
+	Status          string     `json:"status"`
+	Progress        uint32     `json:"progress"`
+	UsageDuration   uint32     `json:"usage_duration"`
+	ErrorMessage    string     `json:"error_message,omitempty"`
+	SubmittedAt     *time.Time `json:"submitted_at"`
+	FinishedAt      *time.Time `json:"finished_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+}
+
+type UserCenterOrder struct {
+	ID              uint64     `json:"id"`
+	OrderNo         string     `json:"order_no"`
+	ProductType     string     `json:"product_type"`
+	ProductID       uint64     `json:"product_id"`
+	ProductCode     string     `json:"product_code"`
+	ProductName     string     `json:"product_name"`
+	Currency        string     `json:"currency"`
+	PayableAmount   float64    `json:"payable_amount"`
+	PaidAmount      float64    `json:"paid_amount"`
+	RefundedAmount  float64    `json:"refunded_amount"`
+	BonusPoints     uint64     `json:"bonus_points"`
+	VIPLevel        uint       `json:"vip_level"`
+	VIPDurationDays uint       `json:"vip_duration_days"`
+	Status          string     `json:"status"`
+	PaymentMethod   string     `json:"payment_method"`
+	PaidAt          *time.Time `json:"paid_at"`
+	CreatedAt       time.Time  `json:"created_at"`
 }
 
 type UserAccessStateRequest struct {
@@ -56,6 +111,8 @@ func (s *AppUserService) Lookup(ctx context.Context, value string) (*model.Video
 }
 
 func (s *AppUserService) GetCenter(ctx context.Context, id uint64) (*UserCenterDetail, error) {
+	const relationPageSize = 20
+
 	user, err := s.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -70,15 +127,79 @@ func (s *AppUserService) GetCenter(ctx context.Context, id uint64) (*UserCenterD
 	} else if err != nil {
 		return nil, err
 	}
-	_, _, summary, err := repository.NewUserPointsLedgerRepo().PageList(ctx, 1, 20, &repository.UserPointsLedgerFilter{UserID: id})
+	pointRecords, pointsTotal, summary, err := repository.NewUserPointsLedgerRepo().PageList(ctx, 1, relationPageSize, &repository.UserPointsLedgerFilter{UserID: id})
+	if err != nil {
+		return nil, err
+	}
+	works, workTotal, err := repository.NewGenerationTaskRepo().PageOwned(ctx, id, 1, relationPageSize, "")
+	if err != nil {
+		return nil, err
+	}
+	orders, orderTotal, err := repository.NewOrderRepo().PageByUser(ctx, id, 1, relationPageSize)
 	if err != nil {
 		return nil, err
 	}
 	now := time.Now()
 	return &UserCenterDetail{
 		User: user, IsMember: user.VIPLevel > 0 && user.VipExpiresAt != nil && user.VipExpiresAt.After(now),
-		Identities: identities, Attribution: attribution, PointsSummary: summary,
+		Identities: identities, Attribution: attribution,
+		PointsLedgers: userCenterPointsLedgers(pointRecords), PointsLedgerTotal: pointsTotal, PointsSummary: summary,
+		Works: userCenterWorks(works), WorkTotal: workTotal,
+		Orders: userCenterOrders(orders), OrderTotal: orderTotal,
 	}, nil
+}
+
+func userCenterPointsLedgers(records []repository.UserPointsLedgerRecord) []UserCenterPointsLedger {
+	items := make([]UserCenterPointsLedger, 0, len(records))
+	for _, record := range records {
+		ledger := record.VideoUserPointsLedger
+		items = append(items, UserCenterPointsLedger{
+			ID: ledger.ID, Direction: ledger.Direction, PointsChange: ledger.PointsChange,
+			BalanceBefore: ledger.BalanceBefore, BalanceAfter: ledger.BalanceAfter,
+			SourceType: ledger.SourceType, BusinessID: ledger.BusinessID,
+			PointsPackageID: ledger.PointsPackageID, OrderID: ledger.OrderID,
+			WorkID: ledger.WorkID, ModeKey: ledger.ModeKey,
+			Description: ledger.Description, OccurredAt: ledger.OccurredAt,
+		})
+	}
+	return items
+}
+
+func userCenterWorks(records []model.VideoGenerationTask) []UserCenterWork {
+	items := make([]UserCenterWork, 0, len(records))
+	for _, work := range records {
+		items = append(items, UserCenterWork{
+			ID: work.ID, ModelConfigID: work.ModelConfigID,
+			ClientRequestID: work.ClientRequestID, ExternalTaskID: work.ExternalTaskID,
+			Status: work.Status, Progress: work.Progress, UsageDuration: work.UsageDuration,
+			ErrorMessage: work.ErrorMessage, SubmittedAt: nonZeroTime(work.SubmittedAt),
+			FinishedAt: nonZeroTime(work.FinishedAt), CreatedAt: work.CreatedAt,
+		})
+	}
+	return items
+}
+
+func userCenterOrders(records []model.VideoOrder) []UserCenterOrder {
+	items := make([]UserCenterOrder, 0, len(records))
+	for _, order := range records {
+		items = append(items, UserCenterOrder{
+			ID: order.ID, OrderNo: order.OrderNo, ProductType: order.ProductType,
+			ProductID: order.ProductID, ProductCode: order.ProductCode, ProductName: order.ProductName,
+			Currency: order.Currency, PayableAmount: order.PayableAmount, PaidAmount: order.PaidAmount,
+			RefundedAmount: order.RefundedAmount, BonusPoints: order.BonusPoints,
+			VIPLevel: order.VipLevel, VIPDurationDays: order.VipDurationDays,
+			Status: order.Status, PaymentMethod: order.PaymentMethod,
+			PaidAt: nonZeroTime(order.PaidAt), CreatedAt: order.CreatedAt,
+		})
+	}
+	return items
+}
+
+func nonZeroTime(value time.Time) *time.Time {
+	if value.IsZero() {
+		return nil
+	}
+	return &value
 }
 
 func (s *AppUserService) SetFrozen(ctx context.Context, id uint64, frozen bool) error {

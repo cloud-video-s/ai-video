@@ -45,7 +45,11 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	pointsPackageHandler := handler.NewPointsPackageHandler()
 	userPointsLedgerHandler := handler.NewUserPointsLedgerHandler()
 	bannerHandler := handler.NewBannerHandler()
+	bannerPlacementHandler := handler.NewBannerPlacementHandler()
 	aiModelHandler := handler.NewAIModelHandler()
+	platformHandler := handler.NewPlatformHandler()
+	modelHandler := handler.NewModelHandler()
+	modelParameterHandler := handler.NewModelParameterHandler()
 	uploadConfig, err := uploadruntime.ManagerConfig()
 	if err != nil {
 		panic(err)
@@ -86,6 +90,8 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		authenticated.GET("/points-packages/options", pointsPackageHandler.ListOptions)
 		authenticated.GET("/vip-subscription-levels/options", vipSubscriptionLevelHandler.ListOptions)
 		authenticated.GET("/banners/delivery-options", bannerHandler.DeliveryOptions)
+		authenticated.GET("/banner-placements/options", bannerPlacementHandler.ListOptions)
+		authenticated.GET("/platforms/options", platformHandler.ListOptions)
 	}
 
 	// Protected routes (JWT + Casbin RBAC)
@@ -167,6 +173,23 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.GET("/ai-models/:id", aiModelHandler.Get)
 		auth.PUT("/ai-models/:id", aiModelHandler.Update)
 		auth.DELETE("/ai-models/:id", aiModelHandler.Delete)
+
+		// Video generation platforms and models
+		auth.GET("/platforms", platformHandler.List)
+		auth.POST("/platforms", platformHandler.Create)
+		auth.GET("/platforms/:id", platformHandler.Get)
+		auth.PUT("/platforms/:id", platformHandler.Update)
+		auth.DELETE("/platforms/:id", platformHandler.Delete)
+
+		auth.GET("/models", modelHandler.List)
+		auth.POST("/models", modelHandler.Create)
+		auth.GET("/models/:id", modelHandler.Get)
+		auth.PUT("/models/:id", modelHandler.Update)
+		auth.DELETE("/models/:id", modelHandler.Delete)
+		auth.GET("/models/:id/parameters", modelParameterHandler.List)
+		auth.POST("/models/:id/parameters", modelParameterHandler.Create)
+		auth.PUT("/models/:id/parameters/:parameter_id", modelParameterHandler.Update)
+		auth.DELETE("/models/:id/parameters/:parameter_id", modelParameterHandler.Delete)
 
 		// OB delay configs
 		auth.GET("/delay-configs", delayConfigHandler.List)
@@ -281,6 +304,13 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.GET("/banners/:id", bannerHandler.GetByID)
 		auth.PUT("/banners/:id", bannerHandler.Update)
 		auth.DELETE("/banners/:id", bannerHandler.Delete)
+
+		// Banner placements
+		auth.GET("/banner-placements", bannerPlacementHandler.List)
+		auth.POST("/banner-placements", bannerPlacementHandler.Create)
+		auth.GET("/banner-placements/:id", bannerPlacementHandler.GetByID)
+		auth.PUT("/banner-placements/:id", bannerPlacementHandler.Update)
+		auth.DELETE("/banner-placements/:id", bannerPlacementHandler.Delete)
 
 		// Chunked image/video uploads
 		auth.GET("/uploads", uploadRecordHandler.List)

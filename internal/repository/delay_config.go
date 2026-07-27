@@ -1,12 +1,11 @@
 package repository
 
 import (
+	"ai-video/internal/gen/model"
 	"context"
 	"fmt"
 	"strconv"
 	"strings"
-
-	"ai-video/internal/gen/model"
 )
 
 type DelayConfigRepo struct{}
@@ -102,22 +101,23 @@ func (d *DelayConfigRepo) ListAll(ctx context.Context) ([]model.VideoDelayConfig
 
 // ListValues returns the client-facing configuration as a key-value object.
 // Numeric and boolean database values are normalized to JSON numbers.
-func (d *DelayConfigRepo) ListValues(ctx context.Context) (map[string]int64, error) {
+func (d *DelayConfigRepo) ListValues(ctx context.Context) (map[string]interface{}, error) {
 	q := qFrom(ctx).VideoDelayConfig
 	type configValue struct {
 		Key   string
 		Value string
+		Type  string
 	}
 	var list []configValue
 	if err := q.WithContext(ctx).
-		Select(q.Key, q.Value).
+		Select(q.Key, q.Value, q.Type).
 		Order(q.Sort.Asc(), q.ID.Asc()).
 		Scan(&list); err != nil {
 		return nil, err
 	}
-	result := make(map[string]int64, len(list))
+	result := make(map[string]interface{}, len(list))
 	for _, item := range list {
-		value, err := parseDelayConfigNumber(item.Value)
+		value, err := parseDelayConfigNumber(item.Type, item.Value)
 		if err != nil {
 			return nil, fmt.Errorf("delay config %s: %w", item.Key, err)
 		}
@@ -126,12 +126,22 @@ func (d *DelayConfigRepo) ListValues(ctx context.Context) (map[string]int64, err
 	return result, nil
 }
 
-func parseDelayConfigNumber(value string) (int64, error) {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "true":
-		return 1, nil
-	case "false":
-		return 0, nil
+func parseDelayConfigNumber(strType, value string) (interface{}, error) {
+	switch strType {
+	case "string":
+		return value, nil
+	case "int":
+		v, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	case "float":
+		v, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
 	default:
 		parsed, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
 		if err != nil {
@@ -139,6 +149,7 @@ func parseDelayConfigNumber(value string) (int64, error) {
 		}
 		return parsed, nil
 	}
+	return value, nil
 }
 
 func (d *DelayConfigRepo) ListGroups(ctx context.Context) ([]string, error) {

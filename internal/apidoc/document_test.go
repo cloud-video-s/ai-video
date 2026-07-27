@@ -12,6 +12,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type recursiveResponse struct {
+	Name string             `json:"name"`
+	Next *recursiveResponse `json:"next,omitempty"`
+}
+
 func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	routes := []gin.RouteInfo{
 		{Method: http.MethodPost, Path: "/admin/login", Handler: "admin.Login"},
@@ -19,6 +24,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodPost, Path: "/api/auth/login", Handler: "api.Auth.Login"},
 		{Method: http.MethodPost, Path: "/api/third_binding", Handler: "api.Auth.ThirdBinding"},
 		{Method: http.MethodPost, Path: "/api/auth/logout", Handler: "api.Auth.Logout"},
+		{Method: http.MethodGet, Path: "/api/users/me/identities", Handler: "api.Auth.ListIdentities"},
 		{Method: http.MethodGet, Path: "/api/ob_delay", Handler: "api.DelayConfig.All"},
 		{Method: http.MethodGet, Path: "/api/banners/list", Handler: "api.Banner.List"},
 		{Method: http.MethodGet, Path: "/api/templates/recommend", Handler: "api.Template.Recommend"},
@@ -35,6 +41,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodGet, Path: "/api/vip/recommend", Handler: "api.Vip.Recommend"},
 		{Method: http.MethodGet, Path: "/api/vip/list", Handler: "api.Vip.List"},
 		{Method: http.MethodPost, Path: "/api/payments/apple/confirm", Handler: "api.Payment.ConfirmApple"},
+		{Method: http.MethodPost, Path: "/api/payments/apple/notification", Handler: "api.Payment.AppleServerNotification"},
 		{Method: http.MethodPost, Path: "/api/uploads/images/batches", Handler: "upload.CreateBatch"},
 		{Method: http.MethodPut, Path: "/api/uploads/images/:upload_id/chunks/:index", Handler: "upload.PutChunk"},
 	}
@@ -121,6 +128,8 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	}
 	assertCommonHeaderParametersAbsent(t, logout)
 	assertParameterAbsent(t, logout, "Authorization")
+	identities := document.Paths["/api/users/me/identities"]["get"].(map[string]any)
+	assertResponseParameter(t, identities, "data[].user", true)
 	chunkPath := document.Paths["/api/uploads/images/{upload_id}/chunks/{index}"]
 	if chunkPath == nil {
 		t.Fatal("Gin path parameters were not converted to OpenAPI syntax")
@@ -209,6 +218,13 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	assertParameter(t, payment, "bundleID", "json", true)
 	assertParameter(t, payment, "signedTransactionInfo", "json", true)
 	assertResponseParameter(t, payment, "data.transaction_id", true)
+	notification := document.Paths["/api/payments/apple/notification"]["post"].(map[string]any)
+	assertParameter(t, notification, "signedPayload", "json", true)
+	assertResponseParameter(t, notification, "data.notification_type", true)
+	assertResponseParameter(t, notification, "data.processed", true)
+	if _, secured := notification["security"]; secured {
+		t.Fatal("Apple notification route must be public")
+	}
 	thirdBinding := document.Paths["/api/third_binding"]["post"].(map[string]any)
 	assertParameter(t, thirdBinding, "third_type", "json", true)
 	assertParameter(t, thirdBinding, "third_code", "json", false)
@@ -229,6 +245,18 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	}
 	if _, err := json.Marshal(document); err != nil {
 		t.Fatalf("marshal document: %v", err)
+	}
+}
+
+func TestResponseSchemaHandlesRecursiveTypes(t *testing.T) {
+	schema := responseSchemaForType(typeOf[recursiveResponse]())
+	properties := schema["properties"].(map[string]any)
+	next := properties["next"].(map[string]any)
+	if next["type"] != "object" || next["nullable"] != true {
+		t.Fatalf("recursive field was not safely truncated: %#v", next)
+	}
+	if _, nested := next["properties"]; nested {
+		t.Fatalf("recursive field unexpectedly expanded itself: %#v", next)
 	}
 }
 

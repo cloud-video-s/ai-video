@@ -34,7 +34,7 @@ func newVideoOrder(db *gorm.DB, opts ...gen.DOOption) videoOrder {
 	_videoOrder.UserID = field.NewUint64(tableName, "user_id")
 	_videoOrder.ProductType = field.NewString(tableName, "product_type")
 	_videoOrder.ProductID = field.NewUint64(tableName, "product_id")
-	_videoOrder.SukCode = field.NewString(tableName, "suk_code")
+	_videoOrder.ProductCode = field.NewString(tableName, "product_code")
 	_videoOrder.ProductName = field.NewString(tableName, "product_name")
 	_videoOrder.Currency = field.NewString(tableName, "currency")
 	_videoOrder.ProductAmount = field.NewFloat64(tableName, "product_amount")
@@ -69,41 +69,40 @@ func newVideoOrder(db *gorm.DB, opts ...gen.DOOption) videoOrder {
 	return _videoOrder
 }
 
-// videoOrder 视频订单表
 type videoOrder struct {
 	videoOrderDo videoOrderDo
 
 	ALL                   field.Asterisk
-	ID                    field.Uint64  // 主键ID
-	OrderNo               field.String  // 订单编号
-	ClientRequestID       field.String  // 客户端幂等请求ID
-	UserID                field.Uint64  // 用户ID
-	ProductType           field.String  // 商品类型
-	ProductID             field.Uint64  // 商品ID
-	SukCode               field.String  // 商品编码
-	ProductName           field.String  // 商品名称
-	Currency              field.String  // 货币单位
-	ProductAmount         field.Float64 // 商品原价
-	DiscountAmount        field.Float64 // 优惠抵扣金额
-	PayableAmount         field.Float64 // 应付金额
-	PaidAmount            field.Float64 // 实付金额
-	RefundedAmount        field.Float64 // 已退款金额
-	BonusPoints           field.Uint64  // 赠送积分
-	VipLevel              field.Uint    // 会员等级
-	VipDurationDays       field.Uint    // 会员有效期天数
-	Status                field.String  // 订单状态
-	PaymentMethod         field.String  // 支付方式
-	ProviderTransactionID field.String  // 支付服务商交易流水号
-	OriginalTransactionID field.String  // 原始交易流水号
-	PaymentEvidence       field.String  // 支付凭证
-	FailureCode           field.String  // 失败错误码
-	FailureMessage        field.String  // 失败错误信息
-	CancelReason          field.String  // 取消原因
-	PaidAt                field.Time    // 支付完成时间
-	CancelledAt           field.Time    // 取消时间
-	ExpiresAt             field.Time    // 过期时间
-	CreatedAt             field.Time    // 创建时间
-	UpdatedAt             field.Time    // 更新时间
+	ID                    field.Uint64
+	OrderNo               field.String
+	ClientRequestID       field.String
+	UserID                field.Uint64
+	ProductType           field.String
+	ProductID             field.Uint64
+	ProductCode           field.String
+	ProductName           field.String
+	Currency              field.String
+	ProductAmount         field.Float64
+	DiscountAmount        field.Float64
+	PayableAmount         field.Float64
+	PaidAmount            field.Float64
+	RefundedAmount        field.Float64
+	BonusPoints           field.Uint64
+	VipLevel              field.Uint
+	VipDurationDays       field.Uint
+	Status                field.String
+	PaymentMethod         field.String
+	ProviderTransactionID field.String
+	OriginalTransactionID field.String
+	PaymentEvidence       field.String
+	FailureCode           field.String
+	FailureMessage        field.String
+	CancelReason          field.String
+	PaidAt                field.Time
+	CancelledAt           field.Time
+	ExpiresAt             field.Time
+	CreatedAt             field.Time
+	UpdatedAt             field.Time
 	User                  videoOrderBelongsToUser
 
 	fieldMap map[string]field.Expr
@@ -127,7 +126,7 @@ func (v *videoOrder) updateTableName(table string) *videoOrder {
 	v.UserID = field.NewUint64(table, "user_id")
 	v.ProductType = field.NewString(table, "product_type")
 	v.ProductID = field.NewUint64(table, "product_id")
-	v.SukCode = field.NewString(table, "suk_code")
+	v.ProductCode = field.NewString(table, "product_code")
 	v.ProductName = field.NewString(table, "product_name")
 	v.Currency = field.NewString(table, "currency")
 	v.ProductAmount = field.NewFloat64(table, "product_amount")
@@ -184,7 +183,7 @@ func (v *videoOrder) fillFieldMap() {
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["product_type"] = v.ProductType
 	v.fieldMap["product_id"] = v.ProductID
-	v.fieldMap["suk_code"] = v.SukCode
+	v.fieldMap["product_code"] = v.ProductCode
 	v.fieldMap["product_name"] = v.ProductName
 	v.fieldMap["currency"] = v.Currency
 	v.fieldMap["product_amount"] = v.ProductAmount

@@ -50,4 +50,6 @@ Runtime limits are configured under `upload` in `config/config.yaml`. Defaults a
 The active final storage provider is selected in Admin -> System Config with
 `upload.storage_provider` (`local` or `aliyun_oss`). Provider settings are
 resolved when a file is completed, so switching providers does not require a
-service restart. OSS AccessKey values are masked by the admin config API.
+service restart. The OSS v2 client requires both a region (for example,
+`cn-hangzhou`) and an endpoint. OSS AccessKey values are masked by the admin
+config API.

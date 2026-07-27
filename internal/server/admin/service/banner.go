@@ -18,13 +18,13 @@ type BannerService struct {
 	repo         *repository.BannerRepo
 	templateRepo *repository.TemplateRepo
 	countryRepo  *repository.CountryRepo
-	positionRepo *repository.DisplayPositionRepo
+	positionRepo *repository.BannerPlacementRepo
 }
 
 func NewBannerService() *BannerService {
 	return &BannerService{
 		repo: repository.NewBannerRepo(), templateRepo: repository.NewTemplateRepo(),
-		countryRepo: repository.NewCountryRepo(), positionRepo: repository.NewDisplayPositionRepo(),
+		countryRepo: repository.NewCountryRepo(), positionRepo: repository.NewBannerPlacementRepo(),
 	}
 }
 
@@ -62,7 +62,8 @@ type BannerPayload struct {
 
 type BannerView struct {
 	*model.VideoBanner
-	AppTargets []repository.BannerAppTarget `json:"app_targets"`
+	DisplayPositions []model.VideoBannerPlacement `json:"display_positions"`
+	AppTargets       []repository.BannerAppTarget `json:"app_targets"`
 }
 
 func (s *BannerService) List(ctx context.Context, page, pageSize int, req *ListBannerRequest) ([]BannerView, int64, error) {
@@ -325,9 +326,18 @@ func (s *BannerService) withAppTargets(ctx context.Context, items []model.VideoB
 	if err != nil {
 		return nil, err
 	}
+	placements, err := s.positionRepo.ListForBannerIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
 	result := make([]BannerView, len(items))
 	for i := range items {
-		result[i] = BannerView{VideoBanner: &items[i], AppTargets: targets[items[i].ID]}
+		result[i] = BannerView{
+			VideoBanner: &items[i], DisplayPositions: placements[items[i].ID], AppTargets: targets[items[i].ID],
+		}
+		if result[i].DisplayPositions == nil {
+			result[i].DisplayPositions = []model.VideoBannerPlacement{}
+		}
 		if result[i].AppTargets == nil {
 			result[i].AppTargets = []repository.BannerAppTarget{}
 		}

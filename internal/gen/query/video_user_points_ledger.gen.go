@@ -54,6 +54,37 @@ func newVideoUserPointsLedger(db *gorm.DB, opts ...gen.DOOption) videoUserPoints
 		}{
 			RelationField: field.NewRelation("User.Channel", "model.VideoChannel"),
 		},
+		PointsLedgers: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("User.PointsLedgers", "model.VideoUserPointsLedger"),
+		},
+		Works: struct {
+			field.RelationField
+			User struct {
+				field.RelationField
+			}
+		}{
+			RelationField: field.NewRelation("User.Works", "model.VideoGenerationTask"),
+			User: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("User.Works.User", "model.VideoUser"),
+			},
+		},
+		Orders: struct {
+			field.RelationField
+			User struct {
+				field.RelationField
+			}
+		}{
+			RelationField: field.NewRelation("User.Orders", "model.VideoOrder"),
+			User: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("User.Orders.User", "model.VideoUser"),
+			},
+		},
 	}
 
 	_videoUserPointsLedger.PointsPackage = videoUserPointsLedgerBelongsToPointsPackage{
@@ -196,6 +227,21 @@ type videoUserPointsLedgerBelongsToUser struct {
 
 	Channel struct {
 		field.RelationField
+	}
+	PointsLedgers struct {
+		field.RelationField
+	}
+	Works struct {
+		field.RelationField
+		User struct {
+			field.RelationField
+		}
+	}
+	Orders struct {
+		field.RelationField
+		User struct {
+			field.RelationField
+		}
 	}
 }
 
