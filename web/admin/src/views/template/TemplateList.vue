@@ -5,7 +5,7 @@
         <div class="page-header">
           <div>
             <div class="page-title">视频模板</div>
-            <div class="page-subtitle">管理模板展示位置、媒体资源、模板类型和生成提示词</div>
+            <div class="page-subtitle">管理模板自身信息；投放范围由所属模板分类统一控制</div>
           </div>
           <el-button v-if="canAdd" type="primary" :disabled="enabledTypeOptions.length === 0" @click="openCreate">
             <el-icon><Plus /></el-icon>新增模板
@@ -31,23 +31,6 @@
         </el-select>
         <el-select v-model="query.position_key" clearable filterable placeholder="展示位置">
           <el-option v-for="item in positionOptions" :key="item.id" :label="positionLabel(item)" :value="item.position_key" />
-        </el-select>
-        <el-select v-model="query.country_id" clearable filterable placeholder="国家">
-          <el-option v-for="item in countryOptions" :key="item.id" :label="`${item.name_zh} · ${item.code}`" :value="String(item.id)" />
-        </el-select>
-        <el-select v-model="query.package_id" clearable filterable placeholder="APP 包">
-          <el-option v-for="item in packageOptions" :key="item.id" :label="packageLabel(item)" :value="String(item.id)" />
-        </el-select>
-        <el-select v-model="query.channel_id" clearable filterable placeholder="渠道">
-          <el-option v-for="item in channelOptions" :key="item.channel_id" :label="channelLabel(item)" :value="String(item.channel_id)" />
-        </el-select>
-        <el-select v-model="query.user_type" clearable placeholder="用户类型">
-          <el-option label="免费用户" value="1" />
-          <el-option label="付费用户" value="2" />
-        </el-select>
-        <el-select v-model="query.subscription_status" clearable placeholder="订阅状态">
-          <el-option label="已订阅" value="subscribed" />
-          <el-option label="未订阅" value="unsubscribed" />
         </el-select>
         <el-select v-model="query.status" clearable placeholder="启用状态">
           <el-option label="启用" value="1" />
@@ -92,11 +75,10 @@
         <el-table-column label="投放条件" min-width="250">
           <template #default="{ row }">
             <div class="target-tags">
-              <el-tag size="small" effect="plain">{{ countrySummary(row.countries) }}</el-tag>
-              <el-tag size="small" type="info" effect="plain">{{ packageSummary(row.packages) }}</el-tag>
-              <el-tag size="small" type="info" effect="plain">{{ channelSummary(row.channels) }}</el-tag>
-              <el-tag size="small" type="warning" effect="plain">{{ userTypesLabel(row.user_types) }}</el-tag>
-              <el-tag size="small" type="success" effect="plain">{{ subscriptionStatusesLabel(row.subscription_statuses) }}</el-tag>
+              <el-tag size="small" effect="plain">{{ countrySummary(row.video_template_type?.countries) }}</el-tag>
+              <el-tag size="small" type="info" effect="plain">{{ appSummary(row.video_template_type?.apps) }}</el-tag>
+              <el-tag size="small" type="info" effect="plain">{{ packageSummary(row.video_template_type?.packages) }}</el-tag>
+              <el-tag size="small" type="info" effect="plain">{{ versionSummary(row.video_template_type?.versions) }}</el-tag>
             </div>
           </template>
         </el-table-column>
@@ -173,39 +155,6 @@
           <el-form-item label="模板类型" prop="template_type">
             <el-select v-model="form.template_type" filterable allow-create placeholder="选择或输入模板类型" style="width: 100%">
               <el-option v-for="item in templateKinds" :key="item.value" :label="item.label" :value="item.value" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="国家">
-            <el-select v-model="form.country_ids" multiple collapse-tags collapse-tags-tooltip clearable filterable placeholder="留空表示全部国家" style="width: 100%">
-              <el-option v-for="item in countryOptions" :key="item.id" :label="`${item.name_zh} · ${item.code}`" :value="item.id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="安装包">
-            <el-select v-model="form.package_ids" multiple collapse-tags collapse-tags-tooltip clearable filterable placeholder="留空表示全部安装包" style="width: 100%">
-              <el-option
-                v-for="item in packageOptions"
-                :key="item.id"
-                :label="packageLabel(item)"
-                :value="item.id"
-                :disabled="item.status !== 1 && !form.package_ids.includes(item.id)"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="渠道">
-            <el-select v-model="form.channel_ids" multiple collapse-tags collapse-tags-tooltip clearable filterable placeholder="留空表示全部渠道" style="width: 100%">
-              <el-option v-for="item in channelOptions" :key="item.channel_id" :label="channelLabel(item)" :value="item.channel_id" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="用户类型" prop="user_types">
-            <el-select v-model="form.user_types" multiple style="width: 100%">
-              <el-option label="免费用户" :value="1" />
-              <el-option label="付费用户" :value="2" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="订阅状态" prop="subscription_statuses">
-            <el-select v-model="form.subscription_statuses" multiple style="width: 100%">
-              <el-option label="已订阅" value="subscribed" />
-              <el-option label="未订阅" value="unsubscribed" />
             </el-select>
           </el-form-item>
           <el-form-item label="排序">
@@ -317,9 +266,10 @@ import {
 } from '@/api/template'
 import { useUserStore } from '@/store/user'
 import { getDisplayPositionOptions, type DisplayPosition } from '@/api/displayPosition'
-import { getCountryOptions, type Country } from '@/api/country'
-import { getPackageOptions, type AppPackage } from '@/api/package'
-import { getChannelOptions, type Channel } from '@/api/channel'
+import type { Country } from '@/api/country'
+import type { AppPackage } from '@/api/package'
+import type { PackageVersion } from '@/api/packageVersion'
+import type { VideoApp } from '@/api/videoApp'
 import MediaUploader from '@/components/MediaUploader.vue'
 
 const userStore = useUserStore()
@@ -339,25 +289,16 @@ const formRef = ref<FormInstance>()
 const tableData = ref<VideoTemplate[]>([])
 const typeOptions = ref<VideoTemplateType[]>([])
 const positionOptions = ref<DisplayPosition[]>([])
-const countryOptions = ref<Country[]>([])
-const packageOptions = ref<AppPackage[]>([])
-const channelOptions = ref<Channel[]>([])
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({
-  video_template_type_id: '', template_type: '', position_key: '', country_id: '', package_id: '',
-  channel_id: '', user_type: '', subscription_status: '', status: '', keyword: '',
+  video_template_type_id: '', template_type: '', position_key: '', status: '', keyword: '',
 })
 
 const defaultForm = {
   id: 0,
   video_template_type_id: 0,
-  country_ids: [] as number[],
-  package_ids: [] as number[],
-  channel_ids: [] as number[],
-  user_types: [1, 2] as number[],
-  subscription_statuses: ['subscribed', 'unsubscribed'] as string[],
   name: '',
   template_type: 'action',
   sort: 0,
@@ -373,8 +314,6 @@ const rules = {
   name: [{ required: true, message: '请输入模板名称', trigger: 'blur' }],
   video_template_type_id: [{ required: true, message: '请选择模板分类', trigger: 'change' }],
   template_type: [{ required: true, message: '请选择或输入模板类型', trigger: 'change' }],
-  user_types: [{ required: true, type: 'array', min: 1, message: '请至少选择一种用户类型', trigger: 'change' }],
-  subscription_statuses: [{ required: true, type: 'array', min: 1, message: '请至少选择一种订阅状态', trigger: 'change' }],
   cover_image: [{ required: true, message: '请输入封面图 URL', trigger: 'blur' }],
   template_video: [{ required: true, message: '请输入模板视频 URL', trigger: 'blur' }],
 }
@@ -414,41 +353,14 @@ function countrySummary(items?: Country[] | null) {
 
 function packageSummary(items?: AppPackage[] | null) {
 	return compactSummary(arrayValue(items).map((item) => item.package_name), '全部安装包')
-
 }
 
-function channelSummary(items?: Channel[] | null) {
-	return compactSummary(arrayValue(items).map((item) => item.channel_name), '全部渠道')
+function appSummary(items?: VideoApp[] | null) {
+	return compactSummary(arrayValue(items).map((item) => item.name || item.app_code), '全部应用')
 }
 
-function normalizeUserTypeValues(value: unknown): number[] {
-  if (Array.isArray(value)) {
-    return [...new Set(value.map(Number).filter((item) => item === 1 || item === 2))]
-  }
-  if (typeof value === 'number') return value === 1 || value === 2 ? [value] : []
-  if (typeof value !== 'string' || !value.trim()) return []
-  const text = value.trim()
-  try {
-    const parsed = JSON.parse(text)
-    if (parsed !== text) return normalizeUserTypeValues(parsed)
-  } catch { /* legacy value may be raw Base64 */ }
-  try {
-    return normalizeUserTypeValues([...atob(text)].map((item) => item.charCodeAt(0)))
-  } catch {
-    return []
-  }
-}
-
-function userTypesLabel(types: unknown) {
-  const values = normalizeUserTypeValues(types)
-  return compactSummary(values.map((type) => (type === 1 ? '免费用户' : '付费用户')), '全部用户')
-}
-
-function subscriptionStatusesLabel(statuses?: string[] | null) {
-	return compactSummary(
-		arrayValue(statuses).map((status) => (status === 'subscribed' ? '已订阅' : '未订阅')),
-		'全部订阅状态',
-	)
+function versionSummary(items?: PackageVersion[] | null) {
+	return compactSummary(arrayValue(items).map((item) => item.version_code), '全部版本')
 }
 
 function normalizeTemplateType(item: any): VideoTemplateType {
@@ -456,33 +368,19 @@ function normalizeTemplateType(item: any): VideoTemplateType {
 		...item,
 		display_positions: arrayValue<DisplayPosition>(item?.display_positions),
 		countries: arrayValue<Country>(item?.countries),
-		channels: arrayValue<Channel>(item?.channels),
+		apps: arrayValue<VideoApp>(item?.apps),
 		packages: arrayValue<AppPackage>(item?.packages),
-		user_types: normalizeUserTypeValues(item?.user_types),
-		subscription_statuses: arrayValue<string>(item?.subscription_statuses),
+		versions: arrayValue<PackageVersion>(item?.versions),
 	}
 }
 
 function normalizeTemplate(item: any): VideoTemplate {
 	return {
 		...item,
-		countries: arrayValue<Country>(item?.countries),
-		packages: arrayValue<AppPackage>(item?.packages),
-		channels: arrayValue<Channel>(item?.channels),
-		user_types: normalizeUserTypeValues(item?.user_types),
-		subscription_statuses: arrayValue<string>(item?.subscription_statuses),
 		video_template_type: item?.video_template_type
 			? normalizeTemplateType(item.video_template_type)
 			: undefined,
 	}
-}
-
-function packageLabel(item: AppPackage) {
-	return `${item.package_name} · ${item.package_code}`
-}
-
-function channelLabel(item: Channel) {
-  return `${item.channel_name} · ${item.channel_code}`
 }
 
 async function fetchTypes() {
@@ -493,21 +391,6 @@ async function fetchTypes() {
 async function fetchPositions() {
   const res: any = await getDisplayPositionOptions()
   positionOptions.value = res.data || []
-}
-
-async function fetchCountries() {
-  const res: any = await getCountryOptions()
-  countryOptions.value = res.data || []
-}
-
-async function fetchPackages() {
-  const res: any = await getPackageOptions()
-  packageOptions.value = res.data || []
-}
-
-async function fetchChannels() {
-  const res: any = await getChannelOptions()
-  channelOptions.value = res.data || []
 }
 
 async function fetchData() {
@@ -532,8 +415,7 @@ function handleSearch() {
 
 function handleReset() {
   Object.assign(query, {
-    video_template_type_id: '', template_type: '', position_key: '', country_id: '', package_id: '',
-    channel_id: '', user_type: '', subscription_status: '', status: '', keyword: '',
+    video_template_type_id: '', template_type: '', position_key: '', status: '', keyword: '',
   })
   page.value = 1
   fetchData()
@@ -543,8 +425,6 @@ function openCreate() {
   Object.assign(mediaUploading, { cover: false, template: false, thumbnail: false })
   Object.assign(form, defaultForm, {
     video_template_type_id: typeOptions.value.find((item) => item.status === 1)?.id || 0,
-    country_ids: [], package_ids: [], channel_ids: [],
-    user_types: [1, 2], subscription_statuses: ['subscribed', 'unsubscribed'],
   })
   dialogVisible.value = true
 }
@@ -554,11 +434,6 @@ function openEdit(row: VideoTemplate) {
   Object.assign(form, {
     id: row.id,
     video_template_type_id: row.video_template_type_id,
-    country_ids: (row.countries || []).map((item) => item.id),
-    package_ids: (row.packages || []).map((item) => item.id),
-    channel_ids: (row.channels || []).map((item) => item.channel_id),
-    user_types: normalizeUserTypeValues(row.user_types).length ? normalizeUserTypeValues(row.user_types) : [1, 2],
-    subscription_statuses: [...(row.subscription_statuses || ['subscribed', 'unsubscribed'])],
     name: row.name,
     template_type: row.template_type,
     sort: row.sort,
@@ -583,11 +458,6 @@ async function handleSubmit() {
   try {
     const payload: VideoTemplatePayload = {
       video_template_type_id: form.video_template_type_id,
-      country_ids: [...form.country_ids],
-      package_ids: [...form.package_ids],
-      channel_ids: [...form.channel_ids],
-      user_types: [...form.user_types],
-      subscription_statuses: [...form.subscription_statuses],
       name: form.name.trim(),
       template_type: form.template_type.trim(),
       sort: form.sort,
@@ -615,7 +485,7 @@ async function handleDelete(id: number) {
   await fetchData()
 }
 
-onMounted(() => Promise.all([fetchTypes(), fetchPositions(), fetchCountries(), fetchPackages(), fetchChannels(), fetchData()]))
+onMounted(() => Promise.all([fetchTypes(), fetchPositions(), fetchData()]))
 </script>
 
 <style scoped>

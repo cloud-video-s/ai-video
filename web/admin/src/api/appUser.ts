@@ -84,10 +84,50 @@ export interface UserPointsLedger {
   id: number
   direction: number
   points_change: number
+  balance_before: number
   balance_after: number
   source_type: string
+  business_id: string
+  points_package_id: number | null
+  order_id: number
+  work_id: string
+  mode_key: string
   description: string
   occurred_at: string
+}
+
+export interface UserWork {
+  id: number
+  model_config_id: number
+  client_request_id: string
+  external_task_id: string
+  status: string
+  progress: number
+  usage_duration: number
+  error_message?: string
+  submitted_at: string | null
+  finished_at: string | null
+  created_at: string
+}
+
+export interface UserOrder {
+  id: number
+  order_no: string
+  product_type: string
+  product_id: number
+  product_code: string
+  product_name: string
+  currency: string
+  payable_amount: number
+  paid_amount: number
+  refunded_amount: number
+  bonus_points: number
+  vip_level: number
+  vip_duration_days: number
+  status: string
+  payment_method: string
+  paid_at: string | null
+  created_at: string
 }
 
 export interface UserCenterDetail {
@@ -96,7 +136,12 @@ export interface UserCenterDetail {
   identities: UserIdentity[]
   attribution: UserAttribution | null
   points_ledgers: UserPointsLedger[]
+  points_ledger_total: number
   points_summary: { income_total: number; expense_total: number }
+  works: UserWork[]
+  work_total: number
+  orders: UserOrder[]
+  order_total: number
 }
 
 export function getAppUserList(params: Record<string, unknown>) {

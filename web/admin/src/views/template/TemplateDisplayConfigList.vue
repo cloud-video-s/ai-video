@@ -36,7 +36,13 @@
         <el-table-column label="视频模板" min-width="270">
           <template #default="{ row }">
             <div class="template-cell">
-              <el-image class="template-cover" :src="row.template?.cover_image" fit="cover" preview-teleported>
+              <el-image
+                class="template-cover"
+                :src="row.template?.cover_image"
+                :preview-src-list="row.template?.cover_image ? [row.template.cover_image] : []"
+                fit="cover"
+                preview-teleported
+              >
                 <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
               </el-image>
               <div class="template-info">
@@ -48,8 +54,21 @@
         </el-table-column>
         <el-table-column label="展示位置" min-width="230">
           <template #default="{ row }">
-            <div class="primary-text">{{ row.display_position?.position_name || row.position_key }}</div>
-            <el-tag class="position-key" size="small" type="info" effect="plain">{{ row.position_key }}</el-tag>
+            <div class="position-cell">
+              <el-image
+                class="position-cover"
+                :src="row.display_position?.cover_image"
+                :preview-src-list="row.display_position?.cover_image ? [row.display_position.cover_image] : []"
+                fit="cover"
+                preview-teleported
+              >
+                <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
+              </el-image>
+              <div class="position-info">
+                <div class="primary-text">{{ row.display_position?.position_name || row.position_key }}</div>
+                <el-tag class="position-key" size="small" type="info" effect="plain">{{ row.position_key }}</el-tag>
+              </div>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="sort" label="排序" width="80" align="center" />
@@ -90,23 +109,62 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑模板展示配置' : '新增模板展示配置'" width="640px" destroy-on-close>
+    <el-dialog
+      v-model="dialogVisible"
+      :title="form.id ? '编辑模板展示配置' : '新增模板展示配置'"
+      width="920px"
+      style="max-width: calc(100vw - 24px)"
+      destroy-on-close
+    >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
         <el-form-item label="视频模板" prop="template_id">
-          <el-select v-model="form.template_id" filterable placeholder="请选择视频模板" style="width: 100%">
-            <el-option v-for="item in templateOptions" :key="item.id" :label="templateLabel(item)" :value="item.id" />
-          </el-select>
+          <div class="selector-field">
+            <el-input v-model="templateKeyword" clearable placeholder="请输入模板名称搜索">
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
+            <div v-if="filteredTemplateOptions.length" class="option-card-grid template-option-grid">
+              <button
+                v-for="item in filteredTemplateOptions"
+                :key="item.id"
+                type="button"
+                class="option-card"
+                :class="{ 'is-selected': form.template_id === item.id }"
+                :aria-pressed="form.template_id === item.id"
+                @click="selectTemplate(item.id)"
+              >
+                <el-image class="option-card-image" :src="item.cover_image" fit="cover">
+                  <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
+                </el-image>
+                <div class="option-card-name">{{ item.name }}</div>
+                <div class="option-card-meta">{{ item.video_template_type?.category_name || '未分类' }} · #{{ item.id }}</div>
+                <el-icon v-if="form.template_id === item.id" class="selected-icon"><Check /></el-icon>
+              </button>
+            </div>
+            <el-empty v-else :image-size="64" description="未找到匹配的模板" />
+          </div>
         </el-form-item>
         <el-form-item label="展示位置" prop="position_key">
-          <el-select v-model="form.position_key" filterable placeholder="请选择展示位置" style="width: 100%">
-            <el-option
-              v-for="item in positionOptions"
-              :key="item.position_key"
-              :label="positionLabel(item)"
-              :value="item.position_key"
-              :disabled="item.status !== 1 && form.status === 1"
-            />
-          </el-select>
+          <div class="selector-field">
+            <div class="option-card-grid position-option-grid">
+              <button
+                v-for="item in positionOptions"
+                :key="item.position_key"
+                type="button"
+                class="option-card"
+                :class="{ 'is-selected': form.position_key === item.position_key }"
+                :disabled="item.status !== 1 && form.status === 1"
+                :aria-pressed="form.position_key === item.position_key"
+                @click="selectPosition(item.position_key)"
+              >
+                <el-image class="option-card-image" :src="item.cover_image" fit="cover">
+                  <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
+                </el-image>
+                <div class="option-card-name">{{ item.position_name }}</div>
+                <div class="option-card-meta">{{ item.position_key }}{{ item.status === 1 ? '' : ' · 已禁用' }}</div>
+                <el-icon v-if="form.position_key === item.position_key" class="selected-icon"><Check /></el-icon>
+              </button>
+            </div>
+          </div>
         </el-form-item>
         <div class="form-grid">
           <el-form-item label="排序">
@@ -155,6 +213,7 @@ const canDelete = computed(() => userStore.hasPermission('template:display-confi
 const loading = ref(false)
 const submitting = ref(false)
 const dialogVisible = ref(false)
+const templateKeyword = ref('')
 const formRef = ref<FormInstance>()
 const tableData = ref<TemplateDisplayConfig[]>([])
 const templateOptions = ref<VideoTemplate[]>([])
@@ -173,6 +232,11 @@ const defaultForm: TemplateDisplayConfigPayload & { id: number } = {
   remark: '',
 }
 const form = reactive({ ...defaultForm })
+const filteredTemplateOptions = computed(() => {
+  const keyword = templateKeyword.value.trim().toLocaleLowerCase()
+  if (!keyword) return templateOptions.value
+  return templateOptions.value.filter((item) => item.name.toLocaleLowerCase().includes(keyword))
+})
 const rules: FormRules = {
   template_id: [{ required: true, type: 'number', min: 1, message: '请选择视频模板', trigger: 'change' }],
   position_key: [{ required: true, message: '请选择展示位置', trigger: 'change' }],
@@ -216,6 +280,7 @@ function handleReset() {
 
 function openCreate() {
   Object.assign(form, defaultForm)
+  templateKeyword.value = ''
   dialogVisible.value = true
 }
 
@@ -228,7 +293,18 @@ function openEdit(row: TemplateDisplayConfig) {
     status: row.status,
     remark: row.remark || '',
   })
+  templateKeyword.value = ''
   dialogVisible.value = true
+}
+
+function selectTemplate(templateId: number) {
+  form.template_id = templateId
+  formRef.value?.validateField('template_id')
+}
+
+function selectPosition(positionKey: string) {
+  form.position_key = positionKey
+  formRef.value?.validateField('position_key')
 }
 
 async function handleSubmit() {
@@ -274,9 +350,10 @@ onMounted(() => Promise.all([fetchOptions(), fetchData()]))
 .page-title { color: #303133; font-size: 17px; font-weight: 600; }
 .page-subtitle { margin-top: 4px; color: #909399; font-size: 12px; }
 .filters { display: grid; grid-template-columns: minmax(190px, 1fr) minmax(190px, 1fr) minmax(190px, 1fr) 130px auto auto; gap: 10px; margin-bottom: 16px; }
-.template-cell { display: flex; align-items: center; gap: 12px; }
+.template-cell, .position-cell { display: flex; align-items: center; gap: 12px; }
 .template-cover { flex: 0 0 auto; width: 88px; height: 54px; border-radius: 6px; background: #f2f3f5; }
-.template-info { min-width: 0; }
+.position-cover { flex: 0 0 auto; width: 96px; height: 54px; border-radius: 6px; background: #f2f3f5; }
+.template-info, .position-info { min-width: 0; }
 .image-error { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: #c0c4cc; font-size: 22px; }
 .primary-text { overflow: hidden; color: #303133; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .secondary-text { margin-top: 4px; color: #909399; font-size: 12px; }
@@ -285,12 +362,26 @@ onMounted(() => Promise.all([fetchOptions(), fetchData()]))
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; overflow-x: auto; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; }
 .form-grid :deep(.el-input-number) { width: 100%; }
+.selector-field { width: 100%; min-width: 0; }
+.option-card-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; max-height: 310px; overflow-y: auto; padding: 2px; }
+.position-option-grid { margin-top: 0; max-height: 230px; }
+.option-card { position: relative; min-width: 0; padding: 8px; overflow: hidden; border: 1px solid #dcdfe6; border-radius: 8px; background: #fff; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color .2s, box-shadow .2s; }
+.option-card:hover { border-color: #79bbff; }
+.option-card:focus-visible { outline: 2px solid var(--el-color-primary-light-3); outline-offset: 1px; }
+.option-card.is-selected { border-color: var(--el-color-primary); box-shadow: 0 0 0 1px var(--el-color-primary); }
+.option-card:disabled { opacity: .55; cursor: not-allowed; }
+.option-card-image { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 5px; background: #f2f3f5; }
+.option-card-name { overflow: hidden; margin-top: 7px; color: #303133; font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.option-card-meta { overflow: hidden; margin-top: 2px; color: #909399; font-size: 11px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.selected-icon { position: absolute; top: 5px; right: 5px; width: 20px; height: 20px; border-radius: 50%; background: var(--el-color-primary); color: #fff; }
 @media (max-width: 960px) {
   .filters { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+  .option-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 620px) {
   .page-header { align-items: stretch; flex-direction: column; }
   .filters, .form-grid { grid-template-columns: 1fr; }
+  .option-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .page-wrap :deep(.el-card__header), .page-wrap :deep(.el-card__body) { padding: 14px; }
 }
 </style>

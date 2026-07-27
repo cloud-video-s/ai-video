@@ -25,6 +25,7 @@ const routes: RouteRecordRaw[] = [
 	  { path: 'subscription', redirect: '/subscription/vip' },
 	  { path: 'user', redirect: '/user/list' },
 	  { path: 'attribution', redirect: '/attribution/list' },
+	  { path: 'model', redirect: '/model/list' },
       {
         path: 'dashboard',
         name: 'Dashboard',
@@ -116,6 +117,18 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '渠道管理' },
       },
       {
+        path: 'model/platforms',
+        name: 'VideoPlatformList',
+        component: () => import('@/views/model/PlatformList.vue'),
+        meta: { title: '平台管理' },
+      },
+      {
+        path: 'model/list',
+        name: 'VideoModelList',
+        component: () => import('@/views/model/ModelList.vue'),
+        meta: { title: '模型管理' },
+      },
+      {
         path: 'template/positions',
         name: 'DisplayPositionList',
         component: () => import('@/views/template/DisplayPositionList.vue'),
@@ -138,6 +151,12 @@ const routes: RouteRecordRaw[] = [
         name: 'BannerList',
         component: () => import('@/views/banner/BannerList.vue'),
         meta: { title: 'Banner 管理' },
+      },
+      {
+        path: 'banner/placements',
+        name: 'BannerPlacementList',
+        component: () => import('@/views/banner/BannerPlacementList.vue'),
+        meta: { title: 'Banner 位置管理' },
       },
       {
         path: 'template/display-configs',

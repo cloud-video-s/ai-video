@@ -15,7 +15,7 @@
 
       <div class="filters">
         <el-select v-model="query.position_key" clearable filterable placeholder="展示位置">
-          <el-option v-for="item in positionOptions" :key="item.id" :label="positionLabel(item)" :value="item.position_key" />
+          <el-option v-for="item in positionOptions" :key="item.id" :label="positionLabel(item)" :value="item.placement_key" />
         </el-select>
         <el-select v-model="query.country_code" clearable filterable placeholder="国家">
           <el-option v-for="item in countryOptions" :key="item.id" :label="countryLabel(item)" :value="item.code" />
@@ -50,7 +50,7 @@
             <div class="primary-text">{{ row.name }}</div>
             <div class="target-tags position-tags">
               <el-tag v-for="item in row.display_positions" :key="item.id" size="small" type="primary" effect="plain">
-                {{ item.position_name }}
+                {{ item.placement_name }}
               </el-tag>
               <el-tag v-if="!row.display_positions?.length" size="small" type="info" effect="plain">全部位置</el-tag>
             </div>
@@ -200,13 +200,13 @@
             </el-radio-group>
             <template v-if="targetModes.positions === 'selected'">
               <el-checkbox-group v-if="positionOptions.length" v-model="form.display_position_keys" class="position-card-grid">
-                <el-checkbox-button v-for="item in positionOptions" :key="item.position_key" :value="item.position_key" class="position-card-option">
+                <el-checkbox-button v-for="item in positionOptions" :key="item.placement_key" :value="item.placement_key" class="position-card-option">
                   <div class="position-card-content">
                     <el-image class="position-card-image" :src="item.cover_image" fit="cover">
                       <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
                     </el-image>
-                    <div class="position-card-name">{{ item.position_name }}</div>
-                    <div class="position-card-key">{{ item.position_key }}</div>
+                    <div class="position-card-name">{{ item.placement_name }}</div>
+                    <div class="position-card-key">{{ item.placement_key }}</div>
                   </div>
                 </el-checkbox-button>
               </el-checkbox-group>
@@ -296,7 +296,7 @@ import {
 } from '@/api/banner.ts'
 import { getCountryOptions, type Country } from '@/api/country.ts'
 import { getTemplateList, type VideoTemplate } from '@/api/template.ts'
-import { getDisplayPositionOptions, type DisplayPosition } from '@/api/displayPosition.ts'
+import { getBannerPlacementOptions, type BannerPlacement } from '@/api/bannerPlacement'
 import { useUserStore } from '@/store/user.ts'
 import MediaUploader from '@/components/MediaUploader.vue'
 
@@ -323,7 +323,7 @@ const tableData = ref<VideoBanner[]>([])
 const countryOptions = ref<Country[]>([])
 const deliveryOptions = ref<BannerDeliveryApp[]>([])
 const templateOptions = ref<VideoTemplate[]>([])
-const positionOptions = ref<DisplayPosition[]>([])
+const positionOptions = ref<BannerPlacement[]>([])
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
@@ -370,7 +370,7 @@ const rules: FormRules<BannerForm> = {
 const preview = reactive({ visible: false, url: '', title: '' })
 
 function countryLabel(item: Country) { return `${item.name_zh} · ${item.code}` }
-function positionLabel(item: DisplayPosition) { return `${item.position_name} · ${item.position_key}` }
+function positionLabel(item: BannerPlacement) { return `${item.placement_name} · ${item.placement_key}` }
 function jumpTypeLabel(value: BannerJumpType) { return jumpTypeOptions.find((item) => item.value === value)?.label || value }
 function jumpTagType(value: BannerJumpType) {
   return ({ 1: '', 2: 'success', 3: 'warning', 4: 'danger' } as const)[value]
@@ -387,7 +387,7 @@ function subscriptionStatusLabel(value: number) { return ({ 1: '非会员', 2: '
 
 async function fetchOptions() {
   const [countryRes, deliveryRes, templateRes, positionRes]: any[] = await Promise.all([
-    getCountryOptions(), getBannerDeliveryOptions(), getTemplateList({ page: 1, page_size: 100, status: 1 }), getDisplayPositionOptions(),
+    getCountryOptions(), getBannerDeliveryOptions(), getTemplateList({ page: 1, page_size: 100, status: 1 }), getBannerPlacementOptions(),
   ])
   countryOptions.value = countryRes.data || []
   deliveryOptions.value = deliveryRes.data || []
@@ -424,7 +424,7 @@ function openEdit(row: VideoBanner) {
     id: row.id,
     name: row.name,
     cover_image: row.cover_image,
-    display_position_keys: row.display_positions?.map((item) => item.position_key) || [],
+    display_position_keys: row.display_positions?.map((item) => item.placement_key) || [],
     country_ids: row.countries?.map((item) => item.id) || [],
     app_targets: (row.app_targets || []).map((item) => ({ app_code: item.app_code, package_code: item.package_code, version_codes: [...item.version_codes] })),
     remark: row.remark || '',

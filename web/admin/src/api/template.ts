@@ -1,18 +1,18 @@
 import request from '@/utils/request'
 import type { AppPackage } from '@/api/package'
+import type { PackageVersion } from '@/api/packageVersion'
 import type { Country } from '@/api/country'
-import type { Channel } from '@/api/channel'
 import type { DisplayPosition } from '@/api/displayPosition'
+import type { VideoApp } from '@/api/videoApp'
 
 export interface VideoTemplateType {
   id: number
   category_name: string
   display_positions: DisplayPosition[]
   countries: Country[]
-  channels: Channel[]
+  apps: VideoApp[]
   packages: AppPackage[]
-  user_types: number[]
-  subscription_statuses: string[]
+  versions: PackageVersion[]
   sort: number
   status: number
   description: string
@@ -20,18 +20,21 @@ export interface VideoTemplateType {
   updated_at: string
 }
 
-export type VideoTemplateTypePayload = Omit<VideoTemplateType, 'id' | 'display_positions' | 'countries' | 'channels' | 'packages' | 'created_at' | 'updated_at'> & {
+export interface VideoTemplateTypePayload {
+  category_name: string
   display_position_keys: string[]
-  country_ids: number[]
-  channel_ids: number[]
-  package_ids: number[]
+  country_codes: string[]
+  app_rules: Array<{ app_code: string }>
+  package_codes: string[]
+  version_codes: string[]
+  sort: number
+  status: number
+  description: string
 }
 
 export interface VideoTemplate {
   id: number
   video_template_type_id: number
-  user_types: number[]
-  subscription_statuses: string[]
   name: string
   template_type: string
   sort: number
@@ -42,20 +45,12 @@ export interface VideoTemplate {
   status: number
   description: string
   video_template_type?: VideoTemplateType
-  countries: Country[]
-  packages: AppPackage[]
-  channels: Channel[]
   created_at: string
   updated_at: string
 }
 
 export interface VideoTemplatePayload {
   video_template_type_id: number
-  country_ids: number[]
-  package_ids: number[]
-  channel_ids: number[]
-  user_types: number[]
-  subscription_statuses: string[]
   name: string
   template_type: string
   sort: number

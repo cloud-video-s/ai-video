@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 import type { Country } from '@/api/country'
 import type { VideoTemplate } from '@/api/template'
-import type { DisplayPosition } from '@/api/displayPosition'
+import type { BannerPlacement } from '@/api/bannerPlacement'
 
 export type BannerJumpType = 1 | 2 | 3 | 4
 
@@ -21,7 +21,7 @@ export interface VideoBanner {
   id: number
   name: string
   cover_image: string
-  display_positions: DisplayPosition[]
+  display_positions: BannerPlacement[]
   remark: string
   sort: number
   jump_type: BannerJumpType

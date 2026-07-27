@@ -103,19 +103,10 @@
           @current-change="fetchList"
         />
       </div>
+    </el-card>
 
-      <el-divider content-position="left">用户详情与管理</el-divider>
-      <el-form class="search-form" inline @submit.prevent="handleSearch">
-        <el-form-item label="用户 ID / 邮箱">
-          <el-input v-model="searchValue" clearable placeholder="输入用户 ID、登录邮箱或第三方邮箱" @keyup.enter="handleSearch" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :loading="searching" @click="handleSearch">查询</el-button>
-        </el-form-item>
-      </el-form>
-
-      <el-empty v-if="!detail && !searching" description="点击列表详情，或输入用户 ID / 邮箱查询" />
-
+    <el-drawer v-model="detailVisible" title="用户详情与管理" size="min(960px, 90vw)" destroy-on-close>
+      <el-skeleton v-if="loadingDetail && !detail" :rows="10" animated />
       <div v-if="detail" v-loading="loadingDetail">
         <el-descriptions :column="2" border class="summary">
           <el-descriptions-item label="用户 ID">{{ user.id }}</el-descriptions-item>
@@ -189,10 +180,15 @@
             <el-empty v-else description="暂无归因记录" />
           </el-tab-pane>
 
-          <el-tab-pane :label="`积分明细 (${detail.points_ledgers.length})`" name="points">
-            <div class="points-summary">
-              <el-tag type="success">累计收入 {{ formatNumber(detail.points_summary.income_total) }}</el-tag>
-              <el-tag type="danger">累计支出 {{ formatNumber(detail.points_summary.expense_total) }}</el-tag>
+          <el-tab-pane :label="`积分明细 (${detail.points_ledger_total})`" name="points">
+            <div class="table-toolbar">
+              <div class="points-summary">
+                <el-tag type="success">累计收入 {{ formatNumber(detail.points_summary.income_total) }}</el-tag>
+                <el-tag type="danger">累计支出 {{ formatNumber(detail.points_summary.expense_total) }}</el-tag>
+              </div>
+              <span v-if="detail.points_ledger_total > detail.points_ledgers.length" class="result-hint">
+                显示最近 {{ detail.points_ledgers.length }} 条
+              </span>
             </div>
             <el-table :data="detail.points_ledgers" border empty-text="暂无积分明细">
               <el-table-column prop="source_type" label="来源" width="130" />
@@ -200,13 +196,68 @@
                 <template #default="{ row }"><span :class="row.points_change >= 0 ? 'income' : 'expense'">{{ row.points_change > 0 ? '+' : '' }}{{ row.points_change }}</span></template>
               </el-table-column>
               <el-table-column prop="balance_after" label="变动后余额" width="130" />
+              <el-table-column label="关联业务" min-width="160" show-overflow-tooltip>
+                <template #default="{ row }">{{ ledgerBusinessLabel(row) }}</template>
+              </el-table-column>
               <el-table-column prop="description" label="说明" min-width="220" show-overflow-tooltip />
               <el-table-column label="发生时间" min-width="180"><template #default="{ row }">{{ formatDate(row.occurred_at) }}</template></el-table-column>
             </el-table>
           </el-tab-pane>
+
+          <el-tab-pane :label="`作品 (${detail.work_total})`" name="works">
+            <div v-if="detail.work_total > detail.works.length" class="result-hint table-hint">
+              显示最近 {{ detail.works.length }} 条
+            </div>
+            <el-table :data="detail.works" border empty-text="暂无作品">
+              <el-table-column prop="id" label="作品 ID" width="95" />
+              <el-table-column prop="model_config_id" label="模型 ID" width="95" />
+              <el-table-column prop="external_task_id" label="平台任务 ID" min-width="170" show-overflow-tooltip />
+              <el-table-column label="状态" width="110">
+                <template #default="{ row }">
+                  <el-tag :type="workStatusType(row.status)" size="small">{{ workStatusLabel(row.status) }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="进度" width="90"><template #default="{ row }">{{ row.progress }}%</template></el-table-column>
+              <el-table-column label="生成耗时" width="110"><template #default="{ row }">{{ formatDuration(row.usage_duration) }}</template></el-table-column>
+              <el-table-column label="提交时间" min-width="175"><template #default="{ row }">{{ formatDate(row.submitted_at) }}</template></el-table-column>
+              <el-table-column label="完成时间" min-width="175"><template #default="{ row }">{{ formatDate(row.finished_at) }}</template></el-table-column>
+              <el-table-column label="创建时间" min-width="175"><template #default="{ row }">{{ formatDate(row.created_at) }}</template></el-table-column>
+            </el-table>
+          </el-tab-pane>
+
+          <el-tab-pane :label="`订单 (${detail.order_total})`" name="orders">
+            <div v-if="detail.order_total > detail.orders.length" class="result-hint table-hint">
+              显示最近 {{ detail.orders.length }} 条
+            </div>
+            <el-table :data="detail.orders" border empty-text="暂无订单">
+              <el-table-column prop="order_no" label="订单号" min-width="180" show-overflow-tooltip />
+              <el-table-column label="商品" min-width="180">
+                <template #default="{ row }">
+                  <div class="primary-text">{{ row.product_name || '-' }}</div>
+                  <div class="secondary-text">{{ row.product_code || row.product_type || '-' }}</div>
+                </template>
+              </el-table-column>
+              <el-table-column label="订单状态" width="110">
+                <template #default="{ row }">
+                  <el-tag :type="orderStatusType(row.status)" size="small">{{ orderStatusLabel(row.status) }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="应付金额" width="125"><template #default="{ row }">{{ formatMoney(row.payable_amount, row.currency) }}</template></el-table-column>
+              <el-table-column label="实付金额" width="125"><template #default="{ row }">{{ formatMoney(row.paid_amount, row.currency) }}</template></el-table-column>
+              <el-table-column prop="payment_method" label="支付方式" width="120" />
+              <el-table-column label="权益" min-width="135">
+                <template #default="{ row }">
+                  <div>积分 +{{ formatNumber(row.bonus_points) }}</div>
+                  <div class="secondary-text">VIP {{ row.vip_level || 0 }} / {{ row.vip_duration_days || 0 }} 天</div>
+                </template>
+              </el-table-column>
+              <el-table-column label="支付时间" min-width="175"><template #default="{ row }">{{ formatDate(row.paid_at) }}</template></el-table-column>
+              <el-table-column label="创建时间" min-width="175"><template #default="{ row }">{{ formatDate(row.created_at) }}</template></el-table-column>
+            </el-table>
+          </el-tab-pane>
         </el-tabs>
       </div>
-    </el-card>
+    </el-drawer>
 
     <el-dialog v-model="vipDialogVisible" title="添加 VIP" width="480px">
       <el-form label-width="100px">
@@ -227,8 +278,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   bindUserPhone, clearUserDevice, extendUserVIP, getUserCenter, grantUserVIP,
-  getAppUserList, lookupAppUser, setUserBlacklisted, setUserFrozen, terminateUserVIP, transferUserVIP,
-  type AppUser, type UserCenterDetail,
+  getAppUserList, setUserBlacklisted, setUserFrozen, terminateUserVIP, transferUserVIP,
+  type AppUser, type UserCenterDetail, type UserPointsLedger,
 } from '@/api/appUser'
 import { useUserStore } from '@/store/user'
 
@@ -240,12 +291,11 @@ const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 const filters = reactive({ keyword: '', device_country: '', channel_id: '', user_type: undefined as number | undefined, login_type: undefined as number | undefined, status: undefined as number | undefined })
-const searchValue = ref('')
-const searching = ref(false)
 const loadingDetail = ref(false)
 const operating = ref(false)
 const detail = ref<UserCenterDetail | null>(null)
 const user = computed(() => detail.value!.user)
+const detailVisible = ref(false)
 const activeTab = ref('account')
 const vipDialogVisible = ref(false)
 const vipForm = reactive({ level: 1, started_at: '', expires_at: '' })
@@ -272,18 +322,10 @@ function resetListFilters() {
 }
 
 async function openDetail(row: AppUser) {
-  searchValue.value = String(row.id)
+  detail.value = null
+  activeTab.value = 'account'
+  detailVisible.value = true
   await loadDetail(row.id)
-}
-
-async function handleSearch() {
-  const query = searchValue.value.trim()
-  if (!query) { ElMessage.warning('请输入用户 ID 或邮箱'); return }
-  searching.value = true
-  try {
-    const result: any = await lookupAppUser(query)
-    await loadDetail(result.data.id)
-  } finally { searching.value = false }
 }
 
 async function loadDetail(id: number) {
@@ -361,6 +403,63 @@ function loginTypeLabel(value: number) { return value === 2 ? 'Google' : value =
 function subscriptionLabel(value: number) { return value === 2 ? '订阅中' : value === 3 ? '已取消' : '未订阅' }
 function flagActive(value: boolean | number) { return value === true || Number(value) === 1 }
 function formatNumber(value: number) { return new Intl.NumberFormat('zh-CN').format(value || 0) }
+
+function ledgerBusinessLabel(ledger: UserPointsLedger) {
+  if (ledger.order_id) return `订单 #${ledger.order_id}`
+  if (ledger.work_id) return `作品 ${ledger.work_id}`
+  if (ledger.business_id) return ledger.business_id
+  return ledger.mode_key || '-'
+}
+
+type StatusTagType = 'primary' | 'success' | 'info' | 'warning' | 'danger'
+
+function workStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    submitting: '提交中', submitted: '已提交', pending: '排队中', running: '生成中',
+    downloading: '下载中', success: '成功', failure: '失败',
+  }
+  return labels[status] || status || '-'
+}
+
+function workStatusType(status: string): StatusTagType {
+  if (status === 'success') return 'success'
+  if (status === 'failure') return 'danger'
+  if (status === 'running' || status === 'downloading') return 'warning'
+  return 'info'
+}
+
+function orderStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    pending: '待支付', paid: '已支付', cancelled: '已取消', failed: '失败', refunded: '已退款',
+  }
+  return labels[status] || status || '-'
+}
+
+function orderStatusType(status: string): StatusTagType {
+  if (status === 'paid') return 'success'
+  if (status === 'pending') return 'warning'
+  if (status === 'failed') return 'danger'
+  return 'info'
+}
+
+function formatDuration(seconds: number) {
+  if (!seconds) return '-'
+  if (seconds < 60) return `${seconds} 秒`
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  return remainingSeconds ? `${minutes} 分 ${remainingSeconds} 秒` : `${minutes} 分`
+}
+
+function formatMoney(value: number, currency: string) {
+  try {
+    return new Intl.NumberFormat('zh-CN', {
+      style: 'currency', currency: currency || 'USD', minimumFractionDigits: 2,
+    }).format(value || 0)
+  } catch {
+    return `${currency || ''} ${Number(value || 0).toFixed(2)}`.trim()
+  }
+}
+
 function formatDate(value?: string | null) {
   if (!value) return '-'
   const date = new Date(value)
@@ -381,19 +480,17 @@ onMounted(fetchList)
 .secondary-text { margin-top: 3px; color: var(--el-text-color-secondary); font-size: 12px; }
 .status-tag { margin-left: 4px; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
-.search-form { display: flex; align-items: center; margin-bottom: 18px; }
-.search-form :deep(.el-form-item:first-child) { flex: 1; max-width: 720px; }
-.search-form :deep(.el-form-item:first-child .el-form-item__content), .search-form :deep(.el-input) { width: 100%; }
-.summary { max-width: 1080px; }
+.summary { width: 100%; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
 .actions .el-button { margin-left: 0; }
 .detail-tabs { margin-top: 22px; }
-.points-summary { display: flex; gap: 10px; margin-bottom: 12px; }
+.points-summary { display: flex; gap: 10px; }
+.table-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.result-hint { color: var(--el-text-color-secondary); font-size: 12px; }
+.table-hint { margin-bottom: 10px; text-align: right; }
 .income { color: #67c23a; font-weight: 600; }
 .expense { color: #f56c6c; font-weight: 600; }
 @media (max-width: 700px) {
-  .search-form { align-items: stretch; flex-direction: column; }
-  .search-form :deep(.el-form-item) { width: 100%; margin-right: 0; }
   .summary :deep(.el-descriptions__body) { overflow-x: auto; }
 }
 </style>
