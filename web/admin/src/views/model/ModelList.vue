@@ -25,7 +25,7 @@
           <el-option v-for="item in platformOptions" :key="item.id" :label="item.name" :value="String(item.id)" />
         </el-select>
         <el-select v-model="query.model_type" clearable placeholder="全部类型">
-          <el-option v-for="item in modelTypeOptions" :key="item" :label="item" :value="item" />
+          <el-option v-for="item in modelTypeOptions" :key="item.value" :label="item.key" :value="item.value" />
         </el-select>
         <el-select v-model="query.status" clearable placeholder="全部状态">
           <el-option label="启用" value="1" />
@@ -46,7 +46,9 @@
         <el-table-column label="平台 / 类型" min-width="160">
           <template #default="{ row }">
             <div>{{ row.platform?.name || `平台 #${row.platform_id}` }}</div>
-            <el-tag class="type-tag" size="small" effect="plain">{{ row.model_type }}</el-tag>
+            <el-tag class="type-tag" size="small" effect="plain">
+              {{ getmodelType(row.model_type) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="API 配置" min-width="310">
@@ -56,7 +58,7 @@
             <div class="endpoint"><span>查询</span><code>{{ row.status_endpoint }}</code></div>
           </template>
         </el-table-column>
-        <el-table-column label="认证" width="125" align="center">
+        <el-table-column label="认证类型" width="125" align="center">
           <template #default="{ row }">
             <el-tag :type="row.api_key_configured ? 'success' : 'danger'" effect="plain">
               {{ row.api_key_configured ? row.auth_type : '未配置密钥' }}
@@ -122,7 +124,7 @@
           </el-form-item>
           <el-form-item label="模型类型" prop="model_type">
             <el-select v-model="form.model_type" filterable allow-create default-first-option style="width: 100%">
-              <el-option v-for="item in modelTypeOptions" :key="item" :label="item" :value="item" />
+              <el-option v-for="item in modelTypeOptions" :key="item.value" :label="item.key" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="模型积分" prop="score">
@@ -142,9 +144,8 @@
             <el-input v-model="form.status_endpoint" maxlength="255" placeholder="/v1/tasks/status" />
           </el-form-item>
           <el-form-item label="认证类型" prop="auth_type">
-            <el-select v-model="form.auth_type" style="width: 100%">
-              <el-option label="Bearer Token" value="Bearer" />
-              <el-option label="API-Key" value="API-Key" />
+            <el-select v-model="form.auth_type" filterable allow-create default-first-option style="width: 100%">
+              <el-option v-for="item in authTypeOptions" :key="item.value" :label="item.key" :value="item.value" />
             </el-select>
           </el-form-item>
         </div>
@@ -202,7 +203,26 @@ const canEdit = computed(() => userStore.hasPermission('model:edit'))
 const canDelete = computed(() => userStore.hasPermission('model:delete'))
 const canConfig = computed(() => userStore.hasPermission('model:config'))
 
-const modelTypeOptions = ['', '', '']
+const modelTypeOptions = [
+  {
+    key: "生成图片",
+    value: 1,
+  },
+  {
+    key: "生成视频",
+    value: 2,
+  }
+  ]
+const authTypeOptions = [
+  {
+    key: "Bearer Token",
+    value: 1,
+  },
+  {
+    key: "API-Key",
+    value: 2,
+  }
+]
 const loading = ref(false)
 const submitting = ref(false)
 const dialogVisible = ref(false)
@@ -254,7 +274,7 @@ const rules: FormRules = {
   ],
   status_endpoint: [
     { required: false, message: '请输入查询地址路由', trigger: 'blur' },
-    { pattern: /^\//, message: '路由必须以 / 开头', trigger: 'blur' },
+    // { pattern: /^\//, message: '路由必须以 / 开头', trigger: 'blur' },
   ],
 }
 
@@ -384,6 +404,15 @@ function formatDate(value: string) {
   if (!value) return '-'
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false })
+}
+
+function getmodelType(modelType: number){
+  for (let i = 0; i <= modelTypeOptions.length; i++){
+    if (modelTypeOptions[i].value === modelType){
+      return modelTypeOptions[i].key
+    }
+  }
+  return ''
 }
 
 onMounted(async () => {

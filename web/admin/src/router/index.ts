@@ -177,6 +177,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '积分明细' },
       },
       {
+        path: 'user/generation-tasks',
+        name: 'UserGenerationTaskList',
+        component: () => import('@/views/user/UserGenerationTaskList.vue'),
+        meta: { title: '生成任务' },
+      },
+      {
         path: 'attribution/list',
         name: 'AttributionList',
         component: () => import('@/views/attribution/AttributionList.vue'),
