@@ -103,6 +103,7 @@ func main() {
 		// 父菜单 (BelongsTo)
 		gen.FieldRelate(field.BelongsTo, "ParentMenu", g.GenerateModel("video_menu"),
 			&field.RelateConfig{
+				RelatePointer: true,
 				GORMTag: field.GormTag{
 					"foreignKey": []string{"ParentID"},
 					"references": []string{"ID"},
@@ -181,6 +182,12 @@ func main() {
 	videoBannerCountry := g.GenerateModel("video_banner_country",
 		gen.FieldType("id", "uint64"),
 		gen.FieldType("banner_id", "uint64"),
+	)
+
+	videoBannerPlacement := g.GenerateModel("video_banner_placement",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("sort", "int64"),
+		gen.FieldType("status", "int8"),
 	)
 
 	videoBannerPlacementAssociation := g.GenerateModel("video_banner_placement_association",
@@ -491,18 +498,18 @@ func main() {
 		gen.FieldRename("sha256", "SHA256"),
 	)
 
-	// AI 模型配置中心。APIKey 只允许通过管理服务的脱敏视图返回。
-	videoAIModel := g.GenerateModel("video_ai_model",
-		gen.FieldType("id", "uint64"),
-		gen.FieldType("http_timeout_seconds", "uint32"),
-		gen.FieldType("poll_interval_seconds", "uint32"),
-		gen.FieldType("task_timeout_seconds", "uint32"),
-		gen.FieldType("status", "int8"),
-		gen.FieldJSONTag("api_key", "-"),
-	)
-
 	// 客户端用户生成任务。可空时间使用指针区分“尚未发生”和零值。
-	videoGenerationTask := g.GenerateModel("video_generation_task")
+	videoUserGenerationTask := g.GenerateModel("video_user_generation_task",
+		gen.FieldType("status", "int"),
+		gen.FieldRelate(field.BelongsTo, "User", g.GenerateModel("video_user"),
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"UserID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
 
 	// ================================================================
 	// 33. video_user
@@ -551,6 +558,33 @@ func main() {
 				GORMTag: field.GormTag{
 					"foreignKey": []string{"ChannelID"},
 					"references": []string{"ChannelCode"},
+				},
+			},
+		),
+		gen.FieldRelate(field.HasMany, "PointsLedgers", g.GenerateModel("video_user_points_ledger"),
+			&field.RelateConfig{
+				RelateSlicePointer: true,
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"UserID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+		gen.FieldRelate(field.HasMany, "Works", videoUserGenerationTask,
+			&field.RelateConfig{
+				RelateSlicePointer: true,
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"UserID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+		gen.FieldRelate(field.HasMany, "Orders", videoOrder,
+			&field.RelateConfig{
+				RelateSlicePointer: true,
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"UserID"},
+					"references": []string{"ID"},
 				},
 			},
 		),
@@ -767,6 +801,38 @@ func main() {
 		),
 	)
 
+	videoPlatform := g.GenerateModel("video_platform")
+	videoModelParameter := g.GenerateModel("video_model_parameter")
+	videoModel := g.GenerateModel("video_model",
+		gen.FieldRelate(field.BelongsTo, "Platform", videoPlatform,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"PlatformID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
+
+	videoUserTemplateComplaint := g.GenerateModel("video_user_template_complaint",
+		gen.FieldRelate(field.BelongsTo, "User", videoUser,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"UserID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+		gen.FieldRelate(field.BelongsTo, "Template", videoTemplate,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"TemplateID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
+
 	allModels := []interface{}{
 		casbinRule,
 		videoAdmin,
@@ -777,6 +843,7 @@ func main() {
 		videoBannerApp,
 		videoBannerPackage,
 		videoBannerVersion,
+		videoBannerPlacement,
 		videoBannerPlacementAssociation,
 		videoBannerCountry,
 		videoChannel,
@@ -805,8 +872,7 @@ func main() {
 		videoTemplateTypeCountry,
 		videoTemplateTypeDisplayPosition,
 		videoUpload,
-		videoAIModel,
-		videoGenerationTask,
+		videoUserGenerationTask,
 		videoUser,
 		videoUserAttribution,
 		videoUserIdentity,
@@ -820,6 +886,10 @@ func main() {
 		videoVipSubscriptionVersion,
 		videoVipSubscriptionCountry,
 		videoVipSubscriptionChannel,
+		videoPlatform,
+		videoModel,
+		videoModelParameter,
+		videoUserTemplateComplaint,
 	}
 
 	g.ApplyBasic(allModels...)

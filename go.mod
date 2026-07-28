@@ -3,13 +3,14 @@ module ai-video
 go 1.26.4
 
 require (
-	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
+	github.com/aliyun/alibabacloud-oss-go-sdk-v2 v1.5.3
 	github.com/casbin/casbin/v2 v2.82.0
 	github.com/casbin/gorm-adapter/v3 v3.20.0
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/google/uuid v1.6.0
 	github.com/hibiken/asynq v0.26.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/spf13/viper v1.21.0
@@ -45,7 +46,6 @@ require (
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.8.0 // indirect

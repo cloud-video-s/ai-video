@@ -23,6 +23,8 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',   // 允许局域网访问
+    port: 5173,         // 可选，默认就是 5173，这里显式写出来方便查看
     proxy: {
       '/admin': process.env.VITE_PROXY_TARGET || 'http://localhost:8080',
       '/api': process.env.VITE_PROXY_TARGET || 'http://localhost:8080',
