@@ -3,6 +3,7 @@ package service
 import (
 	"ai-video/internal/middleware"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -85,6 +86,12 @@ type ClientTemplateDisplayItem struct {
 	DisplayConfigID uint64 `json:"display_config_id"`
 	PositionKey     string `json:"position_key"`
 	DisplaySort     int    `json:"display_sort"`
+}
+
+type ClientCategoriesRequest struct {
+	TemplateID    uint64 `json:"template_id" binding:"required,max=64"`
+	ComplaintType string `json:"complaint_type" binding:"required,max=64"`
+	Content       string `json:"content"`
 }
 
 func (s *ClientTemplateService) List(ctx *gin.Context, req *ClientTemplateRequest) ([]ClientTemplateType, error) {
@@ -207,14 +214,6 @@ func templateTypeIDs(items []model.VideoTemplateType) []uint64 {
 	return result
 }
 
-func templatePositionKeys(items []model.VideoDisplayPosition) []string {
-	result := make([]string, 0, len(items))
-	for i := range items {
-		result = append(result, items[i].PositionKey)
-	}
-	return result
-}
-
 func (s *ClientTemplateService) Recommend(ctx *gin.Context, req *ClientTemplateRecommendRequest) ([]ClientTemplate, error) {
 	user, err := s.userRepo.GetByID(ctx, middleware.GetAPIUserID(ctx))
 	if err != nil {
@@ -298,4 +297,24 @@ func (s *ClientTemplateService) ClientTemplateInfo(ctx *gin.Context, req *Templa
 		resp.IsFavorite = 1
 	}
 	return resp, nil
+}
+
+func (s *ClientTemplateService) Complaint(ctx *gin.Context, req *ClientCategoriesRequest) (interface{}, error) {
+	template, err := s.templateRepo.GetByID(ctx, uint(req.TemplateID))
+	if err != nil {
+		return nil, fmt.Errorf("get template id %d: %w", req.TemplateID, err)
+	}
+	if template.Status != 1 {
+		return nil, errors.New("template is not active")
+	}
+	err = repository.QFrom(ctx).VideoUserTemplateComplaint.WithContext(ctx).Create(&model.VideoUserTemplateComplaint{
+		TemplateID:    template.ID,
+		UserID:        middleware.GetAPIUserID(ctx),
+		ComplaintType: req.ComplaintType,
+		Content:       req.Content,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create complaint %d: %w", template.ID, err)
+	}
+	return nil, nil
 }

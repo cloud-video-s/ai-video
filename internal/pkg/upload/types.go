@@ -15,16 +15,17 @@ const (
 )
 
 var (
-	ErrInvalidRequest     = errors.New("invalid upload request")
-	ErrUnsupportedType    = errors.New("unsupported file type")
-	ErrFileTooLarge       = errors.New("file exceeds size limit")
-	ErrBatchTooLarge      = errors.New("too many files in batch")
-	ErrUploadNotFound     = errors.New("upload session not found")
-	ErrUploadExpired      = errors.New("upload session expired")
-	ErrInvalidChunk       = errors.New("invalid upload chunk")
-	ErrMissingChunks      = errors.New("upload chunks are incomplete")
-	ErrChecksumMismatch   = errors.New("checksum mismatch")
-	ErrUploadKindMismatch = errors.New("upload media kind mismatch")
+	ErrInvalidRequest          = errors.New("invalid upload request")
+	ErrUnsupportedType         = errors.New("unsupported file type")
+	ErrFileTooLarge            = errors.New("file exceeds size limit")
+	ErrBatchTooLarge           = errors.New("too many files in batch")
+	ErrUploadNotFound          = errors.New("upload session not found")
+	ErrUploadExpired           = errors.New("upload session expired")
+	ErrInvalidChunk            = errors.New("invalid upload chunk")
+	ErrMissingChunks           = errors.New("upload chunks are incomplete")
+	ErrChecksumMismatch        = errors.New("checksum mismatch")
+	ErrUploadKindMismatch      = errors.New("upload media kind mismatch")
+	ErrDirectUploadUnavailable = errors.New("direct upload is unavailable")
 )
 
 type Policy struct {

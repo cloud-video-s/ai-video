@@ -47,7 +47,7 @@ func newVideoOrder(db *gorm.DB, opts ...gen.DOOption) videoOrder {
 	_videoOrder.VipDurationDays = field.NewUint(tableName, "vip_duration_days")
 	_videoOrder.Status = field.NewString(tableName, "status")
 	_videoOrder.PaymentMethod = field.NewString(tableName, "payment_method")
-	_videoOrder.ProviderTransactionID = field.NewString(tableName, "provider_transaction_id")
+	_videoOrder.ThirdOrderNo = field.NewString(tableName, "third_order_no")
 	_videoOrder.OriginalTransactionID = field.NewString(tableName, "original_transaction_id")
 	_videoOrder.PaymentEvidence = field.NewString(tableName, "payment_evidence")
 	_videoOrder.FailureCode = field.NewString(tableName, "failure_code")
@@ -58,6 +58,7 @@ func newVideoOrder(db *gorm.DB, opts ...gen.DOOption) videoOrder {
 	_videoOrder.ExpiresAt = field.NewTime(tableName, "expires_at")
 	_videoOrder.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoOrder.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoOrder.DeletedAt = field.NewField(tableName, "deleted_at")
 	_videoOrder.User = videoOrderBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -69,40 +70,42 @@ func newVideoOrder(db *gorm.DB, opts ...gen.DOOption) videoOrder {
 	return _videoOrder
 }
 
+// videoOrder 订单表
 type videoOrder struct {
 	videoOrderDo videoOrderDo
 
 	ALL                   field.Asterisk
-	ID                    field.Uint64
-	OrderNo               field.String
-	ClientRequestID       field.String
-	UserID                field.Uint64
-	ProductType           field.String
-	ProductID             field.Uint64
-	ProductCode           field.String
-	ProductName           field.String
-	Currency              field.String
-	ProductAmount         field.Float64
-	DiscountAmount        field.Float64
-	PayableAmount         field.Float64
-	PaidAmount            field.Float64
-	RefundedAmount        field.Float64
-	BonusPoints           field.Uint64
-	VipLevel              field.Uint
-	VipDurationDays       field.Uint
-	Status                field.String
-	PaymentMethod         field.String
-	ProviderTransactionID field.String
-	OriginalTransactionID field.String
-	PaymentEvidence       field.String
-	FailureCode           field.String
-	FailureMessage        field.String
-	CancelReason          field.String
-	PaidAt                field.Time
-	CancelledAt           field.Time
-	ExpiresAt             field.Time
-	CreatedAt             field.Time
-	UpdatedAt             field.Time
+	ID                    field.Uint64  // 主键ID
+	OrderNo               field.String  // 订单编号
+	ClientRequestID       field.String  // 客户端请求唯一标识（用于幂等）
+	UserID                field.Uint64  // 用户ID
+	ProductType           field.String  // 产品类型（如：video_generation, vip等）
+	ProductID             field.Uint64  // 产品ID（关联具体产品表）
+	ProductCode           field.String  // 产品编码
+	ProductName           field.String  // 产品名称
+	Currency              field.String  // 货币单位（USD, CNY等）
+	ProductAmount         field.Float64 // 商品原价（金额）
+	DiscountAmount        field.Float64 // 优惠/折扣金额
+	PayableAmount         field.Float64 // 应付金额（需支付）
+	PaidAmount            field.Float64 // 实付金额（已支付）
+	RefundedAmount        field.Float64 // 已退款金额
+	BonusPoints           field.Uint64  // 赠送的积分数量
+	VipLevel              field.Uint    // 购买后获得的VIP等级（0表示无）
+	VipDurationDays       field.Uint    // VIP有效期天数（0表示非VIP商品）
+	Status                field.String  // 订单状态（pending, paid, cancelled, refunded等）
+	PaymentMethod         field.String  // 支付方式（stripe, apple, google等）
+	ThirdOrderNo          field.String  // 支付平台返回的交易ID
+	OriginalTransactionID field.String  // 原始交易凭证ID（如苹果收据的原始交易ID）
+	PaymentEvidence       field.String  // 支付凭证原始数据（JSON格式的收据或回调内容）
+	FailureCode           field.String  // 支付失败时的错误码
+	FailureMessage        field.String  // 支付失败时的错误描述
+	CancelReason          field.String  // 订单取消原因
+	PaidAt                field.Time    // 支付完成时间
+	CancelledAt           field.Time    // 订单取消时间
+	ExpiresAt             field.Time    // 订单过期时间（未支付自动失效）
+	CreatedAt             field.Time    // 记录创建时间
+	UpdatedAt             field.Time    // 记录最后更新时间
+	DeletedAt             field.Field   // 软删时间
 	User                  videoOrderBelongsToUser
 
 	fieldMap map[string]field.Expr
@@ -139,7 +142,7 @@ func (v *videoOrder) updateTableName(table string) *videoOrder {
 	v.VipDurationDays = field.NewUint(table, "vip_duration_days")
 	v.Status = field.NewString(table, "status")
 	v.PaymentMethod = field.NewString(table, "payment_method")
-	v.ProviderTransactionID = field.NewString(table, "provider_transaction_id")
+	v.ThirdOrderNo = field.NewString(table, "third_order_no")
 	v.OriginalTransactionID = field.NewString(table, "original_transaction_id")
 	v.PaymentEvidence = field.NewString(table, "payment_evidence")
 	v.FailureCode = field.NewString(table, "failure_code")
@@ -150,6 +153,7 @@ func (v *videoOrder) updateTableName(table string) *videoOrder {
 	v.ExpiresAt = field.NewTime(table, "expires_at")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -176,7 +180,7 @@ func (v *videoOrder) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoOrder) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 31)
+	v.fieldMap = make(map[string]field.Expr, 32)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["order_no"] = v.OrderNo
 	v.fieldMap["client_request_id"] = v.ClientRequestID
@@ -196,7 +200,7 @@ func (v *videoOrder) fillFieldMap() {
 	v.fieldMap["vip_duration_days"] = v.VipDurationDays
 	v.fieldMap["status"] = v.Status
 	v.fieldMap["payment_method"] = v.PaymentMethod
-	v.fieldMap["provider_transaction_id"] = v.ProviderTransactionID
+	v.fieldMap["third_order_no"] = v.ThirdOrderNo
 	v.fieldMap["original_transaction_id"] = v.OriginalTransactionID
 	v.fieldMap["payment_evidence"] = v.PaymentEvidence
 	v.fieldMap["failure_code"] = v.FailureCode
@@ -207,6 +211,7 @@ func (v *videoOrder) fillFieldMap() {
 	v.fieldMap["expires_at"] = v.ExpiresAt
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 
 }
 

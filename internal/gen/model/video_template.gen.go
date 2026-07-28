@@ -28,8 +28,8 @@ type VideoTemplate struct {
 	UsageCount          uint64            `gorm:"column:usage_count;type:bigint unsigned;not null;index:idx_video_template_usage_count,priority:1;comment:template usage count" json:"usage_count"`                                    // template usage count
 	LikeCount           uint64            `gorm:"column:like_count;type:bigint unsigned;not null;comment:点赞次数" json:"like_count"`                                                                                                      // 点赞次数
 	ViewCount           uint64            `gorm:"column:view_count;type:bigint unsigned;not null;index:idx_video_template_view_count,priority:1;comment:template view count" json:"view_count"`                                        // template view count
-	CreatedAt           time.Time         `gorm:"column:created_at;type:datetime(3);index:idx_video_template_created_at,priority:1" json:"created_at"`
-	UpdatedAt           time.Time         `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	CreatedAt           time.Time         `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_template_created_at,priority:1" json:"created_at"`
+	UpdatedAt           time.Time         `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt           gorm.DeletedAt    `gorm:"column:deleted_at;type:datetime(3);index:idx_video_template_deleted_at,priority:1" json:"deleted_at"`
 	VideoTemplateType   VideoTemplateType `gorm:"foreignKey:VideoTemplateTypeID;references:ID" json:"video_template_type"`
 }

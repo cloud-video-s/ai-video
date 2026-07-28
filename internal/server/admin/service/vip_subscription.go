@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
@@ -69,6 +70,24 @@ type VIPSubscriptionPayload struct {
 	Remark                   string   `json:"remark" binding:"max=1000"`
 }
 
+// VIPSubscriptionResponse keeps the management response directly reusable as
+// an update payload. The generated model stores boolean flags as tinyints and
+// exposes target details only as associations; returning it directly made a
+// GET/list -> edit -> PUT round trip fail JSON binding or lose target codes.
+type VIPSubscriptionResponse struct {
+	VIPSubscriptionPayload
+	ID                uint64                          `json:"id"`
+	SubscriptionLevel model.VideoVipSubscriptionLevel `json:"subscription_level"`
+	Apps              []*model.VideoApp               `json:"apps"`
+	Packages          []*model.VideoPackage           `json:"packages"`
+	PackageVersion    []*model.VideoPackageVersion    `json:"package_version"`
+	Country           []*model.VideoCountry           `json:"country"`
+	Channels          []*model.VideoChannel           `json:"channels"`
+	CreatedAt         time.Time                       `json:"created_at"`
+	UpdatedAt         time.Time                       `json:"updated_at"`
+	DeletedAt         gorm.DeletedAt                  `json:"deleted_at"`
+}
+
 type VIPSubscriptionStatusPayload struct {
 	Status *int8 `json:"status" binding:"required,oneof=0 1"`
 }
@@ -82,25 +101,29 @@ type CloneVIPSubscriptionRequest struct {
 	Name    string `json:"name" binding:"omitempty,max=128"`
 }
 
-func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]model.VideoVipSubscription, int64, error) {
-	return s.repo.PageList(ctx, page, pageSize, &repository.VIPSubscriptionListFilter{
+func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]VIPSubscriptionResponse, int64, error) {
+	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.VIPSubscriptionListFilter{
 		AppCode: strings.TrimSpace(req.AppCode), PackageCode: strings.TrimSpace(req.PackageCode),
 		VersionCode: strings.TrimSpace(req.VersionCode), CountryCode: strings.ToUpper(strings.TrimSpace(req.CountryCode)),
 		ChannelCode: strings.TrimSpace(req.ChannelCode), LevelID: req.LevelID, VipType: req.VipType,
 		DisplayMode: req.DisplayMode, Status: req.Status, IsSubscription: req.IsSubscription,
 		Keyword: strings.TrimSpace(req.Keyword),
 	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return vipSubscriptionResponses(items), total, nil
 }
 
-func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) GetByID(ctx context.Context, id uint64) (*VIPSubscriptionResponse, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
 	}
-	return item, nil
+	return vipSubscriptionResponse(item), nil
 }
 
-func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptionPayload) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptionPayload) (*VIPSubscriptionResponse, error) {
 	if err := s.prepareAndValidate(ctx, req); err != nil {
 		return nil, err
 	}
@@ -124,10 +147,14 @@ func (s *VIPSubscriptionService) Create(ctx context.Context, req *VIPSubscriptio
 		}
 		return nil, err
 	}
-	return s.repo.GetDetail(ctx, item.ID)
+	created, err := s.repo.GetDetail(ctx, item.ID)
+	if err != nil {
+		return nil, err
+	}
+	return vipSubscriptionResponse(created), nil
 }
 
-func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIPSubscriptionPayload) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIPSubscriptionPayload) (*VIPSubscriptionResponse, error) {
 	item, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -154,7 +181,11 @@ func (s *VIPSubscriptionService) Update(ctx context.Context, id uint64, req *VIP
 		}
 		return nil, err
 	}
-	return s.repo.GetDetail(ctx, item.ID)
+	updated, err := s.repo.GetDetail(ctx, item.ID)
+	if err != nil {
+		return nil, err
+	}
+	return vipSubscriptionResponse(updated), nil
 }
 
 func (s *VIPSubscriptionService) clearDefaults(ctx context.Context, packageCodes []string, vipType uint64, exceptID uint64) error {
@@ -195,7 +226,7 @@ func (s *VIPSubscriptionService) SetDefault(ctx context.Context, id uint64) erro
 	return s.repo.SetDefault(ctx, item)
 }
 
-func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *CloneVIPSubscriptionRequest) (*model.VideoVipSubscription, error) {
+func (s *VIPSubscriptionService) Clone(ctx context.Context, id uint64, req *CloneVIPSubscriptionRequest) (*VIPSubscriptionResponse, error) {
 	source, err := s.repo.GetDetail(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err, "VIP 订阅套餐不存在")
@@ -298,6 +329,33 @@ func vipSubscriptionPayloadFromModel(item *model.VideoVipSubscription) *VIPSubsc
 		SubscriptionRevenue: item.SubscriptionRevenue, SubscriptionPoints: item.SubscriptionPoints,
 		SubscriptionPeriod: item.SubscriptionPeriod, Sort: item.Sort, Description: item.Description, Remark: item.Remark,
 	}
+}
+
+func vipSubscriptionResponse(item *model.VideoVipSubscription) *VIPSubscriptionResponse {
+	if item == nil {
+		return nil
+	}
+	return &VIPSubscriptionResponse{
+		VIPSubscriptionPayload: *vipSubscriptionPayloadFromModel(item),
+		ID:                     item.ID,
+		SubscriptionLevel:      item.SubscriptionLevel,
+		Apps:                   item.Apps,
+		Packages:               item.Packages,
+		PackageVersion:         item.PackageVersion,
+		Country:                item.Country,
+		Channels:               item.Channels,
+		CreatedAt:              item.CreatedAt,
+		UpdatedAt:              item.UpdatedAt,
+		DeletedAt:              item.DeletedAt,
+	}
+}
+
+func vipSubscriptionResponses(items []model.VideoVipSubscription) []VIPSubscriptionResponse {
+	responses := make([]VIPSubscriptionResponse, 0, len(items))
+	for i := range items {
+		responses = append(responses, *vipSubscriptionResponse(&items[i]))
+	}
+	return responses
 }
 
 func normalizeVIPTargetCodes(values []string, label string, uppercase bool) ([]string, error) {

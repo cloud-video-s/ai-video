@@ -17,19 +17,19 @@ import (
 
 // Provider 定义第三方异步视频生成服务的统一接口。
 type Provider interface {
-	Submit(ctx context.Context, config *model.VideoAiModel, request remoteSubmitRequest) (*ProviderSubmitResult, error)
-	Status(ctx context.Context, config *model.VideoAiModel, taskID string) (*ProviderTaskStatus, error)
+	Submit(ctx context.Context, config *model.VideoModel, request remoteSubmitRequest) (*ProviderSubmitResult, error)
+	Status(ctx context.Context, config *model.VideoModel, taskID string) (*ProviderTaskStatus, error)
 }
 
 // ModelVerseProvider 实现 ModelVerse 的任务提交和状态查询协议。
 type ModelVerseProvider struct{}
 
-func (p *ModelVerseProvider) Submit(ctx context.Context, config *model.VideoAiModel, request remoteSubmitRequest) (*ProviderSubmitResult, error) {
+func (p *ModelVerseProvider) Submit(ctx context.Context, config *model.VideoModel, request remoteSubmitRequest) (*ProviderSubmitResult, error) {
 	body, err := json.Marshal(request)
 	if err != nil {
 		return nil, err
 	}
-	endpoint, err := resolveEndpoint(config.BaseURL, config.SubmitPath)
+	endpoint, err := resolveEndpoint(modelBaseURL(config), config.SubmitEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,9 @@ func (p *ModelVerseProvider) Submit(ctx context.Context, config *model.VideoAiMo
 	if err != nil {
 		return nil, err
 	}
-	httpRequest.Header.Set("Authorization", "Bearer "+config.APIKey)
+	if err := applyModelAuthentication(httpRequest, config); err != nil {
+		return nil, err
+	}
 	httpRequest.Header.Set("Content-Type", "application/json")
 	raw, statusCode, err := executeProviderRequest(config, httpRequest)
 	if err != nil {
@@ -63,8 +65,8 @@ func (p *ModelVerseProvider) Submit(ctx context.Context, config *model.VideoAiMo
 	}, nil
 }
 
-func (p *ModelVerseProvider) Status(ctx context.Context, config *model.VideoAiModel, taskID string) (*ProviderTaskStatus, error) {
-	endpoint, err := resolveEndpoint(config.BaseURL, config.StatusPath)
+func (p *ModelVerseProvider) Status(ctx context.Context, config *model.VideoModel, taskID string) (*ProviderTaskStatus, error) {
+	endpoint, err := resolveEndpoint(modelBaseURL(config), config.StatusEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +81,9 @@ func (p *ModelVerseProvider) Status(ctx context.Context, config *model.VideoAiMo
 	if err != nil {
 		return nil, err
 	}
-	httpRequest.Header.Set("Authorization", "Bearer "+config.APIKey)
+	if err := applyModelAuthentication(httpRequest, config); err != nil {
+		return nil, err
+	}
 	raw, statusCode, err := executeProviderRequest(config, httpRequest)
 	if err != nil {
 		return nil, err
@@ -133,12 +137,8 @@ func resolveEndpoint(baseURL, endpointPath string) (string, error) {
 	return base.ResolveReference(pathURL).String(), nil
 }
 
-func executeProviderRequest(config *model.VideoAiModel, request *http.Request) ([]byte, int, error) {
-	timeout := time.Duration(config.HTTPTimeoutSeconds) * time.Second
-	if timeout <= 0 {
-		timeout = 30 * time.Second
-	}
-	response, err := (&http.Client{Timeout: timeout}).Do(request)
+func executeProviderRequest(_ *model.VideoModel, request *http.Request) ([]byte, int, error) {
+	response, err := (&http.Client{Timeout: 30 * time.Second}).Do(request)
 	if err != nil {
 		return nil, 0, fmt.Errorf("请求 ModelVerse 失败: %w", err)
 	}
@@ -152,6 +152,36 @@ func executeProviderRequest(config *model.VideoAiModel, request *http.Request) (
 		return nil, response.StatusCode, errors.New("ModelVerse 响应体过大")
 	}
 	return raw, response.StatusCode, nil
+}
+
+func modelBaseURL(config *model.VideoModel) string {
+	if value := strings.TrimSpace(config.HostURL); value != "" {
+		return value
+	}
+	return strings.TrimSpace(config.Platform.BaseURL)
+}
+
+func modelAPIKey(config *model.VideoModel) string {
+	if value := strings.TrimSpace(config.APIKey); value != "" {
+		return value
+	}
+	return strings.TrimSpace(config.Platform.APIKey)
+}
+
+func applyModelAuthentication(request *http.Request, config *model.VideoModel) error {
+	apiKey := modelAPIKey(config)
+	if apiKey == "" {
+		return errors.New("模型尚未配置 API Key")
+	}
+	switch config.AuthType {
+	case 1:
+		request.Header.Set("Authorization", "Bearer "+apiKey)
+	case 2:
+		request.Header.Set("X-API-Key", apiKey)
+	default:
+		return fmt.Errorf("不支持的模型认证类型: %d", config.AuthType)
+	}
+	return nil
 }
 
 func providerResponseError(statusCode int, raw []byte) error {

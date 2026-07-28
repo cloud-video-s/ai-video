@@ -118,6 +118,11 @@ func validateConfigValue(key, value string) error {
 		if err != nil || size < minimumUploadFileSize || size > maximumUploadFileSize {
 			return errors.New("单文件大小必须在 1 MB 到 102400 MB 之间")
 		}
+	case "upload.oss.signature_ttl_seconds":
+		seconds, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+		if err != nil || seconds < 60 || seconds > 3600 {
+			return errors.New("OSS 直传签名有效期必须在 60 到 3600 秒之间")
+		}
 	}
 	return nil
 }

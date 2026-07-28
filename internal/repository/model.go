@@ -6,6 +6,7 @@ import (
 	"ai-video/internal/gen/model"
 
 	"gorm.io/gen/field"
+	"gorm.io/gorm"
 )
 
 type ModelRepo struct {
@@ -55,6 +56,49 @@ func (r *ModelRepo) GetByIDWithPlatform(ctx context.Context, id int64) (*model.V
 func (r *ModelRepo) GetByCode(ctx context.Context, code string) (*model.VideoModel, error) {
 	q := qFrom(ctx).VideoModel
 	return q.WithContext(ctx).Where(q.Code.Eq(code)).First()
+}
+
+// GetEnabledByCode loads the platform together with an enabled model and also
+// requires the platform itself to be enabled.
+func (r *ModelRepo) GetEnabledByCode(ctx context.Context, code string) (*model.VideoModel, error) {
+	q := qFrom(ctx).VideoModel
+	item, err := q.WithContext(ctx).Preload(q.Platform).
+		Where(q.Code.Eq(code), q.Status.Eq(1)).First()
+	if err != nil {
+		return nil, err
+	}
+	if item.Platform.ID == 0 || item.Platform.Status != 1 || item.Platform.DeletedAt.Valid {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return item, nil
+}
+
+func (r *ModelRepo) ListEnabled(ctx context.Context) ([]model.VideoModel, error) {
+	return r.listEnabled(ctx, 0)
+}
+
+// ListEnabledByType returns enabled models whose owning platform is also
+// enabled. The explicit platform soft-delete predicate is needed because GORM
+// only applies the model table's soft-delete scope automatically in this join.
+func (r *ModelRepo) ListEnabledByType(ctx context.Context, modelType uint32) ([]model.VideoModel, error) {
+	return r.listEnabled(ctx, modelType)
+}
+
+func (r *ModelRepo) listEnabled(ctx context.Context, modelType uint32) ([]model.VideoModel, error) {
+	var rows []model.VideoModel
+	db := dbFrom(ctx).Model(&model.VideoModel{}).
+		Select(model.TableNameVideoModel+".*").
+		Joins("JOIN "+model.TableNameVideoPlatform+" ON "+model.TableNameVideoPlatform+".id = "+model.TableNameVideoModel+".platform_id").
+		Where(model.TableNameVideoModel+".status = ?", 1).
+		Where(model.TableNameVideoPlatform+".status = ?", 1).
+		Where(model.TableNameVideoPlatform + ".deleted_at IS NULL")
+	if modelType != 0 {
+		db = db.Where(model.TableNameVideoModel+".model_type = ?", modelType)
+	}
+	err := db.Preload("Platform").
+		Order(model.TableNameVideoModel + ".id ASC").
+		Find(&rows).Error
+	return rows, err
 }
 
 func (r *ModelRepo) UpdateFields(ctx context.Context, item *model.VideoModel) error {

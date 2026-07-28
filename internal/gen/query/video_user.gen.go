@@ -97,7 +97,7 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.Works = videoUserHasManyWorks{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("Works", "model.VideoGenerationTask"),
+		RelationField: field.NewRelation("Works", "model.VideoUserGenerationTask"),
 		User: struct {
 			field.RelationField
 		}{
@@ -568,11 +568,11 @@ func (a videoUserHasManyWorks) Unscoped() *videoUserHasManyWorks {
 
 type videoUserHasManyWorksTx struct{ tx *gorm.Association }
 
-func (a videoUserHasManyWorksTx) Find() (result []*model.VideoGenerationTask, err error) {
+func (a videoUserHasManyWorksTx) Find() (result []*model.VideoUserGenerationTask, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a videoUserHasManyWorksTx) Append(values ...*model.VideoGenerationTask) (err error) {
+func (a videoUserHasManyWorksTx) Append(values ...*model.VideoUserGenerationTask) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -580,7 +580,7 @@ func (a videoUserHasManyWorksTx) Append(values ...*model.VideoGenerationTask) (e
 	return a.tx.Append(targetValues...)
 }
 
-func (a videoUserHasManyWorksTx) Replace(values ...*model.VideoGenerationTask) (err error) {
+func (a videoUserHasManyWorksTx) Replace(values ...*model.VideoUserGenerationTask) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -588,7 +588,7 @@ func (a videoUserHasManyWorksTx) Replace(values ...*model.VideoGenerationTask) (
 	return a.tx.Replace(targetValues...)
 }
 
-func (a videoUserHasManyWorksTx) Delete(values ...*model.VideoGenerationTask) (err error) {
+func (a videoUserHasManyWorksTx) Delete(values ...*model.VideoUserGenerationTask) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v

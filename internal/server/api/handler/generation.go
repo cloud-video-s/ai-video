@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -12,35 +11,37 @@ import (
 	"ai-video/internal/pkg/errcode"
 	"ai-video/internal/pkg/response"
 	"ai-video/internal/pkg/utils"
+	apiservice "ai-video/internal/server/api/server"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-type GenerationHandler struct{ manager *generation.Manager }
-
-func NewGenerationHandler() *GenerationHandler {
-	return &GenerationHandler{manager: generation.Shared()}
+type GenerationHandler struct {
+	manager      *generation.Manager
+	modelService *apiservice.GenerationModelService
 }
 
-// Models 返回客户端当前可以使用的生成模型和默认参数。
+func NewGenerationHandler() *GenerationHandler {
+	return &GenerationHandler{
+		manager:      generation.Shared(),
+		modelService: apiservice.NewGenerationModelService(),
+	}
+}
+
+// Models 按模型类型返回平台和模型均启用的模型及其选项参数。
 func (h *GenerationHandler) Models(c *gin.Context) {
-	items, err := h.manager.ListModels(c.Request.Context())
+	var request apiservice.GenerationModelRequest
+	if err := c.ShouldBindQuery(&request); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
+	items, err := h.modelService.List(c.Request.Context(), request.ModelType)
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}
-	result := make([]gin.H, 0, len(items))
-	for i := range items {
-		var defaults map[string]interface{}
-		_ = json.Unmarshal([]byte(items[i].DefaultParameters), &defaults)
-		result = append(result, gin.H{
-			"code": items[i].Code, "name": items[i].Name, "provider": items[i].Provider,
-			"model_name": items[i].ModelName, "description": items[i].Description,
-			"default_parameters": defaults,
-		})
-	}
-	response.OK(c, result)
+	response.OK(c, items)
 }
 
 // Create 创建并立即提交一个属于当前客户端用户的视频生成任务。

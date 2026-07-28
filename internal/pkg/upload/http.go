@@ -1,12 +1,11 @@
 package upload
 
 import (
+	"ai-video/internal/pkg/errcode"
+	"ai-video/internal/pkg/response"
 	"errors"
 	"net/http"
 	"strconv"
-
-	"ai-video/internal/pkg/errcode"
-	"ai-video/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,6 +14,7 @@ type HTTPHandler struct {
 	manager       *Manager
 	recorder      CompletionRecorder
 	ownerResolver func(*gin.Context) (UploadOwner, error)
+	directSigner  DirectUploadSigner
 }
 
 type HTTPHandlerOption func(*HTTPHandler)
@@ -23,6 +23,18 @@ func WithCompletionRecording(recorder CompletionRecorder, resolver func(*gin.Con
 	return func(handler *HTTPHandler) {
 		handler.recorder = recorder
 		handler.ownerResolver = resolver
+	}
+}
+
+func WithUploadOwnerResolver(resolver func(*gin.Context) (UploadOwner, error)) HTTPHandlerOption {
+	return func(handler *HTTPHandler) {
+		handler.ownerResolver = resolver
+	}
+}
+
+func WithDirectUploadSigner(signer DirectUploadSigner) HTTPHandlerOption {
+	return func(handler *HTTPHandler) {
+		handler.directSigner = signer
 	}
 }
 
@@ -35,8 +47,34 @@ func NewHTTPHandler(manager *Manager, options ...HTTPHandlerOption) *HTTPHandler
 }
 
 func (h *HTTPHandler) RegisterRoutes(group *gin.RouterGroup) {
+	h.RegisterDirectRoute(group)
 	h.registerMediaRoutes(group.Group("/images"), MediaImage)
 	h.registerMediaRoutes(group.Group("/videos"), MediaVideo)
+}
+
+func (h *HTTPHandler) RegisterDirectRoute(group *gin.RouterGroup) {
+	if h.directSigner != nil {
+		group.POST("/oss/signature", h.directSignature)
+	}
+}
+
+func (h *HTTPHandler) directSignature(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
+	var request DirectUploadRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
+	if _, err := h.resolveOwner(c); err != nil {
+		handleHTTPError(c, err)
+		return
+	}
+	credential, err := h.directSigner.Sign(c.Request.Context(), request)
+	if err != nil {
+		handleHTTPError(c, err)
+		return
+	}
+	response.OK(c, credential)
 }
 
 func (h *HTTPHandler) registerMediaRoutes(group *gin.RouterGroup, kind MediaKind) {
@@ -162,6 +200,8 @@ func (h *HTTPHandler) resolveOwner(c *gin.Context) (UploadOwner, error) {
 
 func handleHTTPError(c *gin.Context, err error) {
 	switch {
+	case errors.Is(err, ErrDirectUploadUnavailable):
+		response.FailWithStatus(c, http.StatusServiceUnavailable, errcode.ErrServer, err.Error())
 	case errors.Is(err, ErrUploadNotFound):
 		response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, err.Error())
 	case errors.Is(err, ErrUploadExpired):

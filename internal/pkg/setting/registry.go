@@ -75,6 +75,7 @@ var registry = []definition{
 	{Group: "文件上传", Key: "upload.oss.bucket", Name: "OSS Bucket", Type: "string", Value: "", Sort: 113},
 	{Group: "文件上传", Key: "upload.oss.object_prefix", Name: "OSS 对象前缀", Type: "string", Value: "uploads", Remark: "不需要前后斜杠", Sort: 114},
 	{Group: "文件上传", Key: "upload.oss.base_url", Name: "OSS 访问域名", Type: "string", Value: "", Remark: "可选，填写 CDN 或自定义域名", Sort: 115},
+	{Group: "文件上传", Key: "upload.oss.signature_ttl_seconds", Name: "OSS 直传签名有效期", Type: "int", Value: "600", Remark: "单位秒，允许 60-3600", Sort: 116},
 }
 
 // defaultValue returns the compiled-in default for key, or "" if unknown.

@@ -42,19 +42,10 @@ type uploadBatchRequest struct {
 	Files []upload.FileSpec `json:"files" binding:"required,min=1"`
 }
 
-type generationModelResponse struct {
-	Code              string         `json:"code"`
-	Name              string         `json:"name"`
-	Provider          string         `json:"provider"`
-	ModelName         string         `json:"model_name"`
-	Description       string         `json:"description"`
-	DefaultParameters map[string]any `json:"default_parameters"`
-}
-
 type generationTaskListRequest struct {
-	Page     int    `form:"page" binding:"omitempty,min=1"`
-	PageSize int    `form:"page_size" binding:"omitempty,min=1,max=100"`
-	Status   string `form:"status" binding:"omitempty,max=32"`
+	Page     int `form:"page" binding:"omitempty,min=1"`
+	PageSize int `form:"page_size" binding:"omitempty,min=1,max=100"`
+	Status   int `form:"status" binding:"omitempty,oneof=1 2 3 4 5 6 7"`
 }
 
 type generationTaskListResponse struct {
@@ -87,8 +78,32 @@ var delayConfigResponseExample = map[string]int64{
 
 var bannerResponseExampleTemplateID = uint64(42)
 
+var generationModelResponseExample = []apiservice.GenerationModelView{
+	{
+		Name: "Kling v3",
+		Parameters: []apiservice.GenerationModelParameter{
+			{
+				ParamKey:     "duration",
+				DefaultValue: float64(5), AllowedValues: []interface{}{float64(5), float64(10)},
+				Description: "视频时长（秒）",
+			},
+		},
+	},
+}
+
 var responseDataExamples = map[string]any{
-	"GET /api/ob_delay": delayConfigResponseExample,
+	"GET /api/ob_delay":          delayConfigResponseExample,
+	"GET /api/generation/models": generationModelResponseExample,
+	"POST /api/uploads/oss/signature": upload.DirectUploadCredential{
+		Provider: upload.StorageAliyunOSS, Method: "PUT",
+		UploadURL: "https://example-bucket.oss-cn-hangzhou.aliyuncs.com/uploads/images/2026/07/28/example.png?x-oss-signature-version=OSS4-HMAC-SHA256&x-oss-signature=...",
+		Headers: map[string]string{
+			"Content-Length": "12345", "Content-Type": "image/png", "X-Oss-Forbid-Overwrite": "true",
+		},
+		ObjectKey: "uploads/images/2026/07/28/example.png",
+		FileURL:   "https://cdn.example.com/uploads/images/2026/07/28/example.png",
+		ExpiresAt: time.Date(2026, 7, 28, 12, 10, 0, 0, time.FixedZone("UTC+8", 8*60*60)),
+	},
 	"GET /api/banners/list": []apiservice.ClientBanner{
 		{
 			ID: 12, Name: "首页夏日活动", PositionKey: "home_banner", Status: 1,
@@ -146,7 +161,7 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/templates/template_info":                 {query: typeOf[apiservice.TemplateInfoRequest](), response: typeOf[apiservice.ClientTemplate]()},
 	"POST /api/templates/:id/favorite":                 {response: typeOf[apiservice.TemplateFavoriteResponse]()},
 	"DELETE /api/templates/:id/favorite":               {response: typeOf[apiservice.TemplateFavoriteResponse]()},
-	"GET /api/generation/models":                       {response: typeOf[[]generationModelResponse]()},
+	"GET /api/generation/models":                       {query: typeOf[apiservice.GenerationModelRequest](), response: typeOf[[]apiservice.GenerationModelView]()},
 	"POST /api/generation/tasks":                       {body: typeOf[generation.CreateTaskRequest](), response: typeOf[generation.TaskView]()},
 	"GET /api/generation/tasks":                        {query: typeOf[generationTaskListRequest](), response: typeOf[generationTaskListResponse]()},
 	"GET /api/generation/tasks/:id":                    {response: typeOf[generation.TaskView]()},
@@ -164,6 +179,7 @@ var endpointTypes = map[string]endpointType{
 	"PUT /api/uploads/videos/:upload_id/chunks/:index": {response: typeOf[upload.Session]()},
 	"POST /api/uploads/images/:upload_id/complete":     {response: typeOf[upload.Session]()},
 	"POST /api/uploads/videos/:upload_id/complete":     {response: typeOf[upload.Session]()},
+	"POST /api/uploads/oss/signature":                  {body: typeOf[upload.DirectUploadRequest](), response: typeOf[upload.DirectUploadCredential]()},
 }
 
 var operationDescriptions = map[string]string{
@@ -179,13 +195,14 @@ var operationDescriptions = map[string]string{
 	"GET /api/templates/template_list": "分页查询指定模板分类和展示位置下的模板，仅返回模板数据。",
 	"GET /api/templates/template_info": "根据模板 ID 查询当前用户可见的模板详情。",
 	"POST /api/templates/:id/favorite": "收藏指定模板；重复收藏保持幂等。", "DELETE /api/templates/:id/favorite": "取消收藏指定模板；重复取消保持幂等。",
-	"GET /api/generation/models": "查询客户端可用的生成模型和默认参数。", "POST /api/generation/tasks": "创建并提交视频生成任务。",
+	"GET /api/generation/models": "按必填 model_type 查询平台和模型均启用的模型及其选项参数；仅返回 parameter_type=1 的参数，并按 sort_order、id 排序。", "POST /api/generation/tasks": "创建并提交视频生成任务。",
 	"GET /api/generation/tasks": "分页查询当前用户的生成任务。", "GET /api/generation/tasks/:id": "查询指定生成任务详情。",
 	"GET /api/generation/tasks/:id/events": "通过 SSE 实时订阅生成任务状态，任务结束后连接关闭。", "DELETE /api/generation/tasks/:id": "删除指定生成任务。",
 	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
 	"GET /api/vip/list":                     "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
 	"POST /api/payments/apple/confirm":      "校验 StoreKit 交易、创建订单并发放对应商品。",
 	"POST /api/payments/apple/notification": "接收 App Store Server Notifications V2 回调。该公开端点由 Apple 服务器调用，不需要 Bearer Token 或客户端公共请求头；服务端按通知中的 signedPayload 验签并幂等处理退款、续费、订阅过期等事件。",
+	"POST /api/uploads/oss/signature":       "校验媒体类型、文件扩展名、MIME 和精确字节数，生成短时效阿里云 OSS V4 预签名 PUT 地址。客户端必须使用响应中的 method、upload_url 和签名 headers 将文件原始字节直接上传到 OSS；该接口需要 Bearer Token，且仅在当前存储方式为 aliyun_oss 时可用。",
 }
 
 var operationSummaries = map[string]string{
@@ -208,6 +225,7 @@ var operationSummaries = map[string]string{
 	"GET /api/uploads/images/:upload_id": "查询图片上传进度", "GET /api/uploads/videos/:upload_id": "查询视频上传进度",
 	"PUT /api/uploads/images/:upload_id/chunks/:index": "上传图片分片", "PUT /api/uploads/videos/:upload_id/chunks/:index": "上传视频分片",
 	"POST /api/uploads/images/:upload_id/complete": "完成图片上传", "POST /api/uploads/videos/:upload_id/complete": "完成视频上传",
+	"POST /api/uploads/oss/signature": "获取 OSS 直传签名",
 }
 
 var fieldDescriptions = map[string]string{
@@ -222,7 +240,7 @@ var fieldDescriptions = map[string]string{
 	"token": "Bearer JWT", "expire_at": "Token 过期时间（Unix 秒）", "token_version": "Token 版本号",
 	"id": "记录 ID", "email": "邮箱", "vip_expires_at": "VIP 到期时间（Unix 秒）", "points_balance": "积分余额",
 	"status": "状态", "last_login_at": "最近登录时间", "last_login_ip": "最近登录 IP", "login_account": "登录账号",
-	"appid_binding": "是否已绑定 Apple", "google_binding": "是否已绑定 Google", "provider": "身份提供方",
+	"appid_binding": "是否已绑定 Apple", "google_binding": "是否已绑定 Google", "provider": "提供方标识；身份接口表示身份提供方，OSS 直传接口表示存储提供方",
 	"provider_subject": "身份提供方用户唯一标识", "issuer": "Token 签发方", "audience": "Token 受众",
 	"email_verified": "邮箱是否已验证", "is_private_email": "是否为隐私邮箱", "avatar_url": "头像地址",
 	"key": "配置键", "value": "配置值", "name": "名称", "template_type": "模板类型", "cover_image": "封面图片地址",
@@ -233,7 +251,9 @@ var fieldDescriptions = map[string]string{
 	"favorite_count": "收藏次数", "favorited": "当前用户是否已收藏", "view_count": "浏览次数", "display_config_id": "展示配置 ID", "display_sort": "展示排序",
 	"page": "页码，从 1 开始", "pageSize": "每页数量", "template_type_id": "模板分类 ID", "third_type": "第三方身份类型：google 或 apple",
 	"third_code": "第三方平台用户标识",
-	"model_code": "生成模型代码", "client_request_id": "客户端幂等请求 ID", "input": "模型输入参数", "parameters": "模型扩展参数",
+	"model_code": "生成模型代码", "model_type": "模型类型：1=生成图片，2=生成视频", "client_request_id": "客户端幂等请求 ID", "input": "模型输入参数", "parameters": "模型扩展参数",
+	"parameter": "模型选项参数列表", "param_key": "参数键名",
+	"default_value": "参数默认值", "allowed_values": "参数允许值数组",
 	"model_config_id": "生成模型配置 ID", "external_task_id": "第三方任务 ID", "progress": "任务进度，范围 0-100",
 	"local_urls": "生成结果的本地访问地址", "error_message": "任务失败原因", "usage_duration": "任务耗时",
 	"default_parameters": "模型默认参数", "model_name": "提供方模型名称",
@@ -253,6 +273,8 @@ var fieldDescriptions = map[string]string{
 	"subscription_description": "订阅说明", "subscription_price": "当前用户适用的订阅价格",
 	"original_price": "原价", "subscription_points": "订阅赠送积分", "subscription_period": "订阅周期：1 周，2 月，3 季，4 年",
 	"files": "待上传文件列表", "file_name": "文件名", "size": "文件字节数", "content_type": "MIME 类型", "sha256": "文件 SHA-256",
+	"media_type": "上传媒体类型：image 或 video", "method": "OSS 直传 HTTP 方法，固定为 PUT", "upload_url": "短时效 OSS V4 预签名上传地址",
+	"headers": "直传 OSS 时必须携带的签名请求头", "object_key": "服务端生成的 OSS 对象键",
 	"uploads": "上传会话列表", "upload_id": "上传会话 ID", "kind": "媒体类型：image 或 video", "original_name": "原始文件名",
 	"extension": "文件扩展名", "total_size": "文件总字节数", "chunk_size": "分片字节数", "total_chunks": "分片总数",
 	"uploaded_chunks": "已上传分片序号", "expected_sha256": "预期文件 SHA-256", "uploader_type": "上传者类型",
@@ -358,6 +380,10 @@ func buildOperation(route gin.RouteInfo, pathParams []string, tag, resource stri
 			"400": errorResponse("请求参数错误"), "401": errorResponse("未登录或令牌失效"),
 			"403": errorResponse("无权限"), "500": errorResponse("服务器错误"),
 		},
+	}
+	if key == "POST /api/uploads/oss/signature" {
+		operation["responses"].(map[string]any)["413"] = errorResponse("文件超过当前媒体类型的上传大小上限")
+		operation["responses"].(map[string]any)["503"] = errorResponse("当前未启用阿里云 OSS，或 OSS 直传配置不可用")
 	}
 	if sseRoutes[key] {
 		eventSchema := responseSchemaForType(metadata.response)

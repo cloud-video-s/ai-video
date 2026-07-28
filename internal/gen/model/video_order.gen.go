@@ -6,43 +6,46 @@ package model
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 const TableNameVideoOrder = "video_order"
 
-// VideoOrder mapped from table <video_order>
+// VideoOrder 订单表
 type VideoOrder struct {
-	ID                    uint64    `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	OrderNo               string    `gorm:"column:order_no;type:varchar(40);not null;uniqueIndex:uk_video_order_order_no,priority:1" json:"order_no"`
-	ClientRequestID       string    `gorm:"column:client_request_id;type:varchar(64);not null;uniqueIndex:uk_video_order_client_request,priority:1" json:"client_request_id"`
-	UserID                uint64    `gorm:"column:user_id;type:bigint unsigned;not null;index:idx_video_order_user_id,priority:1" json:"user_id"`
-	ProductType           string    `gorm:"column:product_type;type:varchar(32);not null;index:idx_video_order_product,priority:1" json:"product_type"`
-	ProductID             uint64    `gorm:"column:product_id;type:bigint unsigned;not null;index:idx_video_order_product,priority:2" json:"product_id"`
-	ProductCode           string    `gorm:"column:product_code;type:varchar(191);not null;index:idx_video_order_product_code,priority:1" json:"product_code"`
-	ProductName           string    `gorm:"column:product_name;type:varchar(128);not null" json:"product_name"`
-	Currency              string    `gorm:"column:currency;type:varchar(8);not null;default:USD" json:"currency"`
-	ProductAmount         float64   `gorm:"column:product_amount;type:decimal(12,2);not null;default:0.00" json:"product_amount"`
-	DiscountAmount        float64   `gorm:"column:discount_amount;type:decimal(12,2);not null;default:0.00" json:"discount_amount"`
-	PayableAmount         float64   `gorm:"column:payable_amount;type:decimal(12,2);not null;default:0.00" json:"payable_amount"`
-	PaidAmount            float64   `gorm:"column:paid_amount;type:decimal(12,2);not null;default:0.00" json:"paid_amount"`
-	RefundedAmount        float64   `gorm:"column:refunded_amount;type:decimal(12,2);not null;default:0.00" json:"refunded_amount"`
-	BonusPoints           uint64    `gorm:"column:bonus_points;type:bigint unsigned;not null" json:"bonus_points"`
-	VipLevel              uint      `gorm:"column:vip_level;type:int unsigned;not null" json:"vip_level"`
-	VipDurationDays       uint      `gorm:"column:vip_duration_days;type:int unsigned;not null" json:"vip_duration_days"`
-	Status                string    `gorm:"column:status;type:varchar(20);not null;index:idx_video_order_status,priority:1;default:pending" json:"status"`
-	PaymentMethod         string    `gorm:"column:payment_method;type:varchar(32);not null;uniqueIndex:uk_video_order_payment_transaction,priority:1" json:"payment_method"`
-	ProviderTransactionID string    `gorm:"column:provider_transaction_id;type:varchar(191);uniqueIndex:uk_video_order_payment_transaction,priority:2" json:"provider_transaction_id"`
-	OriginalTransactionID string    `gorm:"column:original_transaction_id;type:varchar(191);index:idx_video_order_original_transaction,priority:1" json:"original_transaction_id"`
-	PaymentEvidence       string    `gorm:"column:payment_evidence;type:text" json:"payment_evidence"`
-	FailureCode           string    `gorm:"column:failure_code;type:varchar(64)" json:"failure_code"`
-	FailureMessage        string    `gorm:"column:failure_message;type:varchar(500)" json:"failure_message"`
-	CancelReason          string    `gorm:"column:cancel_reason;type:varchar(500)" json:"cancel_reason"`
-	PaidAt                time.Time `gorm:"column:paid_at;type:datetime;index:idx_video_order_paid_at,priority:1" json:"paid_at"`
-	CancelledAt           time.Time `gorm:"column:cancelled_at;type:datetime;index:idx_video_order_cancelled_at,priority:1" json:"cancelled_at"`
-	ExpiresAt             time.Time `gorm:"column:expires_at;type:datetime;index:idx_video_order_expires_at,priority:1" json:"expires_at"`
-	CreatedAt             time.Time `gorm:"column:created_at;type:datetime;not null;index:idx_video_order_created_at,priority:1" json:"created_at"`
-	UpdatedAt             time.Time `gorm:"column:updated_at;type:datetime;not null" json:"updated_at"`
-	User                  VideoUser `gorm:"foreignKey:UserID;references:ID" json:"user"`
+	ID                    uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                                                                                  // 主键ID
+	OrderNo               string         `gorm:"column:order_no;type:varchar(40);not null;uniqueIndex:uk_video_order_order_no,priority:1;comment:订单编号" json:"order_no"`                                                // 订单编号
+	ClientRequestID       string         `gorm:"column:client_request_id;type:varchar(64);not null;uniqueIndex:uk_video_order_client_request,priority:1;comment:客户端请求唯一标识（用于幂等）" json:"client_request_id"`             // 客户端请求唯一标识（用于幂等）
+	UserID                uint64         `gorm:"column:user_id;type:bigint unsigned;not null;index:idx_video_order_user_id,priority:1;comment:用户ID" json:"user_id"`                                                    // 用户ID
+	ProductType           string         `gorm:"column:product_type;type:varchar(32);not null;index:idx_video_order_product,priority:1;comment:产品类型（如：video_generation, vip等）" json:"product_type"`                    // 产品类型（如：video_generation, vip等）
+	ProductID             uint64         `gorm:"column:product_id;type:bigint unsigned;not null;index:idx_video_order_product,priority:2;comment:产品ID（关联具体产品表）" json:"product_id"`                                     // 产品ID（关联具体产品表）
+	ProductCode           string         `gorm:"column:product_code;type:varchar(191);not null;index:idx_video_order_product_code,priority:1;comment:产品编码" json:"product_code"`                                        // 产品编码
+	ProductName           string         `gorm:"column:product_name;type:varchar(128);not null;comment:产品名称" json:"product_name"`                                                                                      // 产品名称
+	Currency              string         `gorm:"column:currency;type:varchar(8);not null;default:USD;comment:货币单位（USD, CNY等）" json:"currency"`                                                                         // 货币单位（USD, CNY等）
+	ProductAmount         float64        `gorm:"column:product_amount;type:decimal(12,2);not null;default:0.00;comment:商品原价（金额）" json:"product_amount"`                                                                // 商品原价（金额）
+	DiscountAmount        float64        `gorm:"column:discount_amount;type:decimal(12,2);not null;default:0.00;comment:优惠/折扣金额" json:"discount_amount"`                                                               // 优惠/折扣金额
+	PayableAmount         float64        `gorm:"column:payable_amount;type:decimal(12,2);not null;default:0.00;comment:应付金额（需支付）" json:"payable_amount"`                                                               // 应付金额（需支付）
+	PaidAmount            float64        `gorm:"column:paid_amount;type:decimal(12,2);not null;default:0.00;comment:实付金额（已支付）" json:"paid_amount"`                                                                     // 实付金额（已支付）
+	RefundedAmount        float64        `gorm:"column:refunded_amount;type:decimal(12,2);not null;default:0.00;comment:已退款金额" json:"refunded_amount"`                                                                 // 已退款金额
+	BonusPoints           uint64         `gorm:"column:bonus_points;type:bigint unsigned;not null;comment:赠送的积分数量" json:"bonus_points"`                                                                                // 赠送的积分数量
+	VipLevel              uint           `gorm:"column:vip_level;type:int unsigned;not null;comment:购买后获得的VIP等级（0表示无）" json:"vip_level"`                                                                               // 购买后获得的VIP等级（0表示无）
+	VipDurationDays       uint           `gorm:"column:vip_duration_days;type:int unsigned;not null;comment:VIP有效期天数（0表示非VIP商品）" json:"vip_duration_days"`                                                             // VIP有效期天数（0表示非VIP商品）
+	Status                string         `gorm:"column:status;type:varchar(20);not null;index:idx_video_order_status,priority:1;default:pending;comment:订单状态（pending, paid, cancelled, refunded等）" json:"status"`      // 订单状态（pending, paid, cancelled, refunded等）
+	PaymentMethod         string         `gorm:"column:payment_method;type:varchar(32);not null;uniqueIndex:uk_video_order_payment_third,priority:1;comment:支付方式（stripe, apple, google等）" json:"payment_method"`       // 支付方式（stripe, apple, google等）
+	ThirdOrderNo          string         `gorm:"column:third_order_no;type:varchar(191);uniqueIndex:uk_video_order_payment_third,priority:2;comment:支付平台返回的交易ID" json:"third_order_no"`                                // 支付平台返回的交易ID
+	OriginalTransactionID string         `gorm:"column:original_transaction_id;type:varchar(191);index:idx_video_order_original_transaction,priority:1;comment:原始交易凭证ID（如苹果收据的原始交易ID）" json:"original_transaction_id"` // 原始交易凭证ID（如苹果收据的原始交易ID）
+	PaymentEvidence       string         `gorm:"column:payment_evidence;type:text;comment:支付凭证原始数据（JSON格式的收据或回调内容）" json:"payment_evidence"`                                                                           // 支付凭证原始数据（JSON格式的收据或回调内容）
+	FailureCode           string         `gorm:"column:failure_code;type:varchar(64);comment:支付失败时的错误码" json:"failure_code"`                                                                                           // 支付失败时的错误码
+	FailureMessage        string         `gorm:"column:failure_message;type:varchar(500);comment:支付失败时的错误描述" json:"failure_message"`                                                                                   // 支付失败时的错误描述
+	CancelReason          string         `gorm:"column:cancel_reason;type:varchar(500);comment:订单取消原因" json:"cancel_reason"`                                                                                           // 订单取消原因
+	PaidAt                time.Time      `gorm:"column:paid_at;type:datetime;index:idx_video_order_paid_at,priority:1;comment:支付完成时间" json:"paid_at"`                                                                  // 支付完成时间
+	CancelledAt           time.Time      `gorm:"column:cancelled_at;type:datetime;index:idx_video_order_cancelled_at,priority:1;comment:订单取消时间" json:"cancelled_at"`                                                   // 订单取消时间
+	ExpiresAt             time.Time      `gorm:"column:expires_at;type:datetime;index:idx_video_order_expires_at,priority:1;comment:订单过期时间（未支付自动失效）" json:"expires_at"`                                                // 订单过期时间（未支付自动失效）
+	CreatedAt             time.Time      `gorm:"column:created_at;type:datetime;not null;index:idx_video_order_created_at,priority:1;comment:记录创建时间" json:"created_at"`                                                // 记录创建时间
+	UpdatedAt             time.Time      `gorm:"column:updated_at;type:datetime;not null;comment:记录最后更新时间" json:"updated_at"`                                                                                          // 记录最后更新时间
+	DeletedAt             gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);comment:软删时间" json:"deleted_at"`                                                                                                    // 软删时间
+	User                  VideoUser      `gorm:"foreignKey:UserID;references:ID" json:"user"`
 }
 
 // TableName VideoOrder's table name

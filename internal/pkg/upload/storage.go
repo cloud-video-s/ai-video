@@ -125,39 +125,61 @@ type OSSStorage struct {
 	baseURL      string
 }
 
-func NewOSSStorage(config OSSConfig) (*OSSStorage, error) {
+type normalizedOSSConfig struct {
+	region          string
+	endpoint        string
+	accessKeyID     string
+	accessKeySecret string
+	bucket          string
+	objectPrefix    string
+	baseURL         string
+}
+
+func normalizeOSSConfig(config OSSConfig) (normalizedOSSConfig, error) {
 	if strings.TrimSpace(config.Region) == "" || strings.TrimSpace(config.Endpoint) == "" || strings.TrimSpace(config.AccessKeyID) == "" ||
 		strings.TrimSpace(config.AccessKeySecret) == "" || strings.TrimSpace(config.Bucket) == "" {
-		return nil, uploadError(ErrInvalidRequest, "OSS region, endpoint, credentials and bucket are required")
+		return normalizedOSSConfig{}, uploadError(ErrInvalidRequest, "OSS region, endpoint, credentials and bucket are required")
 	}
-	region := strings.TrimSpace(config.Region)
-	endpoint := strings.TrimSpace(config.Endpoint)
-	bucket := strings.TrimSpace(config.Bucket)
-	sdkConfig := oss.LoadDefaultConfig().
-		WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-			strings.TrimSpace(config.AccessKeyID),
-			strings.TrimSpace(config.AccessKeySecret),
-		)).
-		WithRegion(region).
-		WithEndpoint(endpoint)
-	client := oss.NewClient(sdkConfig)
-
-	baseURL := strings.TrimRight(strings.TrimSpace(config.BaseURL), "/")
-	if baseURL == "" {
-		endpoint = strings.TrimRight(endpoint, "/")
+	normalized := normalizedOSSConfig{
+		region:          strings.TrimSpace(config.Region),
+		endpoint:        strings.TrimSpace(config.Endpoint),
+		accessKeyID:     strings.TrimSpace(config.AccessKeyID),
+		accessKeySecret: strings.TrimSpace(config.AccessKeySecret),
+		bucket:          strings.TrimSpace(config.Bucket),
+		objectPrefix:    strings.Trim(strings.TrimSpace(config.ObjectPrefix), "/"),
+		baseURL:         strings.TrimRight(strings.TrimSpace(config.BaseURL), "/"),
+	}
+	if normalized.baseURL == "" {
+		endpoint := strings.TrimRight(normalized.endpoint, "/")
 		if !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
 			endpoint = "https://" + endpoint
 		}
 		parsed, parseErr := url.Parse(endpoint)
 		if parseErr != nil || parsed.Host == "" {
-			return nil, uploadError(ErrInvalidRequest, "invalid OSS endpoint %q", config.Endpoint)
+			return normalizedOSSConfig{}, uploadError(ErrInvalidRequest, "invalid OSS endpoint %q", config.Endpoint)
 		}
-		parsed.Host = bucket + "." + parsed.Host
-		baseURL = strings.TrimRight(parsed.String(), "/")
+		parsed.Host = normalized.bucket + "." + parsed.Host
+		normalized.baseURL = strings.TrimRight(parsed.String(), "/")
 	}
+	return normalized, nil
+}
+
+func NewOSSStorage(config OSSConfig) (*OSSStorage, error) {
+	normalized, err := normalizeOSSConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	sdkConfig := oss.LoadDefaultConfig().
+		WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+			normalized.accessKeyID,
+			normalized.accessKeySecret,
+		)).
+		WithRegion(normalized.region).
+		WithEndpoint(normalized.endpoint)
+	client := oss.NewClient(sdkConfig)
 	return &OSSStorage{
-		client: client, bucket: bucket,
-		objectPrefix: strings.Trim(strings.TrimSpace(config.ObjectPrefix), "/"), baseURL: baseURL,
+		client: client, bucket: normalized.bucket,
+		objectPrefix: normalized.objectPrefix, baseURL: normalized.baseURL,
 	}, nil
 }
 

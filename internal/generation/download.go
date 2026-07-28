@@ -17,7 +17,7 @@ import (
 	"ai-video/internal/gen/model"
 )
 
-func downloadVideos(ctx context.Context, task *model.VideoGenerationTask, remoteURLs []string) ([]string, error) {
+func downloadVideos(ctx context.Context, task *model.VideoUserGenerationTask, remoteURLs []string) ([]string, error) {
 	root, err := filepath.Abs(config.Cfg.Upload.LocalRootDir)
 	if err != nil {
 		return nil, err

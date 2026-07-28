@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -22,9 +23,10 @@ var requestIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
 // Manager 负责创建任务、轮询第三方状态、保存本地文件并发布进度事件。
 type Manager struct {
-	modelRepo *repository.AIModelRepo
-	taskRepo  *repository.GenerationTaskRepo
-	hub       *Hub
+	modelRepo     *repository.ModelRepo
+	parameterRepo *repository.ModelParameterRepo
+	taskRepo      *repository.UserGenerationTaskRepo
+	hub           *Hub
 
 	mu     sync.Mutex
 	cancel context.CancelFunc
@@ -32,9 +34,10 @@ type Manager struct {
 }
 
 var sharedManager = &Manager{
-	modelRepo: repository.NewAIModelRepo(),
-	taskRepo:  repository.NewGenerationTaskRepo(),
-	hub:       NewHub(),
+	modelRepo:     repository.NewModelRepo(),
+	parameterRepo: repository.NewModelParameterRepo(),
+	taskRepo:      repository.NewUserGenerationTaskRepo(),
+	hub:           NewHub(),
 }
 
 func Shared() *Manager { return sharedManager }
@@ -71,7 +74,7 @@ func (m *Manager) Subscribe(taskID uint64) (<-chan TaskView, func()) {
 	return m.hub.Subscribe(taskID)
 }
 
-func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *CreateTaskRequest) (*model.VideoGenerationTask, error) {
+func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *CreateTaskRequest) (*model.VideoUserGenerationTask, error) {
 	if userID == 0 {
 		return nil, errors.New("用户 ID 无效")
 	}
@@ -98,26 +101,24 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		}
 		return nil, err
 	}
-	if strings.TrimSpace(modelConfig.APIKey) == "" {
-		return nil, errors.New("模型尚未配置 API Key")
-	}
-	parameters, err := mergeParameters(modelConfig.DefaultParameters, request.Parameters)
+	parameterDefinitions, err := m.parameterRepo.ListByModel(ctx, modelConfig.ID)
 	if err != nil {
 		return nil, err
 	}
-	if _, exists := parameters["external_task_id"]; !exists {
-		parameters["external_task_id"] = request.ClientRequestID
+	parameters, err := mergeModelParameters(parameterDefinitions, request.Parameters)
+	if err != nil {
+		return nil, err
 	}
 	remoteRequest := remoteSubmitRequest{
-		Model: modelConfig.ModelName, Input: cloneMap(request.Input), Parameters: parameters,
+		Model: modelConfig.Code, Input: cloneMap(request.Input), Parameters: parameters,
 	}
 	payload, err := json.Marshal(remoteRequest)
 	if err != nil {
 		return nil, err
 	}
 	prompt, _ := request.Input["prompt"].(string)
-	task := &model.VideoGenerationTask{
-		UserID: userID, ModelConfigID: modelConfig.ID, ClientRequestID: request.ClientRequestID,
+	task := &model.VideoUserGenerationTask{
+		UserID: userID, ModelID: uint64(modelConfig.ID), ClientRequestID: request.ClientRequestID, TaskCode: uuid.NewString(),
 		Status: TaskStatusSubmitting, Progress: 0, Prompt: prompt, RequestPayload: string(payload),
 		RemoteUrls: "[]", LocalUrls: "[]",
 	}
@@ -136,45 +137,54 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	}
 	m.hub.Publish(task)
 
-	provider, err := providerFor(modelConfig.Provider)
-	if err != nil {
+	if err := m.submitTask(ctx, task, modelConfig, remoteRequest); err != nil {
 		_ = m.failTask(ctx, task, err.Error())
 		return task, err
 	}
-	result, err := provider.Submit(ctx, modelConfig, remoteRequest)
-	if err != nil {
-		_ = m.failTask(ctx, task, err.Error())
-		return task, err
-	}
-	now := time.Now()
-	task.ExternalTaskID = result.TaskID
-	task.ProviderResponse = result.RawResponse
-	task.Status = TaskStatusSubmitted
-	task.Progress = 5
-	task.SubmittedAt = now
-	task.ErrorMessage = ""
-	if err := m.taskRepo.UpdateFields(ctx, task,
-		"ExternalTaskID", "ProviderResponse", "Status", "Progress", "SubmittedAt", "ErrorMessage",
-	); err != nil {
-		return nil, err
-	}
-	m.hub.Publish(task)
 	return task, nil
 }
 
-func (m *Manager) GetTask(ctx context.Context, userID, taskID uint64) (*model.VideoGenerationTask, error) {
+func (m *Manager) submitTask(ctx context.Context, task *model.VideoUserGenerationTask, modelConfig *model.VideoModel, request remoteSubmitRequest) error {
+	provider, err := providerFor(modelConfig.Platform.Code)
+	if err != nil {
+		return err
+	}
+	result, err := provider.Submit(ctx, modelConfig, request)
+	if err != nil {
+		return err
+	}
+	task.ThirdTaskCode = result.TaskID
+	task.ProviderResponse = result.RawResponse
+	task.Status = TaskStatusSubmitted
+	task.Progress = 5
+	task.SubmittedAt = time.Now()
+	task.ErrorMessage = ""
+	if err := m.taskRepo.UpdateFields(ctx, task,
+		"ThirdTaskCode", "ProviderResponse", "Status", "Progress", "SubmittedAt", "ErrorMessage",
+	); err != nil {
+		return err
+	}
+	m.hub.Publish(task)
+	return nil
+}
+
+func (m *Manager) GetTask(ctx context.Context, userID, taskID uint64) (*model.VideoUserGenerationTask, error) {
 	return m.taskRepo.GetOwned(ctx, taskID, userID)
 }
 
-func (m *Manager) ListTasks(ctx context.Context, userID uint64, page, pageSize int, status string) ([]model.VideoGenerationTask, int64, error) {
-	status = strings.ToLower(strings.TrimSpace(status))
-	if status != "" && !validTaskStatus(status) {
+func (m *Manager) ListTasks(ctx context.Context, userID uint64, page, pageSize int, status string) ([]model.VideoUserGenerationTask, int64, error) {
+	status = strings.TrimSpace(status)
+	if status == "" {
+		return m.taskRepo.PageOwned(ctx, userID, page, pageSize, 0)
+	}
+	statusValue, err := strconv.Atoi(status)
+	if err != nil || !validTaskStatus(statusValue) {
 		return nil, 0, errors.New("任务状态无效")
 	}
-	return m.taskRepo.PageOwned(ctx, userID, page, pageSize, status)
+	return m.taskRepo.PageOwned(ctx, userID, page, pageSize, statusValue)
 }
 
-func (m *Manager) ListModels(ctx context.Context) ([]model.VideoAiModel, error) {
+func (m *Manager) ListModels(ctx context.Context) ([]model.VideoModel, error) {
 	return m.modelRepo.ListEnabled(ctx)
 }
 
@@ -204,7 +214,9 @@ func (m *Manager) worker(ctx context.Context) {
 }
 
 func (m *Manager) pollBatch(ctx context.Context) {
-	tasks, err := m.taskRepo.ListActive(ctx, 100)
+	tasks, err := m.taskRepo.ListActive(ctx, 100,
+		TaskStatusSubmitting, TaskStatusSubmitted, TaskStatusPending, TaskStatusRunning, TaskStatusDownloading,
+	)
 	if err != nil {
 		config.Log.Warnf("list generation tasks: %v", err)
 		return
@@ -219,10 +231,23 @@ func (m *Manager) pollBatch(ctx context.Context) {
 	}
 }
 
-func (m *Manager) processTask(ctx context.Context, task *model.VideoGenerationTask) error {
-	modelConfig, err := m.modelRepo.GetByID(ctx, uint(task.ModelConfigID))
+func (m *Manager) processTask(ctx context.Context, task *model.VideoUserGenerationTask) error {
+	modelConfig, err := m.modelRepo.GetByIDWithPlatform(ctx, int64(task.ModelID))
 	if err != nil {
 		return m.failTask(ctx, task, "模型配置不存在")
+	}
+	if task.Status == TaskStatusSubmitting {
+		var request remoteSubmitRequest
+		if err := json.Unmarshal([]byte(task.RequestPayload), &request); err != nil {
+			return m.failTask(ctx, task, "生成任务请求数据无效")
+		}
+		if request.Model == "" {
+			request.Model = modelConfig.Code
+		}
+		if err := m.submitTask(ctx, task, modelConfig, request); err != nil {
+			return m.failTask(ctx, task, err.Error())
+		}
+		return nil
 	}
 	if task.Status == TaskStatusDownloading {
 		var urls []string
@@ -231,19 +256,13 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoGenerationTa
 		}
 		return m.downloadAndFinish(ctx, task, urls)
 	}
-	pollInterval := time.Duration(modelConfig.PollIntervalSeconds) * time.Second
-	if pollInterval <= 0 {
-		pollInterval = 3 * time.Second
-	}
-	if task.LastPolledAt.IsZero() && time.Since(task.LastPolledAt) < pollInterval {
+	const pollInterval = 3 * time.Second
+	if !task.LastPolledAt.IsZero() && time.Since(task.LastPolledAt) < pollInterval {
 		return nil
 	}
-	timeout := time.Duration(modelConfig.TaskTimeoutSeconds) * time.Second
-	if timeout <= 0 {
-		timeout = 30 * time.Minute
-	}
+	const timeout = 30 * time.Minute
 	started := task.CreatedAt
-	if task.SubmittedAt.IsZero() {
+	if !task.SubmittedAt.IsZero() {
 		started = task.SubmittedAt
 	}
 	if time.Since(started) > timeout {
@@ -254,11 +273,11 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoGenerationTa
 		return err
 	}
 	task.LastPolledAt = now
-	provider, err := providerFor(modelConfig.Provider)
+	provider, err := providerFor(modelConfig.Platform.Code)
 	if err != nil {
 		return m.failTask(ctx, task, err.Error())
 	}
-	status, err := provider.Status(ctx, modelConfig, task.ExternalTaskID)
+	status, err := provider.Status(ctx, modelConfig, task.ThirdTaskCode)
 	if err != nil {
 		task.ErrorMessage = "轮询失败，将自动重试: " + err.Error()
 		if updateErr := m.taskRepo.UpdateFields(ctx, task, "ErrorMessage", "LastPolledAt"); updateErr != nil {
@@ -314,7 +333,7 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoGenerationTa
 	return nil
 }
 
-func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoGenerationTask, remoteURLs []string) error {
+func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGenerationTask, remoteURLs []string) error {
 	localURLs, err := downloadVideos(ctx, task, remoteURLs)
 	if err != nil {
 		return m.failTask(ctx, task, "保存生成视频失败: "+err.Error())
@@ -333,7 +352,7 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoGenera
 	return nil
 }
 
-func (m *Manager) failTask(ctx context.Context, task *model.VideoGenerationTask, message string) error {
+func (m *Manager) failTask(ctx context.Context, task *model.VideoUserGenerationTask, message string) error {
 	now := time.Now()
 	task.Status = TaskStatusFailure
 	task.Progress = 100
@@ -349,19 +368,26 @@ func (m *Manager) failTask(ctx context.Context, task *model.VideoGenerationTask,
 
 func providerFor(name string) (Provider, error) {
 	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "modelverse":
+	case "modelverse", "ucloud":
 		return &ModelVerseProvider{}, nil
 	default:
 		return nil, fmt.Errorf("不支持的模型 provider: %s", name)
 	}
 }
 
-func mergeParameters(defaultJSON string, request map[string]interface{}) (map[string]interface{}, error) {
-	result := make(map[string]interface{})
-	if strings.TrimSpace(defaultJSON) != "" {
-		if err := json.Unmarshal([]byte(defaultJSON), &result); err != nil {
-			return nil, errors.New("模型默认参数不是有效 JSON 对象")
+func mergeModelParameters(definitions []model.VideoModelParameter, request map[string]interface{}) (map[string]interface{}, error) {
+	result := make(map[string]interface{}, len(definitions)+len(request))
+	for i := range definitions {
+		key := strings.TrimSpace(definitions[i].ParamKey)
+		raw := strings.TrimSpace(definitions[i].DefaultValue)
+		if key == "" || raw == "" {
+			continue
 		}
+		var value interface{}
+		if err := json.Unmarshal([]byte(raw), &value); err != nil {
+			return nil, fmt.Errorf("模型参数 %s 的默认值不是有效 JSON: %w", key, err)
+		}
+		result[key] = value
 	}
 	for key, value := range request {
 		result[key] = value
@@ -377,7 +403,7 @@ func cloneMap(source map[string]interface{}) map[string]interface{} {
 	return result
 }
 
-func validTaskStatus(status string) bool {
+func validTaskStatus(status int) bool {
 	switch status {
 	case TaskStatusSubmitting, TaskStatusSubmitted, TaskStatusPending, TaskStatusRunning,
 		TaskStatusDownloading, TaskStatusSuccess, TaskStatusFailure:

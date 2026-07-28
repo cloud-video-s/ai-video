@@ -8,17 +8,27 @@ import (
 	"ai-video/internal/gen/model"
 )
 
-func TestVIPSubscriptionJSONUsesLatestAssociationFields(t *testing.T) {
+func TestVIPSubscriptionResponseCanRoundTripIntoUpdatePayload(t *testing.T) {
 	item := &model.VideoVipSubscription{
-		ID:                7,
-		SubscriptionLevel: model.VideoVipSubscriptionLevel{ID: 2, Level: "黄金会员"},
-		Apps:              []*model.VideoApp{{ID: 1, AppCode: "video"}},
-		Packages:          []*model.VideoPackage{{ID: 3, PackageName: "Android", PackageCode: "com.example.app", AppCode: "video"}},
-		PackageVersion:    []*model.VideoPackageVersion{{ID: 4, VersionCode: "1.2.0", PackageCode: "com.example.app"}},
-		Country:           []*model.VideoCountry{{ID: 5, Code: "US"}},
-		Channels:          []*model.VideoChannel{{ChannelID: 6, ChannelCode: "google_ads"}},
+		ID:                      7,
+		VipType:                 3,
+		SukCode:                 "vip.monthly",
+		Name:                    "月度会员",
+		LevelID:                 2,
+		Currency:                "USD",
+		SubscriptionPeriod:      2,
+		AgreementDefaultChecked: 1,
+		FreeTrial:               0,
+		IsSubscription:          1,
+		IsDefault:               1,
+		SubscriptionLevel:       model.VideoVipSubscriptionLevel{ID: 2, Level: "黄金会员"},
+		Apps:                    []*model.VideoApp{{ID: 1, AppCode: "video"}},
+		Packages:                []*model.VideoPackage{{ID: 3, PackageName: "Android", PackageCode: "com.example.app", AppCode: "video"}},
+		PackageVersion:          []*model.VideoPackageVersion{{ID: 4, VersionCode: "1.2.0", PackageCode: "com.example.app"}},
+		Country:                 []*model.VideoCountry{{ID: 5, Code: "US"}},
+		Channels:                []*model.VideoChannel{{ChannelID: 6, ChannelCode: "google_ads"}},
 	}
-	data, err := json.Marshal(item)
+	data, err := json.Marshal(vipSubscriptionResponse(item))
 	if err != nil {
 		t.Fatalf("marshal model: %v", err)
 	}
@@ -35,6 +45,21 @@ func TestVIPSubscriptionJSONUsesLatestAssociationFields(t *testing.T) {
 		if _, ok := payload[legacyKey]; ok {
 			t.Fatalf("legacy association field %q must not be returned", legacyKey)
 		}
+	}
+
+	var update VIPSubscriptionPayload
+	if err := json.Unmarshal(data, &update); err != nil {
+		t.Fatalf("response cannot be reused as update payload: %v; payload: %s", err, data)
+	}
+	if !reflect.DeepEqual(update.PackageCodes, []string{"com.example.app"}) ||
+		!reflect.DeepEqual(update.AppCodes, []string{"video"}) ||
+		!reflect.DeepEqual(update.VersionCodes, []string{"1.2.0"}) ||
+		!reflect.DeepEqual(update.CountryCodes, []string{"US"}) ||
+		!reflect.DeepEqual(update.ChannelCodes, []string{"google_ads"}) {
+		t.Fatalf("response target codes cannot round trip: %+v", update)
+	}
+	if !update.AgreementDefaultChecked || update.FreeTrial || !update.IsSubscription || !update.IsDefault {
+		t.Fatalf("response boolean flags cannot round trip: %+v", update)
 	}
 }
 

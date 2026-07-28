@@ -53,3 +53,12 @@ resolved when a file is completed, so switching providers does not require a
 service restart. The OSS v2 client requires both a region (for example,
 `cn-hangzhou`) and an endpoint. OSS AccessKey values are masked by the admin
 config API.
+
+## Aliyun OSS direct upload
+
+Authenticated API clients can request a short-lived V4-signed PUT URL from
+`POST /api/uploads/oss/signature`. The signature binds the generated object
+key, declared MIME type, exact content length, and `x-oss-forbid-overwrite`.
+This endpoint is available only while `upload.storage_provider` is
+`aliyun_oss`. See `docs/aliyun-oss-direct-upload-api.md` for the request and
+client upload flow.

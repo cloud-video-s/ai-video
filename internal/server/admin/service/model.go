@@ -21,12 +21,13 @@ type ModelService struct {
 	repo          *repository.ModelRepo
 	platformRepo  *repository.PlatformRepo
 	parameterRepo *repository.ModelParameterRepo
+	taskRepo      *repository.UserGenerationTaskRepo
 }
 
 func NewModelService() *ModelService {
 	return &ModelService{
 		repo: repository.NewModelRepo(), platformRepo: repository.NewPlatformRepo(),
-		parameterRepo: repository.NewModelParameterRepo(),
+		parameterRepo: repository.NewModelParameterRepo(), taskRepo: repository.NewUserGenerationTaskRepo(),
 	}
 }
 
@@ -45,9 +46,9 @@ type ModelPayload struct {
 	Version        string `json:"version" binding:"required,max=16"`
 	HostURL        string `json:"host_url" binding:"required,max=255"`
 	SubmitEndpoint string `json:"submit_endpoint" binding:"required,max=255"`
-	StatusEndpoint string `json:"status_endpoint" binding:"required,max=255"`
+	StatusEndpoint string `json:"status_endpoint" binding:"max=255"`
 	RequestMethod  string `json:"request_method" binding:"required,oneof=GET POST"`
-	AuthType       uint32 `json:"auth_type" binding:"required,oneof=Bearer API-Key None"`
+	AuthType       uint32 `json:"auth_type" binding:"required,oneof=1 2"`
 	APIKey         string `json:"api_key" binding:"max=2048"`
 	Score          int64  `json:"score" binding:"gte=0"`
 	Description    string `json:"description" binding:"max=255"`
@@ -178,6 +179,13 @@ func (s *ModelService) Update(ctx context.Context, id int64, req *ModelPayload) 
 func (s *ModelService) Delete(ctx context.Context, id int64) error {
 	if _, err := s.repo.GetByID(ctx, uint(id)); err != nil {
 		return notFoundOr(err, "模型不存在")
+	}
+	taskCount, err := s.taskRepo.CountByModel(ctx, uint64(id))
+	if err != nil {
+		return err
+	}
+	if taskCount > 0 {
+		return errors.New("该模型已有用户生成任务，不能删除；可将其禁用")
 	}
 	// Model and its parameter rows are soft-deleted in one transaction.
 	return repository.Transaction(ctx, func(txCtx context.Context) error {

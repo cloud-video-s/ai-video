@@ -21,7 +21,6 @@ var (
 	VideoAPI                         *videoAPI
 	VideoAdmin                       *videoAdmin
 	VideoAdminRole                   *videoAdminRole
-	VideoAiModel                     *videoAiModel
 	VideoApp                         *videoApp
 	VideoBanner                      *videoBanner
 	VideoBannerApp                   *videoBannerApp
@@ -35,7 +34,6 @@ var (
 	VideoCountry                     *videoCountry
 	VideoDelayConfig                 *videoDelayConfig
 	VideoDisplayPosition             *videoDisplayPosition
-	VideoGenerationTask              *videoGenerationTask
 	VideoMenu                        *videoMenu
 	VideoMenuAPI                     *videoMenuAPI
 	VideoModel                       *videoModel
@@ -62,8 +60,10 @@ var (
 	VideoUpload                      *videoUpload
 	VideoUser                        *videoUser
 	VideoUserAttribution             *videoUserAttribution
+	VideoUserGenerationTask          *videoUserGenerationTask
 	VideoUserIdentity                *videoUserIdentity
 	VideoUserPointsLedger            *videoUserPointsLedger
+	VideoUserTemplateComplaint       *videoUserTemplateComplaint
 	VideoUserTemplateFavorite        *videoUserTemplateFavorite
 	VideoVipPlacement                *videoVipPlacement
 	VideoVipSubscription             *videoVipSubscription
@@ -81,7 +81,6 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoAPI = &Q.VideoAPI
 	VideoAdmin = &Q.VideoAdmin
 	VideoAdminRole = &Q.VideoAdminRole
-	VideoAiModel = &Q.VideoAiModel
 	VideoApp = &Q.VideoApp
 	VideoBanner = &Q.VideoBanner
 	VideoBannerApp = &Q.VideoBannerApp
@@ -95,7 +94,6 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoCountry = &Q.VideoCountry
 	VideoDelayConfig = &Q.VideoDelayConfig
 	VideoDisplayPosition = &Q.VideoDisplayPosition
-	VideoGenerationTask = &Q.VideoGenerationTask
 	VideoMenu = &Q.VideoMenu
 	VideoMenuAPI = &Q.VideoMenuAPI
 	VideoModel = &Q.VideoModel
@@ -122,8 +120,10 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoUpload = &Q.VideoUpload
 	VideoUser = &Q.VideoUser
 	VideoUserAttribution = &Q.VideoUserAttribution
+	VideoUserGenerationTask = &Q.VideoUserGenerationTask
 	VideoUserIdentity = &Q.VideoUserIdentity
 	VideoUserPointsLedger = &Q.VideoUserPointsLedger
+	VideoUserTemplateComplaint = &Q.VideoUserTemplateComplaint
 	VideoUserTemplateFavorite = &Q.VideoUserTemplateFavorite
 	VideoVipPlacement = &Q.VideoVipPlacement
 	VideoVipSubscription = &Q.VideoVipSubscription
@@ -142,7 +142,6 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoAPI:                         newVideoAPI(db, opts...),
 		VideoAdmin:                       newVideoAdmin(db, opts...),
 		VideoAdminRole:                   newVideoAdminRole(db, opts...),
-		VideoAiModel:                     newVideoAiModel(db, opts...),
 		VideoApp:                         newVideoApp(db, opts...),
 		VideoBanner:                      newVideoBanner(db, opts...),
 		VideoBannerApp:                   newVideoBannerApp(db, opts...),
@@ -156,7 +155,6 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoCountry:                     newVideoCountry(db, opts...),
 		VideoDelayConfig:                 newVideoDelayConfig(db, opts...),
 		VideoDisplayPosition:             newVideoDisplayPosition(db, opts...),
-		VideoGenerationTask:              newVideoGenerationTask(db, opts...),
 		VideoMenu:                        newVideoMenu(db, opts...),
 		VideoMenuAPI:                     newVideoMenuAPI(db, opts...),
 		VideoModel:                       newVideoModel(db, opts...),
@@ -183,8 +181,10 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoUpload:                      newVideoUpload(db, opts...),
 		VideoUser:                        newVideoUser(db, opts...),
 		VideoUserAttribution:             newVideoUserAttribution(db, opts...),
+		VideoUserGenerationTask:          newVideoUserGenerationTask(db, opts...),
 		VideoUserIdentity:                newVideoUserIdentity(db, opts...),
 		VideoUserPointsLedger:            newVideoUserPointsLedger(db, opts...),
+		VideoUserTemplateComplaint:       newVideoUserTemplateComplaint(db, opts...),
 		VideoUserTemplateFavorite:        newVideoUserTemplateFavorite(db, opts...),
 		VideoVipPlacement:                newVideoVipPlacement(db, opts...),
 		VideoVipSubscription:             newVideoVipSubscription(db, opts...),
@@ -204,7 +204,6 @@ type Query struct {
 	VideoAPI                         videoAPI
 	VideoAdmin                       videoAdmin
 	VideoAdminRole                   videoAdminRole
-	VideoAiModel                     videoAiModel
 	VideoApp                         videoApp
 	VideoBanner                      videoBanner
 	VideoBannerApp                   videoBannerApp
@@ -218,7 +217,6 @@ type Query struct {
 	VideoCountry                     videoCountry
 	VideoDelayConfig                 videoDelayConfig
 	VideoDisplayPosition             videoDisplayPosition
-	VideoGenerationTask              videoGenerationTask
 	VideoMenu                        videoMenu
 	VideoMenuAPI                     videoMenuAPI
 	VideoModel                       videoModel
@@ -245,8 +243,10 @@ type Query struct {
 	VideoUpload                      videoUpload
 	VideoUser                        videoUser
 	VideoUserAttribution             videoUserAttribution
+	VideoUserGenerationTask          videoUserGenerationTask
 	VideoUserIdentity                videoUserIdentity
 	VideoUserPointsLedger            videoUserPointsLedger
+	VideoUserTemplateComplaint       videoUserTemplateComplaint
 	VideoUserTemplateFavorite        videoUserTemplateFavorite
 	VideoVipPlacement                videoVipPlacement
 	VideoVipSubscription             videoVipSubscription
@@ -269,7 +269,6 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoAPI:                         q.VideoAPI.clone(db),
 		VideoAdmin:                       q.VideoAdmin.clone(db),
 		VideoAdminRole:                   q.VideoAdminRole.clone(db),
-		VideoAiModel:                     q.VideoAiModel.clone(db),
 		VideoApp:                         q.VideoApp.clone(db),
 		VideoBanner:                      q.VideoBanner.clone(db),
 		VideoBannerApp:                   q.VideoBannerApp.clone(db),
@@ -283,7 +282,6 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoCountry:                     q.VideoCountry.clone(db),
 		VideoDelayConfig:                 q.VideoDelayConfig.clone(db),
 		VideoDisplayPosition:             q.VideoDisplayPosition.clone(db),
-		VideoGenerationTask:              q.VideoGenerationTask.clone(db),
 		VideoMenu:                        q.VideoMenu.clone(db),
 		VideoMenuAPI:                     q.VideoMenuAPI.clone(db),
 		VideoModel:                       q.VideoModel.clone(db),
@@ -310,8 +308,10 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoUpload:                      q.VideoUpload.clone(db),
 		VideoUser:                        q.VideoUser.clone(db),
 		VideoUserAttribution:             q.VideoUserAttribution.clone(db),
+		VideoUserGenerationTask:          q.VideoUserGenerationTask.clone(db),
 		VideoUserIdentity:                q.VideoUserIdentity.clone(db),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.clone(db),
+		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.clone(db),
 		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.clone(db),
 		VideoVipPlacement:                q.VideoVipPlacement.clone(db),
 		VideoVipSubscription:             q.VideoVipSubscription.clone(db),
@@ -339,7 +339,6 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoAPI:                         q.VideoAPI.replaceDB(db),
 		VideoAdmin:                       q.VideoAdmin.replaceDB(db),
 		VideoAdminRole:                   q.VideoAdminRole.replaceDB(db),
-		VideoAiModel:                     q.VideoAiModel.replaceDB(db),
 		VideoApp:                         q.VideoApp.replaceDB(db),
 		VideoBanner:                      q.VideoBanner.replaceDB(db),
 		VideoBannerApp:                   q.VideoBannerApp.replaceDB(db),
@@ -353,7 +352,6 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoCountry:                     q.VideoCountry.replaceDB(db),
 		VideoDelayConfig:                 q.VideoDelayConfig.replaceDB(db),
 		VideoDisplayPosition:             q.VideoDisplayPosition.replaceDB(db),
-		VideoGenerationTask:              q.VideoGenerationTask.replaceDB(db),
 		VideoMenu:                        q.VideoMenu.replaceDB(db),
 		VideoMenuAPI:                     q.VideoMenuAPI.replaceDB(db),
 		VideoModel:                       q.VideoModel.replaceDB(db),
@@ -380,8 +378,10 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoUpload:                      q.VideoUpload.replaceDB(db),
 		VideoUser:                        q.VideoUser.replaceDB(db),
 		VideoUserAttribution:             q.VideoUserAttribution.replaceDB(db),
+		VideoUserGenerationTask:          q.VideoUserGenerationTask.replaceDB(db),
 		VideoUserIdentity:                q.VideoUserIdentity.replaceDB(db),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.replaceDB(db),
+		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.replaceDB(db),
 		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.replaceDB(db),
 		VideoVipPlacement:                q.VideoVipPlacement.replaceDB(db),
 		VideoVipSubscription:             q.VideoVipSubscription.replaceDB(db),
@@ -399,7 +399,6 @@ type queryCtx struct {
 	VideoAPI                         IVideoAPIDo
 	VideoAdmin                       IVideoAdminDo
 	VideoAdminRole                   IVideoAdminRoleDo
-	VideoAiModel                     IVideoAiModelDo
 	VideoApp                         IVideoAppDo
 	VideoBanner                      IVideoBannerDo
 	VideoBannerApp                   IVideoBannerAppDo
@@ -413,7 +412,6 @@ type queryCtx struct {
 	VideoCountry                     IVideoCountryDo
 	VideoDelayConfig                 IVideoDelayConfigDo
 	VideoDisplayPosition             IVideoDisplayPositionDo
-	VideoGenerationTask              IVideoGenerationTaskDo
 	VideoMenu                        IVideoMenuDo
 	VideoMenuAPI                     IVideoMenuAPIDo
 	VideoModel                       IVideoModelDo
@@ -440,8 +438,10 @@ type queryCtx struct {
 	VideoUpload                      IVideoUploadDo
 	VideoUser                        IVideoUserDo
 	VideoUserAttribution             IVideoUserAttributionDo
+	VideoUserGenerationTask          IVideoUserGenerationTaskDo
 	VideoUserIdentity                IVideoUserIdentityDo
 	VideoUserPointsLedger            IVideoUserPointsLedgerDo
+	VideoUserTemplateComplaint       IVideoUserTemplateComplaintDo
 	VideoUserTemplateFavorite        IVideoUserTemplateFavoriteDo
 	VideoVipPlacement                IVideoVipPlacementDo
 	VideoVipSubscription             IVideoVipSubscriptionDo
@@ -459,7 +459,6 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoAPI:                         q.VideoAPI.WithContext(ctx),
 		VideoAdmin:                       q.VideoAdmin.WithContext(ctx),
 		VideoAdminRole:                   q.VideoAdminRole.WithContext(ctx),
-		VideoAiModel:                     q.VideoAiModel.WithContext(ctx),
 		VideoApp:                         q.VideoApp.WithContext(ctx),
 		VideoBanner:                      q.VideoBanner.WithContext(ctx),
 		VideoBannerApp:                   q.VideoBannerApp.WithContext(ctx),
@@ -473,7 +472,6 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoCountry:                     q.VideoCountry.WithContext(ctx),
 		VideoDelayConfig:                 q.VideoDelayConfig.WithContext(ctx),
 		VideoDisplayPosition:             q.VideoDisplayPosition.WithContext(ctx),
-		VideoGenerationTask:              q.VideoGenerationTask.WithContext(ctx),
 		VideoMenu:                        q.VideoMenu.WithContext(ctx),
 		VideoMenuAPI:                     q.VideoMenuAPI.WithContext(ctx),
 		VideoModel:                       q.VideoModel.WithContext(ctx),
@@ -500,8 +498,10 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoUpload:                      q.VideoUpload.WithContext(ctx),
 		VideoUser:                        q.VideoUser.WithContext(ctx),
 		VideoUserAttribution:             q.VideoUserAttribution.WithContext(ctx),
+		VideoUserGenerationTask:          q.VideoUserGenerationTask.WithContext(ctx),
 		VideoUserIdentity:                q.VideoUserIdentity.WithContext(ctx),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.WithContext(ctx),
+		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.WithContext(ctx),
 		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.WithContext(ctx),
 		VideoVipPlacement:                q.VideoVipPlacement.WithContext(ctx),
 		VideoVipSubscription:             q.VideoVipSubscription.WithContext(ctx),

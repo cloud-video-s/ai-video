@@ -71,13 +71,9 @@ func (s *ModelParameterService) List(ctx context.Context, modelID int64) ([]Mode
 	for i := range items {
 		ids = append(ids, items[i].ID)
 	}
-	constraints, err := s.repo.ConstraintsByIDs(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
 	result := make([]ModelParameterView, 0, len(items))
 	for i := range items {
-		view, err := modelParameterView(&items[i], constraints[items[i].ID])
+		view, err := modelParameterView(&items[i])
 		if err != nil {
 			return nil, err
 		}
@@ -93,22 +89,19 @@ func (s *ModelParameterService) Create(ctx context.Context, modelID int64, req *
 	if err := s.validatePayload(ctx, modelID, req, 0); err != nil {
 		return nil, err
 	}
-	item, constraintsJSON, err := buildModelParameter(modelID, req)
+	item, err := buildModelParameter(modelID, req)
 	if err != nil {
 		return nil, err
 	}
 	if err := repository.Transaction(ctx, func(txCtx context.Context) error {
-		if err := s.repo.Create(txCtx, item); err != nil {
-			return err
-		}
-		return s.repo.UpdateConstraints(txCtx, item.ID, constraintsJSON)
+		return s.repo.Create(txCtx, item)
 	}); err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, errors.New("该模型下参数字段已存在")
 		}
 		return nil, err
 	}
-	view, err := modelParameterView(item, constraintsJSON)
+	view, err := modelParameterView(item)
 	return &view, err
 }
 
@@ -120,24 +113,21 @@ func (s *ModelParameterService) Update(ctx context.Context, modelID, id int64, r
 	if err := s.validatePayload(ctx, modelID, req, id); err != nil {
 		return nil, err
 	}
-	updated, constraintsJSON, err := buildModelParameter(modelID, req)
+	updated, err := buildModelParameter(modelID, req)
 	if err != nil {
 		return nil, err
 	}
 	updated.ID = item.ID
 	updated.CreatedAt = item.CreatedAt
 	if err := repository.Transaction(ctx, func(txCtx context.Context) error {
-		if err := s.repo.UpdateFields(txCtx, updated); err != nil {
-			return err
-		}
-		return s.repo.UpdateConstraints(txCtx, updated.ID, constraintsJSON)
+		return s.repo.UpdateFields(txCtx, updated)
 	}); err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, errors.New("该模型下参数字段已存在")
 		}
 		return nil, err
 	}
-	view, err := modelParameterView(updated, constraintsJSON)
+	view, err := modelParameterView(updated)
 	return &view, err
 }
 
@@ -289,31 +279,37 @@ func validateParameterConstraints(constraints map[string]interface{}) error {
 	return nil
 }
 
-func buildModelParameter(modelID int64, req *ModelParameterPayload) (*model.VideoModelParameter, string, error) {
+func buildModelParameter(modelID int64, req *ModelParameterPayload) (*model.VideoModelParameter, error) {
 	defaultJSON := ""
 	if req.DefaultValue != nil {
 		encoded, err := json.Marshal(req.DefaultValue)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 		defaultJSON = string(encoded)
 	}
 	allowedJSON, err := json.Marshal(req.AllowedValues)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	constraintsJSON, err := json.Marshal(req.Constraints)
-	if err != nil {
-		return nil, "", err
+	constraintsJSON := ""
+	if req.Constraints != nil {
+		constraintsStr, err := json.Marshal(req.Constraints)
+		if err != nil {
+			return nil, err
+		}
+		constraintsJSON = string(constraintsStr)
 	}
-	return &model.VideoModelParameter{
+	videoModelParameter := &model.VideoModelParameter{
 		ModelID: modelID, ParamKey: req.ParamKey, ParamType: req.ValueType,
 		IsRequired: req.IsRequired, DefaultValue: defaultJSON, AllowedValues: string(allowedJSON),
 		Description: req.Description, SortOrder: req.SortOrder, ParameterType: req.ParameterType,
-	}, string(constraintsJSON), nil
+		Constraints: constraintsJSON,
+	}
+	return videoModelParameter, nil
 }
 
-func modelParameterView(item *model.VideoModelParameter, constraintsJSON string) (ModelParameterView, error) {
+func modelParameterView(item *model.VideoModelParameter) (ModelParameterView, error) {
 	var defaultValue interface{}
 	if item.DefaultValue != "" {
 		if err := json.Unmarshal([]byte(item.DefaultValue), &defaultValue); err != nil {
@@ -327,8 +323,8 @@ func modelParameterView(item *model.VideoModelParameter, constraintsJSON string)
 		}
 	}
 	constraints := make(map[string]interface{})
-	if constraintsJSON != "" {
-		if err := json.Unmarshal([]byte(constraintsJSON), &constraints); err != nil {
+	if item.Constraints != "" {
+		if err := json.Unmarshal([]byte(item.Constraints), &constraints); err != nil {
 			return ModelParameterView{}, fmt.Errorf("参数 %s 的限制条件 JSON 无效: %w", item.ParamKey, err)
 		}
 	}

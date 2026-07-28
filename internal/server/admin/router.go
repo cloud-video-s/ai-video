@@ -44,9 +44,9 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	vipSubscriptionLevelHandler := handler.NewVIPSubscriptionLevelHandler()
 	pointsPackageHandler := handler.NewPointsPackageHandler()
 	userPointsLedgerHandler := handler.NewUserPointsLedgerHandler()
+	userGenerationTaskHandler := handler.NewUserGenerationTaskHandler()
 	bannerHandler := handler.NewBannerHandler()
 	bannerPlacementHandler := handler.NewBannerPlacementHandler()
-	aiModelHandler := handler.NewAIModelHandler()
 	platformHandler := handler.NewPlatformHandler()
 	modelHandler := handler.NewModelHandler()
 	modelParameterHandler := handler.NewModelParameterHandler()
@@ -166,13 +166,6 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.PUT("/configs/:id", configHandler.Update)
 		auth.DELETE("/configs/:id", configHandler.Delete)
 		auth.POST("/configs/refresh", configHandler.Refresh)
-
-		// AI generation model configuration center
-		auth.GET("/ai-models", aiModelHandler.List)
-		auth.POST("/ai-models", aiModelHandler.Create)
-		auth.GET("/ai-models/:id", aiModelHandler.Get)
-		auth.PUT("/ai-models/:id", aiModelHandler.Update)
-		auth.DELETE("/ai-models/:id", aiModelHandler.Delete)
 
 		// Video generation platforms and models
 		auth.GET("/platforms", platformHandler.List)
@@ -297,6 +290,10 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		// Read-only user points ledger
 		auth.GET("/user-points-ledgers", userPointsLedgerHandler.List)
 		auth.GET("/user-points-ledgers/:id", userPointsLedgerHandler.GetByID)
+
+		// Read-only client user generation tasks
+		auth.GET("/user-generation-tasks", userGenerationTaskHandler.List)
+		auth.GET("/user-generation-tasks/:id", userGenerationTaskHandler.GetByID)
 
 		// Banners
 		auth.GET("/banners", bannerHandler.List)

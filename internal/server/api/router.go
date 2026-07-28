@@ -31,20 +31,13 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	generationHandler := handler.NewGenerationHandler()
 	vipHandler := handler.NewVipHandler()
 	paymentHandler := handler.NewPaymentHandler()
-	uploadConfig, err := uploadruntime.ManagerConfig()
-	if err != nil {
-		panic(err)
-	}
-	uploadManager, err := upload.SharedManager(uploadConfig)
-	if err != nil {
-		panic(err)
-	}
-	uploadHandler := upload.NewHTTPHandler(uploadManager, upload.WithCompletionRecording(
-		repository.NewUploadRepo(),
-		func(c *gin.Context) (upload.UploadOwner, error) {
+	directUploadHandler := upload.NewHTTPHandler(
+		nil,
+		upload.WithDirectUploadSigner(uploadruntime.DirectSigner()),
+		upload.WithUploadOwnerResolver(func(c *gin.Context) (upload.UploadOwner, error) {
 			return upload.UploadOwner{Type: upload.UploaderAPIUser, ID: middleware.GetAPIUserID(c)}, nil
-		},
-	))
+		}),
+	)
 
 	rg.GET("/health", healthHandler.Health)
 	rg.POST("/auth/login", authHandler.Login)
@@ -57,7 +50,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	{
 		authenticated.GET("/ob_delay", delayConfigHandler.All)
 		authenticated.POST("/third_binding", authHandler.ThirdBinding)
-		uploadHandler.RegisterRoutes(authenticated.Group("/uploads"))
+		directUploadHandler.RegisterDirectRoute(authenticated.Group("/uploads"))
 		auth := authenticated.Group("/auth")
 		{
 			auth.POST("/logout", authHandler.Logout)
@@ -87,6 +80,8 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 
 			templates.POST("/:id/favorite", templateHandler.Favorite)
 			templates.DELETE("/:id/favorite", templateHandler.Unfavorite)
+
+			templates.POST("/complaint", templateHandler.Complaint)
 		}
 
 		generationTasks := authenticated.Group("/generation")
@@ -107,7 +102,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 
 		payments := authenticated.Group("/payments")
 		{
-			payments.POST("/apple/confirm", paymentHandler.ConfirmApple)
+			payments.POST("/apple/pay", paymentHandler.ConfirmApple)
 		}
 
 		conf := authenticated.Group("/configs")

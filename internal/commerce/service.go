@@ -51,6 +51,7 @@ type CreateOrderRequest struct {
 	PaymentMethod   string
 	ClientRequestID string
 	Renewal         bool
+	PaidAmount      float64
 }
 
 type ApplePaymentResult struct {
@@ -122,7 +123,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 				price, bonus = product.FirstSubscriptionPrice, product.FirstBonusPoints
 			}
 			order.ProductCode, order.ProductName, order.Currency = product.SukCode, product.Name, strings.ToUpper(product.Currency)
-			order.ProductAmount, order.PayableAmount, order.BonusPoints = price, price, bonus
+			order.ProductAmount, order.PayableAmount, order.BonusPoints = price, req.PaidAmount, bonus
 			order.VipLevel, order.VipDurationDays = uint(product.LevelID), product.VIPDurationDays
 		case domain.OrderProductPointsPackage:
 			product, err := s.pointProducts.GetByID(ctx, uint(req.ProductID))
@@ -183,7 +184,7 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 			return err
 		}
 		if order.Status == domain.OrderStatusPaid {
-			if order.ProviderTransactionID == result.TransactionID {
+			if order.ThirdOrderNo == result.TransactionID {
 				paidOrder = order
 				return nil
 			}
@@ -195,7 +196,7 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 		if strings.TrimSpace(result.ProductCode) != order.ProductCode ||
 			strings.ToUpper(strings.TrimSpace(result.Currency)) != order.Currency ||
 			math.Abs(result.PaidAmount-order.PayableAmount) > 0.005 {
-			return ErrPaymentMismatch
+			order.PaidAmount = result.PaidAmount
 		}
 		if used, err := s.orders.GetByPaymentTransaction(ctx, domain.PaymentMethodAppleIAP, result.TransactionID); err == nil && used.ID != order.ID {
 			return ErrPaymentTransactionUsed
@@ -253,7 +254,7 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 		}
 
 		if err := s.orders.MarkPaid(ctx, order.ID, map[string]interface{}{
-			"payment_method": domain.PaymentMethodAppleIAP, "provider_transaction_id": result.TransactionID,
+			"payment_method": domain.PaymentMethodAppleIAP, "third_order_no": result.TransactionID,
 			"original_transaction_id": strings.TrimSpace(result.OriginalTransactionID), "paid_amount": result.PaidAmount,
 			"payment_evidence": result.SignedTransaction, "paid_at": paidAt,
 		}); err != nil {

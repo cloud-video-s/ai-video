@@ -26,7 +26,7 @@ func (r *OrderRepo) Create(ctx context.Context, order *model.VideoOrder) error {
 	// zero dates (which would also break the composite unique index).
 	q := qFrom(ctx).VideoOrder
 	return q.WithContext(ctx).Omit(
-		q.ProviderTransactionID, q.OriginalTransactionID, q.PaidAt, q.CancelledAt,
+		q.ThirdOrderNo, q.OriginalTransactionID, q.PaidAt, q.CancelledAt,
 	).Create(order)
 }
 
@@ -46,7 +46,7 @@ func (r *OrderRepo) GetByClientRequestID(ctx context.Context, requestID string) 
 
 func (r *OrderRepo) GetByPaymentTransaction(ctx context.Context, method, transactionID string) (*model.VideoOrder, error) {
 	q := qFrom(ctx).VideoOrder
-	return q.WithContext(ctx).Where(q.PaymentMethod.Eq(method), q.ProviderTransactionID.Eq(transactionID)).First()
+	return q.WithContext(ctx).Where(q.PaymentMethod.Eq(method), q.ThirdOrderNo.Eq(transactionID)).First()
 }
 
 func (r *OrderRepo) CountPaidByProductType(ctx context.Context, userID uint64, productType string) (int64, error) {

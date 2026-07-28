@@ -80,6 +80,7 @@ func SeedAdminMetadata() error {
 		{name: "app users", fn: SeedAppUserAdmin},
 		{name: "user attribution", fn: SeedUserAttributionAdmin},
 		{name: "points ledgers", fn: SeedUserPointsLedgerAdmin},
+		{name: "user generation tasks", fn: SeedUserGenerationTaskAdmin},
 		{name: "delay configs", fn: SeedDelayConfigAdmin},
 		{name: "uploads", fn: SeedUploadAdmin},
 	}

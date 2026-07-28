@@ -136,3 +136,17 @@ func (h *TemplateHandler) setFavorite(c *gin.Context, favorited bool) {
 		response.Fail(c, errcode.ErrServer, err.Error())
 	}
 }
+
+func (h *TemplateHandler) Complaint(c *gin.Context) {
+	var req apiservice.ClientCategoriesRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
+	list, err := h.svc.Complaint(c, &req)
+	if err != nil {
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, list)
+}

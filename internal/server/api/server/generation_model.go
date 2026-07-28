@@ -1,0 +1,104 @@
+package service
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"ai-video/internal/gen/model"
+	"ai-video/internal/repository"
+)
+
+type GenerationModelService struct {
+	modelRepo     *repository.ModelRepo
+	parameterRepo *repository.ModelParameterRepo
+}
+
+func NewGenerationModelService() *GenerationModelService {
+	return &GenerationModelService{
+		modelRepo:     repository.NewModelRepo(),
+		parameterRepo: repository.NewModelParameterRepo(),
+	}
+}
+
+type GenerationModelRequest struct {
+	ModelType uint32 `form:"model_type" binding:"required,gt=0"`
+}
+
+type GenerationModelParameter struct {
+	ParamKey      string        `json:"param_key"`
+	DefaultValue  interface{}   `json:"default_value"`
+	AllowedValues []interface{} `json:"allowed_values"`
+	Description   string        `json:"description"`
+}
+
+type GenerationModelView struct {
+	Name       string                     `json:"name"`
+	ModelCode  string                     `json:"model_code"`
+	Parameters []GenerationModelParameter `json:"parameter"`
+}
+
+func (s *GenerationModelService) List(ctx context.Context, modelType uint32) ([]GenerationModelView, error) {
+	models, err := s.modelRepo.ListEnabledByType(ctx, modelType)
+	if err != nil {
+		return nil, err
+	}
+	modelIDs := make([]int64, 0, len(models))
+	for i := range models {
+		modelIDs = append(modelIDs, models[i].ID)
+	}
+	parameters, err := s.parameterRepo.ListOptionsByModels(ctx, modelIDs)
+	if err != nil {
+		return nil, err
+	}
+	parametersByModel := make(map[int64][]GenerationModelParameter, len(models))
+	for i := range parameters {
+		view, err := generationModelParameterView(&parameters[i])
+		if err != nil {
+			return nil, err
+		}
+		parametersByModel[parameters[i].ModelID] = append(parametersByModel[parameters[i].ModelID], view)
+	}
+	result := make([]GenerationModelView, 0, len(models))
+	for i := range models {
+		items := parametersByModel[models[i].ID]
+		if items == nil {
+			items = []GenerationModelParameter{}
+		}
+		result = append(result, GenerationModelView{Name: models[i].Name, ModelCode: models[i].Code, Parameters: items})
+	}
+	return result, nil
+}
+
+func generationModelParameterView(item *model.VideoModelParameter) (GenerationModelParameter, error) {
+	var defaultValue interface{}
+	if value := strings.TrimSpace(item.DefaultValue); value != "" {
+		if err := json.Unmarshal([]byte(value), &defaultValue); err != nil {
+			return GenerationModelParameter{}, fmt.Errorf("parameter %s has invalid default_value JSON: %w", item.ParamKey, err)
+		}
+	}
+	allowedValues := make([]interface{}, 0)
+	if value := strings.TrimSpace(item.AllowedValues); value != "" {
+		if err := json.Unmarshal([]byte(value), &allowedValues); err != nil {
+			return GenerationModelParameter{}, fmt.Errorf("parameter %s has invalid allowed_values JSON: %w", item.ParamKey, err)
+		}
+		if allowedValues == nil {
+			allowedValues = make([]interface{}, 0)
+		}
+	}
+	constraints := make(map[string]interface{})
+	if value := strings.TrimSpace(item.Constraints); value != "" {
+		if err := json.Unmarshal([]byte(value), &constraints); err != nil {
+			return GenerationModelParameter{}, fmt.Errorf("parameter %s has invalid constraints JSON: %w", item.ParamKey, err)
+		}
+		if constraints == nil {
+			constraints = make(map[string]interface{})
+		}
+	}
+	return GenerationModelParameter{
+		ParamKey:     item.ParamKey,
+		DefaultValue: defaultValue, AllowedValues: allowedValues,
+		Description: item.Description,
+	}, nil
+}

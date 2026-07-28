@@ -8,19 +8,20 @@ import (
 )
 
 const (
-	TaskStatusSubmitting  = "submitting"
-	TaskStatusSubmitted   = "submitted"
-	TaskStatusPending     = "pending"
-	TaskStatusRunning     = "running"
-	TaskStatusDownloading = "downloading"
-	TaskStatusSuccess     = "success"
-	TaskStatusFailure     = "failure"
+	TaskStatusSubmitting  = 1
+	TaskStatusSubmitted   = 2
+	TaskStatusPending     = 3
+	TaskStatusRunning     = 4
+	TaskStatusDownloading = 5
+	TaskStatusSuccess     = 6
+	TaskStatusFailure     = 7
 )
 
 // CreateTaskRequest 是客户端通用生成请求。
 // Input 和 Parameters 会与模型默认参数合并后发送给具体 provider。
 type CreateTaskRequest struct {
 	ModelCode       string                 `json:"model_code" binding:"required,max=64"`
+	TaskType        int                    `json:"task_type" binding:"required,max=64"`
 	ClientRequestID string                 `json:"client_request_id" binding:"omitempty,max=64"`
 	Input           map[string]interface{} `json:"input" binding:"required"`
 	Parameters      map[string]interface{} `json:"parameters"`
@@ -53,10 +54,11 @@ type ProviderTaskStatus struct {
 // TaskView 是客户端可见的任务快照，不暴露第三方临时 URL 和原始响应。
 type TaskView struct {
 	ID              uint64                 `json:"id"`
+	TaskCode        string                 `json:"task_code"`
 	ClientRequestID string                 `json:"client_request_id"`
-	ModelConfigID   uint64                 `json:"model_config_id"`
-	ExternalTaskID  string                 `json:"external_task_id,omitempty"`
-	Status          string                 `json:"status"`
+	ModelID         uint64                 `json:"model_id"`
+	ThirdTaskCode   string                 `json:"third_task_code,omitempty"`
+	Status          int                    `json:"status"`
 	Progress        uint8                  `json:"progress"`
 	Input           map[string]interface{} `json:"input,omitempty"`
 	Parameters      map[string]interface{} `json:"parameters,omitempty"`
@@ -70,10 +72,10 @@ type TaskView struct {
 	UpdatedAt       time.Time              `json:"updated_at"`
 }
 
-func ViewOf(item *model.VideoGenerationTask) TaskView {
+func ViewOf(item *model.VideoUserGenerationTask) TaskView {
 	view := TaskView{
-		ID: item.ID, ClientRequestID: item.ClientRequestID, ModelConfigID: item.ModelConfigID,
-		ExternalTaskID: item.ExternalTaskID, Status: item.Status, Progress: uint8(item.Progress),
+		ID: item.ID, TaskCode: item.TaskCode, ClientRequestID: item.ClientRequestID, ModelID: item.ModelID,
+		ThirdTaskCode: item.ThirdTaskCode, Status: item.Status, Progress: uint8(item.Progress),
 		ErrorMessage: item.ErrorMessage, UsageDuration: item.UsageDuration,
 		SubmittedAt: nullableTime(item.SubmittedAt), StartedAt: nullableTime(item.StartedAt), FinishedAt: nullableTime(item.FinishedAt),
 		CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt, LocalURLs: []string{},
@@ -97,6 +99,6 @@ func nullableTime(value time.Time) *time.Time {
 	return &value
 }
 
-func IsTerminal(status string) bool {
+func IsTerminal(status int) bool {
 	return status == TaskStatusSuccess || status == TaskStatusFailure
 }

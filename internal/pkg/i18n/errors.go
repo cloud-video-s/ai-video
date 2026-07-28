@@ -144,7 +144,7 @@ func errorKey(code, httpStatus int) string {
 	switch code {
 	case errcode.ErrParam:
 		return "invalid_request"
-	case errcode.ErrUnauthorized, errcode.ErrTokenInvalid, errcode.ErrTokenExpired, http.StatusUnauthorized:
+	case errcode.ErrUnauthorized, errcode.ErrTokenInvalid, errcode.ErrTokenExpired, errcode.ErrRoleExist, http.StatusUnauthorized:
 		return "unauthorized"
 	case errcode.ErrForbidden, http.StatusForbidden:
 		return "forbidden"

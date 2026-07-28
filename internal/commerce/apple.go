@@ -108,6 +108,7 @@ type AppleNotificationSummary struct {
 // JSON value is accepted only for Sandbox while the server is not in release
 // mode, matching the development payload supplied by the client.
 type ApplePurchaseRequest struct {
+	ShopType              int        `json:"shop_type" binding:"required,max=2"	`
 	BundleID              string     `json:"bundleID" binding:"required,max=191"`
 	ExpirationDate        *time.Time `json:"expirationDate"`
 	IsActive              bool       `json:"isActive"`
@@ -525,29 +526,29 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 	if verified.RevokedAt != nil {
 		return nil, ErrApplePurchaseRevoked
 	}
-	if isSubscriptionType(verified.Type) {
-		if !req.IsActive || verified.ExpiresAt == nil || !verified.ExpiresAt.After(time.Now()) {
-			return nil, ErrApplePurchaseInactive
-		}
+	//if isSubscriptionType(verified.Type) {
+	//	if !req.IsActive || verified.ExpiresAt == nil || !verified.ExpiresAt.After(time.Now()) {
+	//		return nil, ErrApplePurchaseInactive
+	//	}
+	//}
+	if !isSubscriptionType(verified.Type) {
+		return nil, ErrPaymentMismatch
 	}
-
-	productType, productID, err := s.resolveAppleProduct(ctx, verified.ProductID, expectedBundle)
+	shopID, err := s.resolveAppleProduct(ctx, req.ShopType, verified.ProductID, expectedBundle)
 	if err != nil {
 		return nil, err
 	}
-	if productType == domain.OrderProductVIPSubscription && !isSubscriptionType(verified.Type) {
-		return nil, ErrPaymentMismatch
+	productType := domain.OrderProductVIPSubscription
+	if req.ShopType == 2 {
+		productType = domain.OrderProductPointsPackage
 	}
-	if productType == domain.OrderProductPointsPackage && isSubscriptionType(verified.Type) {
-		return nil, ErrPaymentMismatch
-	}
-
 	order, err := s.CreateOrder(ctx, CreateOrderRequest{
-		UserID: userID, ProductType: productType, ProductID: productID,
+		UserID: userID, ProductType: productType, ProductID: shopID,
 		PaymentMethod:   domain.PaymentMethodAppleIAP,
 		ClientRequestID: appleClientRequestID(verified.TransactionID),
 		Renewal: strings.EqualFold(verified.TransactionReason, "RENEWAL") ||
 			verified.TransactionID != verified.OriginalTransactionID,
+		PaidAmount: verified.PaidAmount,
 	})
 	if err != nil {
 		return nil, err
@@ -564,27 +565,22 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 	return applePurchaseResponse(paid, verified), nil
 }
 
-func (s *Service) resolveAppleProduct(ctx context.Context, productCode, packageCode string) (string, uint64, error) {
-	vip, vipErr := s.vipProducts.GetAppleProduct(ctx, productCode, packageCode)
-	points, pointsErr := s.pointProducts.GetAppleProduct(ctx, productCode, packageCode)
-	vipFound := vipErr == nil
-	pointsFound := pointsErr == nil
-	if vipErr != nil && !errors.Is(vipErr, gorm.ErrRecordNotFound) {
-		return "", 0, vipErr
+func (s *Service) resolveAppleProduct(ctx context.Context, shopType int, sukCode, packageCode string) (shopID uint64, err error) {
+	if shopType == 1 {
+		vip, vipErr := s.vipProducts.GetAppleProduct(ctx, sukCode, packageCode)
+		if vipErr != nil && !errors.Is(vipErr, gorm.ErrRecordNotFound) {
+			return 0, vipErr
+		}
+		return vip.ID, nil
 	}
-	if pointsErr != nil && !errors.Is(pointsErr, gorm.ErrRecordNotFound) {
-		return "", 0, pointsErr
+	if shopType == 2 {
+		points, pointsErr := s.pointProducts.GetAppleProduct(ctx, sukCode, packageCode)
+		if pointsErr != nil && !errors.Is(pointsErr, gorm.ErrRecordNotFound) {
+			return 0, pointsErr
+		}
+		return points.ID, nil
 	}
-	if vipFound && pointsFound {
-		return "", 0, ErrAppleProductAmbiguous
-	}
-	if vipFound {
-		return domain.OrderProductVIPSubscription, vip.ID, nil
-	}
-	if pointsFound {
-		return domain.OrderProductPointsPackage, points.ID, nil
-	}
-	return "", 0, ErrAppleProductNotFound
+	return 0, ErrAppleProductNotFound
 }
 
 func verifyApplePurchase(req ApplePurchaseRequest, expectedBundle string, allowUnsignedSandbox bool) (*verifiedAppleTransaction, error) {

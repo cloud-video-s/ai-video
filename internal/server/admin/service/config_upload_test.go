@@ -16,6 +16,9 @@ func TestValidateUploadConfigValue(t *testing.T) {
 		{key: "upload.video_max_file_size", value: "107374182400"},
 		{key: "upload.image_max_file_size", value: "1024", wantErr: true},
 		{key: "upload.video_max_file_size", value: "invalid", wantErr: true},
+		{key: "upload.oss.signature_ttl_seconds", value: "600"},
+		{key: "upload.oss.signature_ttl_seconds", value: "59", wantErr: true},
+		{key: "upload.oss.signature_ttl_seconds", value: "3601", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.key+"/"+tt.value, func(t *testing.T) {

@@ -54,7 +54,7 @@ func newVideoUserTemplateFavorite(db *gorm.DB, opts ...gen.DOOption) videoUserTe
 				field.RelationField
 			}
 		}{
-			RelationField: field.NewRelation("User.Works", "model.VideoGenerationTask"),
+			RelationField: field.NewRelation("User.Works", "model.VideoUserGenerationTask"),
 			User: struct {
 				field.RelationField
 			}{

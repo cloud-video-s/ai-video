@@ -104,26 +104,27 @@ type OIDCProviderConfig struct {
 }
 
 type UploadConfig struct {
-	RootDir            string   `mapstructure:"root_dir"`
-	LocalRootDir       string   `mapstructure:"local_root_dir"`
-	LocalBaseURL       string   `mapstructure:"local_base_url"`
-	StorageProvider    string   `mapstructure:"storage_provider"`
-	OSSRegion          string   `mapstructure:"oss_region"`
-	OSSEndpoint        string   `mapstructure:"oss_endpoint"`
-	OSSAccessKeyID     string   `mapstructure:"oss_access_key_id"`
-	OSSAccessKeySecret string   `mapstructure:"oss_access_key_secret"`
-	OSSBucket          string   `mapstructure:"oss_bucket"`
-	OSSObjectPrefix    string   `mapstructure:"oss_object_prefix"`
-	OSSBaseURL         string   `mapstructure:"oss_base_url"`
-	ChunkSize          int64    `mapstructure:"chunk_size"`
-	MaxBatchFiles      int      `mapstructure:"max_batch_files"`
-	SessionTTLSeconds  int64    `mapstructure:"session_ttl_seconds"`
-	ImageMaxFileSize   int64    `mapstructure:"image_max_file_size"`
-	VideoMaxFileSize   int64    `mapstructure:"video_max_file_size"`
-	ImageExtensions    []string `mapstructure:"image_extensions"`
-	VideoExtensions    []string `mapstructure:"video_extensions"`
-	ImageMIMETypes     []string `mapstructure:"image_mime_types"`
-	VideoMIMETypes     []string `mapstructure:"video_mime_types"`
+	RootDir                string   `mapstructure:"root_dir"`
+	LocalRootDir           string   `mapstructure:"local_root_dir"`
+	LocalBaseURL           string   `mapstructure:"local_base_url"`
+	StorageProvider        string   `mapstructure:"storage_provider"`
+	OSSRegion              string   `mapstructure:"oss_region"`
+	OSSEndpoint            string   `mapstructure:"oss_endpoint"`
+	OSSAccessKeyID         string   `mapstructure:"oss_access_key_id"`
+	OSSAccessKeySecret     string   `mapstructure:"oss_access_key_secret"`
+	OSSBucket              string   `mapstructure:"oss_bucket"`
+	OSSObjectPrefix        string   `mapstructure:"oss_object_prefix"`
+	OSSBaseURL             string   `mapstructure:"oss_base_url"`
+	OSSSignatureTTLSeconds int64    `mapstructure:"oss_signature_ttl_seconds"`
+	ChunkSize              int64    `mapstructure:"chunk_size"`
+	MaxBatchFiles          int      `mapstructure:"max_batch_files"`
+	SessionTTLSeconds      int64    `mapstructure:"session_ttl_seconds"`
+	ImageMaxFileSize       int64    `mapstructure:"image_max_file_size"`
+	VideoMaxFileSize       int64    `mapstructure:"video_max_file_size"`
+	ImageExtensions        []string `mapstructure:"image_extensions"`
+	VideoExtensions        []string `mapstructure:"video_extensions"`
+	ImageMIMETypes         []string `mapstructure:"image_mime_types"`
+	VideoMIMETypes         []string `mapstructure:"video_mime_types"`
 }
 
 type CasbinConfig struct {
@@ -191,6 +192,7 @@ func setConfigDefaults() {
 	viper.SetDefault("upload.local_root_dir", "storage/uploads/files")
 	viper.SetDefault("upload.local_base_url", "/uploads")
 	viper.SetDefault("upload.storage_provider", "local")
+	viper.SetDefault("upload.oss_signature_ttl_seconds", int64(600))
 	viper.SetDefault("upload.chunk_size", int64(5<<20))
 	viper.SetDefault("upload.max_batch_files", 20)
 	viper.SetDefault("upload.session_ttl_seconds", int64(86400))
@@ -228,8 +230,12 @@ func validateConfig() error {
 		return fmt.Errorf("jwt.secret is required")
 	}
 	if Cfg.Upload.RootDir == "" || Cfg.Upload.LocalRootDir == "" || Cfg.Upload.ChunkSize <= 0 || Cfg.Upload.MaxBatchFiles <= 0 ||
-		Cfg.Upload.SessionTTLSeconds <= 0 || Cfg.Upload.ImageMaxFileSize <= 0 || Cfg.Upload.VideoMaxFileSize <= 0 {
+		Cfg.Upload.SessionTTLSeconds <= 0 ||
+		Cfg.Upload.ImageMaxFileSize <= 0 || Cfg.Upload.VideoMaxFileSize <= 0 {
 		return fmt.Errorf("upload config values must be positive")
+	}
+	if Cfg.Upload.OSSSignatureTTLSeconds < 60 || Cfg.Upload.OSSSignatureTTLSeconds > 3600 {
+		return fmt.Errorf("upload.oss_signature_ttl_seconds must be between 60 and 3600")
 	}
 	if Cfg.Server.Mode == "release" {
 		if Cfg.JWT.Secret == defaultJWTSecret {

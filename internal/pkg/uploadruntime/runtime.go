@@ -1,13 +1,15 @@
 package uploadruntime
 
 import (
-	"ai-video/internal/config"
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
+	"ai-video/internal/config"
 	"ai-video/internal/pkg/setting"
 	"ai-video/internal/pkg/upload"
 )
@@ -16,6 +18,12 @@ type storageFactory struct {
 	mu          sync.Mutex
 	fingerprint [sha256.Size]byte
 	storage     upload.Storage
+}
+
+type directSignerFactory struct {
+	mu          sync.Mutex
+	fingerprint [sha256.Size]byte
+	signer      upload.DirectUploadSigner
 }
 
 func ManagerConfig() (upload.Config, error) {
@@ -30,6 +38,66 @@ func ManagerConfig() (upload.Config, error) {
 		return configuredPolicy(kind, config.Cfg.Upload)
 	}
 	return UploadConfig, nil
+}
+
+func DirectSigner() upload.DirectUploadSigner {
+	return &directSignerFactory{}
+}
+
+func (f *directSignerFactory) Sign(ctx context.Context, request upload.DirectUploadRequest) (*upload.DirectUploadCredential, error) {
+	signer, err := f.resolve()
+	if err != nil {
+		return nil, err
+	}
+	return signer.Sign(ctx, request)
+}
+
+func (f *directSignerFactory) resolve() (upload.DirectUploadSigner, error) {
+	cfg := config.Cfg.Upload
+	provider := configured("upload.storage_provider", cfg.StorageProvider)
+	if provider != upload.StorageAliyunOSS {
+		return nil, fmt.Errorf("%w: active storage provider is %q", upload.ErrDirectUploadUnavailable, provider)
+	}
+	ttlSeconds, err := configuredPositiveInt64("upload.oss.signature_ttl_seconds", cfg.OSSSignatureTTLSeconds)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", upload.ErrDirectUploadUnavailable, err)
+	}
+	values := []string{
+		configured("upload.oss.region", cfg.OSSRegion),
+		configured("upload.oss.endpoint", cfg.OSSEndpoint),
+		configured("upload.oss.access_key_id", cfg.OSSAccessKeyID),
+		configured("upload.oss.access_key_secret", cfg.OSSAccessKeySecret),
+		configured("upload.oss.bucket", cfg.OSSBucket),
+		configured("upload.oss.object_prefix", cfg.OSSObjectPrefix),
+		configured("upload.oss.base_url", cfg.OSSBaseURL),
+		strconv.FormatInt(ttlSeconds, 10),
+	}
+	fingerprint := sha256.Sum256([]byte(strings.Join(values, "\x00")))
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.signer != nil && f.fingerprint == fingerprint {
+		return f.signer, nil
+	}
+	baseConfig := config.UploadManagerConfig()
+	signer, err := upload.NewOSSDirectUploadSigner(upload.DirectUploadConfig{
+		OSS: upload.OSSConfig{
+			Region: values[0], Endpoint: values[1], AccessKeyID: values[2], AccessKeySecret: values[3],
+			Bucket: values[4], ObjectPrefix: values[5], BaseURL: values[6],
+		},
+		SignatureTTL: time.Duration(ttlSeconds) * time.Second,
+		Image:        baseConfig.Image,
+		Video:        baseConfig.Video,
+		PolicyResolver: func(kind upload.MediaKind) (upload.Policy, error) {
+			return configuredPolicy(kind, config.Cfg.Upload)
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", upload.ErrDirectUploadUnavailable, err)
+	}
+	f.fingerprint = fingerprint
+	f.signer = signer
+	return signer, nil
 }
 
 func configuredPolicy(kind upload.MediaKind, cfg config.UploadConfig) (upload.Policy, error) {
@@ -127,4 +195,19 @@ func configured(key, fallback string) string {
 		return value
 	}
 	return strings.TrimSpace(fallback)
+}
+
+func configuredPositiveInt64(key string, fallback int64) (int64, error) {
+	value := fallback
+	if raw := strings.TrimSpace(setting.GetString(key)); raw != "" {
+		parsed, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("%s must be a positive integer", key)
+		}
+		value = parsed
+	}
+	if value <= 0 {
+		return 0, fmt.Errorf("%s must be a positive integer", key)
+	}
+	return value, nil
 }

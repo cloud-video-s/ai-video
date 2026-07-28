@@ -45,10 +45,11 @@ type UserCenterPointsLedger struct {
 
 type UserCenterWork struct {
 	ID              uint64     `json:"id"`
-	ModelConfigID   uint64     `json:"model_config_id"`
+	ModelID         uint64     `json:"model_id"`
 	ClientRequestID string     `json:"client_request_id"`
-	ExternalTaskID  string     `json:"external_task_id"`
-	Status          string     `json:"status"`
+	TaskCode        string     `json:"task_code"`
+	ThirdTaskCode   string     `json:"third_task_code"`
+	Status          int        `json:"status"`
 	Progress        uint32     `json:"progress"`
 	UsageDuration   uint32     `json:"usage_duration"`
 	ErrorMessage    string     `json:"error_message,omitempty"`
@@ -131,7 +132,7 @@ func (s *AppUserService) GetCenter(ctx context.Context, id uint64) (*UserCenterD
 	if err != nil {
 		return nil, err
 	}
-	works, workTotal, err := repository.NewGenerationTaskRepo().PageOwned(ctx, id, 1, relationPageSize, "")
+	works, workTotal, err := repository.NewUserGenerationTaskRepo().PageOwned(ctx, id, 1, relationPageSize, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -165,12 +166,12 @@ func userCenterPointsLedgers(records []repository.UserPointsLedgerRecord) []User
 	return items
 }
 
-func userCenterWorks(records []model.VideoGenerationTask) []UserCenterWork {
+func userCenterWorks(records []model.VideoUserGenerationTask) []UserCenterWork {
 	items := make([]UserCenterWork, 0, len(records))
 	for _, work := range records {
 		items = append(items, UserCenterWork{
-			ID: work.ID, ModelConfigID: work.ModelConfigID,
-			ClientRequestID: work.ClientRequestID, ExternalTaskID: work.ExternalTaskID,
+			ID: work.ID, TaskCode: work.TaskCode, ModelID: work.ModelID,
+			ClientRequestID: work.ClientRequestID, ThirdTaskCode: work.ThirdTaskCode,
 			Status: work.Status, Progress: work.Progress, UsageDuration: work.UsageDuration,
 			ErrorMessage: work.ErrorMessage, SubmittedAt: nonZeroTime(work.SubmittedAt),
 			FinishedAt: nonZeroTime(work.FinishedAt), CreatedAt: work.CreatedAt,

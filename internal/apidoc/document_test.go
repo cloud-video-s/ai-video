@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"ai-video/internal/pkg/upload"
 	apiservice "ai-video/internal/server/api/server"
 
 	"github.com/gin-gonic/gin"
@@ -44,6 +45,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodPost, Path: "/api/payments/apple/notification", Handler: "api.Payment.AppleServerNotification"},
 		{Method: http.MethodPost, Path: "/api/uploads/images/batches", Handler: "upload.CreateBatch"},
 		{Method: http.MethodPut, Path: "/api/uploads/images/:upload_id/chunks/:index", Handler: "upload.PutChunk"},
+		{Method: http.MethodPost, Path: "/api/uploads/oss/signature", Handler: "upload.DirectSignature"},
 	}
 	document := Build(routes)
 	if document.OpenAPI != "3.0.3" {
@@ -142,6 +144,25 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	assertParameter(t, batch, "files", "json", true)
 	assertParameter(t, batch, "files[].file_name", "json", true)
 	assertParameter(t, batch, "files[].content_type", "json", false)
+	direct := document.Paths["/api/uploads/oss/signature"]["post"].(map[string]any)
+	assertParameter(t, direct, "media_type", "json", true)
+	assertParameter(t, direct, "file_name", "json", true)
+	assertParameter(t, direct, "size", "json", true)
+	assertParameter(t, direct, "content_type", "json", true)
+	assertResponseParameter(t, direct, "data.upload_url", true)
+	assertResponseParameter(t, direct, "data.headers", true)
+	assertResponseParameter(t, direct, "data.object_key", true)
+	if _, secured := direct["security"]; !secured {
+		t.Fatal("OSS direct upload signature route must require bearer auth")
+	}
+	directExample := direct["x-response-example"].(responseExampleEnvelope).Data.(upload.DirectUploadCredential)
+	if directExample.Method != http.MethodPut || directExample.UploadURL == "" || directExample.Headers["Content-Length"] != "12345" {
+		t.Fatalf("OSS direct upload response example is incomplete: %#v", directExample)
+	}
+	directResponses := direct["responses"].(map[string]any)
+	if directResponses["413"] == nil || directResponses["503"] == nil {
+		t.Fatalf("OSS direct upload error responses are incomplete: %#v", directResponses)
+	}
 	delay := document.Paths["/api/ob_delay"]["get"].(map[string]any)
 	assertResponseParameter(t, delay, "code", true)
 	assertResponseParameter(t, delay, "message", true)
@@ -173,9 +194,26 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	templateInfo := document.Paths["/api/templates/template_info"]["get"].(map[string]any)
 	assertParameter(t, templateInfo, "template_id", "query", true)
 	assertResponseParameter(t, templateInfo, "data.id", true)
+	models := document.Paths["/api/generation/models"]["get"].(map[string]any)
+	assertParameter(t, models, "model_type", "query", true)
+	assertResponseParameter(t, models, "data[].name", true)
+	assertResponseParameter(t, models, "data[].parameter", true)
+	assertResponseParameter(t, models, "data[].parameter[].param_key", true)
+	assertResponseParameter(t, models, "data[].parameter[].default_value", true)
+	assertResponseParameter(t, models, "data[].parameter[].allowed_values", true)
+	assertResponseParameter(t, models, "data[].parameter[].description", true)
+	assertResponseParameterAbsent(t, models, "data[].parameter[].param_type")
+	assertResponseParameterAbsent(t, models, "data[].parameter[].is_required")
+	assertResponseParameterAbsent(t, models, "data[].parameter[].constraints")
+	modelExample := models["x-response-example"].(responseExampleEnvelope).Data.([]apiservice.GenerationModelView)
+	if len(modelExample) != 1 || modelExample[0].Name != "Kling v3" || len(modelExample[0].Parameters) != 1 ||
+		modelExample[0].Parameters[0].ParamKey != "duration" {
+		t.Fatalf("generation model response example is incomplete: %#v", modelExample)
+	}
 	createTask := document.Paths["/api/generation/tasks"]["post"].(map[string]any)
 	assertParameter(t, createTask, "model_code", "json", true)
 	assertParameter(t, createTask, "input", "json", true)
+	assertResponseParameter(t, createTask, "data.task_code", true)
 	assertResponseParameter(t, createTask, "data.status", true)
 	listTasks := document.Paths["/api/generation/tasks"]["get"].(map[string]any)
 	assertParameter(t, listTasks, "page", "query", false)

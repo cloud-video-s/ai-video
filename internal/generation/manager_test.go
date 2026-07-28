@@ -27,18 +27,21 @@ func TestModelVerseSubmitUsesMergedParameters(t *testing.T) {
 	}))
 	defer server.Close()
 
-	parameters, err := mergeParameters(`{"mode":"pro","duration":5}`, map[string]interface{}{"duration": float64(8)})
+	parameters, err := mergeModelParameters([]model.VideoModelParameter{
+		{ParamKey: "mode", DefaultValue: `"pro"`},
+		{ParamKey: "duration", DefaultValue: `5`},
+	}, map[string]interface{}{"duration": float64(8)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	parameters["external_task_id"] = "client-1"
-	modelConfig := &model.VideoAiModel{
-		ModelName: "ucloud-v3-omni",
-		BaseURL:   server.URL, SubmitPath: "/v1/tasks/submit", StatusPath: "/v1/tasks/status",
-		APIKey: "test-key", HTTPTimeoutSeconds: 3,
+	modelConfig := &model.VideoModel{
+		Code:    "ucloud-v3-omni",
+		HostURL: server.URL, SubmitEndpoint: "/v1/tasks/submit", StatusEndpoint: "/v1/tasks/status",
+		APIKey: "test-key", AuthType: 1,
 	}
 	result, err := (&ModelVerseProvider{}).Submit(context.Background(), modelConfig, remoteSubmitRequest{
-		Model: modelConfig.ModelName, Input: map[string]interface{}{"prompt": "sunset"}, Parameters: parameters,
+		Model: modelConfig.Code, Input: map[string]interface{}{"prompt": "sunset"}, Parameters: parameters,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -62,8 +65,8 @@ func TestModelVerseStatusMapping(t *testing.T) {
 		_, _ = w.Write([]byte(`{"output":{"task_id":"remote-1","task_status":"Success","urls":["https://cdn.example/video.mp4"],"submit_time":1,"finish_time":2},"usage":{"duration":5},"request_id":"r1"}`))
 	}))
 	defer server.Close()
-	status, err := (&ModelVerseProvider{}).Status(context.Background(), &model.VideoAiModel{
-		BaseURL: server.URL, StatusPath: "/v1/tasks/status", APIKey: "key", HTTPTimeoutSeconds: 3,
+	status, err := (&ModelVerseProvider{}).Status(context.Background(), &model.VideoModel{
+		HostURL: server.URL, StatusEndpoint: "/v1/tasks/status", APIKey: "key", AuthType: 1,
 	}, "remote-1")
 	if err != nil {
 		t.Fatal(err)

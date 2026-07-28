@@ -19,6 +19,20 @@ func (r *ModelParameterRepo) ListByModel(ctx context.Context, modelID int64) ([]
 	return valuesOf(rows), err
 }
 
+// ListOptionsByModels returns option parameters for all requested models in a
+// single query. Rows are grouped deterministically by model and display order.
+func (r *ModelParameterRepo) ListOptionsByModels(ctx context.Context, modelIDs []int64) ([]model.VideoModelParameter, error) {
+	if len(modelIDs) == 0 {
+		return []model.VideoModelParameter{}, nil
+	}
+	q := qFrom(ctx).VideoModelParameter
+	rows, err := q.WithContext(ctx).
+		Where(q.ModelID.In(modelIDs...), q.ParameterType.Eq(1)).
+		Order(q.ModelID.Asc(), q.SortOrder.Asc(), q.ID.Asc()).
+		Find()
+	return valuesOf(rows), err
+}
+
 func (r *ModelParameterRepo) GetByModelAndID(ctx context.Context, modelID, id int64) (*model.VideoModelParameter, error) {
 	q := qFrom(ctx).VideoModelParameter
 	return q.WithContext(ctx).Where(q.ModelID.Eq(modelID), q.ID.Eq(id)).First()

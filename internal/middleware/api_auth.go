@@ -20,6 +20,7 @@ const (
 	HeaderChannelCode    = "Video_Channel_Code"
 	HeaderTokenVersion   = "Video_Token_Version"
 	HeaderLoginType      = "Video_Login_Type"
+	HeaderSystemType     = "Video_System_Type"
 )
 
 func ApiAuth(userRepo UserRepo) gin.HandlerFunc {
@@ -91,6 +92,7 @@ func ApiAuth(userRepo UserRepo) gin.HandlerFunc {
 		c.Set(HeaderChannelCode, headerChannelCode)
 		c.Set(HeaderDeviceCountry, headerDeviceCountry)
 		c.Set(HeaderPhoneModel, headerPhoneModel)
+		c.Set(HeaderSystemType, getClientOS(c))
 		c.Next()
 	}
 }
@@ -209,4 +211,55 @@ func GetAPILoginType(c *gin.Context) uint32 {
 		return 0
 	}
 	return loginType
+}
+
+func GetAPISystemType(c *gin.Context) int {
+	value, ok := c.Get(HeaderSystemType)
+	if !ok {
+		return 0
+	}
+	systemType, ok := value.(string)
+	if !ok {
+		return 0
+	}
+	switch systemType {
+	case "iOS":
+		return 1
+	case "Android":
+		return 2
+	}
+	return 0
+}
+
+func getClientOS(c *gin.Context) string {
+	// 1. 优先读取现代浏览器客户端提示（最准确）
+	if platform := c.GetHeader("Sec-CH-UA-Platform"); platform != "" {
+		// 注意：该值可能带双引号，如 "Windows"，需要去除
+		return strings.Trim(platform, `"`)
+	}
+	// 2. 回退到传统 User-Agent 解析
+	ua := c.GetHeader("User-Agent")
+	return parseUA(ua)
+}
+
+// 极简回退解析（仅演示，生产环境建议用第三方库）
+func parseUA(ua string) string {
+	if ua == "" {
+		return "Unknown"
+	}
+	ua = strings.ToLower(ua)
+	switch {
+	case strings.Contains(ua, "windows"):
+		return "Windows"
+	case strings.Contains(ua, "mac os"):
+		return "macOS"
+	case strings.Contains(ua, "linux"):
+		return "Linux"
+	case strings.Contains(ua, "android"):
+		return "Android"
+	case strings.Contains(ua, "iphone") || strings.Contains(ua, "ipad"):
+		return "iOS"
+	default:
+		return "Other"
+	}
 }

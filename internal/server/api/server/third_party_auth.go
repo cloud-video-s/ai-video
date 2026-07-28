@@ -113,7 +113,7 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 				return nil, errors.New("failed to update third party login info")
 			}
 		} else {
-			return &AuthResponse{}, errors.New("当前设备已绑定另一个同类型第三方账号，是否确认登录？")
+			return &AuthResponse{}, ErrDeviceCodeNotConfigured
 		}
 	}
 	user, err = s.prepareLoginSession(ctx, user.ID)

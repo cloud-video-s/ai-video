@@ -36,7 +36,7 @@ func (h *Hub) Subscribe(taskID uint64) (<-chan TaskView, func()) {
 	}
 }
 
-func (h *Hub) Publish(task *model.VideoGenerationTask) {
+func (h *Hub) Publish(task *model.VideoUserGenerationTask) {
 	view := ViewOf(task)
 	h.mu.RLock()
 	defer h.mu.RUnlock()
