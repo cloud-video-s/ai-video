@@ -10,6 +10,8 @@
 - [Banner 管理 API](banner-management-api.md)：Banner 管理、投放选项与“全部不绑定”规则
 - [VIP 套餐列表 API](client-vip-list-api.md)：`/api/vip/list` 请求参数、筛选规则与响应示例
 - [客户端模板展示 API](client-template-display-api.md)：模板展示配置接口
+- [阿里云 OSS 服务端签名直传 API](aliyun-oss-direct-upload-api.md)：V4 预签名 PUT、客户端直传与 CORS 要求
+- [用户生成任务管理 API](user-generation-task-admin-api.md)：后台任务筛选、详情及图片/视频结果预览
 
 ## 业务配置
 

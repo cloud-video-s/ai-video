@@ -16,7 +16,7 @@ go run ./cmd/apidocgen -config config/config.yaml -output docs/openapi.json
 
 ## 鉴权
 
-除健康检查和登录接口外，其他客户端接口均需要在 Header 中携带：
+除健康检查、登录接口和 Apple 服务端通知回调外，其他客户端接口均需要在 Header 中携带：
 
 ```http
 Authorization: Bearer <JWT>
@@ -71,6 +71,7 @@ JWT 由 `POST /api/auth/login` 返回。`Authorization` 属于鉴权信息，不
 |---|---|---|
 | GET | `/api/health` | 健康检查 |
 | POST | `/api/auth/login` | 游客登录或创建设备账号 |
+| POST | `/api/payments/apple/notification` | 接收 App Store Server Notifications V2 回调；由 Apple 服务器调用，无需客户端鉴权与公共请求头 |
 
 ### 用户与认证
 
@@ -104,28 +105,62 @@ JWT 由 `POST /api/auth/login` 返回。`Authorization` 属于鉴权信息，不
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/api/generation/models` | 查询可用生成模型和默认参数 |
+| GET | `/api/generation/models` | 按模型类型查询启用模型及其选项参数 |
 | POST | `/api/generation/tasks` | 创建生成任务 |
 | GET | `/api/generation/tasks` | 分页查询当前用户生成任务 |
 | GET | `/api/generation/tasks/:id` | 查询生成任务详情 |
 | GET | `/api/generation/tasks/:id/events` | 通过 SSE 订阅任务状态 |
 | DELETE | `/api/generation/tasks/:id` | 删除生成任务 |
 
-### Apple 支付
+#### 查询启用模型及选项参数
+
+`GET /api/generation/models`
+
+该接口需要 Bearer JWT 和公共请求 Header。服务端根据 `model_type` 查询，仅返回平台与模型均处于启用状态且未删除的模型。每个模型仅包含 `parameter_type=1` 的选项参数，参数按 `sort_order ASC, id ASC` 排序。
+
+Query 参数：
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---:|---|
+| `model_type` | integer | 是 | 模型类型，必须大于 0；当前约定 `1` 为生成图片、`2` 为生成视频 |
+
+成功响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": [
+    {
+      "name": "Kling v3",
+      "parameter": [
+        {
+          "param_key": "duration",
+          "default_value": 5,
+          "allowed_values": [5, 10],
+          "description": "视频时长（秒）"
+        }
+      ]
+    }
+  ]
+}
+```
+
+模型无选项参数时，`parameter` 返回空数组 `[]`，不会返回 `null`。
+
+### Apple 支付与服务端通知
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | POST | `/api/payments/apple/confirm` | 校验 StoreKit 交易并发放商品 |
+| POST | `/api/payments/apple/notification` | 接收并验签 Apple V2 通知，幂等处理退款、续费和订阅状态变化；该公开 Webhook 不由客户端调用 |
 
-### 分片上传
-
-图片和视频分别使用 `images`、`videos` 路径：
+### 阿里云 OSS 服务端签名直传
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/api/uploads/{images|videos}/batches` | 初始化批量上传 |
-| PUT | `/api/uploads/{images|videos}/:upload_id/chunks/:index` | 上传分片 |
-| GET | `/api/uploads/{images|videos}/:upload_id` | 查询上传进度 |
-| POST | `/api/uploads/{images|videos}/:upload_id/complete` | 完成上传 |
+| POST | `/api/uploads/oss/signature` | 获取短时效 OSS V4 预签名 PUT 地址；需要 Bearer Token |
+
+请求中的 `media_type`、文件扩展名、MIME 和精确字节数会经过校验。响应中的 `upload_url` 与 `headers` 用于将文件原始字节直接 `PUT` 到 OSS，详细调用流程和 Bucket CORS 要求见 [阿里云 OSS 服务端签名直传 API](aliyun-oss-direct-upload-api.md)。
 
 每个接口完整的 Header、路径参数、Query、JSON/Form 参数、响应参数和响应示例，以在线文档或静态 [openapi.json](openapi.json) 为准。
