@@ -279,7 +279,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { getBannerDeliveryOptions, type BannerDeliveryApp, type BannerDeliveryPackage, type BannerDeliveryVersion } from '@/api/banner'
 import { getChannelOptions, type Channel } from '@/api/channel'
@@ -526,16 +526,26 @@ function handleAppModeChange(value: string | number | boolean | undefined) {
   handleAppSelectionChange()
 }
 function handlePackageModeChange(value: string | number | boolean | undefined) {
-  if (value === 'all') form.package_codes = formPackageOptions.value.map((item) => item.package_code)
+  if (value === 'all') syncAllPackageCodes()
   handlePackageSelectionChange()
+  clearPackageValidation()
 }
 function handleVersionModeChange(value: string | number | boolean | undefined) { if (value === 'all') form.version_codes = [] }
+function syncAllPackageCodes() {
+  if (targetModes.packages !== 'all') return
+  form.package_codes = [...new Set(formPackageOptions.value.map((item) => item.package_code))]
+}
+function clearPackageValidation() {
+  void nextTick(() => {
+    if (form.package_codes.length) formRef.value?.clearValidate('package_codes')
+  })
+}
 function handleAppSelectionChange() {
   const allowed = new Set(formPackageOptions.value.map((item) => item.package_code))
-  form.package_codes = targetModes.packages === 'all'
-    ? [...allowed]
-    : form.package_codes.filter((code) => allowed.has(code))
+  if (targetModes.packages === 'all') syncAllPackageCodes()
+  else form.package_codes = form.package_codes.filter((code) => allowed.has(code))
   handlePackageSelectionChange()
+  clearPackageValidation()
 }
 function handlePackageSelectionChange() {
   const allowed = new Set(formVersionOptions.value.map((item) => item.version_code))
@@ -547,6 +557,8 @@ function handlePackageSelectionChange() {
 }
 
 async function handleSubmit() {
+  syncAllPackageCodes()
+  await nextTick()
   await formRef.value?.validate()
   if (targetModes.countries === 'selected' && !form.country_codes.length) return void ElMessage.warning('请选择国家，或切换为全部国家')
   if (targetModes.apps === 'selected' && !form.app_codes.length) return void ElMessage.warning('请选择应用，或切换为全部应用')
@@ -643,6 +655,8 @@ async function fetchOptions() {
   countryOptions.value = arrayValue(countryRes.data)
   channelOptions.value = arrayValue(channelRes.data)
   deliveryOptions.value = arrayValue(deliveryRes.data)
+  syncAllPackageCodes()
+  clearPackageValidation()
 }
 onMounted(() => Promise.all([fetchOptions(), fetchData()]))
 </script>
