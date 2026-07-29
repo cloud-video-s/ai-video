@@ -57,6 +57,8 @@ type LoginRequest struct {
 	AccountBaseRequest
 }
 
+var ErrAuthStateInvalid = errors.New("登录状态已失效，请重新登录")
+
 type AuthResponse struct {
 	Token        string `json:"token"`
 	LoginType    uint32 `json:"login_type"`
@@ -268,11 +270,34 @@ func (s *AuthService) Logout(token string) error {
 	if err != nil || claims.ExpiresAt == nil {
 		return nil
 	}
-	ttl := time.Until(claims.ExpiresAt.Time)
-	if ttl <= 0 {
-		return nil
+	return blacklistAPIToken(token, claims.ExpiresAt.Time)
+}
+
+func (s *AuthService) Refresh(ctx context.Context, userID uint64, tokenVersion int64, currentToken string) (*AuthResponse, error) {
+	claims, err := jwt.ParseApiToken(currentToken)
+	if err != nil || claims.ExpiresAt == nil || claims.UserID != userID || claims.TokenVersion != tokenVersion {
+		return nil, ErrAuthStateInvalid
 	}
-	return cache.BlacklistToken(token, ttl)
+
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrAuthStateInvalid
+		}
+		return nil, err
+	}
+	if user.Status != 1 || user.IsFrozen != 0 || user.IsBlacklisted != 0 || user.TokenVersion != tokenVersion || user.DeviceCode != claims.DeviceCode {
+		return nil, ErrAuthStateInvalid
+	}
+
+	result, err := issueToken(user, uint32(user.LoginType))
+	if err != nil {
+		return nil, err
+	}
+	if err := blacklistAPIToken(currentToken, claims.ExpiresAt.Time); err != nil {
+		return nil, fmt.Errorf("刷新客户端 Token 失败: %w", err)
+	}
+	return result, nil
 }
 
 func (s *AuthService) GetProfile(ctx context.Context, userID uint64) (*UserResponse, error) {
@@ -338,6 +363,14 @@ func issueToken(user *model.VideoUser, loginType uint32) (*AuthResponse, error) 
 	}, nil
 }
 
+func blacklistAPIToken(token string, expiresAt time.Time) error {
+	ttl := time.Until(expiresAt)
+	if ttl <= 0 {
+		return nil
+	}
+	return cache.BlacklistToken(token, ttl)
+}
+
 func baseTrackingUpdates(loginType int, req *AccountBaseRequest, clientIP string, now time.Time) map[string]interface{} {
 	updates := map[string]interface{}{"last_opened_at": now, "last_login_at": now, "last_login_ip": clientIP, "activated": uint32(1),
 		"client_country": req.ClientCountry,
@@ -376,15 +409,12 @@ func newGuestUsername() string {
 	return fmt.Sprintf("guest_%d", time.Now().UnixNano())
 }
 
-func ThirdPartyLoginBinding(provider string, email, thirdCode, clientIP, serverCountry string, now time.Time) map[string]interface{} {
+func ThirdPartyLoginBinding(provider string, clientIP, serverCountry string, now time.Time) map[string]interface{} {
 	updates := map[string]interface{}{
 		"login_type":     providerLoginType(provider),
-		"login_account":  email,
 		"registered":     true,
 		"last_login_ip":  clientIP,
 		"last_login_at":  now,
-		"third_code":     thirdCode,
-		"email":          email,
 		"server_country": serverCountry,
 	}
 	return updates

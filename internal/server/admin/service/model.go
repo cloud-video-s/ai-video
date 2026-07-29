@@ -42,7 +42,7 @@ type ModelPayload struct {
 	PlatformID     int64  `json:"platform_id" binding:"required,gt=0"`
 	Name           string `json:"name" binding:"required,max=64"`
 	Code           string `json:"code" binding:"required,max=32"`
-	ModelType      uint32 `json:"model_type" binding:"required,max=32"`
+	ModelType      uint32 `json:"model_type" binding:"required,oneof=1 2"`
 	Version        string `json:"version" binding:"required,max=16"`
 	HostURL        string `json:"host_url" binding:"required,max=255"`
 	SubmitEndpoint string `json:"submit_endpoint" binding:"required,max=255"`
@@ -213,7 +213,7 @@ func (s *ModelService) validatePayload(ctx context.Context, req *ModelPayload, c
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.User != nil {
 		return nil, errors.New("API 域名必须是有效且不含用户凭据的 HTTP(S) 地址")
 	}
-	for _, endpoint := range []string{req.SubmitEndpoint, req.StatusEndpoint} {
+	for _, endpoint := range modelEndpoints(req) {
 		parsedEndpoint, parseErr := url.Parse(endpoint)
 		if parseErr != nil || parsedEndpoint.IsAbs() || !strings.HasPrefix(endpoint, "/") {
 			return nil, errors.New("生成地址路由和查询地址路由必须是以 / 开头的相对路径")
@@ -237,6 +237,14 @@ func (s *ModelService) validatePayload(ctx context.Context, req *ModelPayload, c
 		return nil, err
 	}
 	return platform, nil
+}
+
+func modelEndpoints(req *ModelPayload) []string {
+	endpoints := []string{req.SubmitEndpoint}
+	if req.ModelType == 2 {
+		endpoints = append(endpoints, req.StatusEndpoint)
+	}
+	return endpoints
 }
 
 func applyModelPayload(item *model.VideoModel, req *ModelPayload) {

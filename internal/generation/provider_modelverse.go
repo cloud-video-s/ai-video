@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/ucloud"
 )
 
 // Provider 定义第三方异步视频生成服务的统一接口。
@@ -25,6 +26,10 @@ type Provider interface {
 type ModelVerseProvider struct{}
 
 func (p *ModelVerseProvider) Submit(ctx context.Context, config *model.VideoModel, request remoteSubmitRequest) (*ProviderSubmitResult, error) {
+	return p.submitUCloud(ctx, config, request)
+}
+
+func (p *ModelVerseProvider) submitLegacy(ctx context.Context, config *model.VideoModel, request remoteSubmitRequest) (*ProviderSubmitResult, error) {
 	body, err := json.Marshal(request)
 	if err != nil {
 		return nil, err
@@ -63,6 +68,72 @@ func (p *ModelVerseProvider) Submit(ctx context.Context, config *model.VideoMode
 	return &ProviderSubmitResult{
 		TaskID: response.Output.TaskID, RequestID: response.RequestID, RawResponse: string(raw),
 	}, nil
+}
+
+func (p *ModelVerseProvider) submitUCloud(ctx context.Context, config *model.VideoModel, request remoteSubmitRequest) (*ProviderSubmitResult, error) {
+	input, err := generationInputFromMap(config.ModelType, request.Input)
+	if err != nil {
+		return nil, err
+	}
+	//if config.ModelType != 1 {
+	//	return nil, fmt.Errorf("UCloud models require Bearer authentication, model_type=%d", config.ModelType)
+	//}
+	client, err := ucloud.NewClient(ucloud.ClientConfig{
+		APIKey: modelAPIKey(config), BaseURL: modelBaseURL(config), SubmitEndpoint: config.SubmitEndpoint,
+	})
+	if err != nil {
+		return nil, err
+	}
+	parameters := cloneMap(request.Parameters)
+	if input.FirstFrame != "" || input.EndFrame != "" {
+		if _, exists := parameters["image_list"]; exists {
+			return nil, errors.New("parameters.image_list is managed by input.first_frame and input.end_frame")
+		}
+		images := []ucloud.KlingO3ImageReference{{
+			ImageURL: input.FirstFrame, Type: ucloud.KlingO3ImageTypeFirstFrame,
+		}}
+		if input.EndFrame != "" {
+			images = append(images, ucloud.KlingO3ImageReference{
+				ImageURL: input.EndFrame, Type: ucloud.KlingO3ImageTypeEndFrame,
+			})
+		}
+		parameters["image_list"] = images
+	}
+	generationType := ucloud.GenerationTypeImage
+	if config.ModelType == TaskTypeVideo {
+		generationType = ucloud.GenerationTypeVideo
+	}
+	response, err := client.TaskSubmit(ctx, ucloud.TaskSubmitRequest{
+		GenerationType: generationType, Prompt: input.Prompt,
+		Images: input.Images, Video: input.Video, Parameters: parameters,
+	})
+	if err != nil {
+		return nil, err
+	}
+	raw, err := json.Marshal(response)
+	if err != nil {
+		return nil, err
+	}
+	result := &ProviderSubmitResult{
+		TaskID: response.TaskID, RequestID: response.RequestID, RawResponse: string(raw),
+		Completed: generationType == ucloud.GenerationTypeImage,
+	}
+	for i := range response.Images {
+		image := response.Images[i]
+		if image.Error != nil && strings.TrimSpace(image.Error.Message) != "" {
+			return nil, fmt.Errorf("UCloud image %d failed: %s", i, image.Error.Message)
+		}
+		if value := strings.TrimSpace(image.URL); value != "" {
+			result.URLs = append(result.URLs, value)
+		}
+		if value := strings.TrimSpace(image.B64JSON); value != "" {
+			result.Base64Images = append(result.Base64Images, value)
+		}
+	}
+	if result.Completed && len(result.URLs) == 0 && len(result.Base64Images) == 0 {
+		return nil, errors.New("UCloud image response does not contain generated images")
+	}
+	return result, nil
 }
 
 func (p *ModelVerseProvider) Status(ctx context.Context, config *model.VideoModel, taskID string) (*ProviderTaskStatus, error) {

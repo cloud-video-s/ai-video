@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"ai-video/internal/commerce"
 	"ai-video/internal/pkg/upload"
 	apiservice "ai-video/internal/server/api/server"
 
@@ -23,6 +24,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodPost, Path: "/admin/login", Handler: "admin.Login"},
 		{Method: http.MethodPut, Path: "/admin/banners/:id", Handler: "admin.Banner.Update"},
 		{Method: http.MethodPost, Path: "/api/auth/login", Handler: "api.Auth.Login"},
+		{Method: http.MethodPost, Path: "/api/auth/refresh", Handler: "api.Auth.Refresh"},
 		{Method: http.MethodPost, Path: "/api/third_binding", Handler: "api.Auth.ThirdBinding"},
 		{Method: http.MethodPost, Path: "/api/auth/logout", Handler: "api.Auth.Logout"},
 		{Method: http.MethodGet, Path: "/api/users/me/identities", Handler: "api.Auth.ListIdentities"},
@@ -41,7 +43,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodDelete, Path: "/api/generation/tasks/:id", Handler: "api.Generation.Delete"},
 		{Method: http.MethodGet, Path: "/api/vip/recommend", Handler: "api.Vip.Recommend"},
 		{Method: http.MethodGet, Path: "/api/vip/list", Handler: "api.Vip.List"},
-		{Method: http.MethodPost, Path: "/api/payments/apple/confirm", Handler: "api.Payment.ConfirmApple"},
+		{Method: http.MethodPost, Path: "/api/payments/apple/pay", Handler: "api.Payment.ConfirmApple"},
 		{Method: http.MethodPost, Path: "/api/payments/apple/notification", Handler: "api.Payment.AppleServerNotification"},
 		{Method: http.MethodPost, Path: "/api/uploads/images/batches", Handler: "upload.CreateBatch"},
 		{Method: http.MethodPut, Path: "/api/uploads/images/:upload_id/chunks/:index", Handler: "upload.PutChunk"},
@@ -124,6 +126,18 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	if login["description"] != operationDescriptions["POST /api/auth/login"] {
 		t.Fatalf("login method description is missing: %#v", login["description"])
 	}
+	refresh := document.Paths["/api/auth/refresh"]["post"].(map[string]any)
+	if _, secured := refresh["security"]; !secured {
+		t.Fatal("refresh route must require bearer auth")
+	}
+	if _, exists := refresh["requestBody"]; exists {
+		t.Fatal("body-less refresh route must not advertise a request body")
+	}
+	assertResponseParameter(t, refresh, "data.token", true)
+	assertResponseParameter(t, refresh, "data.expire_at", true)
+	if refresh["description"] != operationDescriptions["POST /api/auth/refresh"] {
+		t.Fatalf("refresh method description is missing: %#v", refresh["description"])
+	}
 	logout := document.Paths["/api/auth/logout"]["post"].(map[string]any)
 	if _, exists := logout["requestBody"]; exists {
 		t.Fatal("body-less logout route must not advertise a request body")
@@ -197,17 +211,20 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	models := document.Paths["/api/generation/models"]["get"].(map[string]any)
 	assertParameter(t, models, "model_type", "query", true)
 	assertResponseParameter(t, models, "data[].name", true)
+	assertResponseParameter(t, models, "data[].model_code", true)
 	assertResponseParameter(t, models, "data[].parameter", true)
 	assertResponseParameter(t, models, "data[].parameter[].param_key", true)
 	assertResponseParameter(t, models, "data[].parameter[].default_value", true)
 	assertResponseParameter(t, models, "data[].parameter[].allowed_values", true)
 	assertResponseParameter(t, models, "data[].parameter[].description", true)
+	assertResponseParameter(t, models, "data[].parameter[].parameter_type", true)
 	assertResponseParameterAbsent(t, models, "data[].parameter[].param_type")
 	assertResponseParameterAbsent(t, models, "data[].parameter[].is_required")
 	assertResponseParameterAbsent(t, models, "data[].parameter[].constraints")
 	modelExample := models["x-response-example"].(responseExampleEnvelope).Data.([]apiservice.GenerationModelView)
-	if len(modelExample) != 1 || modelExample[0].Name != "Kling v3" || len(modelExample[0].Parameters) != 1 ||
-		modelExample[0].Parameters[0].ParamKey != "duration" {
+	if len(modelExample) != 1 || modelExample[0].Name != "Kling v3 视频生成" || modelExample[0].ModelCode != "kling-v3" ||
+		len(modelExample[0].Parameters) != 3 || modelExample[0].Parameters[0].ParameterType != 1 ||
+		modelExample[0].Parameters[2].ParamKey != "prompt" || modelExample[0].Parameters[2].ParameterType != 2 {
 		t.Fatalf("generation model response example is incomplete: %#v", modelExample)
 	}
 	createTask := document.Paths["/api/generation/tasks"]["post"].(map[string]any)
@@ -252,10 +269,15 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	if len(vipListExample) != 1 || vipListExample[0].ID != 2 || vipListExample[0].SukCode != "222222" || vipListExample[0].CreatedAt != 1784859371 {
 		t.Fatalf("vip list response example is incomplete: %#v", vipListExample)
 	}
-	payment := document.Paths["/api/payments/apple/confirm"]["post"].(map[string]any)
+	payment := document.Paths["/api/payments/apple/pay"]["post"].(map[string]any)
 	assertParameter(t, payment, "bundleID", "json", true)
 	assertParameter(t, payment, "signedTransactionInfo", "json", true)
 	assertResponseParameter(t, payment, "data.transaction_id", true)
+	assertResponseParameter(t, payment, "data.is_active", true)
+	paymentExample := payment["x-response-example"].(responseExampleEnvelope).Data.(commerce.ApplePurchaseResponse)
+	if paymentExample.OrderNo == "" || paymentExample.IsActive || paymentExample.EvidenceMode != "sandbox_json" {
+		t.Fatalf("Apple payment response example is incomplete: %#v", paymentExample)
+	}
 	notification := document.Paths["/api/payments/apple/notification"]["post"].(map[string]any)
 	assertParameter(t, notification, "signedPayload", "json", true)
 	assertResponseParameter(t, notification, "data.notification_type", true)
@@ -295,6 +317,60 @@ func TestResponseSchemaHandlesRecursiveTypes(t *testing.T) {
 	}
 	if _, nested := next["properties"]; nested {
 		t.Fatalf("recursive field unexpectedly expanded itself: %#v", next)
+	}
+}
+
+func TestBuildGenerationModelDocumentation(t *testing.T) {
+	document := Build([]gin.RouteInfo{{
+		Method: http.MethodGet, Path: "/api/generation/models", Handler: "api.Generation.Models",
+	}})
+	models := document.Paths["/api/generation/models"]["get"].(map[string]any)
+	assertParameter(t, models, "model_type", "query", true)
+	assertResponseParameter(t, models, "data[].model_code", true)
+	assertResponseParameter(t, models, "data[].parameter[].parameter_type", true)
+	if description, _ := models["description"].(string); !strings.Contains(description, "parameter_type=2") {
+		t.Fatalf("generation model request parameters are not documented: %q", description)
+	}
+	example := models["x-response-example"].(responseExampleEnvelope).Data.([]apiservice.GenerationModelView)
+	if len(example) != 1 || example[0].ModelCode != "kling-v3" || len(example[0].Parameters) != 3 ||
+		example[0].Parameters[2].ParameterType != 2 {
+		t.Fatalf("generation model response example is incomplete: %#v", example)
+	}
+}
+
+func TestBuildRefreshTokenDocumentation(t *testing.T) {
+	document := Build([]gin.RouteInfo{{
+		Method: http.MethodPost, Path: "/api/auth/refresh", Handler: "api.Auth.Refresh",
+	}})
+	refresh := document.Paths["/api/auth/refresh"]["post"].(map[string]any)
+	if _, secured := refresh["security"]; !secured {
+		t.Fatal("refresh route must require bearer auth")
+	}
+	if _, exists := refresh["requestBody"]; exists {
+		t.Fatal("body-less refresh route must not advertise a request body")
+	}
+	assertResponseParameter(t, refresh, "data.token", true)
+	assertResponseParameter(t, refresh, "data.expire_at", true)
+	if refresh["description"] != operationDescriptions["POST /api/auth/refresh"] {
+		t.Fatalf("refresh method description is missing: %#v", refresh["description"])
+	}
+}
+
+func TestBuildApplePaymentDocumentation(t *testing.T) {
+	document := Build([]gin.RouteInfo{{
+		Method: http.MethodPost, Path: "/api/payments/apple/pay", Handler: "api.Payment.ConfirmApple",
+	}})
+	payment := document.Paths["/api/payments/apple/pay"]["post"].(map[string]any)
+	assertParameter(t, payment, "bundleID", "json", true)
+	assertParameter(t, payment, "signedTransactionInfo", "json", true)
+	assertResponseParameter(t, payment, "data.transaction_id", true)
+	assertResponseParameter(t, payment, "data.is_active", true)
+	if !strings.Contains(payment["description"].(string), "is_active") {
+		t.Fatalf("Apple payment active-state semantics are missing: %#v", payment["description"])
+	}
+	example := payment["x-response-example"].(responseExampleEnvelope).Data.(commerce.ApplePurchaseResponse)
+	if example.OrderNo == "" || example.IsActive || example.EvidenceMode != "sandbox_json" {
+		t.Fatalf("Apple payment response example is incomplete: %#v", example)
 	}
 }
 

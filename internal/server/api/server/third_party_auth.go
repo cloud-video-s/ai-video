@@ -61,7 +61,7 @@ func (s *AuthService) ThirdPartyLogin(ctx *gin.Context, req *ThirdPartyLoginRequ
 		req.ThirdCode = identity.Subject
 		req.Email = identity.Email
 	} else {
-		if req.ThirdCode == "" || req.Email == "" {
+		if req.ThirdCode == "" {
 			return nil, ErrIdentityProviderNotConfigured
 		}
 	}
@@ -76,6 +76,9 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 	var err error
 	user, err = s.userRepo.GetByThirdCode(ctx, req.ThirdCode, true)
 	if errors.Is(err, gorm.ErrRecordNotFound) || user == nil {
+		if req.Email == "" {
+			return nil, ErrIdentityProviderNotConfigured
+		}
 		user, err = s.userRepo.GetByID(ctx, apiUserID)
 		if err != nil {
 			return nil, errors.New("user not found")
@@ -98,7 +101,10 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 		user.LastLoginIP = clientIP
 		user.LastLoginAt = &now
 		user.ServerCountry = serverCountry
-		if err := s.userRepo.Update(ctx, user.ID, ThirdPartyLoginBinding(req.ThirdType, req.Email, req.ThirdCode, clientIP, serverCountry, now)); err != nil {
+		updates := ThirdPartyLoginBinding(req.ThirdType, clientIP, serverCountry, now)
+		updates["third_code"] = req.ThirdCode
+		updates["email"] = req.Email
+		if err := s.userRepo.Update(ctx, user.ID, updates); err != nil {
 			log.Printf("failed to update third party login info: %v", err)
 			return nil, errors.New("failed to update third party login info")
 		}
@@ -108,12 +114,8 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 		if user.Status != 1 || user.IsFrozen != 0 || user.IsBlacklisted != 0 {
 			return nil, errors.New("当前邮箱绑定账号已停用，暂时无法使用")
 		}
-		if req.ForceNew {
-			if err := s.userRepo.Update(ctx, user.ID, ThirdPartyLoginBinding(req.ThirdType, req.Email, req.ThirdCode, clientIP, serverCountry, now)); err != nil {
-				return nil, errors.New("failed to update third party login info")
-			}
-		} else {
-			return &AuthResponse{}, ErrDeviceCodeNotConfigured
+		if err := s.userRepo.Update(ctx, user.ID, ThirdPartyLoginBinding(req.ThirdType, clientIP, serverCountry, now)); err != nil {
+			return nil, errors.New("failed to update third party login info")
 		}
 	}
 	user, err = s.prepareLoginSession(ctx, user.ID)

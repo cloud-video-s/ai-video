@@ -7,22 +7,23 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type ApiClaims struct {
 	UserID       uint64 `json:"user_id"`
-	IMEI         string `json:"imei"`
+	DeviceCode   string `json:"device_code"`
 	TokenVersion int64  `json:"token_version"`
 	TokenType    string `json:"token_type"`
 	LoginType    uint32 `json:"login_type"`
 	jwt.RegisteredClaims
 }
 
-func GenerateApiToken(userID uint64, imei string, tokenVersion int64, loginType uint32) (string, error) {
+func GenerateApiToken(userID uint64, deviceCode string, tokenVersion int64, loginType uint32) (string, error) {
 	cfg := config.Cfg.ApiJwt
 	claims := ApiClaims{
 		UserID:       userID,
-		IMEI:         imei,
+		DeviceCode:   deviceCode,
 		TokenVersion: tokenVersion,
 		TokenType:    "client",
 		LoginType:    loginType,
@@ -30,6 +31,7 @@ func GenerateApiToken(userID uint64, imei string, tokenVersion int64, loginType 
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(cfg.Expire) * time.Second)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    cfg.Issuer,
+			ID:        uuid.NewString(),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

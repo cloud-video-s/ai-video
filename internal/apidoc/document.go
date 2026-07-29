@@ -78,14 +78,26 @@ var delayConfigResponseExample = map[string]int64{
 
 var bannerResponseExampleTemplateID = uint64(42)
 
+var applePurchaseResponseExampleExpiration = time.Date(2026, 7, 22, 16, 47, 39, 0, time.FixedZone("UTC+8", 8*60*60))
+
 var generationModelResponseExample = []apiservice.GenerationModelView{
 	{
-		Name: "Kling v3",
+		Name:      "Kling v3 视频生成",
+		ModelCode: "kling-v3",
 		Parameters: []apiservice.GenerationModelParameter{
 			{
-				ParamKey:     "duration",
-				DefaultValue: float64(5), AllowedValues: []interface{}{float64(5), float64(10)},
-				Description: "视频时长（秒）",
+				ParamKey: "aspect_ratio", DefaultValue: "16:9",
+				AllowedValues: []interface{}{"16:9", "9:16", "1:1"},
+				Description:   "生成视频的宽高比", ParameterType: 1,
+			},
+			{
+				ParamKey: "duration", DefaultValue: 15,
+				AllowedValues: []interface{}{3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+				Description:   "生成视频的时长（秒）", ParameterType: 1,
+			},
+			{
+				ParamKey: "prompt", DefaultValue: nil, AllowedValues: []interface{}{},
+				Description: "生成提示词", ParameterType: 2,
 			},
 		},
 	},
@@ -94,6 +106,14 @@ var generationModelResponseExample = []apiservice.GenerationModelView{
 var responseDataExamples = map[string]any{
 	"GET /api/ob_delay":          delayConfigResponseExample,
 	"GET /api/generation/models": generationModelResponseExample,
+	"POST /api/payments/apple/pay": commerce.ApplePurchaseResponse{
+		OrderNo: "20260728090907cc7d7c1ffd15", Status: "paid", ProductType: "vip_subscription",
+		ProductID: 1, ProductCode: "dolaai18", TransactionID: "2000001209105682",
+		OriginalTransactionID: "2000001209105682", Currency: "USD", PaidAmount: 19.99,
+		PurchaseDate:   time.Date(2026, 7, 22, 16, 42, 39, 0, time.FixedZone("UTC+8", 8*60*60)),
+		ExpirationDate: &applePurchaseResponseExampleExpiration, IsActive: false,
+		Environment: "Sandbox", EvidenceMode: "sandbox_json",
+	},
 	"POST /api/uploads/oss/signature": upload.DirectUploadCredential{
 		Provider: upload.StorageAliyunOSS, Method: "PUT",
 		UploadURL: "https://example-bucket.oss-cn-hangzhou.aliyuncs.com/uploads/images/2026/07/28/example.png?x-oss-signature-version=OSS4-HMAC-SHA256&x-oss-signature=...",
@@ -147,6 +167,7 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/health":                                  {response: typeOf[map[string]string]()},
 	"GET /api/configs/list":                            {response: typeOf[map[string]string]()},
 	"POST /api/auth/login":                             {body: typeOf[apiservice.LoginRequest](), response: typeOf[apiservice.AuthResponse]()},
+	"POST /api/auth/refresh":                           {response: typeOf[apiservice.AuthResponse]()},
 	"POST /api/third_binding":                          {body: typeOf[apiservice.ThirdPartyLoginRequest](), response: typeOf[apiservice.ThirdAuthResponse]()},
 	"POST /api/auth/logout":                            {},
 	"GET /api/users/me":                                {response: typeOf[apiservice.UserResponse]()},
@@ -169,7 +190,7 @@ var endpointTypes = map[string]endpointType{
 	"DELETE /api/generation/tasks/:id":                 {},
 	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[apiservice.VIPRecommendResponse]()},
 	"GET /api/vip/list":                                {query: typeOf[apiservice.VipVipListRequest](), response: typeOf[[]apiservice.VIPRecommendResponse]()},
-	"POST /api/payments/apple/confirm":                 {body: typeOf[commerce.ApplePurchaseRequest](), response: typeOf[commerce.ApplePurchaseResponse]()},
+	"POST /api/payments/apple/pay":                     {body: typeOf[commerce.ApplePurchaseRequest](), response: typeOf[commerce.ApplePurchaseResponse]()},
 	"POST /api/payments/apple/notification":            {body: typeOf[commerce.AppleNotificationRequest](), response: typeOf[commerce.AppleNotificationSummary]()},
 	"POST /api/uploads/images/batches":                 {response: typeOf[uploadBatchResponse]()},
 	"POST /api/uploads/videos/batches":                 {response: typeOf[uploadBatchResponse]()},
@@ -185,7 +206,7 @@ var endpointTypes = map[string]endpointType{
 var operationDescriptions = map[string]string{
 	"GET /api/health":       "检查 API 服务是否正常运行。",
 	"GET /api/configs/list": "获取客户端可见的公开应用配置。", "POST /api/auth/login": "使用设备标识登录或创建游客账号。",
-	"POST /api/third_binding": "为当前用户绑定或切换 Google、Apple 等第三方身份。", "POST /api/auth/logout": "注销当前 Bearer Token。",
+	"POST /api/third_binding": "为当前用户绑定或切换 Google、Apple 等第三方身份。", "POST /api/auth/refresh": "使用当前未过期的 Bearer Token 签发新 Token，刷新成功后当前 Token 立即失效。", "POST /api/auth/logout": "注销当前 Bearer Token。",
 	"GET /api/users/me": "获取当前登录用户资料。", "PUT /api/users/me/country": "更新当前用户的设备国家或地区。",
 	"GET /api/users/me/identities": "查询当前用户已绑定的第三方身份。", "DELETE /api/users/me/identities/:provider": "解绑指定第三方身份。",
 	"GET /api/ob_delay":            "获取客户端延迟配置。",
@@ -195,19 +216,19 @@ var operationDescriptions = map[string]string{
 	"GET /api/templates/template_list": "分页查询指定模板分类和展示位置下的模板，仅返回模板数据。",
 	"GET /api/templates/template_info": "根据模板 ID 查询当前用户可见的模板详情。",
 	"POST /api/templates/:id/favorite": "收藏指定模板；重复收藏保持幂等。", "DELETE /api/templates/:id/favorite": "取消收藏指定模板；重复取消保持幂等。",
-	"GET /api/generation/models": "按必填 model_type 查询平台和模型均启用的模型及其选项参数；仅返回 parameter_type=1 的参数，并按 sort_order、id 排序。", "POST /api/generation/tasks": "创建并提交视频生成任务。",
+	"GET /api/generation/models": "按必填 model_type 查询平台和模型均启用的模型及其参数；同时返回 parameter_type=1 的选项参数和 parameter_type=2 的请求参数，并按 parameter_type、sort_order、id 排序。", "POST /api/generation/tasks": "创建并提交视频生成任务。",
 	"GET /api/generation/tasks": "分页查询当前用户的生成任务。", "GET /api/generation/tasks/:id": "查询指定生成任务详情。",
 	"GET /api/generation/tasks/:id/events": "通过 SSE 实时订阅生成任务状态，任务结束后连接关闭。", "DELETE /api/generation/tasks/:id": "删除指定生成任务。",
 	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
 	"GET /api/vip/list":                     "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
-	"POST /api/payments/apple/confirm":      "校验 StoreKit 交易、创建订单并发放对应商品。",
+	"POST /api/payments/apple/pay":          "校验 StoreKit 交易、创建订单并发放对应商品。接口按 Apple 交易 ID 幂等处理。请求中的 isActive 是客户端上报值；响应中的 is_active 由已验签交易的撤销时间和到期时间按服务端当前时间计算。",
 	"POST /api/payments/apple/notification": "接收 App Store Server Notifications V2 回调。该公开端点由 Apple 服务器调用，不需要 Bearer Token 或客户端公共请求头；服务端按通知中的 signedPayload 验签并幂等处理退款、续费、订阅过期等事件。",
 	"POST /api/uploads/oss/signature":       "校验媒体类型、文件扩展名、MIME 和精确字节数，生成短时效阿里云 OSS V4 预签名 PUT 地址。客户端必须使用响应中的 method、upload_url 和签名 headers 将文件原始字节直接上传到 OSS；该接口需要 Bearer Token，且仅在当前存储方式为 aliyun_oss 时可用。",
 }
 
 var operationSummaries = map[string]string{
 	"GET /api/health": "健康检查", "GET /api/configs/list": "获取客户端配置",
-	"POST /api/auth/login": "游客登录", "POST /api/third_binding": "绑定第三方身份",
+	"POST /api/auth/login": "游客登录", "POST /api/auth/refresh": "刷新 Token", "POST /api/third_binding": "绑定第三方身份",
 	"POST /api/auth/logout": "退出登录", "GET /api/users/me": "获取当前用户",
 	"PUT /api/users/me/country": "更新用户国家", "GET /api/users/me/identities": "查询绑定身份",
 	"DELETE /api/users/me/identities/:provider": "解绑第三方身份", "GET /api/ob_delay": "获取延迟配置",
@@ -220,7 +241,7 @@ var operationSummaries = map[string]string{
 	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务",
 	"GET /api/generation/tasks": "查询生成任务", "GET /api/generation/tasks/:id": "获取生成任务",
 	"GET /api/generation/tasks/:id/events": "订阅生成任务事件", "DELETE /api/generation/tasks/:id": "删除生成任务",
-	"POST /api/payments/apple/confirm": "确认 Apple 支付", "POST /api/payments/apple/notification": "接收 Apple 支付通知",
+	"POST /api/payments/apple/pay": "确认 Apple 支付", "POST /api/payments/apple/notification": "接收 Apple 支付通知",
 	"POST /api/uploads/images/batches": "初始化图片上传", "POST /api/uploads/videos/batches": "初始化视频上传",
 	"GET /api/uploads/images/:upload_id": "查询图片上传进度", "GET /api/uploads/videos/:upload_id": "查询视频上传进度",
 	"PUT /api/uploads/images/:upload_id/chunks/:index": "上传图片分片", "PUT /api/uploads/videos/:upload_id/chunks/:index": "上传视频分片",
@@ -252,20 +273,24 @@ var fieldDescriptions = map[string]string{
 	"page": "页码，从 1 开始", "pageSize": "每页数量", "template_type_id": "模板分类 ID", "third_type": "第三方身份类型：google 或 apple",
 	"third_code": "第三方平台用户标识",
 	"model_code": "生成模型代码", "model_type": "模型类型：1=生成图片，2=生成视频", "client_request_id": "客户端幂等请求 ID", "input": "模型输入参数", "parameters": "模型扩展参数",
-	"parameter": "模型选项参数列表", "param_key": "参数键名",
+	"parameter": "模型参数列表", "param_key": "参数键名", "parameter_type": "参数类型：1=选项参数，2=请求参数",
 	"default_value": "参数默认值", "allowed_values": "参数允许值数组",
 	"model_config_id": "生成模型配置 ID", "external_task_id": "第三方任务 ID", "progress": "任务进度，范围 0-100",
 	"local_urls": "生成结果的本地访问地址", "error_message": "任务失败原因", "usage_duration": "任务耗时",
 	"default_parameters": "模型默认参数", "model_name": "提供方模型名称",
-	"bundleID": "Apple Bundle ID", "productID": "Apple 商品 ID", "transactionID": "Apple 交易 ID",
+	"shop_type": "商品类型：1=VIP 订阅，2=积分商品", "bundleID": "Apple Bundle ID，必须与 Video_App_Package_Code 及签名交易一致", "productID": "Apple 商品 ID", "transactionID": "Apple 交易 ID",
 	"originalTransactionID": "Apple 原始交易 ID", "signedTransactionInfo": "Apple 签名交易 JWS",
 	"signedPayload": "App Store Server Notifications V2 签名载荷 JWS", "notification_type": "Apple 通知类型",
 	"subtype": "Apple 通知子类型", "notification_uuid": "Apple 通知唯一标识", "bundle_id": "Apple Bundle ID",
 	"environment": "App Store 环境", "original_transaction_id": "Apple 原始交易 ID", "transaction_id": "Apple 交易 ID",
 	"product_id": "Apple 商品 ID", "processed": "是否已完成对应业务处理", "affected_user_id": "受影响的用户 ID",
 	"affected_order_no": "受影响的订单号", "action": "本次通知执行的业务动作", "message": "处理结果说明",
-	"purchaseDate": "购买时间", "expirationDate": "订阅到期时间", "revocationDate": "撤销时间", "isActive": "订阅是否有效",
-	"vip_type": "VIP 套餐类型", "vip_types": "VIP 套餐类型数组；使用重复 Query 参数传递，例如 vip_types=1&vip_types=2",
+	"purchaseDate": "客户端购买时间，RFC 3339 格式，必须与签名交易一致", "expirationDate": "订阅到期时间，RFC 3339 格式；无到期时间时为 null", "revocationDate": "撤销时间，RFC 3339 格式；未撤销时为 null", "isActive": "客户端上报的订阅状态；服务端不以此值作为最终状态",
+	"source": "购买入口来源，可选", "order_no": "服务端订单号", "product_type": "订单商品类型",
+	"product_code": "Apple 商品 ID", "paid_amount": "实付金额，单位由 currency 指定", "purchase_date": "已验签的购买时间",
+	"expiration_date": "已验签的订阅到期时间", "is_active": "服务端计算的当前状态：交易未撤销，且订阅到期时间晚于服务端当前时间",
+	"evidence_mode": "交易凭证模式：jws 或 sandbox_json",
+	"vip_type":      "VIP 套餐类型", "vip_types": "VIP 套餐类型数组；使用重复 Query 参数传递，例如 vip_types=1&vip_types=2",
 	"suk_code": "商店产品 SKU", "level_name": "会员等级名称", "currency": "ISO 货币代码",
 	"vip_duration_days": "VIP 权益持续天数", "trial_days": "免费试用天数", "badge_text": "徽章文案",
 	"agreement_default_checked": "订阅协议是否默认勾选", "display_mode": "展示模式：0 隐藏，1 正常",

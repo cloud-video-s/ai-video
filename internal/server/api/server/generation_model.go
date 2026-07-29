@@ -31,6 +31,7 @@ type GenerationModelParameter struct {
 	DefaultValue  interface{}   `json:"default_value"`
 	AllowedValues []interface{} `json:"allowed_values"`
 	Description   string        `json:"description"`
+	ParameterType uint32        `json:"parameter_type"`
 }
 
 type GenerationModelView struct {
@@ -48,7 +49,7 @@ func (s *GenerationModelService) List(ctx context.Context, modelType uint32) ([]
 	for i := range models {
 		modelIDs = append(modelIDs, models[i].ID)
 	}
-	parameters, err := s.parameterRepo.ListOptionsByModels(ctx, modelIDs)
+	parameters, err := s.parameterRepo.ListByModels(ctx, modelIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +100,7 @@ func generationModelParameterView(item *model.VideoModelParameter) (GenerationMo
 	return GenerationModelParameter{
 		ParamKey:     item.ParamKey,
 		DefaultValue: defaultValue, AllowedValues: allowedValues,
-		Description: item.Description,
+		Description:   item.Description,
+		ParameterType: item.ParameterType,
 	}, nil
 }

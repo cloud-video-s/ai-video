@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/ucloud"
 )
 
-func TestModelVerseSubmitUsesMergedParameters(t *testing.T) {
-	var received remoteSubmitRequest
+func TestModelVerseSubmitVideoWithFirstAndEndFrames(t *testing.T) {
+	var received ucloud.KlingO3SubmitRequest
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/tasks/submit" {
+		if r.URL.Path != "/custom/video-submit" {
 			t.Fatalf("path = %s", r.URL.Path)
 		}
 		if got := r.Header.Get("Authorization"); got != "Bearer test-key" {
@@ -22,38 +25,121 @@ func TestModelVerseSubmitUsesMergedParameters(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
 			t.Fatal(err)
 		}
-		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"output":{"task_id":"remote-1"},"request_id":"request-1"}`))
 	}))
 	defer server.Close()
 
-	parameters, err := mergeModelParameters([]model.VideoModelParameter{
-		{ParamKey: "mode", DefaultValue: `"pro"`},
-		{ParamKey: "duration", DefaultValue: `5`},
-	}, map[string]interface{}{"duration": float64(8)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	parameters["external_task_id"] = "client-1"
 	modelConfig := &model.VideoModel{
-		Code:    "ucloud-v3-omni",
-		HostURL: server.URL, SubmitEndpoint: "/v1/tasks/submit", StatusEndpoint: "/v1/tasks/status",
+		Code: ucloud.ModelKlingO3, ModelType: TaskTypeVideo,
+		HostURL: server.URL, SubmitEndpoint: "/custom/video-submit", StatusEndpoint: "/v1/tasks/status",
 		APIKey: "test-key", AuthType: 1,
 	}
 	result, err := (&ModelVerseProvider{}).Submit(context.Background(), modelConfig, remoteSubmitRequest{
-		Model: modelConfig.Code, Input: map[string]interface{}{"prompt": "sunset"}, Parameters: parameters,
+		Model: modelConfig.Code,
+		Input: map[string]interface{}{
+			"prompt": "sunset", "first_frame": "https://cdn.example/first.png", "end_frame": "https://cdn.example/end.png",
+		},
+		Parameters: map[string]interface{}{"mode": "pro", "aspect_ratio": "16:9", "duration": float64(5)},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.TaskID != "remote-1" {
+	if result.TaskID != "remote-1" || result.Completed {
 		t.Fatalf("unexpected result: %#v", result)
 	}
-	if received.Model != "ucloud-v3-omni" || received.Parameters["mode"] != "pro" || received.Parameters["duration"] != float64(8) {
+	if received.Model != ucloud.ModelKlingO3 || received.Input.Prompt != "sunset" || len(received.Parameters.ImageList) != 2 {
 		t.Fatalf("unexpected upstream request: %#v", received)
 	}
-	if received.Parameters["external_task_id"] != "client-1" {
-		t.Fatalf("external_task_id = %#v", received.Parameters["external_task_id"])
+	if received.Parameters.ImageList[0].Type != ucloud.KlingO3ImageTypeFirstFrame ||
+		received.Parameters.ImageList[1].Type != ucloud.KlingO3ImageTypeEndFrame {
+		t.Fatalf("unexpected frame types: %#v", received.Parameters.ImageList)
+	}
+}
+
+func TestModelVerseSubmitImageWithReferences(t *testing.T) {
+	var received ucloud.DoubaoSeedreamGenerationRequest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/custom/image-submit" {
+			t.Fatalf("path = %s", r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			t.Fatal(err)
+		}
+		_, _ = w.Write([]byte(`{"model":"doubao-seedream-4.5","created":1,"data":[{"url":"https://cdn.example/result.png"}]}`))
+	}))
+	defer server.Close()
+
+	result, err := (&ModelVerseProvider{}).Submit(context.Background(), &model.VideoModel{
+		Code: ucloud.ModelDoubaoSeedream, ModelType: TaskTypeImage,
+		HostURL: server.URL, SubmitEndpoint: "/custom/image-submit", APIKey: "key", AuthType: 1,
+	}, remoteSubmitRequest{
+		Input: map[string]interface{}{
+			"prompt": "a small robot", "images": []interface{}{"https://cdn.example/a.png", "https://cdn.example/b.png"},
+		},
+		Parameters: map[string]interface{}{"size": "2K", "response_format": "url"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Completed || !reflect.DeepEqual(result.URLs, []string{"https://cdn.example/result.png"}) {
+		t.Fatalf("unexpected result: %#v", result)
+	}
+	if received.Prompt != "a small robot" || len(received.Images) != 2 || received.Size != "2K" {
+		t.Fatalf("unexpected upstream request: %#v", received)
+	}
+}
+
+func TestGenerationInputModes(t *testing.T) {
+	tests := []struct {
+		name     string
+		taskType uint32
+		input    map[string]interface{}
+		wantErr  string
+	}{
+		{name: "text to image", taskType: TaskTypeImage, input: map[string]interface{}{"prompt": "cat"}},
+		{name: "text and multiple images to image", taskType: TaskTypeImage, input: map[string]interface{}{"prompt": "cat", "images": []interface{}{"a", "b"}}},
+		{name: "text to video", taskType: TaskTypeVideo, input: map[string]interface{}{"prompt": "cat runs"}},
+		{name: "text and video to video", taskType: TaskTypeVideo, input: map[string]interface{}{"prompt": "restyle", "video": "https://cdn.example/a.mp4"}},
+		{name: "text and multiple images to video", taskType: TaskTypeVideo, input: map[string]interface{}{"prompt": "animate", "images": []interface{}{"a", "b"}}},
+		{name: "first and end frames", taskType: TaskTypeVideo, input: map[string]interface{}{"prompt": "transition", "first_frame": "a", "end_frame": "b"}},
+		{name: "end frame without first", taskType: TaskTypeVideo, input: map[string]interface{}{"prompt": "transition", "end_frame": "b"}, wantErr: "requires"},
+		{name: "frames mixed with images", taskType: TaskTypeVideo, input: map[string]interface{}{"prompt": "transition", "images": []interface{}{"a"}, "first_frame": "b"}, wantErr: "cannot be combined"},
+		{name: "image with video", taskType: TaskTypeImage, input: map[string]interface{}{"prompt": "cat", "video": "a"}, wantErr: "only supports"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := generationInputFromMap(test.taskType, test.input)
+			if test.wantErr == "" && err != nil {
+				t.Fatal(err)
+			}
+			if test.wantErr != "" && (err == nil || !strings.Contains(err.Error(), test.wantErr)) {
+				t.Fatalf("error = %v, want substring %q", err, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestMergeModelParametersUsesConfiguredOptions(t *testing.T) {
+	definitions := []model.VideoModelParameter{
+		{ParamKey: "mode", ParamType: "string", DefaultValue: `"pro"`, AllowedValues: `["std","pro"]`, ParameterType: 1},
+		{ParamKey: "duration", ParamType: "integer", DefaultValue: `5`, Constraints: `{"min":3,"max":15}`, ParameterType: 1},
+		{ParamKey: "prompt", ParamType: "string", IsRequired: 1, ParameterType: 2},
+	}
+	parameters, err := mergeModelParameters(definitions, map[string]interface{}{"duration": float64(8)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parameters["mode"] != "pro" || parameters["duration"] != float64(8) {
+		t.Fatalf("unexpected parameters: %#v", parameters)
+	}
+	if _, exists := parameters["prompt"]; exists {
+		t.Fatalf("request parameter leaked into model options: %#v", parameters)
+	}
+	if _, err := mergeModelParameters(definitions, map[string]interface{}{"duration": float64(20)}); err == nil {
+		t.Fatal("duration above configured max must fail")
+	}
+	if _, err := mergeModelParameters(definitions, map[string]interface{}{"unknown": true}); err == nil {
+		t.Fatal("unknown parameter must fail")
 	}
 }
 

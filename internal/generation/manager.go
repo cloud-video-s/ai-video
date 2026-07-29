@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"strconv"
 	"strings"
@@ -85,6 +86,9 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	} else if !requestIDPattern.MatchString(request.ClientRequestID) {
 		return nil, errors.New("client_request_id 只能包含字母、数字、点、下划线和中划线")
 	}
+	if _, err := generationInputFromMap(request.TaskType, request.Input); err != nil {
+		return nil, err
+	}
 	if len(request.Input) == 0 {
 		return nil, errors.New("input 不能为空")
 	}
@@ -101,6 +105,9 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		}
 		return nil, err
 	}
+	if modelConfig.ModelType != request.TaskType {
+		return nil, fmt.Errorf("task_type %d does not match model %s type %d", request.TaskType, modelConfig.Code, modelConfig.ModelType)
+	}
 	parameterDefinitions, err := m.parameterRepo.ListByModel(ctx, modelConfig.ID)
 	if err != nil {
 		return nil, err
@@ -110,7 +117,7 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		return nil, err
 	}
 	remoteRequest := remoteSubmitRequest{
-		Model: modelConfig.Code, Input: cloneMap(request.Input), Parameters: parameters,
+		Input: cloneMap(request.Input), Parameters: parameters,
 	}
 	payload, err := json.Marshal(remoteRequest)
 	if err != nil {
@@ -136,7 +143,12 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		task.ID = id
 	}
 	m.hub.Publish(task)
-
+	if request.TaskType == TaskTypeVideo {
+		if _, exists := parameters["external_task_id"]; !exists {
+			parameters["external_task_id"] = task.TaskCode
+			remoteRequest.Parameters = parameters
+		}
+	}
 	if err := m.submitTask(ctx, task, modelConfig, remoteRequest); err != nil {
 		_ = m.failTask(ctx, task, err.Error())
 		return task, err
@@ -145,13 +157,27 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 }
 
 func (m *Manager) submitTask(ctx context.Context, task *model.VideoUserGenerationTask, modelConfig *model.VideoModel, request remoteSubmitRequest) error {
-	provider, err := providerFor(modelConfig.Platform.Code)
-	if err != nil {
-		return err
-	}
+	provider := &ModelVerseProvider{}
 	result, err := provider.Submit(ctx, modelConfig, request)
 	if err != nil {
 		return err
+	}
+	if result.Completed {
+		encodedURLs, _ := json.Marshal(result.URLs)
+		task.ThirdTaskCode = result.TaskID
+		task.ProviderResponse = result.RawResponse
+		task.RemoteUrls = string(encodedURLs)
+		task.Status = TaskStatusDownloading
+		task.Progress = 90
+		task.SubmittedAt = time.Now()
+		task.ErrorMessage = ""
+		if err := m.taskRepo.UpdateFields(ctx, task,
+			"ThirdTaskCode", "ProviderResponse", "RemoteUrls", "Status", "Progress", "SubmittedAt", "ErrorMessage",
+		); err != nil {
+			return err
+		}
+		m.hub.Publish(task)
+		return m.finishImageTask(ctx, task, result.URLs, result.Base64Images)
 	}
 	task.ThirdTaskCode = result.TaskID
 	task.ProviderResponse = result.RawResponse
@@ -250,6 +276,13 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoUserGenerati
 		return nil
 	}
 	if task.Status == TaskStatusDownloading {
+		if modelConfig.ModelType == TaskTypeImage {
+			urls, encoded, err := imageResultPayloads(task.ProviderResponse)
+			if err != nil {
+				return m.failTask(ctx, task, err.Error())
+			}
+			return m.finishImageTask(ctx, task, urls, encoded)
+		}
 		var urls []string
 		if err := json.Unmarshal([]byte(task.RemoteUrls), &urls); err != nil || len(urls) == 0 {
 			return m.failTask(ctx, task, "远程结果 URL 无效")
@@ -375,7 +408,11 @@ func providerFor(name string) (Provider, error) {
 	}
 }
 
-func mergeModelParameters(definitions []model.VideoModelParameter, request map[string]interface{}) (map[string]interface{}, error) {
+func mergeModelParameters(definitions []model.VideoModelParameter, request map[string]any) (map[string]any, error) {
+	return mergeConfiguredParameters(definitions, request)
+}
+
+func mergeLegacyModelParameters(definitions []model.VideoModelParameter, request map[string]any) (map[string]any, error) {
 	result := make(map[string]interface{}, len(definitions)+len(request))
 	for i := range definitions {
 		key := strings.TrimSpace(definitions[i].ParamKey)
@@ -395,11 +432,9 @@ func mergeModelParameters(definitions []model.VideoModelParameter, request map[s
 	return result, nil
 }
 
-func cloneMap(source map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{}, len(source))
-	for key, value := range source {
-		result[key] = value
-	}
+func cloneMap(source map[string]any) map[string]any {
+	result := make(map[string]any, len(source))
+	maps.Copy(result, source)
 	return result
 }
 

@@ -74,8 +74,8 @@ func ApiAuth(userRepo UserRepo) gin.HandlerFunc {
 			response.Unauthorized(c, "Token 无效或已过期")
 			return
 		}
-		imei, version, err := userRepo.GetAuthState(c.Request.Context(), claims.UserID)
-		if err != nil || imei != claims.IMEI || version != claims.TokenVersion {
+		deviceCode, version, err := userRepo.GetAuthState(c.Request.Context(), claims.UserID)
+		if err != nil || deviceCode != claims.DeviceCode || version != claims.TokenVersion {
 			response.Unauthorized(c, "登录状态已失效，请重新注册或登录")
 			return
 		}

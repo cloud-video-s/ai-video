@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"ai-video/internal/domain"
 	"context"
 	"strconv"
 	"strings"
@@ -80,7 +79,7 @@ func (d *AppUserRepo) GetByDeviceCode(ctx context.Context, deviceCode string, lo
 
 func (d *AppUserRepo) GetByDeviceCodeSubscription(ctx context.Context, deviceCode string, lock bool) (*model.VideoUser, error) {
 	q := qFrom(ctx).VideoUser
-	dao := q.WithContext(ctx).Where(q.DeviceCode.Eq(deviceCode)).Where(q.SubscriptionStatus.Neq(domain.SubscriptionStatusSubscribed))
+	dao := q.WithContext(ctx).Where(q.DeviceCode.Eq(deviceCode)).Where(q.ThirdCode.IsNull())
 	if lock {
 		dao = dao.Clauses(clause.Locking{Strength: "UPDATE"})
 	}

@@ -92,6 +92,21 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	response.OK(c, nil)
 }
 
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	result, err := h.svc.Refresh(
+		c.Request.Context(), middleware.GetAPIUserID(c), middleware.GetAPITokenVersion(c), bearerToken(c),
+	)
+	if errors.Is(err, apiservice.ErrAuthStateInvalid) {
+		response.Unauthorized(c, err.Error())
+		return
+	}
+	if err != nil {
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, result)
+}
+
 func (h *AuthHandler) Profile(c *gin.Context) {
 	user, err := h.svc.GetProfile(c.Request.Context(), middleware.GetAPIUserID(c))
 	if err != nil {

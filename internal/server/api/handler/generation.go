@@ -29,7 +29,7 @@ func NewGenerationHandler() *GenerationHandler {
 	}
 }
 
-// Models 按模型类型返回平台和模型均启用的模型及其选项参数。
+// Models 按模型类型返回平台和模型均启用的模型及其参数。
 func (h *GenerationHandler) Models(c *gin.Context) {
 	var request apiservice.GenerationModelRequest
 	if err := c.ShouldBindQuery(&request); err != nil {

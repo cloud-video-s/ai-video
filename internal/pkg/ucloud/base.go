@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 )
@@ -35,6 +36,7 @@ type HTTPDoer interface {
 type ClientConfig struct {
 	APIKey          string
 	BaseURL         string
+	SubmitEndpoint  string
 	HTTPClient      HTTPDoer
 	MaxResponseSize int64
 }
@@ -42,6 +44,7 @@ type ClientConfig struct {
 type Client struct {
 	apiKey          string
 	baseURL         *url.URL
+	submitEndpoint  string
 	httpClient      HTTPDoer
 	maxResponseSize int64
 }
@@ -66,6 +69,16 @@ func NewClient(config ClientConfig) (*Client, error) {
 		return nil, errors.New("ucloud base URL must not contain credentials, query, or fragment")
 	}
 	parsed.Path = strings.TrimRight(parsed.Path, "/") + "/"
+	submitEndpoint := strings.TrimSpace(config.SubmitEndpoint)
+	if submitEndpoint != "" {
+		reference, err := url.Parse(submitEndpoint)
+		if err != nil || reference.IsAbs() || reference.Host != "" || reference.RawQuery != "" || reference.Fragment != "" {
+			return nil, errors.New("ucloud submit endpoint must be a relative URL path")
+		}
+		if !strings.HasPrefix(submitEndpoint, "/") {
+			return nil, errors.New("ucloud submit endpoint must start with /")
+		}
+	}
 
 	httpClient := config.HTTPClient
 	if httpClient == nil {
@@ -78,16 +91,23 @@ func NewClient(config ClientConfig) (*Client, error) {
 	return &Client{
 		apiKey:          apiKey,
 		baseURL:         parsed,
+		submitEndpoint:  submitEndpoint,
 		httpClient:      httpClient,
 		maxResponseSize: maxResponseSize,
 	}, nil
+}
+
+func (c *Client) generationEndpoint(defaultPath string) string {
+	if c.submitEndpoint != "" {
+		return c.submitEndpoint
+	}
+	return defaultPath
 }
 
 // TaskSubmitRequest is the application-facing generation request. Parameters
 // are decoded strictly according to the selected model; unknown model options
 // are rejected instead of being silently sent upstream.
 type TaskSubmitRequest struct {
-	Model          string                 `json:"model"`
 	GenerationType GenerationType         `json:"generation_type"`
 	Prompt         string                 `json:"prompt"`
 	Images         []string               `json:"images,omitempty"`
@@ -109,7 +129,6 @@ type TaskSubmitResponse struct {
 // Kling v3 and Kling O3 return an asynchronous task ID. Doubao Seedream
 // returns generated image entries directly.
 func (c *Client) TaskSubmit(ctx context.Context, request TaskSubmitRequest) (*TaskSubmitResponse, error) {
-	request.Model = strings.TrimSpace(request.Model)
 	request.Prompt = strings.TrimSpace(request.Prompt)
 	request.Video = strings.TrimSpace(request.Video)
 	for i := range request.Images {
@@ -121,40 +140,36 @@ func (c *Client) TaskSubmit(ctx context.Context, request TaskSubmitRequest) (*Ta
 
 	switch request.GenerationType {
 	case GenerationTypeVideo:
-		switch request.Model {
-		case "", ModelKlingV3:
-			upstream, err := buildKlingV3Request(request)
-			if err != nil {
-				return nil, err
-			}
-			result, err := c.SubmitKlingV3Task(ctx, upstream)
-			if err != nil {
-				return nil, err
-			}
-			return &TaskSubmitResponse{
-				Model: ModelKlingV3, GenerationType: GenerationTypeVideo,
-				TaskID: result.Output.TaskID, RequestID: result.RequestID,
-			}, nil
-		case ModelKlingO3:
-			upstream, err := buildKlingO3Request(request)
-			if err != nil {
-				return nil, err
-			}
-			result, err := c.SubmitKlingO3Task(ctx, upstream)
-			if err != nil {
-				return nil, err
-			}
-			return &TaskSubmitResponse{
-				Model: ModelKlingO3, GenerationType: GenerationTypeVideo,
-				TaskID: result.Output.TaskID, RequestID: result.RequestID,
-			}, nil
-		default:
-			return nil, fmt.Errorf("model %q does not support video generation", request.Model)
+		//TaskModel, ok := request.Parameters["model"]
+		//if ok {
+		//	TaskModel = strings.TrimSpace(request.Parameters["model"].(string))
+		//} else {
+		//	TaskModel = ""
+		//}
+		//if TaskModel == "" {
+		//	TaskModel = ModelKlingO3
+		//}
+		//switch TaskModel {
+		//case ModelKlingO3:
+		upstream, err := buildKlingO3Request(request)
+		if err != nil {
+			return nil, err
 		}
+		result, err := c.SubmitKlingO3Task(ctx, upstream)
+		if err != nil {
+			return nil, err
+		}
+		return &TaskSubmitResponse{
+			Model: ModelKlingO3, GenerationType: GenerationTypeVideo,
+			TaskID: result.Output.TaskID, RequestID: result.RequestID,
+		}, nil
+		//default:
+		//	return nil, fmt.Errorf("model %q does not support video generation", TaskModel)
+		//}
 	case GenerationTypeImage:
-		if !isDoubaoSeedreamModel(request.Model) {
-			return nil, fmt.Errorf("model %q does not support image generation", request.Model)
-		}
+		//if !isDoubaoSeedreamModel(request.Model) {
+		//	return nil, fmt.Errorf("model %q does not support image generation", request.Model)
+		//}
 		if request.Video != "" {
 			return nil, errors.New("video is only supported for video generation")
 		}
@@ -176,12 +191,12 @@ func (c *Client) TaskSubmit(ctx context.Context, request TaskSubmitRequest) (*Ta
 }
 
 type APIError struct {
-	StatusCode int         `json:"-"`
-	Code       string      `json:"code,omitempty"`
-	Type       string      `json:"type,omitempty"`
-	Param      interface{} `json:"param,omitempty"`
-	Message    string      `json:"message"`
-	RequestID  string      `json:"request_id,omitempty"`
+	StatusCode int    `json:"-"`
+	Code       string `json:"code,omitempty"`
+	Type       string `json:"type,omitempty"`
+	Param      any    `json:"param,omitempty"`
+	Message    string `json:"message"`
+	RequestID  string `json:"request_id,omitempty"`
 }
 
 func (e *APIError) Error() string {
@@ -195,7 +210,7 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("ucloud API HTTP %d: %s", e.StatusCode, detail)
 }
 
-func (c *Client) postJSON(ctx context.Context, endpointPath string, request, response interface{}) error {
+func (c *Client) postJSON(ctx context.Context, endpointPath string, request, response any) error {
 	body, err := json.Marshal(request)
 	if err != nil {
 		return fmt.Errorf("marshal ucloud request: %w", err)
@@ -238,7 +253,7 @@ func (c *Client) post(ctx context.Context, endpointPath string, body io.Reader, 
 	return response, nil
 }
 
-func decodeParameters(source map[string]interface{}, target interface{}) error {
+func decodeParameters(source map[string]any, target any) error {
 	if len(source) == 0 {
 		return nil
 	}
@@ -302,7 +317,7 @@ func parseAPIError(statusCode int, raw []byte) error {
 	}
 }
 
-func stringifyCode(value interface{}) string {
+func stringifyCode(value any) string {
 	if value == nil {
 		return ""
 	}
@@ -314,4 +329,13 @@ func stringifyCode(value interface{}) string {
 	default:
 		return fmt.Sprint(typed)
 	}
+}
+
+func oneOf(value string, allowed ...string) bool {
+	return slices.Contains(allowed, value)
+}
+
+func isAbsoluteURL(value string) bool {
+	parsed, err := url.ParseRequestURI(value)
+	return err == nil && parsed.Scheme != "" && parsed.Host != ""
 }

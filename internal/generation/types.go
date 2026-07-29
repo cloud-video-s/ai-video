@@ -8,6 +8,9 @@ import (
 )
 
 const (
+	TaskTypeImage uint32 = 1
+	TaskTypeVideo uint32 = 2
+
 	TaskStatusSubmitting  = 1
 	TaskStatusSubmitted   = 2
 	TaskStatusPending     = 3
@@ -20,11 +23,22 @@ const (
 // CreateTaskRequest 是客户端通用生成请求。
 // Input 和 Parameters 会与模型默认参数合并后发送给具体 provider。
 type CreateTaskRequest struct {
-	ModelCode       string                 `json:"model_code" binding:"required,max=64"`
-	TaskType        int                    `json:"task_type" binding:"required,max=64"`
-	ClientRequestID string                 `json:"client_request_id" binding:"omitempty,max=64"`
-	Input           map[string]interface{} `json:"input" binding:"required"`
-	Parameters      map[string]interface{} `json:"parameters"`
+	ModelCode       string         `json:"model_code" binding:"required,max=64"`
+	TaskType        uint32         `json:"task_type" binding:"required,oneof=1 2"`
+	ClientRequestID string         `json:"client_request_id" binding:"omitempty,max=64"`
+	Input           map[string]any `json:"input" binding:"required"`
+	Parameters      map[string]any `json:"parameters,omitempty"`
+}
+
+// GenerationInput provides the media combinations supported by the UCloud
+// image and video models. The selected model's model_type determines which
+// fields are legal.
+type GenerationInput struct {
+	Prompt     string   `json:"prompt"`
+	Images     []string `json:"images,omitempty"`
+	Video      string   `json:"video,omitempty"`
+	FirstFrame string   `json:"first_frame,omitempty"`
+	EndFrame   string   `json:"end_frame,omitempty"`
 }
 
 type remoteSubmitRequest struct {
@@ -34,9 +48,12 @@ type remoteSubmitRequest struct {
 }
 
 type ProviderSubmitResult struct {
-	TaskID      string
-	RequestID   string
-	RawResponse string
+	TaskID       string
+	RequestID    string
+	RawResponse  string
+	Completed    bool
+	URLs         []string
+	Base64Images []string
 }
 
 type ProviderTaskStatus struct {
