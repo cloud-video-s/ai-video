@@ -32,6 +32,7 @@ type GenerationModelParameter struct {
 	AllowedValues []interface{} `json:"allowed_values"`
 	Description   string        `json:"description"`
 	ParameterType uint32        `json:"parameter_type"`
+	Constraints   string        `json:"constraints"`
 }
 
 type GenerationModelView struct {
@@ -102,5 +103,6 @@ func generationModelParameterView(item *model.VideoModelParameter) (GenerationMo
 		DefaultValue: defaultValue, AllowedValues: allowedValues,
 		Description:   item.Description,
 		ParameterType: item.ParameterType,
+		Constraints:   item.Constraints,
 	}, nil
 }

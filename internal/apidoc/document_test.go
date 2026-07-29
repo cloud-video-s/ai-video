@@ -218,13 +218,15 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	assertResponseParameter(t, models, "data[].parameter[].allowed_values", true)
 	assertResponseParameter(t, models, "data[].parameter[].description", true)
 	assertResponseParameter(t, models, "data[].parameter[].parameter_type", true)
+	assertResponseParameter(t, models, "data[].parameter[].constraints", true)
 	assertResponseParameterAbsent(t, models, "data[].parameter[].param_type")
 	assertResponseParameterAbsent(t, models, "data[].parameter[].is_required")
-	assertResponseParameterAbsent(t, models, "data[].parameter[].constraints")
 	modelExample := models["x-response-example"].(responseExampleEnvelope).Data.([]apiservice.GenerationModelView)
 	if len(modelExample) != 1 || modelExample[0].Name != "Kling v3 视频生成" || modelExample[0].ModelCode != "kling-v3" ||
-		len(modelExample[0].Parameters) != 3 || modelExample[0].Parameters[0].ParameterType != 1 ||
-		modelExample[0].Parameters[2].ParamKey != "prompt" || modelExample[0].Parameters[2].ParameterType != 2 {
+		len(modelExample[0].Parameters) != 11 || modelExample[0].Parameters[0].ParameterType != 1 ||
+		modelExample[0].Parameters[5].ParamKey != "prompt" || modelExample[0].Parameters[5].ParameterType != 2 ||
+		modelExample[0].Parameters[5].Constraints != `{"max_length": 2500}` ||
+		modelExample[0].Parameters[10].ParamKey != "video_url" || modelExample[0].Parameters[10].Constraints != `{"max_length": 1}` {
 		t.Fatalf("generation model response example is incomplete: %#v", modelExample)
 	}
 	createTask := document.Paths["/api/generation/tasks"]["post"].(map[string]any)
@@ -328,12 +330,13 @@ func TestBuildGenerationModelDocumentation(t *testing.T) {
 	assertParameter(t, models, "model_type", "query", true)
 	assertResponseParameter(t, models, "data[].model_code", true)
 	assertResponseParameter(t, models, "data[].parameter[].parameter_type", true)
+	assertResponseParameter(t, models, "data[].parameter[].constraints", true)
 	if description, _ := models["description"].(string); !strings.Contains(description, "parameter_type=2") {
 		t.Fatalf("generation model request parameters are not documented: %q", description)
 	}
 	example := models["x-response-example"].(responseExampleEnvelope).Data.([]apiservice.GenerationModelView)
-	if len(example) != 1 || example[0].ModelCode != "kling-v3" || len(example[0].Parameters) != 3 ||
-		example[0].Parameters[2].ParameterType != 2 {
+	if len(example) != 1 || example[0].ModelCode != "kling-v3" || len(example[0].Parameters) != 11 ||
+		example[0].Parameters[5].ParameterType != 2 || example[0].Parameters[10].Constraints != `{"max_length": 1}` {
 		t.Fatalf("generation model response example is incomplete: %#v", example)
 	}
 }

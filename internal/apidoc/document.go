@@ -88,16 +88,51 @@ var generationModelResponseExample = []apiservice.GenerationModelView{
 			{
 				ParamKey: "aspect_ratio", DefaultValue: "16:9",
 				AllowedValues: []interface{}{"16:9", "9:16", "1:1"},
-				Description:   "生成视频的宽高比", ParameterType: 1,
+				Description:   "生成视频的宽高比", ParameterType: 1, Constraints: "{}",
+			},
+			{
+				ParamKey: "character_orientation", DefaultValue: "video",
+				AllowedValues: []interface{}{"video", "image"},
+				Description:   "生成类型", ParameterType: 1, Constraints: "{}",
 			},
 			{
 				ParamKey: "duration", DefaultValue: 15,
 				AllowedValues: []interface{}{3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-				Description:   "生成视频的时长（秒）", ParameterType: 1,
+				Description:   "生成视频的时长（秒）", ParameterType: 1, Constraints: "{}",
+			},
+			{
+				ParamKey: "keep_original_sound", DefaultValue: "no",
+				AllowedValues: []interface{}{"yes", "no"},
+				Description:   "是否保留参考视频中的原始音频", ParameterType: 1, Constraints: "{}",
+			},
+			{
+				ParamKey: "mode", DefaultValue: "std",
+				AllowedValues: []interface{}{"std", "pro"},
+				Description:   "生成质量模式。std 为 720P，pro 为 1080P", ParameterType: 1, Constraints: "{}",
 			},
 			{
 				ParamKey: "prompt", DefaultValue: nil, AllowedValues: []interface{}{},
-				Description: "生成提示词", ParameterType: 2,
+				Description: "生成提示词", ParameterType: 2, Constraints: `{"max_length": 2500}`,
+			},
+			{
+				ParamKey: "first_frame_url", DefaultValue: nil, AllowedValues: []interface{}{},
+				Description: "首帧图像 URL", ParameterType: 2, Constraints: `{"max_length": 1}`,
+			},
+			{
+				ParamKey: "images", DefaultValue: nil, AllowedValues: []interface{}{},
+				Description: "首帧图像输入", ParameterType: 2, Constraints: `{"max_length": 10}`,
+			},
+			{
+				ParamKey: "img_url", DefaultValue: nil, AllowedValues: []interface{}{},
+				Description: "参考图像 URL", ParameterType: 2, Constraints: `{"max_length": 1}`,
+			},
+			{
+				ParamKey: "negative_prompt", DefaultValue: nil, AllowedValues: []interface{}{},
+				Description: "限制不期望内容的负向提示词", ParameterType: 2, Constraints: `{"max_length": 2500}`,
+			},
+			{
+				ParamKey: "video_url", DefaultValue: nil, AllowedValues: []interface{}{},
+				Description: "motion_control 模式的参考视频 URL", ParameterType: 2, Constraints: `{"max_length": 1}`,
 			},
 		},
 	},
@@ -274,9 +309,9 @@ var fieldDescriptions = map[string]string{
 	"third_code": "第三方平台用户标识",
 	"model_code": "生成模型代码", "model_type": "模型类型：1=生成图片，2=生成视频", "client_request_id": "客户端幂等请求 ID", "input": "模型输入参数", "parameters": "模型扩展参数",
 	"parameter": "模型参数列表", "param_key": "参数键名", "parameter_type": "参数类型：1=选项参数，2=请求参数",
-	"default_value": "参数默认值", "allowed_values": "参数允许值数组",
+	"default_value": "参数默认值", "allowed_values": "参数允许值数组", "constraints": "JSON 字符串格式的参数约束；空约束为 {}",
 	"model_config_id": "生成模型配置 ID", "external_task_id": "第三方任务 ID", "progress": "任务进度，范围 0-100",
-	"local_urls": "生成结果的本地访问地址", "error_message": "任务失败原因", "usage_duration": "任务耗时",
+	"local_urls": "生成结果的持久化访问地址（本地或 OSS）", "error_message": "任务失败原因", "usage_duration": "任务耗时",
 	"default_parameters": "模型默认参数", "model_name": "提供方模型名称",
 	"shop_type": "商品类型：1=VIP 订阅，2=积分商品", "bundleID": "Apple Bundle ID，必须与 Video_App_Package_Code 及签名交易一致", "productID": "Apple 商品 ID", "transactionID": "Apple 交易 ID",
 	"originalTransactionID": "Apple 原始交易 ID", "signedTransactionInfo": "Apple 签名交易 JWS",

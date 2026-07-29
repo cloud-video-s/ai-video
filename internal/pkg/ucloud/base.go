@@ -82,7 +82,7 @@ func NewClient(config ClientConfig) (*Client, error) {
 
 	httpClient := config.HTTPClient
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: defaultRequestTimeout}
+		httpClient = &http.Client{}
 	}
 	maxResponseSize := config.MaxResponseSize
 	if maxResponseSize <= 0 {
@@ -245,7 +245,7 @@ func (c *Client) post(ctx context.Context, endpointPath string, body io.Reader, 
 	}
 	request.Header.Set("Authorization", "Bearer "+c.apiKey)
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Accept", accept)
+	//request.Header.Set("Accept", accept)
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("request ucloud API: %w", err)

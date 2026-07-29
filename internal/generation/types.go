@@ -70,23 +70,23 @@ type ProviderTaskStatus struct {
 
 // TaskView 是客户端可见的任务快照，不暴露第三方临时 URL 和原始响应。
 type TaskView struct {
-	ID              uint64                 `json:"id"`
-	TaskCode        string                 `json:"task_code"`
-	ClientRequestID string                 `json:"client_request_id"`
-	ModelID         uint64                 `json:"model_id"`
-	ThirdTaskCode   string                 `json:"third_task_code,omitempty"`
-	Status          int                    `json:"status"`
-	Progress        uint8                  `json:"progress"`
-	Input           map[string]interface{} `json:"input,omitempty"`
-	Parameters      map[string]interface{} `json:"parameters,omitempty"`
-	LocalURLs       []string               `json:"local_urls"`
-	ErrorMessage    string                 `json:"error_message,omitempty"`
-	UsageDuration   uint32                 `json:"usage_duration"`
-	SubmittedAt     *time.Time             `json:"submitted_at,omitempty"`
-	StartedAt       *time.Time             `json:"started_at,omitempty"`
-	FinishedAt      *time.Time             `json:"finished_at,omitempty"`
-	CreatedAt       time.Time              `json:"created_at"`
-	UpdatedAt       time.Time              `json:"updated_at"`
+	ID              uint64         `json:"id"`
+	TaskCode        string         `json:"task_code"`
+	ClientRequestID string         `json:"client_request_id"`
+	ModelID         uint64         `json:"model_id"`
+	ThirdTaskCode   string         `json:"third_task_code,omitempty"`
+	Status          int            `json:"status"`
+	Progress        uint8          `json:"progress"`
+	Input           map[string]any `json:"input,omitempty"`
+	Parameters      map[string]any `json:"parameters,omitempty"`
+	LocalURLs       []string       `json:"local_urls"`
+	ErrorMessage    string         `json:"error_message,omitempty"`
+	UsageDuration   uint32         `json:"usage_duration"`
+	SubmittedAt     *time.Time     `json:"submitted_at,omitempty"`
+	StartedAt       *time.Time     `json:"started_at,omitempty"`
+	FinishedAt      *time.Time     `json:"finished_at,omitempty"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 func ViewOf(item *model.VideoUserGenerationTask) TaskView {

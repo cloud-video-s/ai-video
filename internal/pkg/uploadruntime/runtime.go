@@ -26,18 +26,26 @@ type directSignerFactory struct {
 	signer      upload.DirectUploadSigner
 }
 
+var sharedStorageFactory = &storageFactory{}
+
 func ManagerConfig() (upload.Config, error) {
-	UploadConfig := config.UploadManagerConfig()
-	factory := &storageFactory{}
-	dynamic, err := upload.NewDynamicStorage(factory.resolve)
+	managerConfig := config.UploadManagerConfig()
+	dynamic, err := Storage()
 	if err != nil {
 		return upload.Config{}, err
 	}
-	UploadConfig.Storage = dynamic
-	UploadConfig.PolicyResolver = func(kind upload.MediaKind) (upload.Policy, error) {
+	managerConfig.Storage = dynamic
+	managerConfig.PolicyResolver = func(kind upload.MediaKind) (upload.Policy, error) {
 		return configuredPolicy(kind, config.Cfg.Upload)
 	}
-	return UploadConfig, nil
+	return managerConfig, nil
+}
+
+// Storage returns the dynamic storage used by both regular uploads and
+// generated task results. The active provider is resolved for every Store
+// call, so changes made in the upload settings take effect without a restart.
+func Storage() (upload.Storage, error) {
+	return upload.NewDynamicStorage(sharedStorageFactory.resolve)
 }
 
 func DirectSigner() upload.DirectUploadSigner {

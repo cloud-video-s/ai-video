@@ -22,7 +22,7 @@ import (
 
 var requestIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
-// Manager 负责创建任务、轮询第三方状态、保存本地文件并发布进度事件。
+// Manager 负责创建任务、轮询第三方状态、持久化生成结果并发布进度事件。
 type Manager struct {
 	modelRepo     *repository.ModelRepo
 	parameterRepo *repository.ModelParameterRepo
