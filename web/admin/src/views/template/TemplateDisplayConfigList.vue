@@ -38,8 +38,8 @@
             <div class="template-cell">
               <el-image
                 class="template-cover"
-                :src="row.template?.cover_image"
-                :preview-src-list="row.template?.cover_image ? [row.template.cover_image] : []"
+                :src="row.template?.cover_image_url"
+                :preview-src-list="row.template?.cover_image_url ? [row.template.cover_image_url] : []"
                 fit="cover"
                 preview-teleported
               >
@@ -132,7 +132,7 @@
                 :aria-pressed="form.template_id === item.id"
                 @click="selectTemplate(item.id)"
               >
-                <el-image class="option-card-image" :src="item.cover_image" fit="cover">
+                <el-image class="option-card-image" :src="item.cover_image_url" fit="cover">
                   <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
                 </el-image>
                 <div class="option-card-name">{{ item.name }}</div>

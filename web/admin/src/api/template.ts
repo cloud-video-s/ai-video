@@ -4,6 +4,7 @@ import type { PackageVersion } from '@/api/packageVersion'
 import type { Country } from '@/api/country'
 import type { DisplayPosition } from '@/api/displayPosition'
 import type { VideoApp } from '@/api/videoApp'
+import type { ModelParameter, ModelParameterPayload, VideoModel } from '@/api/videoModel'
 
 export interface VideoTemplateType {
   id: number
@@ -34,32 +35,48 @@ export interface VideoTemplateTypePayload {
 
 export interface VideoTemplate {
   id: number
-  video_template_type_id: number
+  template_type_id: number
+  model_id: number
   name: string
-  template_type: string
+  template_type: 1 | 2
   sort: number
-  cover_image: string
-  template_video: string
-  thumbnail_video: string
+  cover_image_url: string
+  original_url: string
+  thumbnail_url: string
   prompt: string
   status: number
   description: string
   video_template_type?: VideoTemplateType
+  ai_model?: VideoModel
+  model_parameters?: TemplateModelParameter[]
   created_at: string
   updated_at: string
 }
 
 export interface VideoTemplatePayload {
-  video_template_type_id: number
+  template_type_id: number
+  model_id: number
   name: string
-  template_type: string
+  template_type: 1 | 2
   sort: number
-  cover_image: string
-  template_video: string
-  thumbnail_video: string
+  cover_image_url: string
+  original_url: string
+  thumbnail_url: string
   prompt: string
   status: number
   description: string
+  model_parameters: ModelParameterPayload[]
+}
+
+export interface TemplateModelParameter extends ModelParameter {
+  template_id: number
+}
+
+export interface TemplateModelConfiguration {
+  template_id: number
+  model_id: number
+  model: Pick<VideoModel, 'id' | 'name' | 'code' | 'model_type' | 'version' | 'status'>
+  parameters: TemplateModelParameter[]
 }
 
 export function getTemplateTypeList(params: Record<string, unknown>) {
@@ -108,6 +125,14 @@ export function updateTemplate(id: number, data: VideoTemplatePayload) {
 
 export function deleteTemplate(id: number) {
   return request.delete(`/admin/templates/${id}`)
+}
+
+export function getTemplateModelParameters(id: number) {
+  return request.get(`/admin/templates/${id}/model-parameters`)
+}
+
+export function replaceTemplateModelParameters(id: number, parameters: ModelParameterPayload[]) {
+  return request.put(`/admin/templates/${id}/model-parameters`, { parameters })
 }
 
 export interface TemplateDisplayConfig {
