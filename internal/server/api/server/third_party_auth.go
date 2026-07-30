@@ -122,7 +122,7 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 	if err != nil {
 		return nil, err
 	}
-	return issueToken(user, uint32(providerLoginType(req.ThirdType)))
+	return issueToken(user, int(providerLoginType(req.ThirdType)))
 }
 
 func (s *AuthService) ListIdentities(ctx context.Context, userID uint64) ([]model.VideoUserIdentity, error) {

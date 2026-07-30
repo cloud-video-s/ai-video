@@ -108,83 +108,44 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 		if lastOpenedAt == nil {
 			lastOpenedAt = &now
 		}
+		var latest *model.VideoUser
+		var err error
 		if req.ForceNew {
-			latest, err := s.userRepo.GetByDeviceCodeSubscription(ctx, req.DeviceCode, true)
-			isTrue := false
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				isTrue = true
-			} else {
-				if latest.Status != 1 {
-					isTrue = true
-				}
-			}
-			if isTrue {
-				user = &model.VideoUser{
-					DeviceCode: req.DeviceCode,
-					Username:   newGuestUsername(), LoginType: uint8(domain.AppUserLoginGuest),
-					UserType: uint8(domain.AppUserTypeFree), SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
-					ClientCountry: req.ClientCountry,
-					AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
-					FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
-					AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: 1,
-					Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
-				}
-				if err := s.userRepo.Create(ctx, user); err != nil {
-					return err
-				}
-				user, _ = s.prepareLoginSession(ctx, user.ID)
-				return nil
-			}
-			updates := baseTrackingUpdates(1, &req.AccountBaseRequest, clientIP, now)
-			if err := s.userRepo.Update(ctx, latest.ID, updates); err != nil {
-				return err
-			}
-			if err := s.attributionRepo.UpsertDevice(ctx, latest.ID, attributionTrackingUpdates(&req.AccountBaseRequest, clientIP, userAgent)); err != nil {
-				return err
-			}
-			user, err = s.prepareLoginSession(ctx, latest.ID)
-			if err != nil {
-				return err
-			}
-			return nil
-
+			latest, err = s.userRepo.GetByDeviceCodeSubscription(ctx, req.DeviceCode, true)
+		} else {
+			latest, err = s.userRepo.GetByDeviceCode(ctx, req.DeviceCode, true)
 		}
-		latest, err := s.userRepo.GetByDeviceCode(ctx, req.DeviceCode, true)
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("账号异常，请稍后重试")
+		isTrue := false
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			isTrue = true
 		}
-		if latest != nil {
-			if latest.Status != 1 || latest.IsFrozen != 0 || latest.IsBlacklisted != 0 {
+		if latest.Status != 1 {
+			if req.ForceNew {
 				return errors.New("当前设备账号已停用")
 			}
-			updates := baseTrackingUpdates(1, &req.AccountBaseRequest, clientIP, now)
-			if err := s.userRepo.Update(ctx, latest.ID, updates); err != nil {
+			isTrue = true
+		}
+		if isTrue {
+			user = &model.VideoUser{
+				DeviceCode: req.DeviceCode,
+				Username:   newGuestUsername(), LoginType: uint8(domain.AppUserLoginGuest),
+				UserType: uint8(domain.AppUserTypeFree), SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
+				ClientCountry: req.ClientCountry,
+				AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
+				FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
+				AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: 1,
+				Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
+			}
+			if err = s.userRepo.Create(ctx, user); err != nil {
 				return err
 			}
-			if err := s.attributionRepo.UpsertDevice(ctx, latest.ID, attributionTrackingUpdates(&req.AccountBaseRequest, clientIP, userAgent)); err != nil {
+			user, err = s.prepareLoginSession(ctx, user.ID)
+		} else {
+			if err = s.userRepo.Update(ctx, latest.ID, baseTrackingUpdates(domain.AppUserLoginGuest, &req.AccountBaseRequest, clientIP, now)); err != nil {
 				return err
 			}
 			user, err = s.prepareLoginSession(ctx, latest.ID)
-			if err != nil {
-				return err
-			}
-			return nil
 		}
-
-		user = &model.VideoUser{
-			DeviceCode: req.DeviceCode,
-			Username:   newGuestUsername(), LoginType: uint8(domain.AppUserLoginGuest),
-			UserType: uint8(domain.AppUserTypeFree), SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
-			ClientCountry: req.ClientCountry,
-			AppVersion:    req.AppVersion, AppName: req.AppPackage, PhoneModel: req.PhoneModel,
-			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
-			AttributionClickedAt: req.AttributionClickedAt, Activated: 1,
-			Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
-		}
-		if err = s.userRepo.Create(ctx, user); err != nil {
-			return err
-		}
-		user, err = s.prepareLoginSession(ctx, user.ID)
 		return err
 	})
 	if err != nil {
@@ -193,7 +154,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 			if lookupErr == nil {
 				latest, lookupErr = s.prepareLoginSession(ctx, latest.ID)
 				if lookupErr == nil {
-					return issueToken(latest, uint32(latest.LoginType))
+					return issueToken(latest, int(latest.LoginType))
 				}
 			}
 		}
@@ -201,10 +162,6 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 	}
 	return issueToken(user, domain.AppUserLoginGuest)
 }
-
-//func (s *AuthService) loginUpdate(ctx *gin.Context, user *model.VideoUser, req *LoginRequest, clientIP string, userAgent string) (*AuthResponse, error) {
-//
-//}
 
 func (s *AuthService) prepareLoginSession(ctx context.Context, userID uint64) (*model.VideoUser, error) {
 	if setting.GetBool(setting.UserSingleDeviceLoginKey) {
@@ -256,7 +213,7 @@ func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, 
 			if lookupErr == nil {
 				latest, lookupErr = s.prepareLoginSession(ctx, latest.ID)
 				if lookupErr == nil {
-					return issueToken(latest, uint32(latest.LoginType))
+					return issueToken(latest, int(latest.LoginType))
 				}
 			}
 		}
@@ -290,7 +247,7 @@ func (s *AuthService) Refresh(ctx context.Context, userID uint64, tokenVersion i
 		return nil, ErrAuthStateInvalid
 	}
 
-	result, err := issueToken(user, uint32(user.LoginType))
+	result, err := issueToken(user, int(user.LoginType))
 	if err != nil {
 		return nil, err
 	}
@@ -352,14 +309,14 @@ func (s *AuthService) UpdateCountry(ctx context.Context, userID uint64, req *Upd
 	return s.GetProfile(ctx, userID)
 }
 
-func issueToken(user *model.VideoUser, loginType uint32) (*AuthResponse, error) {
-	token, err := jwt.GenerateApiToken(user.ID, user.DeviceCode, user.TokenVersion, loginType)
+func issueToken(user *model.VideoUser, loginType int) (*AuthResponse, error) {
+	token, err := jwt.GenerateApiToken(user.ID, user.DeviceCode, user.TokenVersion, uint32(loginType))
 	if err != nil {
 		return nil, fmt.Errorf("生成客户端 Token 失败: %w", err)
 	}
 	cfg := config.Cfg.ApiJwt
 	return &AuthResponse{
-		Token: token, LoginType: loginType, ExpireAt: time.Now().Add(time.Duration(cfg.Expire) * time.Second).Unix(), TokenVersion: user.TokenVersion,
+		Token: token, LoginType: uint32(loginType), ExpireAt: time.Now().Add(time.Duration(cfg.Expire) * time.Second).Unix(), TokenVersion: user.TokenVersion,
 	}, nil
 }
 

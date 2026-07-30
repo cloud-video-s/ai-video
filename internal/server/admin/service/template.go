@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"net/url"
+	"path"
 	"strings"
 
 	"ai-video/internal/domain"
@@ -308,8 +310,8 @@ type TemplatePayload struct {
 	Sort                 int                     `json:"sort"`
 	CoverImageURL        string                  `json:"cover_image_url" binding:"required,max=1024"`
 	OriginalURL          string                  `json:"original_url" binding:"required,max=1024"`
-	ThumbnailURL         string                  `json:"thumbnail_url" binding:"max=1024"`
-	Prompt               string                  `json:"prompt" binding:"max=65535"`
+	ThumbnailURL         string                  `json:"thumbnail_url" binding:"required,max=1024"`
+	Prompt               string                  `json:"prompt" binding:"required,max=65535"`
 	Status               int32                   `json:"status" binding:"oneof=0 1"`
 	Description          string                  `json:"description" binding:"max=500"`
 	ModelParameters      []ModelParameterPayload `json:"model_parameters" binding:"omitempty,max=100,dive"`
@@ -459,10 +461,41 @@ func validateTemplatePayload(req *TemplatePayload) error {
 	if req == nil || req.TemplateTypeID == 0 || req.ModelID == 0 {
 		return errors.New("模板分类和关联模型不能为空")
 	}
-	if req.Name == "" || (req.TemplateType != domain.VideoTemplateKindImage && req.TemplateType != domain.VideoTemplateKindVideo) || req.CoverImageURL == "" || req.OriginalURL == "" {
-		return errors.New("模板名称、模板类型、封面和原始资源地址不能为空")
+	if req.Name == "" || (req.TemplateType != domain.VideoTemplateKindImage && req.TemplateType != domain.VideoTemplateKindVideo) || req.CoverImageURL == "" || req.OriginalURL == "" || req.ThumbnailURL == "" {
+		return errors.New("模板名称、模板类型、封面、原始资源和缩略资源地址不能为空")
+	}
+	if req.Prompt == "" {
+		return errors.New("模板提示词不能为空")
+	}
+	if !templateMediaURLMatches(req.CoverImageURL, templateImageExtensions) {
+		return errors.New("模板封面必须是 JPG、PNG、WebP 或 GIF 图片")
+	}
+	mediaExtensions := templateVideoExtensions
+	mediaLabel := "MP4、MOV、WebM 或 MKV 视频"
+	if req.TemplateType == domain.VideoTemplateKindImage {
+		mediaExtensions = templateImageExtensions
+		mediaLabel = "JPG、PNG、WebP 或 GIF 图片"
+	}
+	if !templateMediaURLMatches(req.OriginalURL, mediaExtensions) {
+		return errors.New("模板原始资源必须是" + mediaLabel)
+	}
+	if !templateMediaURLMatches(req.ThumbnailURL, mediaExtensions) {
+		return errors.New("模板缩略资源必须是" + mediaLabel)
 	}
 	return nil
+}
+
+var templateImageExtensions = map[string]struct{}{".jpg": {}, ".jpeg": {}, ".png": {}, ".webp": {}, ".gif": {}}
+var templateVideoExtensions = map[string]struct{}{".mp4": {}, ".mov": {}, ".webm": {}, ".mkv": {}}
+
+func templateMediaURLMatches(rawURL string, allowed map[string]struct{}) bool {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return false
+	}
+	extension := strings.ToLower(path.Ext(parsed.Path))
+	_, ok := allowed[extension]
+	return ok
 }
 
 func applyTemplatePayload(item *model.VideoTemplate, req *TemplatePayload) {

@@ -224,7 +224,12 @@ func (r *TemplateTypeRepo) loadRecords(ctx context.Context, items []model.VideoT
 			return nil, err
 		}
 		if len(packageCodes) > 0 {
-			rows, err := q.VideoPackage.WithContext(ctx).Where(q.VideoPackage.PackageCode.In(packageCodes...)).Find()
+			packageDAO := q.VideoPackage
+			dao := packageDAO.WithContext(ctx).Where(packageDAO.PackageCode.In(packageCodes...))
+			if len(appCodes) > 0 {
+				dao = dao.Where(packageDAO.AppCode.In(appCodes...))
+			}
+			rows, err := dao.Find()
 			if err != nil {
 				return nil, err
 			}
@@ -236,16 +241,49 @@ func (r *TemplateTypeRepo) loadRecords(ctx context.Context, items []model.VideoT
 		if err := versionRelation.WithContext(ctx).Where(versionRelation.TemplateTypeID.Eq(typeID)).Pluck(versionRelation.VersionCode, &versionCodes); err != nil {
 			return nil, err
 		}
-		if len(versionCodes) > 0 {
-			rows, err := q.VideoPackageVersion.WithContext(ctx).Where(q.VideoPackageVersion.VersionCode.In(versionCodes...)).Find()
+		if len(versionCodes) > 0 && (len(packageCodes) == 0 || len(record.Packages) > 0) {
+			versionDAO := q.VideoPackageVersion
+			dao := versionDAO.WithContext(ctx).Where(versionDAO.VersionCode.In(versionCodes...))
+			if len(packageCodes) > 0 {
+				loadedPackageCodes := make([]string, 0, len(record.Packages))
+				for _, packageItem := range record.Packages {
+					loadedPackageCodes = append(loadedPackageCodes, packageItem.PackageCode)
+				}
+				dao = dao.Where(versionDAO.PackageCode.In(loadedPackageCodes...))
+			}
+			rows, err := dao.Order(versionDAO.ID.Asc()).Find()
 			if err != nil {
 				return nil, err
 			}
-			record.Versions = valuesOf(rows)
+			record.Versions = uniqueTemplateTypeVersions(rows, versionCodes)
 		}
 		result = append(result, record)
 	}
 	return result, nil
+}
+
+func uniqueTemplateTypeVersions(rows []*model.VideoPackageVersion, versionCodes []string) []model.VideoPackageVersion {
+	byCode := make(map[string]model.VideoPackageVersion, len(rows))
+	for _, row := range rows {
+		if row == nil {
+			continue
+		}
+		if _, exists := byCode[row.VersionCode]; !exists {
+			byCode[row.VersionCode] = *row
+		}
+	}
+	result := make([]model.VideoPackageVersion, 0, len(byCode))
+	seen := make(map[string]struct{}, len(versionCodes))
+	for _, code := range versionCodes {
+		if _, exists := seen[code]; exists {
+			continue
+		}
+		seen[code] = struct{}{}
+		if item, exists := byCode[code]; exists {
+			result = append(result, item)
+		}
+	}
+	return result
 }
 
 func (r *TemplateTypeRepo) ReplaceDisplayPositions(ctx context.Context, item *model.VideoTemplateType, keys []string) error {
@@ -415,60 +453,45 @@ type ClientTemplateTypeTargets struct {
 	AppCode     string
 	PackageCode string
 	VersionCode string
+	Page        int
+	Limit       int
 }
 
 func (r *TemplateTypeRepo) ListForClient(ctx context.Context, targets ClientTemplateTypeTargets) ([]model.VideoTemplateType, error) {
-	q := qFrom(ctx)
-	templateType := q.VideoTemplateType
-	dao := templateType.WithContext(ctx).Where(templateType.Status.Eq(1))
-	if targets.PositionKey == "" {
-		dao = dao.Where(templateSQLCondition(`NOT EXISTS (
-			SELECT 1 FROM video_template_type_display_position relation
-			WHERE relation.template_type_id = video_template_type.id AND relation.deleted_at IS NULL
-		)`)...)
-	} else {
-		dao = dao.Where(templateSQLCondition(`(
-			NOT EXISTS (
-				SELECT 1 FROM video_template_type_display_position relation
-				WHERE relation.template_type_id = video_template_type.id AND relation.deleted_at IS NULL
-			)
-			OR EXISTS (
-				SELECT 1 FROM video_template_type_display_position relation
-				JOIN video_display_position position_item
-					ON position_item.position_key = relation.position_key AND position_item.deleted_at IS NULL
-				WHERE relation.template_type_id = video_template_type.id
-					AND relation.position_key = ? AND relation.deleted_at IS NULL
-					AND position_item.status = ?
-			)
-		)`, targets.PositionKey, 1)...)
-	}
-	if targets.CountryCode != "" {
-		dao = dao.Where(templateSQLCondition(`(
-			NOT EXISTS (
-				SELECT 1 FROM video_template_type_country relation
-				WHERE relation.template_type_id = video_template_type.id AND relation.deleted_at IS NULL
-			)
-			OR EXISTS (
-				SELECT 1 FROM video_template_type_country relation
-				JOIN video_country country_item ON country_item.code = relation.country_code AND country_item.deleted_at IS NULL
-				WHERE relation.template_type_id = video_template_type.id
-					AND relation.country_code = ? AND country_item.status = ? AND relation.deleted_at IS NULL
-			)
-		)`, targets.CountryCode, 1)...)
-	} else {
-		dao = dao.Where(templateSQLCondition(`NOT EXISTS (
-			SELECT 1 FROM video_template_type_country relation
-			WHERE relation.template_type_id = video_template_type.id AND relation.deleted_at IS NULL
-		)`)...)
-	}
-	dao = applyTemplateTypeCodeTarget(dao, "video_template_type_app", "video_app", "app_code", "app_code", targets.AppCode)
-	dao = applyTemplateTypeCodeTarget(dao, "video_template_type_package", "video_package", "package_code", "package_code", targets.PackageCode)
-	dao = applyTemplateTypeCodeTarget(dao, "video_template_type_version", "video_package_version", "version_code", "version_code", targets.VersionCode)
+	templateType := qFrom(ctx).VideoTemplateType
+	dao := buildClientTemplateTypeDAO(templateType.WithContext(ctx).Where(templateType.Status.Eq(1)), targets)
 	rows, err := dao.Order(templateType.Sort.Desc(), templateType.ID.Desc()).Find()
 	if err != nil {
 		return nil, err
 	}
 	return templateTypeValues(rows), nil
+}
+
+func (r *TemplateTypeRepo) GetLimitListClient(ctx context.Context, targets ClientTemplateTypeTargets) ([]model.VideoTemplateType, error) {
+	templateType := qFrom(ctx).VideoTemplateType
+	dao := buildClientTemplateTypeDAO(templateType.WithContext(ctx).Where(templateType.Status.Eq(1)), targets)
+	page := max(targets.Page, 1)
+	rows, err := dao.Order(templateType.Sort.Desc(), templateType.ID.Desc()).Offset((page - 1) * targets.Limit).Limit(targets.Limit).Find()
+	if err != nil {
+		return nil, err
+	}
+	return templateTypeValues(rows), nil
+}
+
+func buildClientTemplateTypeDAO(
+	dao genquery.IVideoTemplateTypeDo,
+	targets ClientTemplateTypeTargets,
+) genquery.IVideoTemplateTypeDo {
+	dao = dao.Where(templateSQLCondition(`EXISTS (
+			SELECT 1 FROM video_template template_item
+			WHERE template_item.template_type_id = video_template_type.id
+				AND template_item.status = ? AND template_item.deleted_at IS NULL
+		)`, 1)...)
+	dao = applyTemplateTypeCodeTarget(dao, "video_template_type_display_position", "video_display_position", "position_key", "position_key", targets.PositionKey)
+	dao = applyTemplateTypeCodeTarget(dao, "video_template_type_country", "video_country", "country_code", "code", targets.CountryCode)
+	dao = applyTemplateTypeCodeTarget(dao, "video_template_type_app", "video_app", "app_code", "app_code", targets.AppCode)
+	dao = applyTemplateTypeCodeTarget(dao, "video_template_type_package", "video_package", "package_code", "package_code", targets.PackageCode)
+	return applyTemplateTypeCodeTarget(dao, "video_template_type_version", "video_package_version", "version_code", "version_code", targets.VersionCode)
 }
 
 func applyTemplateTypeCodeTarget(
@@ -592,6 +615,9 @@ func (r *TemplateRepo) ListOptions(ctx context.Context) ([]TemplateRecord, error
 
 type ClientTemplateTargets struct {
 	TemplateTypeIDs []uint64
+	TemplateTypeID  uint64
+	Page            int
+	PageSize        int
 }
 
 func (r *TemplateRepo) ListForClient(ctx context.Context, targets ClientTemplateTargets) ([]model.VideoTemplate, error) {
@@ -602,6 +628,21 @@ func (r *TemplateRepo) ListForClient(ctx context.Context, targets ClientTemplate
 	rows, err := q.WithContext(ctx).
 		Where(q.Status.Eq(1), q.TemplateTypeID.In(targets.TemplateTypeIDs...)).
 		Order(q.Sort.Desc(), q.UsageCount.Desc(), q.LikeCount.Desc(), q.ViewCount.Desc(), q.ID.Desc()).Find()
+	if err != nil {
+		return nil, err
+	}
+	return templateValues(rows), nil
+}
+
+func (r *TemplateRepo) GetListForClient(ctx context.Context, targets ClientTemplateTargets) ([]model.VideoTemplate, error) {
+	if targets.TemplateTypeID == 0 {
+		return []model.VideoTemplate{}, nil
+	}
+	q := qFrom(ctx).VideoTemplate
+	rows, err := q.WithContext(ctx).
+		Where(q.Status.Eq(1), q.TemplateTypeID.Eq(targets.TemplateTypeID)).
+		Order(q.Sort.Desc(), q.UsageCount.Desc(), q.LikeCount.Desc(), q.ViewCount.Desc(), q.ID.Desc()).
+		Offset((targets.Page - 1) * targets.PageSize).Limit(targets.PageSize).Find()
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,7 @@ package domain
 const (
 	SuperAdminRoleCode = "admin"
 
-	AppUserLoginGuest  uint32 = 1
+	AppUserLoginGuest  int    = 1
 	AppUserLoginGoogle uint32 = 2
 	AppUserLoginAppID  uint32 = 3
 	AppUserTypeFree    uint32 = 1

@@ -26,6 +26,7 @@ type clientTemplateModelConfiguration struct {
 	ModelID    uint64
 	ModelCode  string
 	ModelName  string
+	ModelScore int64
 	Parameters []ClientTemplateModelParameter
 }
 
@@ -88,7 +89,8 @@ func (s *ClientTemplateService) loadTemplateModelConfigurations(ctx context.Cont
 			items = []ClientTemplateModelParameter{}
 		}
 		result[item.ID] = clientTemplateModelConfiguration{
-			ModelID: item.ModelID, ModelCode: modelItem.Code, ModelName: modelItem.Name, Parameters: items,
+			ModelID: item.ModelID, ModelCode: modelItem.Code, ModelName: modelItem.Name,
+			ModelScore: modelItem.Score, Parameters: items,
 		}
 	}
 	return result, nil

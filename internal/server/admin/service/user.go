@@ -124,7 +124,7 @@ type ListAppUserRequest struct {
 func (s *AppUserService) Create(ctx context.Context, req *CreateAppUserRequest) (*model.VideoUser, error) {
 	loginType := req.LoginType
 	if loginType == 0 {
-		loginType = domain.AppUserLoginGuest
+		loginType = uint32(domain.AppUserLoginGuest)
 	}
 	userType := req.UserType
 	if userType == 0 {

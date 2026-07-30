@@ -33,11 +33,11 @@ type ListTemplateDisplayConfigRequest struct {
 }
 
 type TemplateDisplayConfigPayload struct {
-	TemplateID   uint64 `json:"template_id" binding:"required"`
-	PlacementKey string `json:"placement_key" binding:"required,max=64"`
-	Sort         int    `json:"sort"`
-	Status       int8   `json:"status" binding:"oneof=0 1"`
-	Description  string `json:"description" binding:"max=500"`
+	TemplateID  uint64 `json:"template_id" binding:"required"`
+	PositionKey string `json:"position_key" binding:"required,max=64"`
+	Sort        int    `json:"sort"`
+	Status      int8   `json:"status" binding:"oneof=0 1"`
+	Remark      string `json:"remark" binding:"max=500"`
 }
 
 func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize int, req *ListTemplateDisplayConfigRequest) ([]repository.TemplateDisplayConfigRecord, int64, error) {
@@ -100,19 +100,19 @@ func (s *TemplateDisplayConfigService) Delete(ctx context.Context, id uint64) er
 }
 
 func (s *TemplateDisplayConfigService) prepare(ctx context.Context, req *TemplateDisplayConfigPayload, currentID uint64) error {
-	req.PlacementKey = strings.TrimSpace(req.PlacementKey)
-	req.Description = strings.TrimSpace(req.Description)
+	req.PositionKey = strings.TrimSpace(req.PositionKey)
+	req.Remark = strings.TrimSpace(req.Remark)
 	if _, err := s.templateRepo.GetWithType(ctx, req.TemplateID); err != nil {
 		return notFoundOr(err, "模板不存在")
 	}
-	position, err := s.positionRepo.GetByKey(ctx, req.PlacementKey)
+	position, err := s.positionRepo.GetByKey(ctx, req.PositionKey)
 	if err != nil {
 		return notFoundOr(err, "展示位置不存在")
 	}
 	if position.Status != 1 && req.Status == 1 {
 		return errors.New("展示位置已禁用，不能启用该配置")
 	}
-	exists, err := s.repo.PairExists(ctx, req.TemplateID, req.PlacementKey, currentID)
+	exists, err := s.repo.PairExists(ctx, req.TemplateID, req.PositionKey, currentID)
 	if err != nil {
 		return err
 	}
@@ -124,8 +124,8 @@ func (s *TemplateDisplayConfigService) prepare(ctx context.Context, req *Templat
 
 func applyTemplateDisplayConfigPayload(item *model.VideoTemplatePlacementConfig, req *TemplateDisplayConfigPayload) {
 	item.TemplateID = req.TemplateID
-	item.PlacementKey = req.PlacementKey
+	item.PlacementKey = req.PositionKey
 	item.Sort = uint(req.Sort)
 	item.Status = uint8(req.Status)
-	item.Description = req.Description
+	item.Description = req.Remark
 }
