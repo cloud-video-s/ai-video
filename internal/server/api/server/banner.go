@@ -29,13 +29,13 @@ type ClientBannerRequest struct {
 }
 
 type ClientBannerTemplate struct {
-	ID             uint64 `json:"id"`
-	Name           string `json:"name"`
-	TemplateType   string `json:"template_type"`
-	CoverImage     string `json:"cover_image"`
-	TemplateVideo  string `json:"template_video"`
-	ThumbnailVideo string `json:"thumbnail_video"`
-	Status         int8   `json:"status"`
+	ID            uint64 `json:"id"`
+	Name          string `json:"name"`
+	TemplateType  int64  `json:"template_type"`
+	CoverImageURL string `json:"cover_image_url"`
+	OriginalURL   string `json:"original_url"`
+	ThumbnailURL  string `json:"thumbnail_url"`
+	Status        int32  `json:"status"`
 }
 
 type ClientBanner struct {
@@ -94,8 +94,8 @@ func mapClientBanner(item *model.VideoBanner) ClientBanner {
 	if item.Template.ID != 0 {
 		result.TargetTemplate = &ClientBannerTemplate{
 			ID: item.Template.ID, Name: item.Template.Name, TemplateType: item.Template.TemplateType,
-			CoverImage: item.Template.CoverImage, TemplateVideo: item.Template.TemplateVideo,
-			ThumbnailVideo: item.Template.ThumbnailVideo, Status: int8(item.Template.Status),
+			CoverImageURL: item.Template.CoverImageURL, OriginalURL: item.Template.OriginalURL,
+			ThumbnailURL: item.Template.ThumbnailURL, Status: item.Template.Status,
 		}
 	}
 	return result

@@ -223,6 +223,8 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.GET("/templates/:id", templateHandler.GetByID)
 		auth.PUT("/templates/:id", templateHandler.Update)
 		auth.DELETE("/templates/:id", templateHandler.Delete)
+		auth.GET("/templates/:id/model-parameters", templateHandler.ModelParameters)
+		auth.PUT("/templates/:id/model-parameters", templateHandler.ReplaceModelParameters)
 
 		// Concrete template display-position configurations
 		auth.GET("/template-display-configs", templateDisplayConfigHandler.List)

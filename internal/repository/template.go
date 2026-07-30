@@ -406,7 +406,7 @@ func nextTemplateTypeAppID() uint64 {
 
 func (r *TemplateTypeRepo) TemplateCount(ctx context.Context, typeID uint64) (int64, error) {
 	q := qFrom(ctx).VideoTemplate
-	return q.WithContext(ctx).Where(q.VideoTemplateTypeID.Eq(typeID)).Count()
+	return q.WithContext(ctx).Where(q.TemplateTypeID.Eq(typeID)).Count()
 }
 
 type ClientTemplateTypeTargets struct {
@@ -513,19 +513,23 @@ func NewTemplateRepo() *TemplateRepo {
 }
 
 type TemplateListFilter struct {
-	VideoTemplateTypeID uint64
-	PositionKey         string
-	TemplateType        string
-	Status              *int8
-	Keyword             string
+	TemplateTypeID uint64
+	ModelID        uint64
+	PositionKey    string
+	TemplateType   int64
+	Status         *int32
+	Keyword        string
 }
 
 func (r *TemplateRepo) PageList(ctx context.Context, page, pageSize int, filter *TemplateListFilter) ([]TemplateRecord, int64, error) {
 	q := qFrom(ctx).VideoTemplate
 	dao := q.WithContext(ctx)
 	if filter != nil {
-		if filter.VideoTemplateTypeID != 0 {
-			dao = dao.Where(q.VideoTemplateTypeID.Eq(filter.VideoTemplateTypeID))
+		if filter.TemplateTypeID != 0 {
+			dao = dao.Where(q.TemplateTypeID.Eq(filter.TemplateTypeID))
+		}
+		if filter.ModelID != 0 {
+			dao = dao.Where(q.ModelID.Eq(filter.ModelID))
 		}
 		if filter.PositionKey != "" {
 			dao = dao.Where(templateSQLCondition(`EXISTS (
@@ -534,7 +538,7 @@ func (r *TemplateRepo) PageList(ctx context.Context, page, pageSize int, filter 
 					AND placement_config.placement_key = ? AND placement_config.deleted_at IS NULL
 			)`, filter.PositionKey)...)
 		}
-		if filter.TemplateType != "" {
+		if filter.TemplateType > 0 {
 			dao = dao.Where(q.TemplateType.Eq(filter.TemplateType))
 		}
 		if filter.Status != nil {
@@ -596,7 +600,7 @@ func (r *TemplateRepo) ListForClient(ctx context.Context, targets ClientTemplate
 	}
 	q := qFrom(ctx).VideoTemplate
 	rows, err := q.WithContext(ctx).
-		Where(q.Status.Eq(1), q.VideoTemplateTypeID.In(targets.TemplateTypeIDs...)).
+		Where(q.Status.Eq(1), q.TemplateTypeID.In(targets.TemplateTypeIDs...)).
 		Order(q.Sort.Desc(), q.UsageCount.Desc(), q.LikeCount.Desc(), q.ViewCount.Desc(), q.ID.Desc()).Find()
 	if err != nil {
 		return nil, err
@@ -612,9 +616,9 @@ func (r *TemplateRepo) loadRecords(ctx context.Context, items []model.VideoTempl
 	typeIDs := make([]uint64, 0, len(items))
 	seen := make(map[uint64]struct{}, len(items))
 	for i := range items {
-		if _, ok := seen[items[i].VideoTemplateTypeID]; !ok {
-			seen[items[i].VideoTemplateTypeID] = struct{}{}
-			typeIDs = append(typeIDs, items[i].VideoTemplateTypeID)
+		if _, ok := seen[items[i].TemplateTypeID]; !ok {
+			seen[items[i].TemplateTypeID] = struct{}{}
+			typeIDs = append(typeIDs, items[i].TemplateTypeID)
 		}
 	}
 	q := qFrom(ctx).VideoTemplateType
@@ -632,7 +636,7 @@ func (r *TemplateRepo) loadRecords(ctx context.Context, items []model.VideoTempl
 	}
 	for i := range items {
 		record := TemplateRecord{VideoTemplate: items[i]}
-		if typeRecord := typeByID[items[i].VideoTemplateTypeID]; typeRecord != nil {
+		if typeRecord := typeByID[items[i].TemplateTypeID]; typeRecord != nil {
 			record.VideoTemplateType = typeRecord
 			record.Countries = append([]model.VideoCountry(nil), typeRecord.Countries...)
 			record.Apps = append([]model.VideoApp(nil), typeRecord.Apps...)
@@ -656,9 +660,14 @@ func templateValues(rows []*model.VideoTemplate) []model.VideoTemplate {
 
 func (r *TemplateRepo) UpdateFields(ctx context.Context, item *model.VideoTemplate) error {
 	return r.BaseRepo.Update(ctx, item,
-		"VideoTemplateTypeID", "Name", "TemplateType", "Sort",
-		"CoverImage", "TemplateVideo", "ThumbnailVideo", "Prompt", "Status", "Description",
+		"TemplateTypeID", "ModelID", "Name", "TemplateType", "Sort",
+		"CoverImageURL", "OriginalURL", "ThumbnailURL", "Prompt", "Status", "Description",
 	)
+}
+
+func (r *TemplateRepo) CountByModel(ctx context.Context, modelID uint64) (int64, error) {
+	q := qFrom(ctx).VideoTemplate
+	return q.WithContext(ctx).Where(q.ModelID.Eq(modelID)).Count()
 }
 
 func loadDisplayPositionsByKeys(ctx context.Context, keys []string) ([]model.VideoDisplayPosition, error) {
@@ -708,6 +717,9 @@ func (r *TemplateRepo) DeleteWithTargets(ctx context.Context, id uint64) error {
 		q := qFrom(txCtx)
 		config := q.VideoTemplatePlacementConfig
 		if _, err := config.WithContext(txCtx).Unscoped().Where(config.TemplateID.Eq(id)).Delete(); err != nil {
+			return err
+		}
+		if err := NewTemplateModelParameterRepo().SoftDeleteByTemplate(txCtx, id); err != nil {
 			return err
 		}
 		template := q.VideoTemplate

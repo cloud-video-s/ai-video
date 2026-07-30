@@ -40,7 +40,7 @@ func downloadVideosToStorage(
 	}
 	result := make([]string, 0, len(remoteURLs))
 	for index, remoteURL := range remoteURLs {
-		filename := fmt.Sprintf("task-%d-%d.mp4", task.ID, index+1)
+		filename := fmt.Sprintf("task-%s-%d.mp4", task.TaskCode, index+1)
 		storedURL, err := downloadAndStoreGeneratedFile(
 			ctx, storage, client, remoteURL, generatedObjectKey(task.UserID, filename), "video/mp4", maxSize,
 		)

@@ -49,6 +49,7 @@ var (
 	VideoRole                        *videoRole
 	VideoRoleMenu                    *videoRoleMenu
 	VideoTemplate                    *videoTemplate
+	VideoTemplateModelParameter      *videoTemplateModelParameter
 	VideoTemplatePlacement           *videoTemplatePlacement
 	VideoTemplatePlacementConfig     *videoTemplatePlacementConfig
 	VideoTemplateType                *videoTemplateType
@@ -109,6 +110,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoRole = &Q.VideoRole
 	VideoRoleMenu = &Q.VideoRoleMenu
 	VideoTemplate = &Q.VideoTemplate
+	VideoTemplateModelParameter = &Q.VideoTemplateModelParameter
 	VideoTemplatePlacement = &Q.VideoTemplatePlacement
 	VideoTemplatePlacementConfig = &Q.VideoTemplatePlacementConfig
 	VideoTemplateType = &Q.VideoTemplateType
@@ -170,6 +172,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoRole:                        newVideoRole(db, opts...),
 		VideoRoleMenu:                    newVideoRoleMenu(db, opts...),
 		VideoTemplate:                    newVideoTemplate(db, opts...),
+		VideoTemplateModelParameter:      newVideoTemplateModelParameter(db, opts...),
 		VideoTemplatePlacement:           newVideoTemplatePlacement(db, opts...),
 		VideoTemplatePlacementConfig:     newVideoTemplatePlacementConfig(db, opts...),
 		VideoTemplateType:                newVideoTemplateType(db, opts...),
@@ -232,6 +235,7 @@ type Query struct {
 	VideoRole                        videoRole
 	VideoRoleMenu                    videoRoleMenu
 	VideoTemplate                    videoTemplate
+	VideoTemplateModelParameter      videoTemplateModelParameter
 	VideoTemplatePlacement           videoTemplatePlacement
 	VideoTemplatePlacementConfig     videoTemplatePlacementConfig
 	VideoTemplateType                videoTemplateType
@@ -297,6 +301,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoRole:                        q.VideoRole.clone(db),
 		VideoRoleMenu:                    q.VideoRoleMenu.clone(db),
 		VideoTemplate:                    q.VideoTemplate.clone(db),
+		VideoTemplateModelParameter:      q.VideoTemplateModelParameter.clone(db),
 		VideoTemplatePlacement:           q.VideoTemplatePlacement.clone(db),
 		VideoTemplatePlacementConfig:     q.VideoTemplatePlacementConfig.clone(db),
 		VideoTemplateType:                q.VideoTemplateType.clone(db),
@@ -367,6 +372,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoRole:                        q.VideoRole.replaceDB(db),
 		VideoRoleMenu:                    q.VideoRoleMenu.replaceDB(db),
 		VideoTemplate:                    q.VideoTemplate.replaceDB(db),
+		VideoTemplateModelParameter:      q.VideoTemplateModelParameter.replaceDB(db),
 		VideoTemplatePlacement:           q.VideoTemplatePlacement.replaceDB(db),
 		VideoTemplatePlacementConfig:     q.VideoTemplatePlacementConfig.replaceDB(db),
 		VideoTemplateType:                q.VideoTemplateType.replaceDB(db),
@@ -427,6 +433,7 @@ type queryCtx struct {
 	VideoRole                        IVideoRoleDo
 	VideoRoleMenu                    IVideoRoleMenuDo
 	VideoTemplate                    IVideoTemplateDo
+	VideoTemplateModelParameter      IVideoTemplateModelParameterDo
 	VideoTemplatePlacement           IVideoTemplatePlacementDo
 	VideoTemplatePlacementConfig     IVideoTemplatePlacementConfigDo
 	VideoTemplateType                IVideoTemplateTypeDo
@@ -487,6 +494,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoRole:                        q.VideoRole.WithContext(ctx),
 		VideoRoleMenu:                    q.VideoRoleMenu.WithContext(ctx),
 		VideoTemplate:                    q.VideoTemplate.WithContext(ctx),
+		VideoTemplateModelParameter:      q.VideoTemplateModelParameter.WithContext(ctx),
 		VideoTemplatePlacement:           q.VideoTemplatePlacement.WithContext(ctx),
 		VideoTemplatePlacementConfig:     q.VideoTemplatePlacementConfig.WithContext(ctx),
 		VideoTemplateType:                q.VideoTemplateType.WithContext(ctx),

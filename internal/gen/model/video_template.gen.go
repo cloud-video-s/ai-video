@@ -12,26 +12,29 @@ import (
 
 const TableNameVideoTemplate = "video_template"
 
-// VideoTemplate mapped from table <video_template>
+// VideoTemplate 视频模板表
 type VideoTemplate struct {
-	ID                  uint64            `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	VideoTemplateTypeID uint64            `gorm:"column:video_template_type_id;type:bigint unsigned;not null;index:idx_video_template_video_template_type_id,priority:1;comment:video template type ID" json:"video_template_type_id"` // video template type ID
-	Name                string            `gorm:"column:name;type:varchar(128);not null;index:idx_video_template_name,priority:1;comment:template name" json:"name"`                                                                   // template name
-	TemplateType        string            `gorm:"column:template_type;type:varchar(32);not null;index:idx_video_template_template_type,priority:1;comment:template kind, such as action or face_swap" json:"template_type"`            // template kind, such as action or face_swap
-	Sort                int64             `gorm:"column:sort;type:bigint;not null;index:idx_video_template_sort,priority:1;comment:sort order" json:"sort"`                                                                            // sort order
-	CoverImage          string            `gorm:"column:cover_image;type:varchar(1024);not null;comment:cover image URL" json:"cover_image"`                                                                                           // cover image URL
-	TemplateVideo       string            `gorm:"column:template_video;type:varchar(1024);not null;comment:template video URL" json:"template_video"`                                                                                  // template video URL
-	ThumbnailVideo      string            `gorm:"column:thumbnail_video;type:varchar(1024);comment:thumbnail video URL" json:"thumbnail_video"`                                                                                        // thumbnail video URL
-	Prompt              string            `gorm:"column:prompt;type:text;comment:template prompt" json:"prompt"`                                                                                                                       // template prompt
-	Status              int8              `gorm:"column:status;type:tinyint;not null;index:idx_video_template_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                                        // status: 0 disabled, 1 enabled
-	Description         string            `gorm:"column:description;type:varchar(500);comment:description" json:"description"`                                                                                                         // description
-	UsageCount          uint64            `gorm:"column:usage_count;type:bigint unsigned;not null;index:idx_video_template_usage_count,priority:1;comment:template usage count" json:"usage_count"`                                    // template usage count
-	LikeCount           uint64            `gorm:"column:like_count;type:bigint unsigned;not null;comment:点赞次数" json:"like_count"`                                                                                                      // 点赞次数
-	ViewCount           uint64            `gorm:"column:view_count;type:bigint unsigned;not null;index:idx_video_template_view_count,priority:1;comment:template view count" json:"view_count"`                                        // template view count
-	CreatedAt           time.Time         `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_template_created_at,priority:1" json:"created_at"`
-	UpdatedAt           time.Time         `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
-	DeletedAt           gorm.DeletedAt    `gorm:"column:deleted_at;type:datetime(3);index:idx_video_template_deleted_at,priority:1" json:"deleted_at"`
-	VideoTemplateType   VideoTemplateType `gorm:"foreignKey:VideoTemplateTypeID;references:ID" json:"video_template_type"`
+	ID                uint64                        `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                                                                                                // 主键ID
+	Name              string                        `gorm:"column:name;type:varchar(128);not null;index:idx_video_template_name,priority:1;comment:模板名称" json:"name"`                                                                           // 模板名称
+	TemplateType      int64                         `gorm:"column:template_type;type:bigint;not null;index:idx_video_template_template_type,priority:1;comment:模板种类 1=图片模板 2=视频模板" json:"template_type"`                                        // 模板种类 1=图片模板 2=视频模板
+	TemplateTypeID    uint64                        `gorm:"column:template_type_id;type:bigint unsigned;not null;index:idx_video_template_video_template_type_id,priority:1;comment:视频模板类型ID（外键关联video_template_type）" json:"template_type_id"` // 视频模板类型ID（外键关联video_template_type）
+	ModelID           uint64                        `gorm:"column:model_id;type:bigint unsigned;not null;comment:关联的AI模型ID" json:"model_id"`                                                                                                    // 关联的AI模型ID
+	Sort              int64                         `gorm:"column:sort;type:bigint;not null;index:idx_video_template_sort,priority:1;comment:排序权重（数值越大越靠前）" json:"sort"`                                                                        // 排序权重（数值越大越靠前）
+	CoverImageURL     string                        `gorm:"column:cover_image_url;type:varchar(1024);not null;comment:封面图片URL" json:"cover_image_url"`                                                                                          // 封面图片URL
+	OriginalURL       string                        `gorm:"column:original_url;type:varchar(1024);not null;comment:高清URL" json:"original_url"`                                                                                                  // 高清URL
+	ThumbnailURL      string                        `gorm:"column:thumbnail_url;type:varchar(1024);comment:缩略图视频URL" json:"thumbnail_url"`                                                                                                      // 缩略图视频URL
+	Prompt            string                        `gorm:"column:prompt;type:text;comment:模板对应的提示词" json:"prompt"`                                                                                                                             // 模板对应的提示词
+	Status            int32                         `gorm:"column:status;type:tinyint;not null;index:idx_video_template_status,priority:1;default:1;comment:状态：0-禁用，1-启用" json:"status"`                                                        // 状态：0-禁用，1-启用
+	Description       string                        `gorm:"column:description;type:varchar(500);comment:模板描述信息" json:"description"`                                                                                                             // 模板描述信息
+	UsageCount        uint64                        `gorm:"column:usage_count;type:bigint unsigned;not null;index:idx_video_template_usage_count,priority:1;comment:模板被使用的总次数" json:"usage_count"`                                              // 模板被使用的总次数
+	LikeCount         uint64                        `gorm:"column:like_count;type:bigint unsigned;not null;comment:模板点赞数" json:"like_count"`                                                                                                    // 模板点赞数
+	ViewCount         uint64                        `gorm:"column:view_count;type:bigint unsigned;not null;index:idx_video_template_view_count,priority:1;comment:模板浏览次数" json:"view_count"`                                                    // 模板浏览次数
+	CreatedAt         time.Time                     `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_template_created_at,priority:1;comment:记录创建时间" json:"created_at"`                                                        // 记录创建时间
+	UpdatedAt         time.Time                     `gorm:"column:updated_at;type:datetime(3);not null;comment:记录最后更新时间（自动更新）" json:"updated_at"`                                                                                               // 记录最后更新时间（自动更新）
+	DeletedAt         gorm.DeletedAt                `gorm:"column:deleted_at;type:datetime(3);index:idx_video_template_deleted_at,priority:1;comment:软删除时间（非NULL表示已删除）" json:"deleted_at"`                                                      // 软删除时间（非NULL表示已删除）
+	TemplateTypeModel VideoTemplateType             `gorm:"foreignKey:TemplateTypeID;references:ID" json:"template_type_model"`
+	AIModel           VideoModel                    `gorm:"foreignKey:ModelID;references:ID" json:"ai_model"`
+	ModelParameters   []VideoTemplateModelParameter `gorm:"foreignKey:TemplateID;references:ID" json:"model_parameters"`
 }
 
 // TableName VideoTemplate's table name

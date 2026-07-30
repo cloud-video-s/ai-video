@@ -25,11 +25,11 @@ func NewTemplateDisplayConfigService() *TemplateDisplayConfigService {
 }
 
 type ListTemplateDisplayConfigRequest struct {
-	TemplateID          uint64 `form:"template_id"`
-	VideoTemplateTypeID uint64 `form:"video_template_type_id"`
-	PositionKey         string `form:"position_key" binding:"omitempty,max=64"`
-	Status              *int8  `form:"status" binding:"omitempty,oneof=0 1"`
-	Keyword             string `form:"keyword" binding:"omitempty,max=128"`
+	TemplateID     uint64 `form:"template_id"`
+	TemplateTypeID uint64 `form:"video_template_type_id"`
+	PositionKey    string `form:"position_key" binding:"omitempty,max=64"`
+	Status         *int8  `form:"status" binding:"omitempty,oneof=0 1"`
+	Keyword        string `form:"keyword" binding:"omitempty,max=128"`
 }
 
 type TemplateDisplayConfigPayload struct {
@@ -42,7 +42,7 @@ type TemplateDisplayConfigPayload struct {
 
 func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize int, req *ListTemplateDisplayConfigRequest) ([]repository.TemplateDisplayConfigRecord, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateDisplayConfigListFilter{
-		TemplateID: req.TemplateID, VideoTemplateTypeID: req.VideoTemplateTypeID,
+		TemplateID: req.TemplateID, TemplateTypeID: req.TemplateTypeID,
 		PositionKey: strings.TrimSpace(req.PositionKey), Status: req.Status,
 		Keyword: strings.TrimSpace(req.Keyword),
 	})

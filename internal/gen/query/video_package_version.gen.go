@@ -30,6 +30,7 @@ func newVideoPackageVersion(db *gorm.DB, opts ...gen.DOOption) videoPackageVersi
 	_videoPackageVersion.ALL = field.NewAsterisk(tableName)
 	_videoPackageVersion.ID = field.NewUint64(tableName, "id")
 	_videoPackageVersion.VersionCode = field.NewString(tableName, "version_code")
+	_videoPackageVersion.PackageCode = field.NewString(tableName, "package_code")
 	_videoPackageVersion.DownloadURL = field.NewString(tableName, "download_url")
 	_videoPackageVersion.InstallCount = field.NewUint64(tableName, "install_count")
 	_videoPackageVersion.DownloadCount = field.NewUint64(tableName, "download_count")
@@ -39,7 +40,6 @@ func newVideoPackageVersion(db *gorm.DB, opts ...gen.DOOption) videoPackageVersi
 	_videoPackageVersion.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoPackageVersion.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoPackageVersion.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoPackageVersion.PackageCode = field.NewString(tableName, "package_code")
 	_videoPackageVersion.Package = videoPackageVersionBelongsToPackage{
 		db: db.Session(&gorm.Session{}),
 
@@ -62,6 +62,7 @@ type videoPackageVersion struct {
 	ALL           field.Asterisk
 	ID            field.Uint64
 	VersionCode   field.String // 版本
+	PackageCode   field.String
 	DownloadURL   field.String // package download URL
 	InstallCount  field.Uint64 // installation count
 	DownloadCount field.Uint64 // download count
@@ -71,7 +72,6 @@ type videoPackageVersion struct {
 	CreatedAt     field.Time
 	UpdatedAt     field.Time
 	DeletedAt     field.Field
-	PackageCode   field.String
 	Package       videoPackageVersionBelongsToPackage
 
 	fieldMap map[string]field.Expr
@@ -91,6 +91,7 @@ func (v *videoPackageVersion) updateTableName(table string) *videoPackageVersion
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
 	v.VersionCode = field.NewString(table, "version_code")
+	v.PackageCode = field.NewString(table, "package_code")
 	v.DownloadURL = field.NewString(table, "download_url")
 	v.InstallCount = field.NewUint64(table, "install_count")
 	v.DownloadCount = field.NewUint64(table, "download_count")
@@ -100,7 +101,6 @@ func (v *videoPackageVersion) updateTableName(table string) *videoPackageVersion
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
-	v.PackageCode = field.NewString(table, "package_code")
 
 	v.fillFieldMap()
 
@@ -132,6 +132,7 @@ func (v *videoPackageVersion) fillFieldMap() {
 	v.fieldMap = make(map[string]field.Expr, 13)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["version_code"] = v.VersionCode
+	v.fieldMap["package_code"] = v.PackageCode
 	v.fieldMap["download_url"] = v.DownloadURL
 	v.fieldMap["install_count"] = v.InstallCount
 	v.fieldMap["download_count"] = v.DownloadCount
@@ -141,7 +142,6 @@ func (v *videoPackageVersion) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-	v.fieldMap["package_code"] = v.PackageCode
 
 }
 

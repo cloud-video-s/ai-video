@@ -91,7 +91,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 			generationTasks.POST("/tasks", generationHandler.Create)
 			generationTasks.GET("/tasks", generationHandler.List)
 			generationTasks.GET("/tasks/:id", generationHandler.Get)
-			generationTasks.GET("/tasks/:id/events", generationHandler.Events)
+			//generationTasks.GET("/tasks/:id/events", generationHandler.Events)
 			generationTasks.DELETE("/tasks/:id", generationHandler.Delete)
 		}
 

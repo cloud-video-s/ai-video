@@ -14,12 +14,14 @@ import (
 )
 
 type ClientTemplateService struct {
-	typeRepo             *repository.TemplateTypeRepo
-	templateRepo         *repository.TemplateRepo
-	displayRepo          *repository.TemplateDisplayConfigRepo
-	userRepo             *repository.AppUserRepo
-	countryRepo          *repository.CountryRepo
-	TemplateFavoriteRepo *repository.TemplateFavoriteRepo
+	typeRepo              *repository.TemplateTypeRepo
+	templateRepo          *repository.TemplateRepo
+	displayRepo           *repository.TemplateDisplayConfigRepo
+	userRepo              *repository.AppUserRepo
+	countryRepo           *repository.CountryRepo
+	TemplateFavoriteRepo  *repository.TemplateFavoriteRepo
+	modelRepo             *repository.ModelRepo
+	templateParameterRepo *repository.TemplateModelParameterRepo
 }
 
 func NewClientTemplateService() *ClientTemplateService {
@@ -27,6 +29,8 @@ func NewClientTemplateService() *ClientTemplateService {
 		typeRepo: repository.NewTemplateTypeRepo(), templateRepo: repository.NewTemplateRepo(),
 		displayRepo: repository.NewTemplateDisplayConfigRepo(),
 		userRepo:    repository.NewAppUserRepo(), countryRepo: repository.NewCountryRepo(),
+		modelRepo: repository.NewModelRepo(), templateParameterRepo: repository.NewTemplateModelParameterRepo(),
+		TemplateFavoriteRepo: repository.NewTemplateFavoriteRepo(),
 	}
 }
 
@@ -65,20 +69,24 @@ type ClientTemplateType struct {
 }
 
 type ClientTemplate struct {
-	ID                  uint64 `json:"id"`
-	VideoTemplateTypeID uint64 `json:"video_template_type_id"`
-	Name                string `json:"name"`
-	TemplateType        string `json:"template_type"`
-	CoverImage          string `json:"cover_image"`
-	TemplateVideo       string `json:"template_video"`
-	ThumbnailVideo      string `json:"thumbnail_video"`
-	Prompt              string `json:"prompt"`
-	Description         string `json:"description"`
-	Sort                int    `json:"sort"`
-	UsageCount          uint64 `json:"usage_count"`
-	FavoriteCount       uint64 `json:"favorite_count"`
-	ViewCount           uint64 `json:"view_count"`
-	IsFavorite          int    `json:"is_favorite"`
+	ID              uint64                         `json:"id"`
+	TemplateTypeID  uint64                         `json:"video_template_type_id"`
+	Name            string                         `json:"name"`
+	TemplateType    int64                          `json:"template_type"`
+	CoverImageURL   string                         `json:"cover_image_url"`
+	OriginalURL     string                         `json:"original_url"`
+	ThumbnailURL    string                         `json:"thumbnail_url"`
+	Prompt          string                         `json:"prompt"`
+	Description     string                         `json:"description"`
+	Sort            int                            `json:"sort"`
+	UsageCount      uint64                         `json:"usage_count"`
+	FavoriteCount   uint64                         `json:"favorite_count"`
+	ViewCount       uint64                         `json:"view_count"`
+	IsFavorite      int                            `json:"is_favorite"`
+	ModelID         uint64                         `json:"model_id"`
+	ModelCode       string                         `json:"model_code"`
+	ModelName       string                         `json:"model_name"`
+	ModelParameters []ClientTemplateModelParameter `json:"model_parameters"`
 }
 
 type ClientTemplateDisplayItem struct {
@@ -115,7 +123,11 @@ func (s *ClientTemplateService) List(ctx *gin.Context, req *ClientTemplateReques
 	if err != nil {
 		return nil, err
 	}
-	return buildClientTemplateGroups(types, rows), nil
+	configurations, err := s.loadTemplateModelConfigurations(ctx, rows)
+	if err != nil {
+		return nil, err
+	}
+	return buildClientTemplateGroups(types, rows, configurations), nil
 }
 
 func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplateRequest) ([]ClientTemplateType, error) {
@@ -144,10 +156,14 @@ func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplate
 	if err != nil {
 		return nil, err
 	}
-	return buildClientTemplateGroups(types, rows), nil
+	configurations, err := s.loadTemplateModelConfigurations(ctx, rows)
+	if err != nil {
+		return nil, err
+	}
+	return buildClientTemplateGroups(types, rows, configurations), nil
 }
 
-func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.VideoTemplate) []ClientTemplateType {
+func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.VideoTemplate, configurationArgs ...map[uint64]clientTemplateModelConfiguration) []ClientTemplateType {
 	types = append([]model.VideoTemplateType(nil), types...)
 	rows = append([]model.VideoTemplate(nil), rows...)
 	sort.SliceStable(types, func(i, j int) bool {
@@ -169,9 +185,18 @@ func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.Vid
 		return rows[i].ID > rows[j].ID
 	})
 	templatesByType := make(map[uint64][]ClientTemplate, len(types))
+	var configurations map[uint64]clientTemplateModelConfiguration
+	requireConfiguration := len(configurationArgs) > 0
+	if requireConfiguration {
+		configurations = configurationArgs[0]
+	}
 	for i := range rows {
 		item := rows[i]
-		templatesByType[item.VideoTemplateTypeID] = append(templatesByType[item.VideoTemplateTypeID], mapClientTemplate(&item))
+		configuration, exists := configurations[item.ID]
+		if requireConfiguration && !exists {
+			continue
+		}
+		templatesByType[item.TemplateTypeID] = append(templatesByType[item.TemplateTypeID], mapClientTemplate(&item, configuration))
 	}
 	result := make([]ClientTemplateType, 0, len(types))
 	for i := range types {
@@ -189,21 +214,32 @@ func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.Vid
 	return result
 }
 
-func mapClientTemplate(item *model.VideoTemplate) ClientTemplate {
-	return ClientTemplate{
-		ID:                  item.ID,
-		VideoTemplateTypeID: item.VideoTemplateTypeID,
-		Name:                item.Name,
-		TemplateType:        item.TemplateType,
-		CoverImage:          item.CoverImage,
-		TemplateVideo:       item.TemplateVideo,
-		ThumbnailVideo:      item.ThumbnailVideo,
-		Prompt:              item.Prompt,
-		Description:         item.Description,
-		Sort:                int(item.Sort),
-		UsageCount:          item.UsageCount,
-		ViewCount:           item.ViewCount,
+func mapClientTemplate(item *model.VideoTemplate, configurationArgs ...clientTemplateModelConfiguration) ClientTemplate {
+	result := ClientTemplate{
+		ID:             item.ID,
+		TemplateTypeID: item.TemplateTypeID,
+		Name:           item.Name,
+		TemplateType:   item.TemplateType,
+		CoverImageURL:  item.CoverImageURL,
+		OriginalURL:    item.OriginalURL,
+		ThumbnailURL:   item.ThumbnailURL,
+		Prompt:         item.Prompt,
+		Description:    item.Description,
+		Sort:           int(item.Sort),
+		UsageCount:     item.UsageCount,
+		ViewCount:      item.ViewCount,
 	}
+	if len(configurationArgs) > 0 {
+		configuration := configurationArgs[0]
+		result.ModelID = configuration.ModelID
+		result.ModelCode = configuration.ModelCode
+		result.ModelName = configuration.ModelName
+		result.ModelParameters = configuration.Parameters
+	}
+	if result.ModelParameters == nil {
+		result.ModelParameters = []ClientTemplateModelParameter{}
+	}
+	return result
 }
 
 func templateTypeIDs(items []model.VideoTemplateType) []uint64 {
@@ -232,10 +268,23 @@ func (s *ClientTemplateService) Recommend(ctx *gin.Context, req *ClientTemplateR
 	if err != nil {
 		return nil, err
 	}
+	templates := make([]model.VideoTemplate, 0, len(rows))
+	for i := range rows {
+		if rows[i].Template != nil {
+			templates = append(templates, rows[i].Template.VideoTemplate)
+		}
+	}
+	configurations, err := s.loadTemplateModelConfigurations(ctx, templates)
+	if err != nil {
+		return nil, err
+	}
 	result := make([]ClientTemplate, 0, len(rows))
 	for i := range rows {
 		if rows[i].Template != nil {
-			result = append(result, mapClientTemplate(&rows[i].Template.VideoTemplate))
+			template := &rows[i].Template.VideoTemplate
+			if configuration, exists := configurations[template.ID]; exists {
+				result = append(result, mapClientTemplate(template, configuration))
+			}
 		}
 	}
 	return result, nil
@@ -278,12 +327,25 @@ func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *Temp
 		return []ClientTemplate{}, nil
 	}
 	rows, _, err := s.templateRepo.PageList(ctx, page, pageSize, &repository.TemplateListFilter{
-		VideoTemplateTypeID: req.TemplateTypeId,
+		TemplateTypeID: req.TemplateTypeId,
 	})
 	if err != nil {
 		return nil, err
 	}
-	result := make([]ClientTemplate, 0, len(rows))
+	templates := make([]model.VideoTemplate, 0, len(rows))
+	for i := range rows {
+		templates = append(templates, rows[i].VideoTemplate)
+	}
+	configurations, err := s.loadTemplateModelConfigurations(ctx, templates)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]ClientTemplate, 0, len(templates))
+	for i := range templates {
+		if configuration, exists := configurations[templates[i].ID]; exists {
+			result = append(result, mapClientTemplate(&templates[i], configuration))
+		}
+	}
 	return result, nil
 }
 
@@ -292,7 +354,15 @@ func (s *ClientTemplateService) ClientTemplateInfo(ctx *gin.Context, req *Templa
 	if err != nil {
 		return ClientTemplate{}, err
 	}
-	resp := mapClientTemplate(template)
+	configurations, err := s.loadTemplateModelConfigurations(ctx, []model.VideoTemplate{*template})
+	if err != nil {
+		return ClientTemplate{}, err
+	}
+	configuration, exists := configurations[template.ID]
+	if !exists {
+		return ClientTemplate{}, errors.New("template model is unavailable")
+	}
+	resp := mapClientTemplate(template, configuration)
 	if s.TemplateFavoriteRepo.GetUserFavorite(ctx, middleware.GetAPIUserID(ctx), template.ID) {
 		resp.IsFavorite = 1
 	}

@@ -15,7 +15,8 @@ const TableNameVideoPackageVersion = "video_package_version"
 // VideoPackageVersion mapped from table <video_package_version>
 type VideoPackageVersion struct {
 	ID            uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	VersionCode   string         `gorm:"column:version_code;type:varchar(50);not null;comment:版本" json:"version_code"`                       // 版本
+	VersionCode   string         `gorm:"column:version_code;type:varchar(50);not null;comment:版本" json:"version_code"` // 版本
+	PackageCode   string         `gorm:"column:package_code;type:varchar(128);not null;index:idx_video_package_version_package,priority:1" json:"package_code"`
 	DownloadURL   string         `gorm:"column:download_url;type:varchar(1024);not null;comment:package download URL" json:"download_url"`   // package download URL
 	InstallCount  uint64         `gorm:"column:install_count;type:bigint unsigned;not null;comment:installation count" json:"install_count"` // installation count
 	DownloadCount uint64         `gorm:"column:download_count;type:bigint unsigned;not null;comment:download count" json:"download_count"`   // download count
@@ -25,7 +26,6 @@ type VideoPackageVersion struct {
 	CreatedAt     time.Time      `gorm:"column:created_at;type:datetime(3)" json:"created_at"`
 	UpdatedAt     time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
-	PackageCode   string         `gorm:"column:package_code;type:varchar(128);not null;index:idx_video_package_version_package,priority:1" json:"package_code"`
 	Package       VideoPackage   `gorm:"foreignKey:PackageCode;references:PackageCode" json:"package"`
 }
 

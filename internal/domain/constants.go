@@ -35,8 +35,8 @@ const (
 	BannerJumpTypeTextToImage uint8 = 3
 	BannerJumpTypeTextToVideo uint8 = 4
 
-	VideoTemplateKindAction   = "action"
-	VideoTemplateKindFaceSwap = "face_swap"
+	VideoTemplateKindImage int64 = 1
+	VideoTemplateKindVideo int64 = 2
 
 	PointsDirectionIncome  int32 = 1
 	PointsDirectionExpense int32 = 2

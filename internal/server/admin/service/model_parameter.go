@@ -23,12 +23,16 @@ const (
 var parameterKeyPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.-]{0,63}$`)
 
 type ModelParameterService struct {
-	modelRepo *repository.ModelRepo
-	repo      *repository.ModelParameterRepo
+	modelRepo             *repository.ModelRepo
+	repo                  *repository.ModelParameterRepo
+	templateParameterRepo *repository.TemplateModelParameterRepo
 }
 
 func NewModelParameterService() *ModelParameterService {
-	return &ModelParameterService{modelRepo: repository.NewModelRepo(), repo: repository.NewModelParameterRepo()}
+	return &ModelParameterService{
+		modelRepo: repository.NewModelRepo(), repo: repository.NewModelParameterRepo(),
+		templateParameterRepo: repository.NewTemplateModelParameterRepo(),
+	}
 }
 
 type ModelParameterPayload struct {
@@ -113,9 +117,33 @@ func (s *ModelParameterService) Update(ctx context.Context, modelID, id int64, r
 	if err := s.validatePayload(ctx, modelID, req, id); err != nil {
 		return nil, err
 	}
+	if item.ParamKey != req.ParamKey || item.ParamType != req.ValueType || item.ParameterType != req.ParameterType {
+		used, err := s.templateParameterRepo.ListByModelAndKey(ctx, modelID, item.ParamKey)
+		if err != nil {
+			return nil, err
+		}
+		if len(used) > 0 {
+			return nil, errors.New("该模型参数已被模板配置引用，不能修改参数键、值类型或参数类型")
+		}
+	}
 	updated, err := buildModelParameter(modelID, req)
 	if err != nil {
 		return nil, err
+	}
+	if req.ParameterType == ParameterTypeOption {
+		used, err := s.templateParameterRepo.ListByModelAndKey(ctx, modelID, item.ParamKey)
+		if err != nil {
+			return nil, err
+		}
+		for i := range used {
+			var values []interface{}
+			if err := json.Unmarshal([]byte(used[i].AllowedValues), &values); err != nil {
+				return nil, fmt.Errorf("模板 %d 的参数 %s 可选值无效: %w", used[i].TemplateID, item.ParamKey, err)
+			}
+			if err := ensureTemplateAllowedValuesAreSubset(*updated, values); err != nil {
+				return nil, fmt.Errorf("模型参数变更会使模板 %d 的配置失效: %w", used[i].TemplateID, err)
+			}
+		}
 	}
 	updated.ID = item.ID
 	updated.CreatedAt = item.CreatedAt
@@ -135,6 +163,13 @@ func (s *ModelParameterService) Delete(ctx context.Context, modelID, id int64) e
 	item, err := s.repo.GetByModelAndID(ctx, modelID, id)
 	if err != nil {
 		return notFoundOr(err, "模型配置不存在")
+	}
+	used, err := s.templateParameterRepo.ListByModelAndKey(ctx, modelID, item.ParamKey)
+	if err != nil {
+		return err
+	}
+	if len(used) > 0 {
+		return errors.New("该模型参数已被模板配置引用，请先调整关联模板")
 	}
 	// Generated model contains DeletedAt, therefore this is a soft delete.
 	return s.repo.Delete(ctx, uint(item.ID))

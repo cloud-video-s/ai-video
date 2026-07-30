@@ -5,14 +5,17 @@ import (
 
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/repository"
 )
 
 func TestAttributionEventStateUsesCurrentUserFlags(t *testing.T) {
-	item := &model.VideoUserAttribution{
-		ActivationCallbackCount: 2,
-		ActivationDeductCount:   1,
+	item := &repository.UserAttributionRecord{
+		VideoUserAttribution: model.VideoUserAttribution{
+			ActivationCallbackCount: 2,
+			ActivationDeductCount:   1,
+		},
 		User: model.VideoUser{
-			Activated: 1, KeyBehaviorMet: 0, PaymentMet: true,
+			Activated: 1, KeyBehaviorMet: 0, PaymentMet: 1,
 		},
 	}
 	callback, deduct, reached, err := attributionEventState(item, domain.AttributionEventActivation)

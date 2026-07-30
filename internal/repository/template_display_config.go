@@ -25,11 +25,11 @@ func (r *TemplateDisplayConfigRepo) Create(ctx context.Context, item *model.Vide
 }
 
 type TemplateDisplayConfigListFilter struct {
-	TemplateID          uint64
-	VideoTemplateTypeID uint64
-	PositionKey         string
-	Status              *int8
-	Keyword             string
+	TemplateID     uint64
+	TemplateTypeID uint64
+	PositionKey    string
+	Status         *int8
+	Keyword        string
 }
 
 type TemplateDisplayConfigRecord struct {
@@ -52,8 +52,8 @@ func (r *TemplateDisplayConfigRepo) PageList(ctx context.Context, page, pageSize
 		if filter.TemplateID != 0 {
 			dao = dao.Where(config.TemplateID.Eq(filter.TemplateID))
 		}
-		if filter.VideoTemplateTypeID != 0 {
-			dao = dao.Where(template.VideoTemplateTypeID.Eq(filter.VideoTemplateTypeID))
+		if filter.TemplateTypeID != 0 {
+			dao = dao.Where(template.TemplateTypeID.Eq(filter.TemplateTypeID))
 		}
 		if filter.PositionKey != "" {
 			dao = dao.Where(config.PlacementKey.Eq(filter.PositionKey))
@@ -146,7 +146,7 @@ func (r *TemplateDisplayConfigRepo) ListForClient(ctx context.Context, targets C
 		Join(placement, placement.PositionKey.EqCol(config.PlacementKey)).
 		Where(
 			config.PlacementKey.Eq(targets.PositionKey), config.Status.Eq(1),
-			template.Status.Eq(1), template.VideoTemplateTypeID.In(typeIDs...), placement.Status.Eq(1),
+			template.Status.Eq(1), template.TemplateTypeID.In(typeIDs...), placement.Status.Eq(1),
 		).
 		Order(config.Sort.Desc(), template.Sort.Desc(), template.UsageCount.Desc(),
 			template.LikeCount.Desc(), template.ViewCount.Desc(), template.ID.Desc()).Find()

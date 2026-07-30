@@ -44,7 +44,7 @@ func (h *GenerationHandler) Models(c *gin.Context) {
 	response.OK(c, items)
 }
 
-// Create 创建并立即提交一个属于当前客户端用户的视频生成任务。
+// Create 校验并创建一个属于当前客户端用户的待处理生成任务。
 func (h *GenerationHandler) Create(c *gin.Context) {
 	var request generation.CreateTaskRequest
 	if err := c.ShouldBindJSON(&request); err != nil {

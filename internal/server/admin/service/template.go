@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
@@ -275,42 +276,55 @@ func normalizeStringValues(values []string) []string {
 }
 
 type TemplateService struct {
-	repo     *repository.TemplateRepo
-	typeRepo *repository.TemplateTypeRepo
+	repo             *repository.TemplateRepo
+	typeRepo         *repository.TemplateTypeRepo
+	modelRepo        *repository.ModelRepo
+	parameterService *TemplateModelParameterService
 }
 
 func NewTemplateService() *TemplateService {
 	return &TemplateService{
 		repo: repository.NewTemplateRepo(), typeRepo: repository.NewTemplateTypeRepo(),
+		modelRepo: repository.NewModelRepo(), parameterService: NewTemplateModelParameterService(),
 	}
 }
 
 type ListTemplateRequest struct {
-	VideoTemplateTypeID uint64 `form:"video_template_type_id"`
-	PositionKey         string `form:"position_key" binding:"omitempty,max=64"`
-	TemplateType        string `form:"template_type"`
-	Status              *int8  `form:"status" binding:"omitempty,oneof=0 1"`
-	Keyword             string `form:"keyword"`
+	TemplateTypeID       uint64 `form:"template_type_id"`
+	LegacyTemplateTypeID uint64 `form:"video_template_type_id"`
+	ModelID              uint64 `form:"model_id"`
+	PositionKey          string `form:"position_key" binding:"omitempty,max=64"`
+	TemplateType         int64  `form:"template_type" binding:"omitempty,oneof=1 2"`
+	Status               *int32 `form:"status" binding:"omitempty,oneof=0 1"`
+	Keyword              string `form:"keyword"`
 }
 
 type TemplatePayload struct {
-	VideoTemplateTypeID uint64 `json:"video_template_type_id" binding:"required"`
-	Name                string `json:"name" binding:"required,max=128"`
-	TemplateType        string `json:"template_type" binding:"required,max=32"`
-	Sort                int    `json:"sort"`
-	CoverImage          string `json:"cover_image" binding:"required,max=1024"`
-	TemplateVideo       string `json:"template_video" binding:"required,max=1024"`
-	ThumbnailVideo      string `json:"thumbnail_video" binding:"max=1024"`
-	Prompt              string `json:"prompt" binding:"max=65535"`
-	Status              int8   `json:"status" binding:"oneof=0 1"`
-	Description         string `json:"description" binding:"max=500"`
+	TemplateTypeID       uint64                  `json:"template_type_id"`
+	LegacyTemplateTypeID uint64                  `json:"video_template_type_id"`
+	ModelID              uint64                  `json:"model_id" binding:"required"`
+	Name                 string                  `json:"name" binding:"required,max=128"`
+	TemplateType         int64                   `json:"template_type" binding:"required,oneof=1 2"`
+	Sort                 int                     `json:"sort"`
+	CoverImageURL        string                  `json:"cover_image_url" binding:"required,max=1024"`
+	OriginalURL          string                  `json:"original_url" binding:"required,max=1024"`
+	ThumbnailURL         string                  `json:"thumbnail_url" binding:"max=1024"`
+	Prompt               string                  `json:"prompt" binding:"max=65535"`
+	Status               int32                   `json:"status" binding:"oneof=0 1"`
+	Description          string                  `json:"description" binding:"max=500"`
+	ModelParameters      []ModelParameterPayload `json:"model_parameters" binding:"omitempty,max=100,dive"`
 }
 
 func (s *TemplateService) List(ctx context.Context, page, pageSize int, req *ListTemplateRequest) ([]repository.TemplateRecord, int64, error) {
+	templateTypeID := req.TemplateTypeID
+	if templateTypeID == 0 {
+		templateTypeID = req.LegacyTemplateTypeID
+	}
 	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateListFilter{
-		VideoTemplateTypeID: req.VideoTemplateTypeID,
-		PositionKey:         strings.TrimSpace(req.PositionKey),
-		TemplateType:        strings.TrimSpace(req.TemplateType), Status: req.Status,
+		TemplateTypeID: templateTypeID,
+		ModelID:        req.ModelID,
+		PositionKey:    strings.TrimSpace(req.PositionKey),
+		TemplateType:   req.TemplateType, Status: req.Status,
 		Keyword: strings.TrimSpace(req.Keyword),
 	})
 }
@@ -328,12 +342,28 @@ func (s *TemplateService) ListOptions(ctx context.Context) ([]repository.Templat
 }
 
 func (s *TemplateService) Create(ctx context.Context, req *TemplatePayload) (*repository.TemplateRecord, error) {
-	if err := s.ensureTypeExists(ctx, req.VideoTemplateTypeID); err != nil {
+	normalizeTemplatePayload(req)
+	if err := validateTemplatePayload(req); err != nil {
+		return nil, err
+	}
+	if err := s.ensureTypeExists(ctx, req.TemplateTypeID); err != nil {
+		return nil, err
+	}
+	if err := s.ensureModelExists(ctx, req.ModelID); err != nil {
+		return nil, err
+	}
+	parameters, err := s.parameterService.prepare(ctx, int64(req.ModelID), req.ModelParameters)
+	if err != nil {
 		return nil, err
 	}
 	item := &model.VideoTemplate{}
 	applyTemplatePayload(item, req)
-	if err := s.repo.Create(ctx, item); err != nil {
+	if err := repository.Transaction(ctx, func(txCtx context.Context) error {
+		if err := s.repo.Create(txCtx, item); err != nil {
+			return err
+		}
+		return s.parameterService.repo.ReplaceForTemplate(txCtx, item.ID, parameters)
+	}); err != nil {
 		return nil, err
 	}
 	return s.repo.GetWithType(ctx, item.ID)
@@ -344,11 +374,34 @@ func (s *TemplateService) Update(ctx context.Context, id uint64, req *TemplatePa
 	if err != nil {
 		return nil, notFoundOr(err, "模板不存在")
 	}
-	if err := s.ensureTypeExists(ctx, req.VideoTemplateTypeID); err != nil {
+	normalizeTemplatePayload(req)
+	if err := validateTemplatePayload(req); err != nil {
 		return nil, err
 	}
+	if err := s.ensureTypeExists(ctx, req.TemplateTypeID); err != nil {
+		return nil, err
+	}
+	if err := s.ensureModelExists(ctx, req.ModelID); err != nil {
+		return nil, err
+	}
+	modelChanged := item.ModelID != req.ModelID
+	var parameters []*model.VideoTemplateModelParameter
+	if modelChanged || req.ModelParameters != nil {
+		parameters, err = s.parameterService.prepare(ctx, int64(req.ModelID), req.ModelParameters)
+		if err != nil {
+			return nil, err
+		}
+	}
 	applyTemplatePayload(&item.VideoTemplate, req)
-	if err := s.repo.UpdateFields(ctx, &item.VideoTemplate); err != nil {
+	if err := repository.Transaction(ctx, func(txCtx context.Context) error {
+		if err := s.repo.UpdateFields(txCtx, &item.VideoTemplate); err != nil {
+			return err
+		}
+		if modelChanged || req.ModelParameters != nil {
+			return s.parameterService.repo.ReplaceForTemplate(txCtx, item.ID, parameters)
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 	return s.repo.GetWithType(ctx, item.ID)
@@ -369,14 +422,48 @@ func (s *TemplateService) ensureTypeExists(ctx context.Context, id uint64) error
 	return err
 }
 
+func (s *TemplateService) ensureModelExists(ctx context.Context, id uint64) error {
+	_, err := s.modelRepo.GetByID(ctx, uint(id))
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.New("关联模型不存在")
+	}
+	return err
+}
+
+func normalizeTemplatePayload(req *TemplatePayload) {
+	if req == nil {
+		return
+	}
+	if req.TemplateTypeID == 0 {
+		req.TemplateTypeID = req.LegacyTemplateTypeID
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	req.CoverImageURL = strings.TrimSpace(req.CoverImageURL)
+	req.OriginalURL = strings.TrimSpace(req.OriginalURL)
+	req.ThumbnailURL = strings.TrimSpace(req.ThumbnailURL)
+	req.Prompt = strings.TrimSpace(req.Prompt)
+	req.Description = strings.TrimSpace(req.Description)
+}
+
+func validateTemplatePayload(req *TemplatePayload) error {
+	if req == nil || req.TemplateTypeID == 0 || req.ModelID == 0 {
+		return errors.New("模板分类和关联模型不能为空")
+	}
+	if req.Name == "" || (req.TemplateType != domain.VideoTemplateKindImage && req.TemplateType != domain.VideoTemplateKindVideo) || req.CoverImageURL == "" || req.OriginalURL == "" {
+		return errors.New("模板名称、模板类型、封面和原始资源地址不能为空")
+	}
+	return nil
+}
+
 func applyTemplatePayload(item *model.VideoTemplate, req *TemplatePayload) {
-	item.VideoTemplateTypeID = req.VideoTemplateTypeID
+	item.TemplateTypeID = req.TemplateTypeID
+	item.ModelID = req.ModelID
 	item.Name = strings.TrimSpace(req.Name)
-	item.TemplateType = strings.TrimSpace(req.TemplateType)
+	item.TemplateType = req.TemplateType
 	item.Sort = int64(req.Sort)
-	item.CoverImage = strings.TrimSpace(req.CoverImage)
-	item.TemplateVideo = strings.TrimSpace(req.TemplateVideo)
-	item.ThumbnailVideo = strings.TrimSpace(req.ThumbnailVideo)
+	item.CoverImageURL = strings.TrimSpace(req.CoverImageURL)
+	item.OriginalURL = strings.TrimSpace(req.OriginalURL)
+	item.ThumbnailURL = strings.TrimSpace(req.ThumbnailURL)
 	item.Prompt = strings.TrimSpace(req.Prompt)
 	item.Status = req.Status
 	item.Description = strings.TrimSpace(req.Description)

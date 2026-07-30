@@ -22,12 +22,14 @@ type ModelService struct {
 	platformRepo  *repository.PlatformRepo
 	parameterRepo *repository.ModelParameterRepo
 	taskRepo      *repository.UserGenerationTaskRepo
+	templateRepo  *repository.TemplateRepo
 }
 
 func NewModelService() *ModelService {
 	return &ModelService{
 		repo: repository.NewModelRepo(), platformRepo: repository.NewPlatformRepo(),
 		parameterRepo: repository.NewModelParameterRepo(), taskRepo: repository.NewUserGenerationTaskRepo(),
+		templateRepo: repository.NewTemplateRepo(),
 	}
 }
 
@@ -186,6 +188,13 @@ func (s *ModelService) Delete(ctx context.Context, id int64) error {
 	}
 	if taskCount > 0 {
 		return errors.New("该模型已有用户生成任务，不能删除；可将其禁用")
+	}
+	templateCount, err := s.templateRepo.CountByModel(ctx, uint64(id))
+	if err != nil {
+		return err
+	}
+	if templateCount > 0 {
+		return errors.New("该模型已关联模板，请先调整关联模板；也可以将模型禁用")
 	}
 	// Model and its parameter rows are soft-deleted in one transaction.
 	return repository.Transaction(ctx, func(txCtx context.Context) error {

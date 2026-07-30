@@ -101,11 +101,14 @@ func (h *TemplateTypeHandler) Delete(c *gin.Context) {
 }
 
 type TemplateHandler struct {
-	svc *service.TemplateService
+	svc               *service.TemplateService
+	modelParameterSvc *service.TemplateModelParameterService
 }
 
 func NewTemplateHandler() *TemplateHandler {
-	return &TemplateHandler{svc: service.NewTemplateService()}
+	return &TemplateHandler{
+		svc: service.NewTemplateService(), modelParameterSvc: service.NewTemplateModelParameterService(),
+	}
 }
 
 func (h *TemplateHandler) List(c *gin.Context) {
@@ -187,6 +190,37 @@ func (h *TemplateHandler) Delete(c *gin.Context) {
 		return
 	}
 	response.OK(c, nil)
+}
+
+func (h *TemplateHandler) ModelParameters(c *gin.Context) {
+	id, ok := templateResourceID(c, "模板")
+	if !ok {
+		return
+	}
+	item, err := h.modelParameterSvc.List(c.Request.Context(), id)
+	if err != nil {
+		response.Fail(c, errcode.ErrParam, err.Error())
+		return
+	}
+	response.OK(c, item)
+}
+
+func (h *TemplateHandler) ReplaceModelParameters(c *gin.Context) {
+	id, ok := templateResourceID(c, "模板")
+	if !ok {
+		return
+	}
+	var req service.TemplateModelParameterReplacePayload
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
+	item, err := h.modelParameterSvc.Replace(c.Request.Context(), id, &req)
+	if err != nil {
+		response.Fail(c, errcode.ErrParam, err.Error())
+		return
+	}
+	response.OK(c, item)
 }
 
 func templateResourceID(c *gin.Context, resource string) (uint64, bool) {

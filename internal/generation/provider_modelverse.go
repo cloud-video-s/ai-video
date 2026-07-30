@@ -75,9 +75,6 @@ func (p *ModelVerseProvider) submitUCloud(ctx context.Context, config *model.Vid
 	if err != nil {
 		return nil, err
 	}
-	//if config.ModelType != 1 {
-	//	return nil, fmt.Errorf("UCloud models require Bearer authentication, model_type=%d", config.ModelType)
-	//}
 	client, err := ucloud.NewClient(ucloud.ClientConfig{
 		APIKey: modelAPIKey(config), BaseURL: modelBaseURL(config), SubmitEndpoint: config.SubmitEndpoint,
 	})
@@ -137,7 +134,15 @@ func (p *ModelVerseProvider) submitUCloud(ctx context.Context, config *model.Vid
 }
 
 func (p *ModelVerseProvider) Status(ctx context.Context, config *model.VideoModel, taskID string) (*ProviderTaskStatus, error) {
-	endpoint, err := resolveEndpoint(modelBaseURL(config), config.StatusEndpoint)
+	taskID = strings.TrimSpace(taskID)
+	if taskID == "" {
+		return nil, errors.New("third_task_code 不能为空")
+	}
+	statusEndpoint := strings.TrimSpace(config.StatusEndpoint)
+	if statusEndpoint == "" {
+		statusEndpoint = "/v1/tasks/status"
+	}
+	endpoint, err := resolveEndpoint(modelBaseURL(config), statusEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +184,15 @@ func (p *ModelVerseProvider) Status(ctx context.Context, config *model.VideoMode
 	if err := json.Unmarshal(raw, &response); err != nil {
 		return nil, fmt.Errorf("解析 ModelVerse 任务状态失败: %w", err)
 	}
-	if strings.TrimSpace(response.Output.TaskStatus) == "" {
+	response.Output.TaskID = strings.TrimSpace(response.Output.TaskID)
+	response.Output.TaskStatus = strings.TrimSpace(response.Output.TaskStatus)
+	if response.Output.TaskID == "" {
+		return nil, errors.New("ModelVerse 未返回 task_id")
+	}
+	if response.Output.TaskID != taskID {
+		return nil, fmt.Errorf("ModelVerse 返回的 task_id %q 与 third_task_code %q 不一致", response.Output.TaskID, taskID)
+	}
+	if response.Output.TaskStatus == "" {
 		return nil, errors.New("ModelVerse 未返回 task_status")
 	}
 	return &ProviderTaskStatus{

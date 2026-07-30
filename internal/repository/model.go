@@ -53,6 +53,15 @@ func (r *ModelRepo) GetByIDWithPlatform(ctx context.Context, id int64) (*model.V
 	return q.WithContext(ctx).Preload(q.Platform).Where(q.ID.Eq(id)).First()
 }
 
+func (r *ModelRepo) ListByIDs(ctx context.Context, ids []int64) ([]model.VideoModel, error) {
+	if len(ids) == 0 {
+		return []model.VideoModel{}, nil
+	}
+	q := qFrom(ctx).VideoModel
+	rows, err := q.WithContext(ctx).Where(q.ID.In(ids...)).Order(q.ID.Asc()).Find()
+	return valuesOf(rows), err
+}
+
 func (r *ModelRepo) GetByCode(ctx context.Context, code string) (*model.VideoModel, error) {
 	q := qFrom(ctx).VideoModel
 	return q.WithContext(ctx).Where(q.Code.Eq(code)).First()
@@ -82,6 +91,23 @@ func (r *ModelRepo) ListEnabled(ctx context.Context) ([]model.VideoModel, error)
 // only applies the model table's soft-delete scope automatically in this join.
 func (r *ModelRepo) ListEnabledByType(ctx context.Context, modelType uint32) ([]model.VideoModel, error) {
 	return r.listEnabled(ctx, modelType)
+}
+
+func (r *ModelRepo) ListEnabledByIDs(ctx context.Context, ids []int64) ([]model.VideoModel, error) {
+	if len(ids) == 0 {
+		return []model.VideoModel{}, nil
+	}
+	var rows []model.VideoModel
+	err := dbFrom(ctx).Model(&model.VideoModel{}).
+		Select(model.TableNameVideoModel+".*").
+		Joins("JOIN "+model.TableNameVideoPlatform+" ON "+model.TableNameVideoPlatform+".id = "+model.TableNameVideoModel+".platform_id").
+		Where(model.TableNameVideoModel+".id IN ?", ids).
+		Where(model.TableNameVideoModel+".status = ?", 1).
+		Where(model.TableNameVideoPlatform+".status = ?", 1).
+		Where(model.TableNameVideoPlatform + ".deleted_at IS NULL").
+		Order(model.TableNameVideoModel + ".id ASC").
+		Find(&rows).Error
+	return rows, err
 }
 
 func (r *ModelRepo) listEnabled(ctx context.Context, modelType uint32) ([]model.VideoModel, error) {

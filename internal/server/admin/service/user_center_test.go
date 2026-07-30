@@ -49,7 +49,7 @@ func TestUserCenterVIPAndAccessOperations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.VIPLevel != 3 || updated.VipExpiresAt == nil || !updated.IsFrozen || updated.Status != 0 {
+	if updated.VIPLevel != 3 || updated.VipExpiresAt == nil || updated.IsFrozen != 1 || updated.Status != 0 {
 		t.Fatalf("unexpected updated user: level=%d expires=%v frozen=%v status=%d", updated.VIPLevel, updated.VipExpiresAt, updated.IsFrozen, updated.Status)
 	}
 	if updated.TokenVersion != 1 {
