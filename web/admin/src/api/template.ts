@@ -65,7 +65,7 @@ export interface VideoTemplatePayload {
   prompt: string
   status: number
   description: string
-  model_parameters: ModelParameterPayload[]
+  model_parameters?: ModelParameterPayload[]
 }
 
 export interface TemplateModelParameter extends ModelParameter {

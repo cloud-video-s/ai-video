@@ -97,7 +97,15 @@ const pendingImage = ref<File>()
 const cropVisible = ref(false)
 let disposed = false
 
-const accept = computed(() => props.kind === 'image' ? 'image/jpeg,image/png,image/gif,image/webp' : 'video/mp4,video/quicktime,video/webm,video/x-matroska')
+const imageMIMETypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const videoMIMETypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska']
+const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+const videoExtensions = ['.mp4', '.mov', '.webm', '.mkv']
+const accept = computed(() => {
+  const mimeTypes = props.kind === 'image' ? imageMIMETypes : videoMIMETypes
+  const extensions = props.kind === 'image' ? imageExtensions : videoExtensions
+  return [...mimeTypes, ...extensions].join(',')
+})
 const busy = computed(() => ['preparing', 'uploading', 'merging'].includes(state.value))
 const active = computed(() => !['idle', 'done'].includes(state.value))
 const progressStatus = computed(() => state.value === 'done' ? 'success' : state.value === 'error' ? 'exception' : undefined)
@@ -146,13 +154,21 @@ async function handleFileChange(uploadFile: UploadFile) {
   const selected = uploadFile.raw
   uploadRef.value?.clearFiles()
   if (!selected) return
+  const suffix = selected.name.split('.').pop()?.toLowerCase()
+  const extension = suffix ? '.' + suffix : ''
   if (props.kind === 'image') {
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(selected.type)) {
+    const mimeMatches = !selected.type || imageMIMETypes.includes(selected.type)
+    if (!mimeMatches || !imageExtensions.includes(extension)) {
       ElMessage.warning('仅支持 JPG、PNG、WebP 或 GIF 图片')
       return
     }
     pendingImage.value = selected
     cropVisible.value = true
+    return
+  }
+  const mimeMatches = !selected.type || videoMIMETypes.includes(selected.type)
+  if (!mimeMatches || !videoExtensions.includes(extension)) {
+    ElMessage.warning('仅支持 MP4、MOV、WebM 或 MKV 视频')
     return
   }
   await prepareUpload(selected)

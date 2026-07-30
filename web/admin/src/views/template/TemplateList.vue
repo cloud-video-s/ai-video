@@ -4,7 +4,7 @@
       <template #header>
         <div class="page-header">
           <div>
-            <div class="page-title">视频模板</div>
+            <div class="page-title">模板管理</div>
             <div class="page-subtitle">管理模板自身信息；投放范围由所属模板分类统一控制</div>
           </div>
           <el-button v-if="canAdd" type="primary" :disabled="enabledTypeOptions.length === 0 || enabledModelOptions.length === 0" @click="openCreate">
@@ -15,7 +15,15 @@
 
       <el-alert
         v-if="enabledTypeOptions.length === 0"
-        title="请先新增并启用一个模板分类，再创建视频模板。"
+        title="请先新增并启用一个模板分类，再创建模板。"
+        type="warning"
+        show-icon
+        :closable="false"
+        class="type-alert"
+      />
+      <el-alert
+        v-else-if="enabledModelOptions.length === 0"
+        title="请先在模型管理中新增并启用图片或视频模型，再创建模板。"
         type="warning"
         show-icon
         :closable="false"
@@ -26,11 +34,11 @@
         <el-select v-model="query.template_type_id" clearable filterable placeholder="模板分类">
           <el-option v-for="item in typeOptions" :key="item.id" :label="typeLabel(item)" :value="String(item.id)" />
         </el-select>
-        <el-select v-model="query.template_type" clearable filterable placeholder="模板类型">
+        <el-select v-model="query.template_type" clearable filterable placeholder="模板类型" @change="handleQueryTemplateTypeChange">
           <el-option v-for="item in templateKinds" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
         <el-select v-model="query.model_id" clearable filterable placeholder="关联模型">
-          <el-option v-for="item in modelOptions" :key="item.id" :label="modelLabel(item)" :value="String(item.id)" />
+          <el-option v-for="item in queryModelOptions" :key="item.id" :label="modelLabel(item)" :value="String(item.id)" />
         </el-select>
         <el-select v-model="query.position_key" clearable filterable placeholder="展示位置">
           <el-option v-for="item in positionOptions" :key="item.id" :label="positionLabel(item)" :value="item.position_key" />
@@ -75,16 +83,6 @@
             <div class="primary-text">{{ row.video_template_type?.category_name || `分类 #${row.template_type_id}` }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="投放条件" min-width="250">
-          <template #default="{ row }">
-            <div class="target-tags">
-              <el-tag size="small" effect="plain">{{ countrySummary(row.video_template_type?.countries) }}</el-tag>
-              <el-tag size="small" type="info" effect="plain">{{ appSummary(row.video_template_type?.apps) }}</el-tag>
-              <el-tag size="small" type="info" effect="plain">{{ packageSummary(row.video_template_type?.packages) }}</el-tag>
-              <el-tag size="small" type="info" effect="plain">{{ versionSummary(row.video_template_type?.versions) }}</el-tag>
-            </div>
-          </template>
-        </el-table-column>
         <el-table-column label="媒体" width="150" align="center">
           <template #default="{ row }">
             <div class="media-actions">
@@ -115,8 +113,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column v-if="canEdit || canDelete" label="操作" width="130" fixed="right" align="center">
+        <el-table-column v-if="canEdit || canDelete" label="操作" width="205" fixed="right" align="center">
           <template #default="{ row }">
+            <el-button v-if="canEdit" link type="success" @click="openTemplateParameters(row)">模型配置</el-button>
             <el-button v-if="canEdit" link type="primary" @click="openEdit(row)">编辑</el-button>
             <el-popconfirm v-if="canDelete" title="确认删除该模板？" @confirm="handleDelete(row.id)">
               <template #reference><el-button link type="danger">删除</el-button></template>
@@ -138,7 +137,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑视频模板' : '新增视频模板'" width="820px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑模板' : '新增模板'" width="820px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="108px">
         <div class="form-grid">
           <el-form-item label="模板名称" prop="name">
@@ -156,14 +155,14 @@
             </el-select>
           </el-form-item>
           <el-form-item label="模板类型" prop="template_type">
-            <el-select v-model="form.template_type" placeholder="请选择模板类型" style="width: 100%">
+            <el-select v-model="form.template_type" placeholder="请选择模板类型" style="width: 100%" @change="handleTemplateTypeChange">
               <el-option v-for="item in templateKinds" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="关联模型" prop="model_id">
             <el-select v-model="form.model_id" filterable placeholder="请选择模型" style="width: 100%" @change="handleModelChange">
               <el-option
-                v-for="item in modelOptions"
+                v-for="item in matchingModelOptions"
                 :key="item.id"
                 :label="modelLabel(item)"
                 :value="item.id"
@@ -229,66 +228,10 @@
             v-model="form.thumbnail_url"
             :kind="mediaKind(form.template_type)"
             resume-key="template-thumbnail-video"
-            placeholder="可选；输入 URL 或选择文件分片上传"
+            placeholder="输入缩略资源 URL，或选择文件分片上传"
             @preview="(url) => previewMedia(mediaKind(form.template_type), url, '缩略资源预览')"
             @uploading-change="(value) => (mediaUploading.thumbnail = value)"
           />
-        </el-form-item>
-        <el-form-item label="模型配置">
-          <div class="model-parameters" v-loading="parameterLoading">
-            <el-empty v-if="!parameterLoading && parameterEditors.length === 0" description="所选模型暂无可配置参数" :image-size="72" />
-            <div v-for="editor in parameterEditors" :key="editor.definition.param_key" class="parameter-card">
-              <div class="parameter-header">
-                <el-checkbox v-model="editor.enabled">
-                  <code>{{ editor.definition.param_key }}</code>
-                </el-checkbox>
-                <div class="parameter-tags">
-                  <el-tag size="small" effect="plain">{{ editor.definition.value_type }}</el-tag>
-                  <el-tag size="small" :type="editor.definition.parameter_type === 1 ? 'success' : 'warning'">
-                    {{ editor.definition.parameter_type === 1 ? '选项' : '请求参数' }}
-                  </el-tag>
-                </div>
-              </div>
-              <div v-if="editor.definition.description" class="parameter-description">{{ editor.definition.description }}</div>
-              <div v-if="editor.enabled && editor.definition.parameter_type === 1" class="parameter-fields">
-                <div>
-                  <div class="parameter-label">模板允许值</div>
-                  <el-checkbox-group v-model="editor.allowed_values" @change="normalizeOptionDefault(editor)">
-                    <el-checkbox
-                      v-for="value in editor.definition.allowed_values"
-                      :key="valueKey(value)"
-                      :value="value"
-                    >{{ displayValue(value) }}</el-checkbox>
-                  </el-checkbox-group>
-                </div>
-                <div>
-                  <div class="parameter-label">默认值</div>
-                  <el-select v-model="editor.default_value" placeholder="请选择默认值" style="width: 100%">
-                    <el-option
-                      v-for="value in editor.allowed_values"
-                      :key="valueKey(value)"
-                      :label="displayValue(value)"
-                      :value="value"
-                    />
-                  </el-select>
-                </div>
-              </div>
-              <div v-else-if="editor.enabled" class="parameter-fields request-parameter-fields">
-                <div>
-                  <div class="parameter-label">默认值（JSON，可留空）</div>
-                  <el-input v-model="editor.default_value_text" placeholder='例如："value"、10、true 或 {"key":"value"}' />
-                </div>
-                <div>
-                  <div class="parameter-label">是否必填</div>
-                  <el-switch v-model="editor.is_required" :active-value="1" :inactive-value="0" />
-                </div>
-                <div class="constraints-field">
-                  <div class="parameter-label">限制条件（JSON 对象）</div>
-                  <el-input v-model="editor.constraints_text" type="textarea" :rows="3" />
-                </div>
-              </div>
-            </div>
-          </div>
         </el-form-item>
         <el-form-item label="提示词" prop="prompt">
           <el-input
@@ -297,7 +240,7 @@
             :rows="4"
             maxlength="65535"
             show-word-limit
-            placeholder="输入生成视频所需的提示词"
+            placeholder="输入生成资源所需的提示词"
           />
         </el-form-item>
         <el-form-item label="描述" prop="description">
@@ -318,6 +261,15 @@
         <video v-else-if="preview.url" :src="preview.url" controls playsinline class="preview-video" />
       </div>
     </el-dialog>
+
+    <TemplateModelParameterDrawer
+      v-model="parameterDrawerVisible"
+      :parameters="modelParameterPayloads"
+      :model="parameterDrawerModel"
+      :definitions="modelParameterDefinitions"
+      :loading="parameterLoading || parameterSaving"
+      @update:parameters="handleModelParameterUpdate"
+    />
   </div>
 </template>
 
@@ -330,6 +282,7 @@ import {
   getTemplateList,
   getTemplateModelParameters,
   getTemplateTypeOptions,
+  replaceTemplateModelParameters,
   updateTemplate,
   type TemplateModelParameter,
   type VideoTemplate,
@@ -350,6 +303,7 @@ import type { AppPackage } from '@/api/package'
 import type { PackageVersion } from '@/api/packageVersion'
 import type { VideoApp } from '@/api/videoApp'
 import MediaUploader from '@/components/MediaUploader.vue'
+import TemplateModelParameterDrawer from './TemplateModelParameterDrawer.vue'
 
 const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('template:add'))
@@ -365,7 +319,10 @@ const templateKinds = [
 const loading = ref(false)
 const submitting = ref(false)
 const parameterLoading = ref(false)
+const parameterSaving = ref(false)
 const dialogVisible = ref(false)
+const parameterDrawerVisible = ref(false)
+const configuredTemplate = ref<VideoTemplate | null>(null)
 const formRef = ref<FormInstance>()
 const tableData = ref<VideoTemplate[]>([])
 const typeOptions = ref<VideoTemplateType[]>([])
@@ -393,19 +350,8 @@ interface TemplateForm {
   description: string
 }
 
-interface TemplateParameterEditor {
-  definition: ModelParameter
-  enabled: boolean
-  allowed_values: unknown[]
-  default_value: unknown
-  default_value_text: string
-  constraints_text: string
-  is_required: number
-  description: string
-  sort_order: number
-}
-
-const parameterEditors = ref<TemplateParameterEditor[]>([])
+const modelParameterDefinitions = ref<ModelParameter[]>([])
+const modelParameterPayloads = ref<ModelParameterPayload[]>([])
 const defaultForm: TemplateForm = {
   id: 0,
   template_type_id: 0,
@@ -421,13 +367,85 @@ const defaultForm: TemplateForm = {
   description: '',
 }
 const form = reactive<TemplateForm>({ ...defaultForm })
+const matchingModelOptions = computed(() => modelOptions.value.filter((item) => item.model_type === form.template_type))
+const currentModel = computed(() => modelOptions.value.find((item) => item.id === form.model_id) || null)
+const parameterDrawerModel = computed(() => {
+  const modelID = configuredTemplate.value?.model_id
+  return modelOptions.value.find((item) => item.id === modelID) || null
+})
+const queryModelOptions = computed(() => {
+  const kind = Number(query.template_type)
+  return kind === 1 || kind === 2 ? modelOptions.value.filter((item) => item.model_type === kind) : modelOptions.value
+})
+const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+const videoExtensions = ['.mp4', '.mov', '.webm', '.mkv']
+type ValidationCallback = (error?: Error) => void
+
+function mediaURLMatches(value: string, kind: 'image' | 'video') {
+  try {
+    const parsed = new URL(value.trim(), window.location.origin)
+    const path = parsed.pathname.toLowerCase()
+    const extensions = kind === 'image' ? imageExtensions : videoExtensions
+    return extensions.some((extension) => path.endsWith(extension))
+  } catch {
+    return false
+  }
+}
+
+function validateCoverImageURL(_rule: unknown, value: string, callback: ValidationCallback) {
+  if (!value?.trim()) {
+    callback(new Error('请输入封面图 URL'))
+  } else if (!mediaURLMatches(value, 'image')) {
+    callback(new Error('封面图仅支持 JPG、PNG、WebP 或 GIF 图片'))
+  } else {
+    callback()
+  }
+}
+
+function validateOriginalURL(_rule: unknown, value: string, callback: ValidationCallback) {
+  if (!value?.trim()) {
+    callback(new Error('请输入原始资源 URL'))
+    return
+  }
+  const kind = mediaKind(form.template_type)
+  if (!mediaURLMatches(value, kind)) {
+    callback(new Error(kind === 'image'
+      ? '图片模板的原始资源仅支持 JPG、PNG、WebP 或 GIF 图片'
+      : '视频模板的原始资源仅支持 MP4、MOV、WebM 或 MKV 视频'))
+    return
+  }
+  callback()
+}
+
+function validateThumbnailURL(_rule: unknown, value: string, callback: ValidationCallback) {
+  if (!value?.trim()) {
+    callback(new Error('请输入缩略资源 URL'))
+    return
+  }
+  const kind = mediaKind(form.template_type)
+  if (!mediaURLMatches(value, kind)) {
+    callback(new Error(kind === 'image'
+      ? '图片模板的缩略资源仅支持 JPG、PNG、WebP 或 GIF 图片'
+      : '视频模板的缩略资源仅支持 MP4、MOV、WebM 或 MKV 视频'))
+    return
+  }
+  callback()
+}
+
+function validatePrompt(_rule: unknown, value: string, callback: ValidationCallback) {
+  if (!value?.trim()) callback(new Error('请输入提示词'))
+  else callback()
+}
+
 const rules = {
   name: [{ required: true, message: '请输入模板名称', trigger: 'blur' }],
   template_type_id: [{ required: true, message: '请选择模板分类', trigger: 'change' }],
   model_id: [{ required: true, message: '请选择关联模型', trigger: 'change' }],
   template_type: [{ required: true, message: '请选择模板类型', trigger: 'change' }],
-  cover_image_url: [{ required: true, message: '请输入封面图 URL', trigger: 'blur' }],
-  original_url: [{ required: true, message: '请输入原始资源 URL', trigger: 'blur' }],
+  cover_image_url: [{ required: true, validator: validateCoverImageURL, trigger: ['blur', 'change'] }],
+  original_url: [{ required: true, validator: validateOriginalURL, trigger: ['blur', 'change'] }],
+  thumbnail_url: [{ required: true, validator: validateThumbnailURL, trigger: ['blur', 'change'] }],
+  prompt: [{ required: true, validator: validatePrompt, trigger: ['blur', 'change'] }],
 }
 const preview = reactive({ visible: false, kind: 'video' as 'image' | 'video', url: '', title: '' })
 const mediaUploading = reactive({ cover: false, template: false, thumbnail: false })
@@ -458,30 +476,8 @@ function positionLabel(item: DisplayPosition) {
   return `${item.position_name} · ${item.position_key}`
 }
 
-function compactSummary(labels: string[], allLabel: string) {
-  if (!labels.length) return allLabel
-  if (labels.length <= 2) return labels.join('、')
-  return `${labels.slice(0, 2).join('、')} 等 ${labels.length} 项`
-}
-
 function arrayValue<T>(value: T[] | null | undefined): T[] {
 	return Array.isArray(value) ? value : []
-}
-
-function countrySummary(items?: Country[] | null) {
-	return compactSummary(arrayValue(items).map((item) => `${item.name_zh}·${item.code}`), '全部国家')
-}
-
-function packageSummary(items?: AppPackage[] | null) {
-	return compactSummary(arrayValue(items).map((item) => item.package_name), '全部安装包')
-}
-
-function appSummary(items?: VideoApp[] | null) {
-	return compactSummary(arrayValue(items).map((item) => item.name || item.app_code), '全部应用')
-}
-
-function versionSummary(items?: PackageVersion[] | null) {
-	return compactSummary(arrayValue(items).map((item) => item.version_code), '全部版本')
 }
 
 function normalizeTemplateType(item: any): VideoTemplateType {
@@ -515,97 +511,35 @@ function cloneJSON<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
 }
 
-function valueKey(value: unknown) {
-  return JSON.stringify(value)
-}
-
-function displayValue(value: unknown) {
-  return typeof value === 'string' ? value : JSON.stringify(value)
-}
-
-function normalizeOptionDefault(editor: TemplateParameterEditor) {
-  const allowed = new Set(editor.allowed_values.map(valueKey))
-  if (!allowed.has(valueKey(editor.default_value))) {
-    editor.default_value = cloneJSON(editor.allowed_values[0] ?? null)
-  }
-}
-
-async function loadModelParameters(modelID: number, configured?: TemplateModelParameter[]) {
-  parameterEditors.value = []
-  if (!modelID) return
+async function loadPersistedTemplateParameters(row: VideoTemplate) {
+  modelParameterDefinitions.value = []
+  modelParameterPayloads.value = []
   parameterLoading.value = true
   try {
-    const res: any = await getModelParameters(modelID)
-    const definitions = arrayValue<ModelParameter>(res.data)
-    const configuredByKey = new Map((configured || []).map((item) => [item.param_key, item]))
-    const editingExistingConfiguration = configured !== undefined
-    parameterEditors.value = definitions.map((definition) => {
-      const configuredItem = configuredByKey.get(definition.param_key)
-      const source = configuredItem || definition
-      return {
-        definition,
-        enabled: editingExistingConfiguration ? Boolean(configuredItem) : true,
-        allowed_values: cloneJSON(arrayValue(source.allowed_values)),
-        default_value: cloneJSON(source.default_value),
-        default_value_text: source.default_value === null || source.default_value === undefined
-          ? ''
-          : JSON.stringify(source.default_value),
-        constraints_text: JSON.stringify(source.constraints || {}, null, 2),
-        is_required: source.is_required || 0,
-        description: source.description || '',
-        sort_order: source.sort_order || 0,
-      }
-    })
+    const [definitionRes, configurationRes]: any[] = await Promise.all([
+      getModelParameters(row.model_id),
+      getTemplateModelParameters(row.id),
+    ])
+    modelParameterDefinitions.value = arrayValue<ModelParameter>(definitionRes.data)
+    modelParameterPayloads.value = arrayValue<TemplateModelParameter>(configurationRes.data?.parameters)
+      .map(templateModelParameterPayload)
   } finally {
     parameterLoading.value = false
   }
 }
 
-function buildModelParameterPayloads(): ModelParameterPayload[] {
-  return parameterEditors.value.filter((editor) => editor.enabled).map((editor) => {
-    const definition = editor.definition
-    if (definition.parameter_type === 1) {
-      if (editor.allowed_values.length === 0) {
-        throw new Error(`模型配置 ${definition.param_key} 至少保留一个允许值`)
-      }
-      normalizeOptionDefault(editor)
-      return {
-        param_key: definition.param_key,
-        value_type: definition.value_type,
-        parameter_type: 1,
-        is_required: 0,
-        default_value: cloneJSON(editor.default_value),
-        allowed_values: cloneJSON(editor.allowed_values),
-        constraints: {},
-        description: editor.description,
-        sort_order: editor.sort_order,
-      }
-    }
-
-    let constraints: Record<string, unknown>
-    let defaultValue: unknown = null
-    try {
-      constraints = JSON.parse(editor.constraints_text)
-      if (!constraints || Array.isArray(constraints) || typeof constraints !== 'object' || Object.keys(constraints).length === 0) {
-        throw new Error('限制条件必须是非空 JSON 对象')
-      }
-      if (editor.default_value_text.trim()) defaultValue = JSON.parse(editor.default_value_text)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'JSON 格式错误'
-      throw new Error(`模型配置 ${definition.param_key}：${message}`)
-    }
-    return {
-      param_key: definition.param_key,
-      value_type: definition.value_type,
-      parameter_type: 2,
-      is_required: editor.is_required,
-      default_value: defaultValue,
-      allowed_values: [],
-      constraints,
-      description: editor.description,
-      sort_order: editor.sort_order,
-    }
-  })
+function templateModelParameterPayload(item: TemplateModelParameter): ModelParameterPayload {
+  return {
+    param_key: item.param_key,
+    value_type: item.value_type,
+    parameter_type: item.parameter_type,
+    is_required: item.is_required,
+    default_value: cloneJSON(item.default_value),
+    allowed_values: cloneJSON(arrayValue(item.allowed_values)),
+    constraints: cloneJSON(item.constraints || {}),
+    description: item.description || '',
+    sort_order: item.sort_order || 0,
+  }
 }
 
 async function fetchTypes() {
@@ -651,18 +585,17 @@ function handleReset() {
   fetchData()
 }
 
-async function openCreate() {
+function openCreate() {
   Object.assign(mediaUploading, { cover: false, template: false, thumbnail: false })
+  const initialModel = modelOptions.value.find((item) => item.status === 1 && item.model_type === defaultForm.template_type)
   Object.assign(form, defaultForm, {
     template_type_id: enabledTypeOptions.value[0]?.id || 0,
-    model_id: enabledModelOptions.value[0]?.id || 0,
+    model_id: initialModel?.id || 0,
   })
-  parameterEditors.value = []
   dialogVisible.value = true
-  await loadModelParameters(form.model_id)
 }
 
-async function openEdit(row: VideoTemplate) {
+function openEdit(row: VideoTemplate) {
   Object.assign(mediaUploading, { cover: false, template: false, thumbnail: false })
   Object.assign(form, {
     id: row.id,
@@ -678,14 +611,57 @@ async function openEdit(row: VideoTemplate) {
     status: row.status,
     description: row.description || '',
   })
-  parameterEditors.value = []
   dialogVisible.value = true
-  const res: any = await getTemplateModelParameters(row.id)
-  await loadModelParameters(row.model_id, arrayValue<TemplateModelParameter>(res.data?.parameters))
 }
 
-async function handleModelChange(modelID: number) {
-  await loadModelParameters(modelID)
+async function openTemplateParameters(row: VideoTemplate) {
+  configuredTemplate.value = row
+  parameterDrawerVisible.value = true
+  await loadPersistedTemplateParameters(row)
+}
+
+async function handleModelParameterUpdate(next: ModelParameterPayload[]) {
+  const template = configuredTemplate.value
+  if (!template) return
+  parameterSaving.value = true
+  try {
+    const res: any = await replaceTemplateModelParameters(template.id, next)
+    const saved = arrayValue<TemplateModelParameter>(res.data?.parameters)
+    modelParameterPayloads.value = saved.length > 0 || next.length === 0
+      ? saved.map(templateModelParameterPayload)
+      : next
+    ElMessage.success('模板模型配置已保存')
+  } finally {
+    parameterSaving.value = false
+  }
+}
+
+function handleModelChange(modelID: number) {
+  const selected = modelOptions.value.find((item) => item.id === modelID)
+  if (selected && selected.model_type !== form.template_type) {
+    form.model_id = 0
+    ElMessage.error('关联模型类型必须与模板种类一致')
+    return
+  }
+}
+
+async function handleTemplateTypeChange(templateType: 1 | 2) {
+  const selected = modelOptions.value.find((item) => item.id === form.model_id)
+  if (selected?.model_type !== templateType) {
+    const next = modelOptions.value.find((item) => item.status === 1 && item.model_type === templateType)
+    form.model_id = next?.id || 0
+  }
+  try {
+    await formRef.value?.validateField(['original_url', 'thumbnail_url'])
+  } catch {
+    // 类型切换时只刷新校验提示，最终仍由提交校验拦截。
+  }
+}
+
+function handleQueryTemplateTypeChange(value: string | number) {
+  const kind = Number(value)
+  const selected = modelOptions.value.find((item) => String(item.id) === query.model_id)
+  if ((kind === 1 || kind === 2) && selected?.model_type !== kind) query.model_id = ''
 }
 
 function previewMedia(kind: 'image' | 'video', url: string, title: string) {
@@ -695,11 +671,8 @@ function previewMedia(kind: 'image' | 'video', url: string, title: string) {
 
 async function handleSubmit() {
   await formRef.value?.validate()
-  let modelParameters: ModelParameterPayload[]
-  try {
-    modelParameters = buildModelParameterPayloads()
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '模型配置格式错误')
+  if (!currentModel.value || currentModel.value.model_type !== form.template_type) {
+    ElMessage.error('关联模型类型必须与模板种类一致')
     return
   }
   submitting.value = true
@@ -716,11 +689,10 @@ async function handleSubmit() {
       prompt: form.prompt.trim(),
       status: form.status,
       description: form.description.trim(),
-      model_parameters: modelParameters,
     }
     if (form.id) await updateTemplate(form.id, payload)
     else await createTemplate(payload)
-    ElMessage.success('视频模板已保存')
+    ElMessage.success('模板已保存')
     dialogVisible.value = false
     await fetchData()
   } finally {
@@ -730,7 +702,7 @@ async function handleSubmit() {
 
 async function handleDelete(id: number) {
   await deleteTemplate(id)
-  ElMessage.success('视频模板已删除')
+  ElMessage.success('模板已删除')
   if (tableData.value.length === 1 && page.value > 1) page.value--
   await fetchData()
 }
@@ -750,7 +722,6 @@ onMounted(() => Promise.all([fetchTypes(), fetchModels(), fetchPositions(), fetc
 .primary-text { color: #303133; font-weight: 500; }
 .secondary-text { color: #909399; font-size: 12px; }
 .tag-line { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-.target-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
 .media-actions { display: flex; flex-direction: column; align-items: center; }
 .media-actions :deep(.el-button + .el-button) { margin-left: 0; }
 .prompt-text { display: -webkit-box; overflow: hidden; color: #606266; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
@@ -758,16 +729,6 @@ onMounted(() => Promise.all([fetchTypes(), fetchModels(), fetchPositions(), fetc
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; }
 .form-grid :deep(.el-input-number) { width: 100%; }
 .cover-field { width: 100%; }
-.model-parameters { width: 100%; min-height: 80px; }
-.parameter-card { margin-bottom: 10px; padding: 12px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
-.parameter-card:last-child { margin-bottom: 0; }
-.parameter-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.parameter-tags { display: flex; align-items: center; gap: 6px; }
-.parameter-description { margin-top: 5px; color: #909399; font-size: 12px; }
-.parameter-fields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #dcdfe6; }
-.request-parameter-fields { grid-template-columns: minmax(0, 2fr) minmax(100px, 1fr); }
-.constraints-field { grid-column: 1 / -1; }
-.parameter-label { margin-bottom: 5px; color: #606266; font-size: 12px; }
 .cover-form-preview { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 10px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
 .cover-preview-image { width: 160px; height: 90px; flex: 0 0 auto; border-radius: 6px; background: #f0f2f5; cursor: zoom-in; }
 .cover-preview-error { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 5px; color: #a8abb2; font-size: 12px; }
@@ -784,7 +745,6 @@ onMounted(() => Promise.all([fetchTypes(), fetchModels(), fetchPositions(), fetc
   .filters, .form-grid { grid-template-columns: 1fr; }
   .cover-form-preview { align-items: flex-start; flex-direction: column; }
   .cover-preview-image { width: 100%; height: auto; aspect-ratio: 16 / 9; }
-  .parameter-fields, .request-parameter-fields { grid-template-columns: 1fr; }
   .page-wrap :deep(.el-card__header), .page-wrap :deep(.el-card__body) { padding: 14px; }
 }
 </style>
