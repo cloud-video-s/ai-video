@@ -61,16 +61,8 @@ func newVideoUserIdentity(db *gorm.DB, opts ...gen.DOOption) videoUserIdentity {
 		},
 		Works: struct {
 			field.RelationField
-			User struct {
-				field.RelationField
-			}
 		}{
 			RelationField: field.NewRelation("User.Works", "model.VideoUserGenerationTask"),
-			User: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("User.Works.User", "model.VideoUser"),
-			},
 		},
 		Orders: struct {
 			field.RelationField
@@ -222,9 +214,6 @@ type videoUserIdentityBelongsToUser struct {
 	}
 	Works struct {
 		field.RelationField
-		User struct {
-			field.RelationField
-		}
 	}
 	Orders struct {
 		field.RelationField

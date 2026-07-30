@@ -80,6 +80,9 @@ func (s *ClientTemplateService) loadTemplateModelConfigurations(ctx context.Cont
 		if !exists {
 			continue
 		}
+		if item.TemplateType != int64(modelItem.ModelType) {
+			continue
+		}
 		items := parametersByTemplate[item.ID]
 		if items == nil {
 			items = []ClientTemplateModelParameter{}

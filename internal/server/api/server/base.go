@@ -34,3 +34,28 @@ type AccountBaseRequest struct {
 	LastOpenedAt         *time.Time `json:"last_opened_at"`
 	AttributionClickedAt *time.Time `json:"attribution_clicked_at"`
 }
+
+type PageResult struct {
+	Page       int64 `json:"page"`       // 当前页码（从1开始）
+	PageSize   int64 `json:"pageSize"`   // 每页条数
+	Total      int64 `json:"total"`      // 总记录数
+	TotalPages int64 `json:"totalPages"` // 总页数
+	List       any   `json:"list"`       // 当前页的数据列表
+}
+
+type BasePage struct {
+	Page     int `query:"page" json:"page" form:"page" binding:"omitempty,min=1" default:"1"`
+	PageSize int `query:"page_size" json:"page_size" form:"page_size" binding:"omitempty,min=1" default:"10"`
+}
+
+func GetPageResponse(page, pageSize, total int64, data any) (*PageResult, error) {
+	// 计算总页数
+	totalPages := (total + pageSize - 1) / pageSize
+	return &PageResult{
+		Page:       page,
+		PageSize:   pageSize,
+		Total:      total,
+		TotalPages: totalPages,
+		List:       data,
+	}, nil
+}

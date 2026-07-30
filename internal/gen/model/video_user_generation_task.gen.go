@@ -20,7 +20,8 @@ type VideoUserGenerationTask struct {
 	ClientRequestID  string         `gorm:"column:client_request_id;type:varchar(64);not null;uniqueIndex:uk_video_generation_task_request,priority:2;comment:客户端请求唯一标识（用于幂等）" json:"client_request_id"`                                        // 客户端请求唯一标识（用于幂等）
 	TaskCode         string         `gorm:"column:task_code;type:varchar(50);not null;uniqueIndex:uk_video_generation_task_code,priority:1;comment:任务ID" json:"task_code"`                                                                      // 任务ID
 	ThirdTaskCode    string         `gorm:"column:third_task_code;type:varchar(128);uniqueIndex:uk_video_generation_third_task_code,priority:1;index:idx_video_generation_task_external,priority:1;comment:外部服务返回的任务ID" json:"third_task_code"` // 外部服务返回的任务ID
-	Status           int            `gorm:"column:status;type:varchar(32);not null;index:idx_video_generation_task_status,priority:1;comment:任务状态（如：pending, processing, success, failed, timeout等）" json:"status"`                             // 任务状态（如：pending, processing, success, failed, timeout等）
+	Status           int            `gorm:"column:status;type:tinyint unsigned;not null;index:idx_video_generation_task_status,priority:1;default:1;comment:任务状态（如：pending, processing, success, failed, timeout等）" json:"status"`              // 任务状态（如：pending, processing, success, failed, timeout等）
+	TaskType         uint32         `gorm:"column:task_type;type:tinyint unsigned;not null;default:1;comment:任务类型 1图片 2视频" json:"task_type"`                                                                                                    // 任务类型 1图片 2视频
 	Progress         uint32         `gorm:"column:progress;type:tinyint unsigned;not null;comment:任务进度（0~100）" json:"progress"`                                                                                                                 // 任务进度（0~100）
 	Prompt           string         `gorm:"column:prompt;type:text;comment:用户输入的提示词" json:"prompt"`                                                                                                                                             // 用户输入的提示词
 	RequestPayload   string         `gorm:"column:request_payload;type:longtext;not null;comment:完整的请求参数（JSON格式）" json:"request_payload"`                                                                                                       // 完整的请求参数（JSON格式）
@@ -36,7 +37,6 @@ type VideoUserGenerationTask struct {
 	CreatedAt        time.Time      `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_generation_task_user,priority:2;comment:记录创建时间" json:"created_at"`                                                                       // 记录创建时间
 	UpdatedAt        time.Time      `gorm:"column:updated_at;type:datetime(3);not null;comment:记录更新时间" json:"updated_at"`                                                                                                                       // 记录更新时间
 	DeletedAt        gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_generation_task_deleted_at,priority:1;comment:软删除时间（非NULL表示已删除）" json:"deleted_at"`                                                               // 软删除时间（非NULL表示已删除）
-	User             VideoUser      `gorm:"foreignKey:UserID;references:ID" json:"user"`
 }
 
 // TableName VideoUserGenerationTask's table name

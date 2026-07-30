@@ -98,11 +98,6 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("Works", "model.VideoUserGenerationTask"),
-		User: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("Works.User", "model.VideoUser"),
-		},
 	}
 
 	_videoUser.Orders = videoUserHasManyOrders{
@@ -528,10 +523,6 @@ type videoUserHasManyWorks struct {
 	db *gorm.DB
 
 	field.RelationField
-
-	User struct {
-		field.RelationField
-	}
 }
 
 func (a videoUserHasManyWorks) Where(conds ...field.Expr) *videoUserHasManyWorks {

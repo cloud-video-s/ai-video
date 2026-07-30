@@ -154,6 +154,15 @@ func (s *ModelService) Update(ctx context.Context, id int64, req *ModelPayload) 
 	if err != nil {
 		return nil, err
 	}
+	if item.ModelType != req.ModelType {
+		templateCount, err := s.templateRepo.CountByModel(ctx, uint64(id))
+		if err != nil {
+			return nil, err
+		}
+		if templateCount > 0 {
+			return nil, errors.New("该模型已关联模板，不能修改模型类型；请先调整关联模板")
+		}
+	}
 	applyModelPayload(item, req)
 	if err := repository.Transaction(ctx, func(txCtx context.Context) error {
 		if err := s.repo.UpdateFields(txCtx, item); err != nil {

@@ -44,6 +44,23 @@ func (r *ModelParameterRepo) GetByKey(ctx context.Context, modelID int64, key st
 	return q.WithContext(ctx).Where(q.ModelID.Eq(modelID), q.ParamKey.Eq(key)).First()
 }
 
+func (r *ModelParameterRepo) GetApiPageTask(ctx context.Context, userID uint64, page, pageSize int, taskType, status uint32) ([]*model.VideoUserGenerationTask, int64, error) {
+	q := qFrom(ctx).VideoUserGenerationTask
+	dao := q.WithContext(ctx).Where(q.UserID.Eq(userID))
+	if taskType > 0 && taskType < 3 {
+		dao = dao.Where(q.TaskType.Eq(taskType))
+	}
+	if status > 0 {
+		dao = dao.Where(q.Status.Eq(int(status)))
+	}
+	total, err := dao.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, err := dao.Order(q.CreatedAt.Desc(), q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	return rows, total, err
+}
+
 func (r *ModelParameterRepo) UpdateFields(ctx context.Context, item *model.VideoModelParameter) error {
 	q := qFrom(ctx).VideoModelParameter
 	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID), q.ModelID.Eq(item.ModelID)).Select(

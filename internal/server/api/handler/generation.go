@@ -10,7 +10,6 @@ import (
 	"ai-video/internal/middleware"
 	"ai-video/internal/pkg/errcode"
 	"ai-video/internal/pkg/response"
-	"ai-video/internal/pkg/utils"
 	apiservice "ai-video/internal/server/api/server"
 
 	"github.com/gin-gonic/gin"
@@ -61,19 +60,16 @@ func (h *GenerationHandler) Create(c *gin.Context) {
 
 // List 分页返回当前客户端用户自己的生成任务。
 func (h *GenerationHandler) List(c *gin.Context) {
-	pagination := utils.GetPagination(c)
-	items, total, err := h.manager.ListTasks(
-		c.Request.Context(), middleware.GetAPIUserID(c), pagination.Page, pagination.PageSize, c.Query("status"),
-	)
-	if err != nil {
-		response.Fail(c, errcode.ErrParam, err.Error())
+	var request apiservice.GenerationListRequest
+	if err := c.ShouldBindQuery(&request); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	list := make([]generation.TaskView, 0, len(items))
-	for i := range items {
-		list = append(list, generation.ViewOf(&items[i]))
+	data, err := h.modelService.GenerationList(c, &request)
+	if err != nil {
+		response.Fail(c, errcode.ErrServer, err.Error())
 	}
-	response.OK(c, gin.H{"list": list, "total": total, "page": pagination.Page, "size": pagination.PageSize})
+	response.OK(c, data)
 }
 
 func (h *GenerationHandler) Get(c *gin.Context) {

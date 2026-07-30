@@ -237,9 +237,40 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	listTasks := document.Paths["/api/generation/tasks"]["get"].(map[string]any)
 	assertParameter(t, listTasks, "page", "query", false)
 	assertParameter(t, listTasks, "page_size", "query", false)
+	assertParameter(t, listTasks, "task_type", "query", false)
 	assertParameter(t, listTasks, "status", "query", false)
+	assertResponseParameter(t, listTasks, "data.page", true)
+	assertResponseParameter(t, listTasks, "data.pageSize", true)
 	assertResponseParameter(t, listTasks, "data.list", true)
 	assertResponseParameter(t, listTasks, "data.total", true)
+	assertResponseParameter(t, listTasks, "data.totalPages", true)
+	assertResponseParameter(t, listTasks, "data.list[].task_type", true)
+	assertResponseParameter(t, listTasks, "data.list[].input", false)
+	assertResponseParameter(t, listTasks, "data.list[].parameters", false)
+	assertResponseParameter(t, listTasks, "data.list[].local_urls", true)
+	assertResponseParameter(t, listTasks, "data.list[].error_message", false)
+	assertResponseParameter(t, listTasks, "data.list[].submitted_at", false)
+	assertResponseParameter(t, listTasks, "data.list[].started_at", false)
+	assertResponseParameter(t, listTasks, "data.list[].finished_at", false)
+	assertResponseParameterAbsent(t, listTasks, "data.size")
+	assertResponseParameterAbsent(t, listTasks, "data.list[].client_request_id")
+	assertResponseParameterAbsent(t, listTasks, "data.list[].model_id")
+	assertResponseParameterAbsent(t, listTasks, "data.list[].third_task_code")
+	listExample := listTasks["x-response-example"].(responseExampleEnvelope).Data.(generationTaskListResponse)
+	if listExample.Page != 1 || listExample.PageSize != 10 || listExample.Total != 3 || listExample.TotalPages != 1 ||
+		len(listExample.List) != 3 || listExample.List[0].TaskType != 2 || listExample.List[0].LocalURLs == nil ||
+		listExample.List[2].Status != 6 || len(listExample.List[2].LocalURLs) != 1 {
+		t.Fatalf("generation task list response example is incomplete: %#v", listExample)
+	}
+	detailTask := document.Paths["/api/generation/tasks/{id}"]["get"].(map[string]any)
+	assertParameter(t, detailTask, "id", "path", true)
+	assertResponseParameter(t, detailTask, "data.task_type", true)
+	assertResponseParameter(t, detailTask, "data.input", false)
+	assertResponseParameter(t, detailTask, "data.parameters", false)
+	assertResponseParameter(t, detailTask, "data.local_urls", true)
+	assertResponseParameterAbsent(t, detailTask, "data.client_request_id")
+	assertResponseParameterAbsent(t, detailTask, "data.model_id")
+	assertResponseParameterAbsent(t, detailTask, "data.third_task_code")
 	events := document.Paths["/api/generation/tasks/{id}/events"]["get"].(map[string]any)
 	assertParameter(t, events, "id", "path", true)
 	eventResponse := events["responses"].(map[string]any)["200"].(map[string]any)
@@ -357,6 +388,44 @@ func TestBuildRefreshTokenDocumentation(t *testing.T) {
 	if refresh["description"] != operationDescriptions["POST /api/auth/refresh"] {
 		t.Fatalf("refresh method description is missing: %#v", refresh["description"])
 	}
+}
+
+func TestBuildGenerationTaskDocumentation(t *testing.T) {
+	document := Build([]gin.RouteInfo{
+		{Method: http.MethodGet, Path: "/api/generation/tasks", Handler: "api.Generation.List"},
+		{Method: http.MethodGet, Path: "/api/generation/tasks/:id", Handler: "api.Generation.Get"},
+	})
+
+	listTasks := document.Paths["/api/generation/tasks"]["get"].(map[string]any)
+	assertParameter(t, listTasks, "page", "query", false)
+	assertParameter(t, listTasks, "page_size", "query", false)
+	assertParameter(t, listTasks, "task_type", "query", false)
+	assertParameter(t, listTasks, "status", "query", false)
+	assertResponseParameter(t, listTasks, "data.pageSize", true)
+	assertResponseParameter(t, listTasks, "data.totalPages", true)
+	assertResponseParameter(t, listTasks, "data.list[].task_type", true)
+	assertResponseParameter(t, listTasks, "data.list[].local_urls", true)
+	assertResponseParameterAbsent(t, listTasks, "data.size")
+	assertResponseParameterAbsent(t, listTasks, "data.list[].client_request_id")
+	assertResponseParameterAbsent(t, listTasks, "data.list[].model_id")
+	assertResponseParameterAbsent(t, listTasks, "data.list[].third_task_code")
+
+	listExample := listTasks["x-response-example"].(responseExampleEnvelope).Data.(generationTaskListResponse)
+	if listExample.Page != 1 || listExample.PageSize != 10 || listExample.Total != 3 || listExample.TotalPages != 1 ||
+		len(listExample.List) != 3 || listExample.List[0].TaskType != 2 || listExample.List[0].LocalURLs == nil ||
+		listExample.List[2].Status != 6 || len(listExample.List[2].LocalURLs) != 1 {
+		t.Fatalf("generation task list response example is incomplete: %#v", listExample)
+	}
+
+	detailTask := document.Paths["/api/generation/tasks/{id}"]["get"].(map[string]any)
+	assertParameter(t, detailTask, "id", "path", true)
+	assertResponseParameter(t, detailTask, "data.task_type", true)
+	assertResponseParameter(t, detailTask, "data.input", false)
+	assertResponseParameter(t, detailTask, "data.parameters", false)
+	assertResponseParameter(t, detailTask, "data.local_urls", true)
+	assertResponseParameterAbsent(t, detailTask, "data.client_request_id")
+	assertResponseParameterAbsent(t, detailTask, "data.model_id")
+	assertResponseParameterAbsent(t, detailTask, "data.third_task_code")
 }
 
 func TestBuildApplePaymentDocumentation(t *testing.T) {

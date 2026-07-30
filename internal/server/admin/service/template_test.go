@@ -38,3 +38,14 @@ func TestNormalizeTemplatePayloadSupportsLegacyCategoryField(t *testing.T) {
 		t.Fatalf("normalized payload = %#v", payload)
 	}
 }
+
+func TestValidateTemplateModelTypeRequiresExactMatch(t *testing.T) {
+	for _, kind := range []int64{1, 2} {
+		if err := validateTemplateModelType(kind, uint32(kind)); err != nil {
+			t.Fatalf("matching kind %d rejected: %v", kind, err)
+		}
+	}
+	if err := validateTemplateModelType(1, 2); err == nil {
+		t.Fatal("mismatched template_type and model_type must be rejected")
+	}
+}

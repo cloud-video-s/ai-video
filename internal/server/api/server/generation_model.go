@@ -1,6 +1,8 @@
 package service
 
 import (
+	"ai-video/internal/generation"
+	"ai-video/internal/middleware"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,11 +10,14 @@ import (
 
 	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
+
+	"github.com/gin-gonic/gin"
 )
 
 type GenerationModelService struct {
 	modelRepo     *repository.ModelRepo
 	parameterRepo *repository.ModelParameterRepo
+	userRepo      *repository.AppUserRepo
 }
 
 func NewGenerationModelService() *GenerationModelService {
@@ -39,6 +44,28 @@ type GenerationModelView struct {
 	Name       string                     `json:"name"`
 	ModelCode  string                     `json:"model_code"`
 	Parameters []GenerationModelParameter `json:"parameter"`
+}
+
+type GenerationListRequest struct {
+	BasePage
+	TaskType uint32 `query:"task_type" json:"task_type" form:"task_type" binding:"omitempty,oneof=1 2 3" default:"1"`
+	Status   uint32 `query:"status" json:"status" form:"status" binding:"omitempty,oneof=1 2 3" default:"0"`
+}
+
+func (s *GenerationModelService) GenerationList(ctx *gin.Context, req *GenerationListRequest) (*PageResult, error) {
+	user, err := s.userRepo.GetByID(ctx, middleware.GetAPIUserID(ctx))
+	if err != nil {
+		return nil, err
+	}
+	task, total, err := s.parameterRepo.GetApiPageTask(ctx, user.ID, req.Page, req.PageSize, req.TaskType, req.Status)
+	if err != nil {
+		return nil, err
+	}
+	var data []generation.TaskView
+	for _, item := range task {
+		data = append(data, generation.ViewOf(item))
+	}
+	return GetPageResponse(int64(req.Page), int64(req.PageSize), total, data)
 }
 
 func (s *GenerationModelService) List(ctx context.Context, modelType uint32) ([]GenerationModelView, error) {

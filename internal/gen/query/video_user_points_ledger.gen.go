@@ -61,16 +61,8 @@ func newVideoUserPointsLedger(db *gorm.DB, opts ...gen.DOOption) videoUserPoints
 		},
 		Works: struct {
 			field.RelationField
-			User struct {
-				field.RelationField
-			}
 		}{
 			RelationField: field.NewRelation("User.Works", "model.VideoUserGenerationTask"),
-			User: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("User.Works.User", "model.VideoUser"),
-			},
 		},
 		Orders: struct {
 			field.RelationField
@@ -233,9 +225,6 @@ type videoUserPointsLedgerBelongsToUser struct {
 	}
 	Works struct {
 		field.RelationField
-		User struct {
-			field.RelationField
-		}
 	}
 	Orders struct {
 		field.RelationField

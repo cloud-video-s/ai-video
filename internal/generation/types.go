@@ -11,13 +11,13 @@ const (
 	TaskTypeImage uint32 = 1
 	TaskTypeVideo uint32 = 2
 
-	TaskStatusSubmitting  = 1
-	TaskStatusSubmitted   = 2
-	TaskStatusPending     = 3
-	TaskStatusRunning     = 4
-	TaskStatusDownloading = 5
-	TaskStatusSuccess     = 6
-	TaskStatusFailure     = 7
+	TaskStatusSubmitting  = 1 // 提交中
+	TaskStatusSubmitted   = 2 // 已提交
+	TaskStatusPending     = 3 // 等待处理
+	TaskStatusRunning     = 4 // 运行中
+	TaskStatusDownloading = 5 // 下载中
+	TaskStatusSuccess     = 6 // 成功
+	TaskStatusFailure     = 7 // 失败
 )
 
 // CreateTaskRequest 是客户端通用生成请求。
@@ -70,29 +70,27 @@ type ProviderTaskStatus struct {
 
 // TaskView 是客户端可见的任务快照，不暴露第三方临时 URL 和原始响应。
 type TaskView struct {
-	ID              uint64         `json:"id"`
-	TaskCode        string         `json:"task_code"`
-	ClientRequestID string         `json:"client_request_id"`
-	ModelID         uint64         `json:"model_id"`
-	ThirdTaskCode   string         `json:"third_task_code,omitempty"`
-	Status          int            `json:"status"`
-	Progress        uint8          `json:"progress"`
-	Input           map[string]any `json:"input,omitempty"`
-	Parameters      map[string]any `json:"parameters,omitempty"`
-	LocalURLs       []string       `json:"local_urls"`
-	ErrorMessage    string         `json:"error_message,omitempty"`
-	UsageDuration   uint32         `json:"usage_duration"`
-	SubmittedAt     *time.Time     `json:"submitted_at,omitempty"`
-	StartedAt       *time.Time     `json:"started_at,omitempty"`
-	FinishedAt      *time.Time     `json:"finished_at,omitempty"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
+	ID            uint64         `json:"id"`
+	TaskCode      string         `json:"task_code"`
+	TaskType      uint32         `json:"task_type"`
+	Status        int            `json:"status"`
+	Progress      uint8          `json:"progress"`
+	Input         map[string]any `json:"input,omitempty"`
+	Parameters    map[string]any `json:"parameters,omitempty"`
+	LocalURLs     []string       `json:"local_urls"`
+	ErrorMessage  string         `json:"error_message,omitempty"`
+	UsageDuration uint32         `json:"usage_duration"`
+	SubmittedAt   *time.Time     `json:"submitted_at,omitempty"`
+	StartedAt     *time.Time     `json:"started_at,omitempty"`
+	FinishedAt    *time.Time     `json:"finished_at,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 func ViewOf(item *model.VideoUserGenerationTask) TaskView {
 	view := TaskView{
-		ID: item.ID, TaskCode: item.TaskCode, ClientRequestID: item.ClientRequestID, ModelID: item.ModelID,
-		ThirdTaskCode: item.ThirdTaskCode, Status: item.Status, Progress: uint8(item.Progress),
+		ID: item.ID, TaskCode: item.TaskCode, TaskType: item.TaskType,
+		Status: item.Status, Progress: uint8(item.Progress),
 		ErrorMessage: item.ErrorMessage, UsageDuration: item.UsageDuration,
 		SubmittedAt: nullableTime(item.SubmittedAt), StartedAt: nullableTime(item.StartedAt), FinishedAt: nullableTime(item.FinishedAt),
 		CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt, LocalURLs: []string{},

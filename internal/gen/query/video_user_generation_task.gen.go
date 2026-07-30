@@ -35,6 +35,7 @@ func newVideoUserGenerationTask(db *gorm.DB, opts ...gen.DOOption) videoUserGene
 	_videoUserGenerationTask.TaskCode = field.NewString(tableName, "task_code")
 	_videoUserGenerationTask.ThirdTaskCode = field.NewString(tableName, "third_task_code")
 	_videoUserGenerationTask.Status = field.NewInt(tableName, "status")
+	_videoUserGenerationTask.TaskType = field.NewUint32(tableName, "task_type")
 	_videoUserGenerationTask.Progress = field.NewUint32(tableName, "progress")
 	_videoUserGenerationTask.Prompt = field.NewString(tableName, "prompt")
 	_videoUserGenerationTask.RequestPayload = field.NewString(tableName, "request_payload")
@@ -50,11 +51,6 @@ func newVideoUserGenerationTask(db *gorm.DB, opts ...gen.DOOption) videoUserGene
 	_videoUserGenerationTask.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUserGenerationTask.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUserGenerationTask.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoUserGenerationTask.User = videoUserGenerationTaskBelongsToUser{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("User", "model.VideoUser"),
-	}
 
 	_videoUserGenerationTask.fillFieldMap()
 
@@ -72,6 +68,7 @@ type videoUserGenerationTask struct {
 	TaskCode         field.String // 任务ID
 	ThirdTaskCode    field.String // 外部服务返回的任务ID
 	Status           field.Int    // 任务状态（如：pending, processing, success, failed, timeout等）
+	TaskType         field.Uint32 // 任务类型 1图片 2视频
 	Progress         field.Uint32 // 任务进度（0~100）
 	Prompt           field.String // 用户输入的提示词
 	RequestPayload   field.String // 完整的请求参数（JSON格式）
@@ -87,7 +84,6 @@ type videoUserGenerationTask struct {
 	CreatedAt        field.Time   // 记录创建时间
 	UpdatedAt        field.Time   // 记录更新时间
 	DeletedAt        field.Field  // 软删除时间（非NULL表示已删除）
-	User             videoUserGenerationTaskBelongsToUser
 
 	fieldMap map[string]field.Expr
 }
@@ -111,6 +107,7 @@ func (v *videoUserGenerationTask) updateTableName(table string) *videoUserGenera
 	v.TaskCode = field.NewString(table, "task_code")
 	v.ThirdTaskCode = field.NewString(table, "third_task_code")
 	v.Status = field.NewInt(table, "status")
+	v.TaskType = field.NewUint32(table, "task_type")
 	v.Progress = field.NewUint32(table, "progress")
 	v.Prompt = field.NewString(table, "prompt")
 	v.RequestPayload = field.NewString(table, "request_payload")
@@ -162,6 +159,7 @@ func (v *videoUserGenerationTask) fillFieldMap() {
 	v.fieldMap["task_code"] = v.TaskCode
 	v.fieldMap["third_task_code"] = v.ThirdTaskCode
 	v.fieldMap["status"] = v.Status
+	v.fieldMap["task_type"] = v.TaskType
 	v.fieldMap["progress"] = v.Progress
 	v.fieldMap["prompt"] = v.Prompt
 	v.fieldMap["request_payload"] = v.RequestPayload
@@ -177,101 +175,16 @@ func (v *videoUserGenerationTask) fillFieldMap() {
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-
 }
 
 func (v videoUserGenerationTask) clone(db *gorm.DB) videoUserGenerationTask {
 	v.videoUserGenerationTaskDo.ReplaceConnPool(db.Statement.ConnPool)
-	v.User.db = db.Session(&gorm.Session{Initialized: true})
-	v.User.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoUserGenerationTask) replaceDB(db *gorm.DB) videoUserGenerationTask {
 	v.videoUserGenerationTaskDo.ReplaceDB(db)
-	v.User.db = db.Session(&gorm.Session{})
 	return v
-}
-
-type videoUserGenerationTaskBelongsToUser struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a videoUserGenerationTaskBelongsToUser) Where(conds ...field.Expr) *videoUserGenerationTaskBelongsToUser {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoUserGenerationTaskBelongsToUser) WithContext(ctx context.Context) *videoUserGenerationTaskBelongsToUser {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoUserGenerationTaskBelongsToUser) Session(session *gorm.Session) *videoUserGenerationTaskBelongsToUser {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoUserGenerationTaskBelongsToUser) Model(m *model.VideoUserGenerationTask) *videoUserGenerationTaskBelongsToUserTx {
-	return &videoUserGenerationTaskBelongsToUserTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoUserGenerationTaskBelongsToUser) Unscoped() *videoUserGenerationTaskBelongsToUser {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoUserGenerationTaskBelongsToUserTx struct{ tx *gorm.Association }
-
-func (a videoUserGenerationTaskBelongsToUserTx) Find() (result *model.VideoUser, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoUserGenerationTaskBelongsToUserTx) Append(values ...*model.VideoUser) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoUserGenerationTaskBelongsToUserTx) Replace(values ...*model.VideoUser) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoUserGenerationTaskBelongsToUserTx) Delete(values ...*model.VideoUser) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoUserGenerationTaskBelongsToUserTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoUserGenerationTaskBelongsToUserTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoUserGenerationTaskBelongsToUserTx) Unscoped() *videoUserGenerationTaskBelongsToUserTx {
-	a.tx = a.tx.Unscoped()
-	return &a
 }
 
 type videoUserGenerationTaskDo struct{ gen.DO }

@@ -68,16 +68,8 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 		},
 		Works: struct {
 			field.RelationField
-			User struct {
-				field.RelationField
-			}
 		}{
 			RelationField: field.NewRelation("User.Works", "model.VideoUserGenerationTask"),
-			User: struct {
-				field.RelationField
-			}{
-				RelationField: field.NewRelation("User.Works.User", "model.VideoUser"),
-			},
 		},
 		Orders: struct {
 			field.RelationField
@@ -261,9 +253,6 @@ type videoUserAttributionBelongsToUser struct {
 	}
 	Works struct {
 		field.RelationField
-		User struct {
-			field.RelationField
-		}
 	}
 	Orders struct {
 		field.RelationField

@@ -135,7 +135,7 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	prompt, _ := request.Input["prompt"].(string)
 	task := &model.VideoUserGenerationTask{
 		UserID: userID, ModelID: uint64(modelConfig.ID), ClientRequestID: request.ClientRequestID, TaskCode: taskCode,
-		Status: TaskStatusSubmitting, Progress: 0, Prompt: prompt, RequestPayload: string(payload),
+		TaskType: request.TaskType, Status: TaskStatusSubmitting, Progress: 0, Prompt: prompt, RequestPayload: string(payload),
 		RemoteUrls: "[]", LocalUrls: "[]",
 	}
 	if err := m.taskRepo.Create(ctx, task); err != nil {

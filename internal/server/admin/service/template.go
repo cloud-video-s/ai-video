@@ -349,7 +349,7 @@ func (s *TemplateService) Create(ctx context.Context, req *TemplatePayload) (*re
 	if err := s.ensureTypeExists(ctx, req.TemplateTypeID); err != nil {
 		return nil, err
 	}
-	if err := s.ensureModelExists(ctx, req.ModelID); err != nil {
+	if err := s.ensureModelMatchesTemplateType(ctx, req.ModelID, req.TemplateType); err != nil {
 		return nil, err
 	}
 	parameters, err := s.parameterService.prepare(ctx, int64(req.ModelID), req.ModelParameters)
@@ -381,7 +381,7 @@ func (s *TemplateService) Update(ctx context.Context, id uint64, req *TemplatePa
 	if err := s.ensureTypeExists(ctx, req.TemplateTypeID); err != nil {
 		return nil, err
 	}
-	if err := s.ensureModelExists(ctx, req.ModelID); err != nil {
+	if err := s.ensureModelMatchesTemplateType(ctx, req.ModelID, req.TemplateType); err != nil {
 		return nil, err
 	}
 	modelChanged := item.ModelID != req.ModelID
@@ -422,12 +422,22 @@ func (s *TemplateService) ensureTypeExists(ctx context.Context, id uint64) error
 	return err
 }
 
-func (s *TemplateService) ensureModelExists(ctx context.Context, id uint64) error {
-	_, err := s.modelRepo.GetByID(ctx, uint(id))
+func (s *TemplateService) ensureModelMatchesTemplateType(ctx context.Context, id uint64, templateType int64) error {
+	item, err := s.modelRepo.GetByID(ctx, uint(id))
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return errors.New("关联模型不存在")
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	return validateTemplateModelType(templateType, item.ModelType)
+}
+
+func validateTemplateModelType(templateType int64, modelType uint32) error {
+	if templateType != int64(modelType) {
+		return errors.New("模板种类必须与关联模型的模型类型一致")
+	}
+	return nil
 }
 
 func normalizeTemplatePayload(req *TemplatePayload) {

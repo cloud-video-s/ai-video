@@ -55,7 +55,7 @@ func normalizeGenerationInput(taskType uint32, input *GenerationInput) error {
 		if input.EndFrame != "" && input.FirstFrame == "" {
 			return errors.New("input.end_frame requires input.first_frame")
 		}
-		if input.FirstFrame != "" && (len(input.Images) > 0 || input.Video == "") {
+		if input.FirstFrame != "" && (len(input.Images) > 0 || input.Video != "") {
 			return errors.New("first/end frame generation cannot be combined with input.images or input.video")
 		}
 	default:
@@ -65,7 +65,7 @@ func normalizeGenerationInput(taskType uint32, input *GenerationInput) error {
 }
 
 func mergeConfiguredParameters(definitions []model.VideoModelParameter, request map[string]interface{}) (map[string]interface{}, error) {
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	configured := make(map[string]model.VideoModelParameter)
 	for i := range definitions {
 		definition := definitions[i]
@@ -138,18 +138,18 @@ func validateConfiguredParameter(definition model.VideoModelParameter, value int
 			return errors.New("must be a boolean")
 		}
 	case "object":
-		if _, ok := value.(map[string]interface{}); !ok {
+		if _, ok := value.(map[string]any); !ok {
 			return errors.New("must be an object")
 		}
 	case "array":
-		if _, ok := value.([]interface{}); !ok {
+		if _, ok := value.([]any); !ok {
 			return errors.New("must be an array")
 		}
 	default:
 		return fmt.Errorf("uses unsupported value type %q", definition.ParamType)
 	}
 	if raw := strings.TrimSpace(definition.AllowedValues); raw != "" && raw != "[]" {
-		var allowed []interface{}
+		var allowed []any
 		if err := json.Unmarshal([]byte(raw), &allowed); err != nil {
 			return fmt.Errorf("allowed_values is invalid JSON: %w", err)
 		}
@@ -169,11 +169,11 @@ func validateConfiguredParameter(definition model.VideoModelParameter, value int
 	return validateConfiguredConstraints(definition.Constraints, value)
 }
 
-func validateConfiguredConstraints(raw string, value interface{}) error {
+func validateConfiguredConstraints(raw string, value any) error {
 	if strings.TrimSpace(raw) == "" {
 		return nil
 	}
-	var constraints map[string]interface{}
+	var constraints map[string]any
 	if err := json.Unmarshal([]byte(raw), &constraints); err != nil {
 		return fmt.Errorf("constraints is invalid JSON: %w", err)
 	}
@@ -188,7 +188,7 @@ func validateConfiguredConstraints(raw string, value interface{}) error {
 	length := -1
 	if text, ok := value.(string); ok {
 		length = len([]rune(text))
-	} else if values, ok := value.([]interface{}); ok {
+	} else if values, ok := value.([]any); ok {
 		length = len(values)
 	}
 	if length >= 0 {
@@ -215,7 +215,7 @@ func validateConfiguredConstraints(raw string, value interface{}) error {
 	return nil
 }
 
-func jsonNumber(value interface{}) (float64, bool) {
+func jsonNumber(value any) (float64, bool) {
 	switch number := value.(type) {
 	case float64:
 		return number, true

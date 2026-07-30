@@ -42,17 +42,12 @@ type uploadBatchRequest struct {
 	Files []upload.FileSpec `json:"files" binding:"required,min=1"`
 }
 
-type generationTaskListRequest struct {
-	Page     int `form:"page" binding:"omitempty,min=1"`
-	PageSize int `form:"page_size" binding:"omitempty,min=1,max=100"`
-	Status   int `form:"status" binding:"omitempty,oneof=1 2 3 4 5 6 7"`
-}
-
 type generationTaskListResponse struct {
-	List  []generation.TaskView `json:"list"`
-	Total int64                 `json:"total"`
-	Page  int                   `json:"page"`
-	Size  int                   `json:"size"`
+	Page       int64                 `json:"page"`
+	PageSize   int64                 `json:"pageSize"`
+	Total      int64                 `json:"total"`
+	TotalPages int64                 `json:"totalPages"`
+	List       []generation.TaskView `json:"list"`
 }
 
 type responseExampleEnvelope struct {
@@ -79,6 +74,85 @@ var delayConfigResponseExample = map[string]int64{
 var bannerResponseExampleTemplateID = uint64(42)
 
 var applePurchaseResponseExampleExpiration = time.Date(2026, 7, 22, 16, 47, 39, 0, time.FixedZone("UTC+8", 8*60*60))
+
+var generationTaskResponseExample = generation.TaskView{
+	ID: 13, TaskCode: "eafe15f0-780f-4a7f-9c62-7e99484be521", TaskType: generation.TaskTypeVideo,
+	Status: generation.TaskStatusFailure, Progress: 100,
+	Input: map[string]any{
+		"end_frame":   "https://cdn.example.com/uploads/images/end-frame.png",
+		"first_frame": "https://cdn.example.com/uploads/images/first-frame.png",
+		"prompt":      "生成一个可爱风格的动漫视频",
+		"video":       "https://cdn.example.com/uploads/videos/reference.mp4",
+	},
+	Parameters: map[string]any{
+		"aspect_ratio": "1:1", "duration": float64(10),
+		"external_task_id": "eafe15f0-780f-4a7f-9c62-7e99484be521", "mode": "std",
+	},
+	LocalURLs:     []string{},
+	ErrorMessage:  "provider task id not found: field=data.task_id, provider_error=Tail image is not supported with video input",
+	UsageDuration: 10,
+	SubmittedAt:   generationTaskExampleTime(2026, 7, 30, 14, 44, 41, 602),
+	StartedAt:     generationTaskExampleTime(2026, 7, 30, 14, 44, 43, 804),
+	FinishedAt:    generationTaskExampleTime(2026, 7, 30, 14, 48, 33, 154),
+	CreatedAt:     *generationTaskExampleTime(2026, 7, 30, 14, 44, 28, 235),
+	UpdatedAt:     *generationTaskExampleTime(2026, 7, 30, 14, 48, 33, 155),
+}
+
+var generationTaskListResponseExample = generationTaskListResponse{
+	Page: 1, PageSize: 10, Total: 3, TotalPages: 1,
+	List: []generation.TaskView{
+		generationTaskResponseExample,
+		{
+			ID: 12, TaskCode: "c55e71fc-f2c1-4f8e-aae7-9f380fc0b0ea", TaskType: generation.TaskTypeVideo,
+			Status: generation.TaskStatusFailure, Progress: 100,
+			Input: map[string]any{
+				"end_frame":   "https://cdn.example.com/uploads/images/end-frame.png",
+				"first_frame": "https://cdn.example.com/uploads/images/first-frame.png",
+				"prompt":      "生成一个可爱风格的动漫视频",
+				"video":       "https://cdn.example.com/uploads/videos/reference.mp4",
+			},
+			Parameters: map[string]any{
+				"aspect_ratio": "1:1", "duration": float64(10),
+				"external_task_id": "c55e71fc-f2c1-4f8e-aae7-9f380fc0b0ea", "mode": "std",
+			},
+			LocalURLs:     []string{},
+			ErrorMessage:  "provider task id not found: field=data.task_id, provider_error=Tail image is not supported with video input",
+			UsageDuration: 10,
+			SubmittedAt:   generationTaskExampleTime(2026, 7, 30, 11, 57, 59, 450),
+			StartedAt:     generationTaskExampleTime(2026, 7, 30, 11, 58, 2, 749),
+			FinishedAt:    generationTaskExampleTime(2026, 7, 30, 14, 48, 31, 158),
+			CreatedAt:     *generationTaskExampleTime(2026, 7, 30, 11, 56, 50, 131),
+			UpdatedAt:     *generationTaskExampleTime(2026, 7, 30, 14, 48, 31, 158),
+		},
+		{
+			ID: 11, TaskCode: "d9dd18d6-6cd4-4df3-8dff-f7c3622990b7", TaskType: generation.TaskTypeVideo,
+			Status: generation.TaskStatusSuccess, Progress: 100,
+			Input: map[string]any{
+				"end_frame": "", "first_frame": "",
+				"images": []string{
+					"https://cdn.example.com/uploads/images/reference-1.png",
+					"https://cdn.example.com/uploads/images/reference-2.png",
+				},
+				"prompt": "生成一个可爱风格的动漫视频", "video": "",
+			},
+			Parameters: map[string]any{
+				"aspect_ratio": "1:1", "duration": float64(10),
+				"external_task_id": "d9dd18d6-6cd4-4df3-8dff-f7c3622990b7", "mode": "std",
+			},
+			LocalURLs:     []string{"https://cdn.example.com/uploads/generated/1/task-11-1.mp4"},
+			UsageDuration: 10,
+			SubmittedAt:   generationTaskExampleTime(2026, 7, 30, 9, 26, 25, 938),
+			FinishedAt:    generationTaskExampleTime(2026, 7, 30, 11, 24, 22, 563),
+			CreatedAt:     *generationTaskExampleTime(2026, 7, 30, 9, 21, 32, 387),
+			UpdatedAt:     *generationTaskExampleTime(2026, 7, 30, 11, 24, 39, 676),
+		},
+	},
+}
+
+func generationTaskExampleTime(year, month, day, hour, minute, second, millisecond int) *time.Time {
+	value := time.Date(year, time.Month(month), day, hour, minute, second, millisecond*int(time.Millisecond), time.FixedZone("UTC+8", 8*60*60))
+	return &value
+}
 
 var generationModelResponseExample = []apiservice.GenerationModelView{
 	{
@@ -139,8 +213,11 @@ var generationModelResponseExample = []apiservice.GenerationModelView{
 }
 
 var responseDataExamples = map[string]any{
-	"GET /api/ob_delay":          delayConfigResponseExample,
-	"GET /api/generation/models": generationModelResponseExample,
+	"GET /api/ob_delay":                    delayConfigResponseExample,
+	"GET /api/generation/models":           generationModelResponseExample,
+	"GET /api/generation/tasks":            generationTaskListResponseExample,
+	"GET /api/generation/tasks/:id":        generationTaskResponseExample,
+	"GET /api/generation/tasks/:id/events": generationTaskResponseExample,
 	"POST /api/payments/apple/pay": commerce.ApplePurchaseResponse{
 		OrderNo: "20260728090907cc7d7c1ffd15", Status: "paid", ProductType: "vip_subscription",
 		ProductID: 1, ProductCode: "dolaai18", TransactionID: "2000001209105682",
@@ -219,7 +296,7 @@ var endpointTypes = map[string]endpointType{
 	"DELETE /api/templates/:id/favorite":               {response: typeOf[apiservice.TemplateFavoriteResponse]()},
 	"GET /api/generation/models":                       {query: typeOf[apiservice.GenerationModelRequest](), response: typeOf[[]apiservice.GenerationModelView]()},
 	"POST /api/generation/tasks":                       {body: typeOf[generation.CreateTaskRequest](), response: typeOf[generation.TaskView]()},
-	"GET /api/generation/tasks":                        {query: typeOf[generationTaskListRequest](), response: typeOf[generationTaskListResponse]()},
+	"GET /api/generation/tasks":                        {query: typeOf[apiservice.GenerationListRequest](), response: typeOf[generationTaskListResponse]()},
 	"GET /api/generation/tasks/:id":                    {response: typeOf[generation.TaskView]()},
 	"GET /api/generation/tasks/:id/events":             {response: typeOf[generation.TaskView]()},
 	"DELETE /api/generation/tasks/:id":                 {},
@@ -252,7 +329,7 @@ var operationDescriptions = map[string]string{
 	"GET /api/templates/template_info": "根据模板 ID 查询当前用户可见的模板详情。",
 	"POST /api/templates/:id/favorite": "收藏指定模板；重复收藏保持幂等。", "DELETE /api/templates/:id/favorite": "取消收藏指定模板；重复取消保持幂等。",
 	"GET /api/generation/models": "按必填 model_type 查询平台和模型均启用的模型及其参数；同时返回 parameter_type=1 的选项参数和 parameter_type=2 的请求参数，并按 parameter_type、sort_order、id 排序。", "POST /api/generation/tasks": "校验请求并创建待异步处理的生成任务，返回任务订单号。",
-	"GET /api/generation/tasks": "分页查询当前用户的生成任务。", "GET /api/generation/tasks/:id": "查询指定生成任务详情。",
+	"GET /api/generation/tasks": "分页查询当前用户的生成任务，列表项返回完整任务快照。", "GET /api/generation/tasks/:id": "查询指定生成任务详情，返回结构与列表中的单个任务一致。",
 	"GET /api/generation/tasks/:id/events": "通过 SSE 实时订阅生成任务状态，任务结束后连接关闭。", "DELETE /api/generation/tasks/:id": "删除指定生成任务。",
 	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
 	"GET /api/vip/list":                     "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
@@ -305,13 +382,14 @@ var fieldDescriptions = map[string]string{
 	"description": "说明", "position_keys": "支持的展示位置", "user_types": "适用用户类型", "subscription_statuses": "适用订阅状态",
 	"templates": "模板列表", "video_template_type_id": "模板分类 ID", "prompt": "模板提示词", "usage_count": "使用次数",
 	"favorite_count": "收藏次数", "favorited": "当前用户是否已收藏", "view_count": "浏览次数", "display_config_id": "展示配置 ID", "display_sort": "展示排序",
-	"page": "页码，从 1 开始", "pageSize": "每页数量", "template_type_id": "模板分类 ID", "third_type": "第三方身份类型：google 或 apple",
+	"page": "页码，从 1 开始", "page_size": "每页数量", "pageSize": "每页数量", "total": "总记录数", "totalPages": "总页数", "list": "当前页数据列表", "template_type_id": "模板分类 ID", "third_type": "第三方身份类型：google 或 apple",
 	"third_code": "第三方平台用户标识",
-	"model_code": "生成模型代码", "model_type": "模型类型：1=生成图片，2=生成视频", "client_request_id": "客户端幂等请求 ID", "input": "模型输入参数", "parameters": "模型扩展参数",
+	"model_code": "生成模型代码", "model_type": "模型类型：1=生成图片，2=生成视频", "client_request_id": "客户端幂等请求 ID", "task_code": "任务唯一编码", "task_type": "任务类型：1=生成图片，2=生成视频；列表查询值 3 表示全部", "input": "模型输入参数", "parameters": "模型扩展参数",
 	"parameter": "模型参数列表", "param_key": "参数键名", "parameter_type": "参数类型：1=选项参数，2=请求参数",
 	"default_value": "参数默认值", "allowed_values": "参数允许值数组", "constraints": "JSON 字符串格式的参数约束；空约束为 {}",
 	"model_config_id": "生成模型配置 ID", "external_task_id": "第三方任务 ID", "progress": "任务进度，范围 0-100",
-	"local_urls": "生成结果的持久化访问地址（本地或 OSS）", "error_message": "任务失败原因", "usage_duration": "任务耗时",
+	"local_urls": "生成结果的持久化访问地址（本地或 OSS）", "error_message": "任务失败原因", "usage_duration": "任务计费用时（秒）",
+	"submitted_at": "任务提交到上游的时间", "started_at": "上游开始处理的时间", "finished_at": "任务结束时间",
 	"default_parameters": "模型默认参数", "model_name": "提供方模型名称",
 	"shop_type": "商品类型：1=VIP 订阅，2=积分商品", "bundleID": "Apple Bundle ID，必须与 Video_App_Package_Code 及签名交易一致", "productID": "Apple 商品 ID", "transactionID": "Apple 交易 ID",
 	"originalTransactionID": "Apple 原始交易 ID", "signedTransactionInfo": "Apple 签名交易 JWS",
