@@ -366,20 +366,45 @@ func main() {
 	)
 
 	videoTemplatePlacement := g.GenerateModel("video_template_placement")
-
-	videoTemplate := g.GenerateModel("video_template",
-		gen.FieldType("id", "uint64"),
-		gen.FieldType("video_template_type_id", "uint64"),
-		gen.FieldType("sort", "int64"),
-		gen.FieldType("status", "int8"),
-		gen.FieldType("usage_count", "uint64"),
-		gen.FieldType("like_count", "uint64"),
-		gen.FieldType("view_count", "uint64"),
-		gen.FieldType("favorite_count", "uint64"),
-		gen.FieldRelate(field.BelongsTo, "VideoTemplateType", g.GenerateModel("video_template_type"),
+	videoTemplateModelParameter := g.GenerateModel("video_template_model_parameter",
+		gen.FieldRelate(field.BelongsTo, "AIModel", g.GenerateModel("video_model"),
 			&field.RelateConfig{
 				GORMTag: field.GormTag{
-					"foreignKey": []string{"VideoTemplateTypeID"},
+					"foreignKey": []string{"ModelID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+		gen.FieldRelate(field.BelongsTo, "Template", g.GenerateModel("video_template"),
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"TemplateID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
+	videoTemplate := g.GenerateModel("video_template",
+		gen.FieldRelate(field.BelongsTo, "TemplateTypeModel", g.GenerateModel("video_template_type"),
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"TemplateTypeID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+		gen.FieldRelate(field.BelongsTo, "AIModel", g.GenerateModel("video_model"),
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"ModelID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+		gen.FieldRelate(field.HasMany, "ModelParameters", videoTemplateModelParameter,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"TemplateID"},
 					"references": []string{"ID"},
 				},
 			},
@@ -501,10 +526,11 @@ func main() {
 	// 客户端用户生成任务。可空时间使用指针区分“尚未发生”和零值。
 	videoUserGenerationTask := g.GenerateModel("video_user_generation_task",
 		gen.FieldType("status", "int"),
-		gen.FieldRelate(field.BelongsTo, "User", g.GenerateModel("video_user"),
+		gen.FieldType("template_id", "uint64"),
+		gen.FieldRelate(field.BelongsTo, "Template", videoTemplate,
 			&field.RelateConfig{
 				GORMTag: field.GormTag{
-					"foreignKey": []string{"UserID"},
+					"foreignKey": []string{"TemplateID"},
 					"references": []string{"ID"},
 				},
 			},
@@ -863,6 +889,7 @@ func main() {
 		videoRole,
 		videoRoleMenu,
 		videoTemplate,
+		videoTemplateModelParameter,
 		videoTemplatePlacement,
 		videoTemplatePlacementConfig,
 		videoTemplateType,
