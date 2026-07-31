@@ -433,7 +433,7 @@ func TestBuildCurrentTemplateResponseDocumentation(t *testing.T) {
 func assertCurrentTemplateResponseParameters(t *testing.T, operation map[string]any, prefix string) {
 	t.Helper()
 	for _, name := range []string{
-		"id", "video_template_type_id", "name", "template_type", "cover_image_url", "original_url", "thumbnail_url",
+		"id", "template_type_id", "name", "template_type", "cover_image_url", "original_url", "thumbnail_url",
 		"prompt", "description", "sort", "usage_count", "favorite_count", "view_count", "is_favorite", "model_score",
 	} {
 		assertResponseParameter(t, operation, prefix+"."+name, true)

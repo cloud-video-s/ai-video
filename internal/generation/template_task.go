@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 
 	"ai-video/internal/gen/model"
@@ -41,7 +40,7 @@ func (m *Manager) CreateTemplateTask(
 	if err != nil {
 		return nil, fmt.Errorf("template %d: %w", template.ID, err)
 	}
-	if template.ModelID == 0 || template.ModelID > math.MaxInt64 {
+	if template.ModelID == 0 {
 		return nil, fmt.Errorf("template %d has an invalid model_id", template.ID)
 	}
 	modelConfig, err := m.modelRepo.GetEnabledByID(ctx, int64(template.ModelID))
