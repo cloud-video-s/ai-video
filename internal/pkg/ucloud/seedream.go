@@ -44,7 +44,7 @@ type DoubaoSeedreamParameters struct {
 	Stream                           *bool                                 `json:"stream,omitempty"`
 	ResponseFormat                   string                                `json:"response_format,omitempty"`
 	Watermark                        *bool                                 `json:"watermark,omitempty"`
-	OptimizePromptOptions            map[string]interface{}                `json:"optimize_prompt_options,omitempty"`
+	OptimizePromptOptions            map[string]any                        `json:"optimize_prompt_options,omitempty"`
 	Tools                            []DoubaoSeedreamTool                  `json:"tools,omitempty"`
 	OutputFormat                     string                                `json:"output_format,omitempty"`
 }

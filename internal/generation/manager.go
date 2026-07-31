@@ -26,7 +26,8 @@ const submitClaimLease = 2 * time.Minute
 
 // Manager 负责创建任务、轮询第三方状态、持久化生成结果并发布进度事件。
 type Manager struct {
-	modelRepo             *repository.ModelRepo
+	modelRepo *repository.ModelRepo
+	*repository.AppUserRepo
 	parameterRepo         *repository.ModelParameterRepo
 	taskRepo              *repository.UserGenerationTaskRepo
 	templateRepo          *repository.TemplateRepo
@@ -85,6 +86,7 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	if userID == 0 {
 		return nil, errors.New("用户 ID 无效")
 	}
+
 	request.ModelCode = strings.TrimSpace(request.ModelCode)
 	request.ClientRequestID = strings.TrimSpace(request.ClientRequestID)
 	if request.ClientRequestID == "" {

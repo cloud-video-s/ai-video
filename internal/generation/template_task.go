@@ -72,6 +72,20 @@ func (m *Manager) CreateTemplateTask(
 	}
 	input := cloneMap(request.Input)
 	input["prompt"] = prompt
+	fromMap, err := generationInputFromMap(taskType, input)
+	if err != nil {
+		return nil, err
+	}
+	if len(fromMap.Images) == 0 {
+		return nil, fmt.Errorf("template %d has no images", template.ID)
+	}
+
+	if taskType == TaskTypeImage {
+		fromMap.Images = append(fromMap.Images, template.OriginalURL)
+		input["images"] = fromMap.Images
+	} else {
+		input["video"] = template.OriginalURL
+	}
 
 	return m.CreateTask(ctx, userID, &CreateTaskRequest{
 		ModelCode:       modelConfig.Code,
