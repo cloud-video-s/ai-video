@@ -28,6 +28,18 @@ type CreateTaskRequest struct {
 	ClientRequestID string         `json:"client_request_id" binding:"omitempty,max=64"`
 	Input           map[string]any `json:"input" binding:"required"`
 	Parameters      map[string]any `json:"parameters,omitempty"`
+	TemplateID      uint64         `json:"-"`
+}
+
+// CreateTemplateTaskRequest selects the template-owned model, task type,
+// prompt, and parameter defaults on the server. Input only carries optional
+// user media references; a client-supplied prompt is replaced by the template
+// prompt before the task is queued.
+type CreateTemplateTaskRequest struct {
+	TemplateID      uint64         `json:"template_id" binding:"required"`
+	ClientRequestID string         `json:"client_request_id" binding:"omitempty,max=64"`
+	Input           map[string]any `json:"input,omitempty"`
+	Parameters      map[string]any `json:"parameters,omitempty"`
 }
 
 // GenerationInput provides the media combinations supported by the UCloud
@@ -72,6 +84,7 @@ type ProviderTaskStatus struct {
 type TaskView struct {
 	ID            uint64         `json:"id"`
 	TaskCode      string         `json:"task_code"`
+	TemplateID    uint64         `json:"template_id,omitempty"`
 	TaskType      uint32         `json:"task_type"`
 	Status        int            `json:"status"`
 	Progress      uint8          `json:"progress"`
@@ -89,7 +102,7 @@ type TaskView struct {
 
 func ViewOf(item *model.VideoUserGenerationTask) TaskView {
 	view := TaskView{
-		ID: item.ID, TaskCode: item.TaskCode, TaskType: item.TaskType,
+		ID: item.ID, TaskCode: item.TaskCode, TemplateID: item.TemplateID, TaskType: item.TaskType,
 		Status: item.Status, Progress: uint8(item.Progress),
 		ErrorMessage: item.ErrorMessage, UsageDuration: item.UsageDuration,
 		SubmittedAt: nullableTime(item.SubmittedAt), StartedAt: nullableTime(item.StartedAt), FinishedAt: nullableTime(item.FinishedAt),

@@ -30,6 +30,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodGet, Path: "/api/users/me/identities", Handler: "api.Auth.ListIdentities"},
 		{Method: http.MethodGet, Path: "/api/ob_delay", Handler: "api.DelayConfig.All"},
 		{Method: http.MethodGet, Path: "/api/banners/list", Handler: "api.Banner.List"},
+		{Method: http.MethodGet, Path: "/api/templates/categories", Handler: "api.Template.Categories"},
 		{Method: http.MethodGet, Path: "/api/templates/recommend", Handler: "api.Template.Recommend"},
 		{Method: http.MethodGet, Path: "/api/templates/template_list", Handler: "api.Template.TemplateList"},
 		{Method: http.MethodGet, Path: "/api/templates/template_info", Handler: "api.Template.TemplateInfo"},
@@ -369,6 +370,76 @@ func TestBuildGenerationModelDocumentation(t *testing.T) {
 	if len(example) != 1 || example[0].ModelCode != "kling-v3" || len(example[0].Parameters) != 11 ||
 		example[0].Parameters[5].ParameterType != 2 || example[0].Parameters[10].Constraints != `{"max_length": 1}` {
 		t.Fatalf("generation model response example is incomplete: %#v", example)
+	}
+}
+
+func TestBuildTemplateCategoriesDocumentation(t *testing.T) {
+	document := Build([]gin.RouteInfo{{
+		Method: http.MethodGet, Path: "/api/templates/categories", Handler: "api.Template.Categories",
+	}})
+	categories := document.Paths["/api/templates/categories"]["get"].(map[string]any)
+	assertParameter(t, categories, "page", "query", false)
+	assertParameterAbsent(t, categories, "pageSize")
+	assertParameterAbsent(t, categories, "position_key")
+	assertResponseParameter(t, categories, "data[].id", true)
+	assertResponseParameter(t, categories, "data[].templates", true)
+	assertResponseParameter(t, categories, "data[].templates[].cover_image_url", true)
+	assertResponseParameter(t, categories, "data[].templates[].model_score", true)
+	for _, phrase := range []string{"homeCategory", "每页最多返回 5 个分类", "每个分类最多返回 10 个", "没有可用模板", "不包含 total"} {
+		if !strings.Contains(categories["description"].(string), phrase) {
+			t.Fatalf("category pagination rules are missing %q: %q", phrase, categories["description"])
+		}
+	}
+	categoriesExample := categories["x-response-example"].(responseExampleEnvelope).Data.([]apiservice.ClientTemplateType)
+	if len(categoriesExample) != 1 || len(categoriesExample[0].Templates) != 1 ||
+		categoriesExample[0].Templates[0].CoverImageURL == "" || categoriesExample[0].Templates[0].ModelScore != 95 {
+		t.Fatalf("category response example is incomplete: %#v", categoriesExample)
+	}
+}
+
+func TestBuildCurrentTemplateResponseDocumentation(t *testing.T) {
+	document := Build([]gin.RouteInfo{
+		{Method: http.MethodGet, Path: "/api/templates/categories", Handler: "api.Template.Categories"},
+		{Method: http.MethodGet, Path: "/api/templates/list", Handler: "api.Template.List"},
+		{Method: http.MethodGet, Path: "/api/templates/recommend", Handler: "api.Template.Recommend"},
+		{Method: http.MethodGet, Path: "/api/templates/template_list", Handler: "api.Template.TemplateList"},
+		{Method: http.MethodGet, Path: "/api/templates/template_info", Handler: "api.Template.TemplateInfo"},
+	})
+
+	for _, path := range []string{"/api/templates/categories", "/api/templates/list"} {
+		operation := document.Paths[path]["get"].(map[string]any)
+		assertCurrentTemplateResponseParameters(t, operation, "data[].templates[]")
+	}
+	for _, path := range []string{"/api/templates/recommend", "/api/templates/template_list"} {
+		operation := document.Paths[path]["get"].(map[string]any)
+		assertCurrentTemplateResponseParameters(t, operation, "data[]")
+		example := operation["x-response-example"].(responseExampleEnvelope).Data.([]apiservice.ClientTemplate)
+		if len(example) != 1 || example[0] != clientTemplateResponseExample {
+			t.Fatalf("%s template response example is stale: %#v", path, example)
+		}
+	}
+	info := document.Paths["/api/templates/template_info"]["get"].(map[string]any)
+	assertCurrentTemplateResponseParameters(t, info, "data")
+	if example := info["x-response-example"].(responseExampleEnvelope).Data.(apiservice.ClientTemplate); example != clientTemplateResponseExample {
+		t.Fatalf("template info response example is stale: %#v", example)
+	}
+
+	list := document.Paths["/api/templates/list"]["get"].(map[string]any)
+	assertParameter(t, list, "position_key", "query", false)
+	assertParameterAbsent(t, list, "page")
+	assertParameterAbsent(t, list, "pageSize")
+}
+
+func assertCurrentTemplateResponseParameters(t *testing.T, operation map[string]any, prefix string) {
+	t.Helper()
+	for _, name := range []string{
+		"id", "video_template_type_id", "name", "template_type", "cover_image_url", "original_url", "thumbnail_url",
+		"prompt", "description", "sort", "usage_count", "favorite_count", "view_count", "is_favorite", "model_score",
+	} {
+		assertResponseParameter(t, operation, prefix+"."+name, true)
+	}
+	for _, oldName := range []string{"cover_image", "template_video", "thumbnail_video", "model_id", "model_code", "model_name", "model_parameters"} {
+		assertResponseParameterAbsent(t, operation, prefix+"."+oldName)
 	}
 }
 

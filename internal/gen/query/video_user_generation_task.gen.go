@@ -48,6 +48,7 @@ func newVideoUserGenerationTask(db *gorm.DB, opts ...gen.DOOption) videoUserGene
 	_videoUserGenerationTask.StartedAt = field.NewTime(tableName, "started_at")
 	_videoUserGenerationTask.FinishedAt = field.NewTime(tableName, "finished_at")
 	_videoUserGenerationTask.LastPolledAt = field.NewTime(tableName, "last_polled_at")
+	_videoUserGenerationTask.TemplateID = field.NewUint64(tableName, "template_id")
 	_videoUserGenerationTask.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUserGenerationTask.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUserGenerationTask.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -81,6 +82,7 @@ type videoUserGenerationTask struct {
 	StartedAt        field.Time   // 任务开始处理时间
 	FinishedAt       field.Time   // 任务完成时间
 	LastPolledAt     field.Time   // 最后一次轮询外部服务的时间
+	TemplateID       field.Uint64 // 关联模板id
 	CreatedAt        field.Time   // 记录创建时间
 	UpdatedAt        field.Time   // 记录更新时间
 	DeletedAt        field.Field  // 软删除时间（非NULL表示已删除）
@@ -120,6 +122,7 @@ func (v *videoUserGenerationTask) updateTableName(table string) *videoUserGenera
 	v.StartedAt = field.NewTime(table, "started_at")
 	v.FinishedAt = field.NewTime(table, "finished_at")
 	v.LastPolledAt = field.NewTime(table, "last_polled_at")
+	v.TemplateID = field.NewUint64(table, "template_id")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -151,7 +154,7 @@ func (v *videoUserGenerationTask) GetFieldByName(fieldName string) (field.OrderE
 }
 
 func (v *videoUserGenerationTask) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 23)
+	v.fieldMap = make(map[string]field.Expr, 24)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["model_id"] = v.ModelID
@@ -172,6 +175,7 @@ func (v *videoUserGenerationTask) fillFieldMap() {
 	v.fieldMap["started_at"] = v.StartedAt
 	v.fieldMap["finished_at"] = v.FinishedAt
 	v.fieldMap["last_polled_at"] = v.LastPolledAt
+	v.fieldMap["template_id"] = v.TemplateID
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

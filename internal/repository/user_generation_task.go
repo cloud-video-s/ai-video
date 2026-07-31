@@ -23,7 +23,7 @@ func NewUserGenerationTaskRepo() *UserGenerationTaskRepo {
 // a SQL NULL into MySQL's zero date.
 func (r *UserGenerationTaskRepo) Create(ctx context.Context, task *model.VideoUserGenerationTask) error {
 	return dbFrom(ctx).Omit(
-		"User", "ThirdTaskCode", "SubmittedAt", "StartedAt", "FinishedAt", "LastPolledAt",
+		"User", "Template", "ThirdTaskCode", "SubmittedAt", "StartedAt", "FinishedAt", "LastPolledAt",
 	).Create(task).Error
 }
 

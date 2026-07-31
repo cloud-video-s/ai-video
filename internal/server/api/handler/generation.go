@@ -58,6 +58,26 @@ func (h *GenerationHandler) Create(c *gin.Context) {
 	response.OK(c, generation.ViewOf(task))
 }
 
+// CreateFromTemplate derives the task type, model, prompt, and configured
+// parameter defaults from an enabled template before queueing the task.
+func (h *GenerationHandler) CreateFromTemplate(c *gin.Context) {
+	var request generation.CreateTemplateTaskRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		response.Fail(c, errcode.ErrParam, "invalid parameters: "+err.Error())
+		return
+	}
+	task, err := h.manager.CreateTemplateTask(c.Request.Context(), middleware.GetAPIUserID(c), &request)
+	if err != nil {
+		if errors.Is(err, generation.ErrTemplateUnavailable) {
+			response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, err.Error())
+			return
+		}
+		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, err.Error())
+		return
+	}
+	response.OK(c, generation.ViewOf(task))
+}
+
 // List 分页返回当前客户端用户自己的生成任务。
 func (h *GenerationHandler) List(c *gin.Context) {
 	var request apiservice.GenerationListRequest

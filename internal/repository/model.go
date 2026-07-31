@@ -82,6 +82,22 @@ func (r *ModelRepo) GetEnabledByCode(ctx context.Context, code string) (*model.V
 	return item, nil
 }
 
+// GetEnabledByID loads an enabled model and requires its platform to be
+// enabled as well. Template generation uses the model ID owned by the
+// template, rather than accepting a model code from the client.
+func (r *ModelRepo) GetEnabledByID(ctx context.Context, id int64) (*model.VideoModel, error) {
+	q := qFrom(ctx).VideoModel
+	item, err := q.WithContext(ctx).Preload(q.Platform).
+		Where(q.ID.Eq(id), q.Status.Eq(1)).First()
+	if err != nil {
+		return nil, err
+	}
+	if item.Platform.ID == 0 || item.Platform.Status != 1 || item.Platform.DeletedAt.Valid {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return item, nil
+}
+
 func (r *ModelRepo) ListEnabled(ctx context.Context) ([]model.VideoModel, error) {
 	return r.listEnabled(ctx, 0)
 }

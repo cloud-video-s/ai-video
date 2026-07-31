@@ -26,10 +26,12 @@ const submitClaimLease = 2 * time.Minute
 
 // Manager 负责创建任务、轮询第三方状态、持久化生成结果并发布进度事件。
 type Manager struct {
-	modelRepo     *repository.ModelRepo
-	parameterRepo *repository.ModelParameterRepo
-	taskRepo      *repository.UserGenerationTaskRepo
-	hub           *Hub
+	modelRepo             *repository.ModelRepo
+	parameterRepo         *repository.ModelParameterRepo
+	taskRepo              *repository.UserGenerationTaskRepo
+	templateRepo          *repository.TemplateRepo
+	templateParameterRepo *repository.TemplateModelParameterRepo
+	hub                   *Hub
 
 	mu     sync.Mutex
 	cancel context.CancelFunc
@@ -37,10 +39,12 @@ type Manager struct {
 }
 
 var sharedManager = &Manager{
-	modelRepo:     repository.NewModelRepo(),
-	parameterRepo: repository.NewModelParameterRepo(),
-	taskRepo:      repository.NewUserGenerationTaskRepo(),
-	hub:           NewHub(),
+	modelRepo:             repository.NewModelRepo(),
+	parameterRepo:         repository.NewModelParameterRepo(),
+	taskRepo:              repository.NewUserGenerationTaskRepo(),
+	templateRepo:          repository.NewTemplateRepo(),
+	templateParameterRepo: repository.NewTemplateModelParameterRepo(),
+	hub:                   NewHub(),
 }
 
 func Shared() *Manager { return sharedManager }
@@ -95,6 +99,9 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		return nil, errors.New("input 不能为空")
 	}
 	if existing, err := m.taskRepo.GetByClientRequestID(ctx, userID, request.ClientRequestID); err == nil {
+		if err := validateIdempotentTemplate(existing, request.TemplateID); err != nil {
+			return nil, err
+		}
 		return existing, nil
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
@@ -135,11 +142,14 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	prompt, _ := request.Input["prompt"].(string)
 	task := &model.VideoUserGenerationTask{
 		UserID: userID, ModelID: uint64(modelConfig.ID), ClientRequestID: request.ClientRequestID, TaskCode: taskCode,
-		TaskType: request.TaskType, Status: TaskStatusSubmitting, Progress: 0, Prompt: prompt, RequestPayload: string(payload),
+		TemplateID: request.TemplateID, TaskType: request.TaskType, Status: TaskStatusSubmitting, Progress: 0, Prompt: prompt, RequestPayload: string(payload),
 		RemoteUrls: "[]", LocalUrls: "[]",
 	}
 	if err := m.taskRepo.Create(ctx, task); err != nil {
 		if existing, lookupErr := m.taskRepo.GetByClientRequestID(ctx, userID, request.ClientRequestID); lookupErr == nil {
+			if err := validateIdempotentTemplate(existing, request.TemplateID); err != nil {
+				return nil, err
+			}
 			return existing, nil
 		}
 		return nil, err
@@ -153,6 +163,13 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	}
 	m.hub.Publish(task)
 	return task, nil
+}
+
+func validateIdempotentTemplate(task *model.VideoUserGenerationTask, templateID uint64) error {
+	if task != nil && task.TemplateID != templateID {
+		return errors.New("client_request_id is already used by a task with a different template")
+	}
+	return nil
 }
 
 func (m *Manager) submitTask(ctx context.Context, task *model.VideoUserGenerationTask, modelConfig *model.VideoModel, request remoteSubmitRequest) error {

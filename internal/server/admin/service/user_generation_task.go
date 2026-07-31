@@ -53,6 +53,7 @@ type UserGenerationTaskView struct {
 	ID               uint64                   `json:"id"`
 	UserID           uint64                   `json:"user_id"`
 	ModelID          uint64                   `json:"model_id"`
+	TemplateID       uint64                   `json:"template_id,omitempty"`
 	ClientRequestID  string                   `json:"client_request_id"`
 	TaskCode         string                   `json:"task_code"`
 	ThirdTaskCode    string                   `json:"third_task_code"`
@@ -121,7 +122,7 @@ func generationTaskView(record *repository.UserGenerationTaskAdminRecord, detail
 	}
 
 	view := UserGenerationTaskView{
-		ID: task.ID, UserID: task.UserID, ModelID: task.ModelID,
+		ID: task.ID, UserID: task.UserID, ModelID: task.ModelID, TemplateID: task.TemplateID,
 		ClientRequestID: task.ClientRequestID, TaskCode: task.TaskCode, ThirdTaskCode: task.ThirdTaskCode,
 		Status: task.Status, StatusName: generationTaskStatusName(task.Status), Progress: task.Progress,
 		MediaType: generationTaskMediaType(record, previewURLs), Prompt: task.Prompt,

@@ -70,7 +70,7 @@ type ClientTemplateType struct {
 
 type ClientTemplate struct {
 	ID             uint64 `json:"id"`
-	TemplateTypeID uint64 `json:"video_template_type_id"`
+	TemplateTypeID uint64 `json:"template_type_id"`
 	Name           string `json:"name"`
 	TemplateType   int64  `json:"template_type"`
 	CoverImageURL  string `json:"cover_image_url"`

@@ -89,6 +89,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		{
 			generationTasks.GET("/models", generationHandler.Models)
 			generationTasks.POST("/tasks", generationHandler.Create)
+			generationTasks.POST("/template-tasks", generationHandler.CreateFromTemplate)
 			generationTasks.GET("/tasks", generationHandler.List)
 			generationTasks.GET("/tasks/:id", generationHandler.Get)
 			//generationTasks.GET("/tasks/:id/events", generationHandler.Events)

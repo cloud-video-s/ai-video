@@ -591,6 +591,13 @@ func (r *TemplateRepo) GetTemplateID(ctx context.Context, id uint64) (*model.Vid
 	return q.WithContext(ctx).Where(q.ID.Eq(id)).First()
 }
 
+// GetEnabledByID loads a template that may be used to create a client
+// generation task. GORM's normal scope also excludes soft-deleted templates.
+func (r *TemplateRepo) GetEnabledByID(ctx context.Context, id uint64) (*model.VideoTemplate, error) {
+	q := qFrom(ctx).VideoTemplate
+	return q.WithContext(ctx).Where(q.ID.Eq(id), q.Status.Eq(1)).First()
+}
+
 func (r *TemplateRepo) GetWithType(ctx context.Context, id uint64) (*TemplateRecord, error) {
 	q := qFrom(ctx).VideoTemplate
 	item, err := q.WithContext(ctx).Where(q.ID.Eq(id)).First()

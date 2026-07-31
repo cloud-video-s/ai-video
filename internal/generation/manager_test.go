@@ -90,6 +90,91 @@ func TestCreateTaskQueuesBeforeProviderSubmission(t *testing.T) {
 	}
 }
 
+func TestCreateTemplateTaskDerivesSettingsAndPersistsTemplateID(t *testing.T) {
+	db := newGenerationManagerTestDB(t)
+	seedGenerationManagerVideoModel(t, db, "https://model.example.com")
+	if err := db.Exec(`INSERT INTO video_template
+		(id, name, template_type, template_type_id, model_id, prompt, status, created_at, updated_at)
+		VALUES (9, 'Animate portrait', 2, 3, 7, 'use the server template prompt', 1,
+		 CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`INSERT INTO video_template_model_parameter
+		(id, model_id, template_id, param_key, param_type, is_required, default_value,
+		 allowed_values, sort_order, parameter_type, constraints, created_at, updated_at)
+		VALUES (1, 7, 9, 'aspect_ratio', 'string', 0, '"1:1"', '["1:1"]',
+		 1, 1, '{}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	manager := &Manager{
+		modelRepo: repository.NewModelRepo(), parameterRepo: repository.NewModelParameterRepo(),
+		taskRepo: repository.NewUserGenerationTaskRepo(), templateRepo: repository.NewTemplateRepo(),
+		templateParameterRepo: repository.NewTemplateModelParameterRepo(), hub: NewHub(),
+	}
+	task, err := manager.CreateTemplateTask(context.Background(), 19, &CreateTemplateTaskRequest{
+		TemplateID: 9, ClientRequestID: "template-client-1",
+		Input: map[string]any{
+			"prompt": "client prompt must not win",
+			"images": []any{"https://cdn.example.com/reference.png"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if task.TemplateID != 9 || task.ModelID != 7 || task.TaskType != TaskTypeVideo {
+		t.Fatalf("derived task settings = %+v", task)
+	}
+	var payload remoteSubmitRequest
+	if err := json.Unmarshal([]byte(task.RequestPayload), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Input["prompt"] != "use the server template prompt" {
+		t.Fatalf("payload prompt = %#v", payload.Input["prompt"])
+	}
+	if payload.Parameters["aspect_ratio"] != "1:1" {
+		t.Fatalf("payload parameters = %#v", payload.Parameters)
+	}
+	var persistedTemplateID uint64
+	if err := db.Table(model.TableNameVideoUserGenerationTask).
+		Select("template_id").Where("id = ?", task.ID).Scan(&persistedTemplateID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if persistedTemplateID != 9 {
+		t.Fatalf("persisted template_id = %d, want 9", persistedTemplateID)
+	}
+	if view := ViewOf(task); view.TemplateID != 9 {
+		t.Fatalf("task view template_id = %d, want 9", view.TemplateID)
+	}
+}
+
+func TestTemplateTaskType(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   int64
+		want    uint32
+		wantErr bool
+	}{
+		{name: "image", value: 1, want: TaskTypeImage},
+		{name: "video", value: 2, want: TaskTypeVideo},
+		{name: "unsupported", value: 3, wantErr: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := templateTaskType(test.value)
+			if test.wantErr {
+				if err == nil {
+					t.Fatalf("templateTaskType(%d) succeeded", test.value)
+				}
+				return
+			}
+			if err != nil || got != test.want {
+				t.Fatalf("templateTaskType(%d) = %d, %v; want %d", test.value, got, err, test.want)
+			}
+		})
+	}
+}
+
 func TestProcessTaskPollsThirdTaskCodeUntilFailure(t *testing.T) {
 	db := newGenerationManagerTestDB(t)
 	statuses := []string{"Pending", "Running", "Failure"}
@@ -425,6 +510,35 @@ func newGenerationManagerTestDB(t *testing.T) *gorm.DB {
 			updated_at DATETIME,
 			deleted_at DATETIME NULL
 		)`,
+		`CREATE TABLE video_template (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			template_type INTEGER NOT NULL,
+			template_type_id INTEGER NOT NULL,
+			model_id INTEGER NOT NULL,
+			prompt TEXT NOT NULL,
+			status INTEGER NOT NULL DEFAULT 1,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME NULL
+		)`,
+		`CREATE TABLE video_template_model_parameter (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			model_id INTEGER NOT NULL,
+			template_id INTEGER NOT NULL,
+			param_key TEXT NOT NULL,
+			param_type TEXT NOT NULL,
+			is_required INTEGER NOT NULL DEFAULT 0,
+			default_value TEXT,
+			allowed_values TEXT,
+			description TEXT,
+			sort_order INTEGER NOT NULL DEFAULT 0,
+			parameter_type INTEGER NOT NULL DEFAULT 1,
+			constraints TEXT,
+			created_at DATETIME,
+			updated_at DATETIME,
+			deleted_at DATETIME NULL
+		)`,
 		`CREATE TABLE video_user_generation_task (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL,
@@ -433,6 +547,7 @@ func newGenerationManagerTestDB(t *testing.T) *gorm.DB {
 			task_code TEXT NOT NULL UNIQUE,
 			third_task_code TEXT,
 			status INTEGER NOT NULL,
+			task_type INTEGER NOT NULL DEFAULT 1,
 			progress INTEGER NOT NULL DEFAULT 0,
 			prompt TEXT,
 			request_payload TEXT NOT NULL,
@@ -445,6 +560,7 @@ func newGenerationManagerTestDB(t *testing.T) *gorm.DB {
 			started_at DATETIME NULL,
 			finished_at DATETIME NULL,
 			last_polled_at DATETIME NULL,
+			template_id INTEGER NOT NULL DEFAULT 0,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
 			deleted_at DATETIME NULL,
@@ -486,7 +602,7 @@ func seedGenerationManagerVideoModel(t *testing.T, db *gorm.DB, hostURL string) 
 	if err := db.Exec(`INSERT INTO video_model_parameter
 		(id, model_id, param_key, param_type, is_required, default_value, allowed_values,
 		 sort_order, parameter_type, constraints, created_at, updated_at)
-		VALUES (1, 7, 'aspect_ratio', 'string', 1, '"16:9"', '["16:9"]',
+		VALUES (1, 7, 'aspect_ratio', 'string', 1, '"16:9"', '["16:9","1:1"]',
 		 1, 1, '{}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).Error; err != nil {
 		t.Fatal(err)
 	}
