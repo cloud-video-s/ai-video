@@ -684,21 +684,12 @@ func main() {
 		gen.FieldType("points_change", "int64"),
 		gen.FieldType("balance_before", "uint64"),
 		gen.FieldType("balance_after", "uint64"),
-		gen.FieldType("points_package_id", "*uint64"),
 		gen.FieldType("operator_admin_id", "*uint64"),
 		gen.FieldType("order_id", "uint64"),
 		gen.FieldRelate(field.BelongsTo, "User", videoUser,
 			&field.RelateConfig{
 				GORMTag: field.GormTag{
 					"foreignKey": []string{"UserID"},
-					"references": []string{"ID"},
-				},
-			},
-		),
-		gen.FieldRelate(field.BelongsTo, "PointsPackage", videoPointsPackage,
-			&field.RelateConfig{
-				GORMTag: field.GormTag{
-					"foreignKey": []string{"PointsPackageID"},
 					"references": []string{"ID"},
 				},
 			},
