@@ -119,10 +119,9 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			isTrue = true
 		} else {
-			if req.ForceNew {
+			if req.ForceNew && latest.Status != 1 {
 				return errors.New("当前设备账号已停用")
 			}
-			isTrue = true
 		}
 		if isTrue {
 			user = &model.VideoUser{
