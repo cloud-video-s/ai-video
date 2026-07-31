@@ -85,6 +85,12 @@ func (h *GenerationHandler) List(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
+	if request.Page == 0 {
+		request.Page = 1
+	}
+	if request.PageSize == 0 {
+		request.PageSize = 10
+	}
 	data, err := h.modelService.GenerationList(c, &request)
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())

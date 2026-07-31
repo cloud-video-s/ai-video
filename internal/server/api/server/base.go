@@ -45,7 +45,7 @@ type PageResult struct {
 
 type BasePage struct {
 	Page     int `query:"page" json:"page" form:"page" binding:"omitempty,min=1" default:"1"`
-	PageSize int `query:"pageSize" json:"pageSize" form:"pageSize" binding:"omitempty,min=1" default:"10"`
+	PageSize int `query:"page_size" json:"page_size" form:"page_size" binding:"omitempty,min=1" default:"10"`
 }
 
 func GetPageResponse(page, pageSize, total int64, data any) (*PageResult, error) {
