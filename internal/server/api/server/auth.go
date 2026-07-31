@@ -326,8 +326,8 @@ func blacklistAPIToken(token string, expiresAt time.Time) error {
 	return cache.BlacklistToken(token, ttl)
 }
 
-func baseTrackingUpdates(loginType int, req *AccountBaseRequest, clientIP string, now time.Time) map[string]interface{} {
-	updates := map[string]interface{}{"last_opened_at": now, "last_login_at": now, "last_login_ip": clientIP, "activated": uint32(1),
+func baseTrackingUpdates(loginType int, req *AccountBaseRequest, clientIP string, now time.Time) map[string]any {
+	updates := map[string]any{"last_opened_at": now, "last_login_at": now, "last_login_ip": clientIP, "activated": uint32(1),
 		"client_country": req.ClientCountry,
 		"app_name":       req.AppName,
 		"phone_model":    req.PhoneModel,

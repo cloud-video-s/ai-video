@@ -328,7 +328,7 @@ func (s *Service) ConsumePoints(ctx context.Context, req ConsumePointsRequest) (
 		if err := s.ledgers.Create(ctx, ledger); err != nil {
 			return err
 		}
-		if err := s.users.Update(ctx, user.ID, map[string]interface{}{"points_balance": after}); err != nil {
+		if err := s.users.Update(ctx, user.ID, map[string]any{"points_balance": after}); err != nil {
 			return err
 		}
 		created = ledger
