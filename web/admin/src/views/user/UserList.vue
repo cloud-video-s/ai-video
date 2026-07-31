@@ -400,7 +400,7 @@ async function clearDevice() {
 }
 
 function loginTypeLabel(value: number) { return value === 2 ? 'Google' : value === 3 ? 'Apple' : '游客' }
-function subscriptionLabel(value: number) { return value === 2 ? '订阅中' : value === 3 ? '已取消' : '未订阅' }
+function subscriptionLabel(value: number) { return value === 2 ? '订阅中' : value === 3 ? '已取消' : value === 4 ? '已过期' : '未订阅' }
 function flagActive(value: boolean | number) { return value === true || Number(value) === 1 }
 function formatNumber(value: number) { return new Intl.NumberFormat('zh-CN').format(value || 0) }
 
