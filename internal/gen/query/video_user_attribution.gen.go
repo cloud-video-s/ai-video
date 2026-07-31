@@ -68,8 +68,77 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 		},
 		Works: struct {
 			field.RelationField
+			Template struct {
+				field.RelationField
+				TemplateTypeModel struct {
+					field.RelationField
+				}
+				AIModel struct {
+					field.RelationField
+				}
+				ModelParameters struct {
+					field.RelationField
+					AIModel struct {
+						field.RelationField
+					}
+					Template struct {
+						field.RelationField
+					}
+				}
+			}
 		}{
 			RelationField: field.NewRelation("User.Works", "model.VideoUserGenerationTask"),
+			Template: struct {
+				field.RelationField
+				TemplateTypeModel struct {
+					field.RelationField
+				}
+				AIModel struct {
+					field.RelationField
+				}
+				ModelParameters struct {
+					field.RelationField
+					AIModel struct {
+						field.RelationField
+					}
+					Template struct {
+						field.RelationField
+					}
+				}
+			}{
+				RelationField: field.NewRelation("User.Works.Template", "model.VideoTemplate"),
+				TemplateTypeModel: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("User.Works.Template.TemplateTypeModel", "model.VideoTemplateType"),
+				},
+				AIModel: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("User.Works.Template.AIModel", "model.VideoModel"),
+				},
+				ModelParameters: struct {
+					field.RelationField
+					AIModel struct {
+						field.RelationField
+					}
+					Template struct {
+						field.RelationField
+					}
+				}{
+					RelationField: field.NewRelation("User.Works.Template.ModelParameters", "model.VideoTemplateModelParameter"),
+					AIModel: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("User.Works.Template.ModelParameters.AIModel", "model.VideoModel"),
+					},
+					Template: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("User.Works.Template.ModelParameters.Template", "model.VideoTemplate"),
+					},
+				},
+			},
 		},
 		Orders: struct {
 			field.RelationField
@@ -253,6 +322,24 @@ type videoUserAttributionBelongsToUser struct {
 	}
 	Works struct {
 		field.RelationField
+		Template struct {
+			field.RelationField
+			TemplateTypeModel struct {
+				field.RelationField
+			}
+			AIModel struct {
+				field.RelationField
+			}
+			ModelParameters struct {
+				field.RelationField
+				AIModel struct {
+					field.RelationField
+				}
+				Template struct {
+					field.RelationField
+				}
+			}
+		}
 	}
 	Orders struct {
 		field.RelationField

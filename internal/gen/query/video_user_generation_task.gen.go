@@ -49,9 +49,46 @@ func newVideoUserGenerationTask(db *gorm.DB, opts ...gen.DOOption) videoUserGene
 	_videoUserGenerationTask.FinishedAt = field.NewTime(tableName, "finished_at")
 	_videoUserGenerationTask.LastPolledAt = field.NewTime(tableName, "last_polled_at")
 	_videoUserGenerationTask.TemplateID = field.NewUint64(tableName, "template_id")
+	_videoUserGenerationTask.CoverImageURL = field.NewString(tableName, "cover_image_url")
 	_videoUserGenerationTask.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUserGenerationTask.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUserGenerationTask.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoUserGenerationTask.Template = videoUserGenerationTaskBelongsToTemplate{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Template", "model.VideoTemplate"),
+		TemplateTypeModel: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Template.TemplateTypeModel", "model.VideoTemplateType"),
+		},
+		AIModel: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Template.AIModel", "model.VideoModel"),
+		},
+		ModelParameters: struct {
+			field.RelationField
+			AIModel struct {
+				field.RelationField
+			}
+			Template struct {
+				field.RelationField
+			}
+		}{
+			RelationField: field.NewRelation("Template.ModelParameters", "model.VideoTemplateModelParameter"),
+			AIModel: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("Template.ModelParameters.AIModel", "model.VideoModel"),
+			},
+			Template: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("Template.ModelParameters.Template", "model.VideoTemplate"),
+			},
+		},
+	}
 
 	_videoUserGenerationTask.fillFieldMap()
 
@@ -83,9 +120,11 @@ type videoUserGenerationTask struct {
 	FinishedAt       field.Time   // 任务完成时间
 	LastPolledAt     field.Time   // 最后一次轮询外部服务的时间
 	TemplateID       field.Uint64 // 关联模板id
+	CoverImageURL    field.String // 封面URL
 	CreatedAt        field.Time   // 记录创建时间
 	UpdatedAt        field.Time   // 记录更新时间
 	DeletedAt        field.Field  // 软删除时间（非NULL表示已删除）
+	Template         videoUserGenerationTaskBelongsToTemplate
 
 	fieldMap map[string]field.Expr
 }
@@ -123,6 +162,7 @@ func (v *videoUserGenerationTask) updateTableName(table string) *videoUserGenera
 	v.FinishedAt = field.NewTime(table, "finished_at")
 	v.LastPolledAt = field.NewTime(table, "last_polled_at")
 	v.TemplateID = field.NewUint64(table, "template_id")
+	v.CoverImageURL = field.NewString(table, "cover_image_url")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -154,7 +194,7 @@ func (v *videoUserGenerationTask) GetFieldByName(fieldName string) (field.OrderE
 }
 
 func (v *videoUserGenerationTask) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 24)
+	v.fieldMap = make(map[string]field.Expr, 26)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["model_id"] = v.ModelID
@@ -176,19 +216,121 @@ func (v *videoUserGenerationTask) fillFieldMap() {
 	v.fieldMap["finished_at"] = v.FinishedAt
 	v.fieldMap["last_polled_at"] = v.LastPolledAt
 	v.fieldMap["template_id"] = v.TemplateID
+	v.fieldMap["cover_image_url"] = v.CoverImageURL
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoUserGenerationTask) clone(db *gorm.DB) videoUserGenerationTask {
 	v.videoUserGenerationTaskDo.ReplaceConnPool(db.Statement.ConnPool)
+	v.Template.db = db.Session(&gorm.Session{Initialized: true})
+	v.Template.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoUserGenerationTask) replaceDB(db *gorm.DB) videoUserGenerationTask {
 	v.videoUserGenerationTaskDo.ReplaceDB(db)
+	v.Template.db = db.Session(&gorm.Session{})
 	return v
+}
+
+type videoUserGenerationTaskBelongsToTemplate struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	TemplateTypeModel struct {
+		field.RelationField
+	}
+	AIModel struct {
+		field.RelationField
+	}
+	ModelParameters struct {
+		field.RelationField
+		AIModel struct {
+			field.RelationField
+		}
+		Template struct {
+			field.RelationField
+		}
+	}
+}
+
+func (a videoUserGenerationTaskBelongsToTemplate) Where(conds ...field.Expr) *videoUserGenerationTaskBelongsToTemplate {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoUserGenerationTaskBelongsToTemplate) WithContext(ctx context.Context) *videoUserGenerationTaskBelongsToTemplate {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoUserGenerationTaskBelongsToTemplate) Session(session *gorm.Session) *videoUserGenerationTaskBelongsToTemplate {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoUserGenerationTaskBelongsToTemplate) Model(m *model.VideoUserGenerationTask) *videoUserGenerationTaskBelongsToTemplateTx {
+	return &videoUserGenerationTaskBelongsToTemplateTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoUserGenerationTaskBelongsToTemplate) Unscoped() *videoUserGenerationTaskBelongsToTemplate {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoUserGenerationTaskBelongsToTemplateTx struct{ tx *gorm.Association }
+
+func (a videoUserGenerationTaskBelongsToTemplateTx) Find() (result *model.VideoTemplate, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoUserGenerationTaskBelongsToTemplateTx) Append(values ...*model.VideoTemplate) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoUserGenerationTaskBelongsToTemplateTx) Replace(values ...*model.VideoTemplate) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoUserGenerationTaskBelongsToTemplateTx) Delete(values ...*model.VideoTemplate) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoUserGenerationTaskBelongsToTemplateTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoUserGenerationTaskBelongsToTemplateTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoUserGenerationTaskBelongsToTemplateTx) Unscoped() *videoUserGenerationTaskBelongsToTemplateTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type videoUserGenerationTaskDo struct{ gen.DO }

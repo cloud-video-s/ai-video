@@ -98,6 +98,57 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("Works", "model.VideoUserGenerationTask"),
+		Template: struct {
+			field.RelationField
+			TemplateTypeModel struct {
+				field.RelationField
+			}
+			AIModel struct {
+				field.RelationField
+			}
+			ModelParameters struct {
+				field.RelationField
+				AIModel struct {
+					field.RelationField
+				}
+				Template struct {
+					field.RelationField
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Works.Template", "model.VideoTemplate"),
+			TemplateTypeModel: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("Works.Template.TemplateTypeModel", "model.VideoTemplateType"),
+			},
+			AIModel: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("Works.Template.AIModel", "model.VideoModel"),
+			},
+			ModelParameters: struct {
+				field.RelationField
+				AIModel struct {
+					field.RelationField
+				}
+				Template struct {
+					field.RelationField
+				}
+			}{
+				RelationField: field.NewRelation("Works.Template.ModelParameters", "model.VideoTemplateModelParameter"),
+				AIModel: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Works.Template.ModelParameters.AIModel", "model.VideoModel"),
+				},
+				Template: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Works.Template.ModelParameters.Template", "model.VideoTemplate"),
+				},
+			},
+		},
 	}
 
 	_videoUser.Orders = videoUserHasManyOrders{
@@ -523,6 +574,25 @@ type videoUserHasManyWorks struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	Template struct {
+		field.RelationField
+		TemplateTypeModel struct {
+			field.RelationField
+		}
+		AIModel struct {
+			field.RelationField
+		}
+		ModelParameters struct {
+			field.RelationField
+			AIModel struct {
+				field.RelationField
+			}
+			Template struct {
+				field.RelationField
+			}
+		}
+	}
 }
 
 func (a videoUserHasManyWorks) Where(conds ...field.Expr) *videoUserHasManyWorks {
