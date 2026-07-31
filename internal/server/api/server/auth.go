@@ -118,8 +118,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 		isTrue := false
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			isTrue = true
-		}
-		if latest.Status != 1 {
+		} else {
 			if req.ForceNew {
 				return errors.New("当前设备账号已停用")
 			}
@@ -375,4 +374,18 @@ func ThirdPartyLoginBinding(provider string, clientIP, serverCountry string, now
 		"server_country": serverCountry,
 	}
 	return updates
+}
+
+func (s *AuthService) CheckUserVIP(ctx *gin.Context, userID uint64) bool {
+	user, err := repository.NewAppUserRepo().GetByID(ctx, userID)
+	if err != nil {
+		return false
+	}
+	if user.SubscriptionStatus != 2 {
+		return false
+	}
+	if user.VipExpiresAt == nil || user.VipExpiresAt.Unix() <= time.Now().Unix() {
+		return false
+	}
+	return true
 }
