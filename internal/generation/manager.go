@@ -14,6 +14,8 @@ import (
 
 	"ai-video/internal/config"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/upload"
+	"ai-video/internal/pkg/uploadruntime"
 	"ai-video/internal/repository"
 
 	"github.com/google/uuid"
@@ -398,18 +400,35 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoUserGenerati
 }
 
 func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGenerationTask, remoteURLs []string) error {
+	if len(remoteURLs) == 0 || strings.TrimSpace(remoteURLs[0]) == "" {
+		return m.failTask(ctx, task, "生成视频任务没有返回可用于封面的第一个视频")
+	}
 	localURLs, err := downloadVideos(ctx, task, remoteURLs)
 	if err != nil {
 		return m.failTask(ctx, task, "保存生成视频失败: "+err.Error())
 	}
+	storage, err := uploadruntime.Storage()
+	if err != nil {
+		return m.failTask(ctx, task, "获取视频封面存储失败: "+err.Error())
+	}
+	coverSource := strings.TrimSpace(localURLs[0])
+	coverURL, err := generateAndStoreTaskCover(ctx, storage, task, upload.MediaVideo, coverSource)
+	remoteCoverSource := strings.TrimSpace(remoteURLs[0])
+	if err != nil && remoteCoverSource != coverSource {
+		coverURL, err = generateAndStoreTaskCover(ctx, storage, task, upload.MediaVideo, remoteCoverSource)
+	}
+	if err != nil {
+		return m.failTask(ctx, task, "生成视频封面失败: "+err.Error())
+	}
 	encoded, _ := json.Marshal(localURLs)
 	now := time.Now()
 	task.LocalUrls = string(encoded)
+	task.CoverImageURL = coverURL
 	task.Status = TaskStatusSuccess
 	task.Progress = 100
 	task.ErrorMessage = ""
 	task.FinishedAt = now
-	if err := m.taskRepo.UpdateFields(ctx, task, "LocalUrls", "Status", "Progress", "ErrorMessage", "FinishedAt"); err != nil {
+	if err := m.taskRepo.UpdateFields(ctx, task, "LocalUrls", "CoverImageURL", "Status", "Progress", "ErrorMessage", "FinishedAt"); err != nil {
 		return err
 	}
 	m.hub.Publish(task)

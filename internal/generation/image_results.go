@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -36,14 +37,24 @@ func (m *Manager) finishImageTask(ctx context.Context, task *model.VideoUserGene
 	if len(storedURLs) == 0 {
 		return errors.New("image generation completed without an output")
 	}
+	coverSource, cleanupCoverSource, err := firstImageCoverSource(remoteURLs, base64Images)
+	if err != nil {
+		return err
+	}
+	defer cleanupCoverSource()
+	coverURL, err := generateAndStoreTaskCover(ctx, storage, task, upload.MediaImage, coverSource)
+	if err != nil {
+		return fmt.Errorf("generate image task cover: %w", err)
+	}
 	rawURLs, _ := json.Marshal(storedURLs)
 	now := time.Now()
 	task.LocalUrls = string(rawURLs)
+	task.CoverImageURL = coverURL
 	task.Status = TaskStatusSuccess
 	task.Progress = 100
 	task.ErrorMessage = ""
 	task.FinishedAt = now
-	if err := m.taskRepo.UpdateFields(ctx, task, "LocalUrls", "Status", "Progress", "ErrorMessage", "FinishedAt"); err != nil {
+	if err := m.taskRepo.UpdateFields(ctx, task, "LocalUrls", "CoverImageURL", "Status", "Progress", "ErrorMessage", "FinishedAt"); err != nil {
 		return err
 	}
 	m.hub.Publish(task)
@@ -84,17 +95,7 @@ func saveBase64Images(
 	}
 	result := make([]string, 0, len(values))
 	for index, encoded := range values {
-		if comma := strings.IndexByte(encoded, ','); strings.HasPrefix(encoded, "data:") && comma >= 0 {
-			encoded = encoded[comma+1:]
-		}
-		raw, err := base64.StdEncoding.DecodeString(encoded)
-		if err != nil {
-			return nil, fmt.Errorf("decode generated image %d: %w", index, err)
-		}
-		if len(raw) == 0 || int64(len(raw)) > maxSize {
-			return nil, fmt.Errorf("generated image %d exceeds the configured size limit", index)
-		}
-		extension, contentType, err := detectedImageType(raw)
+		raw, extension, contentType, err := decodeGeneratedBase64Image(encoded, index, maxSize)
 		if err != nil {
 			return nil, err
 		}
@@ -108,6 +109,51 @@ func saveBase64Images(
 		result = append(result, storedURL)
 	}
 	return result, nil
+}
+
+func firstImageCoverSource(remoteURLs, base64Images []string) (string, func(), error) {
+	if len(remoteURLs) > 0 && strings.TrimSpace(remoteURLs[0]) != "" {
+		return strings.TrimSpace(remoteURLs[0]), func() {}, nil
+	}
+	if len(base64Images) == 0 {
+		return "", func() {}, errors.New("image generation completed without a first image for its cover")
+	}
+	maxSize := config.Cfg.Upload.ImageMaxFileSize
+	if maxSize <= 0 {
+		maxSize = 20 << 20
+	}
+	raw, _, _, err := decodeGeneratedBase64Image(base64Images[0], 0, maxSize)
+	if err != nil {
+		return "", func() {}, err
+	}
+	temporary, err := newGeneratedTemporaryFile()
+	if err != nil {
+		return "", func() {}, err
+	}
+	cleanup := func() { _ = os.Remove(temporary) }
+	if err := os.WriteFile(temporary, raw, 0o600); err != nil {
+		cleanup()
+		return "", func() {}, err
+	}
+	return temporary, cleanup, nil
+}
+
+func decodeGeneratedBase64Image(encoded string, index int, maxSize int64) ([]byte, string, string, error) {
+	if comma := strings.IndexByte(encoded, ','); strings.HasPrefix(encoded, "data:") && comma >= 0 {
+		encoded = encoded[comma+1:]
+	}
+	raw, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("decode generated image %d: %w", index, err)
+	}
+	if len(raw) == 0 || int64(len(raw)) > maxSize {
+		return nil, "", "", fmt.Errorf("generated image %d exceeds the configured size limit", index)
+	}
+	extension, contentType, err := detectedImageType(raw)
+	if err != nil {
+		return nil, "", "", err
+	}
+	return raw, extension, contentType, nil
 }
 
 func imageResultPayloads(raw string) ([]string, []string, error) {

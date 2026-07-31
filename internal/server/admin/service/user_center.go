@@ -28,19 +28,18 @@ type UserCenterDetail struct {
 }
 
 type UserCenterPointsLedger struct {
-	ID              uint64    `json:"id"`
-	Direction       int8      `json:"direction"`
-	PointsChange    int64     `json:"points_change"`
-	BalanceBefore   uint64    `json:"balance_before"`
-	BalanceAfter    uint64    `json:"balance_after"`
-	SourceType      string    `json:"source_type"`
-	BusinessID      string    `json:"business_id"`
-	PointsPackageID *uint64   `json:"points_package_id"`
-	OrderID         uint64    `json:"order_id"`
-	WorkID          string    `json:"work_id"`
-	ModeKey         string    `json:"mode_key"`
-	Description     string    `json:"description"`
-	OccurredAt      time.Time `json:"occurred_at"`
+	ID            uint64    `json:"id"`
+	Direction     int8      `json:"direction"`
+	PointsChange  int64     `json:"points_change"`
+	BalanceBefore uint64    `json:"balance_before"`
+	BalanceAfter  uint64    `json:"balance_after"`
+	SourceType    uint32    `json:"source_type"`
+	OrderCode     string    `json:"order_code"`
+	OrderID       uint64    `json:"order_id"`
+	WorkID        string    `json:"work_id"`
+	ModeKey       string    `json:"mode_key"`
+	Description   string    `json:"description"`
+	OccurredAt    time.Time `json:"occurred_at"`
 }
 
 type UserCenterWork struct {
@@ -142,7 +141,7 @@ func (s *AppUserService) GetCenter(ctx context.Context, id uint64) (*UserCenterD
 	}
 	now := time.Now()
 	return &UserCenterDetail{
-		User: user, IsMember: user.VIPLevel > 0 && user.VipExpiresAt != nil && user.VipExpiresAt.After(now),
+		User: user, IsMember: user.SubscriptionStatus == 2 && user.VipExpiresAt != nil && user.VipExpiresAt.After(now),
 		Identities: identities, Attribution: attribution,
 		PointsLedgers: userCenterPointsLedgers(pointRecords), PointsLedgerTotal: pointsTotal, PointsSummary: summary,
 		Works: userCenterWorks(works), WorkTotal: workTotal,
@@ -157,9 +156,9 @@ func userCenterPointsLedgers(records []repository.UserPointsLedgerRecord) []User
 		items = append(items, UserCenterPointsLedger{
 			ID: ledger.ID, Direction: ledger.Direction, PointsChange: ledger.PointsChange,
 			BalanceBefore: ledger.BalanceBefore, BalanceAfter: ledger.BalanceAfter,
-			SourceType: ledger.SourceType, BusinessID: ledger.BusinessID,
-			PointsPackageID: ledger.PointsPackageID, OrderID: ledger.OrderID,
-			WorkID: ledger.WorkID, ModeKey: ledger.ModeKey,
+			SourceType: ledger.SourceType, OrderCode: ledger.OrderCode,
+			OrderID: ledger.OrderID,
+			WorkID:  ledger.WorkID, ModeKey: ledger.ModeKey,
 			Description: ledger.Description, OccurredAt: ledger.OccurredAt,
 		})
 	}
@@ -263,13 +262,9 @@ func (s *AppUserService) ExtendVIP(ctx context.Context, id uint64, days uint32) 
 	if user.VipExpiresAt != nil && user.VipExpiresAt.After(now) {
 		base = *user.VipExpiresAt
 	}
-	level := user.VIPLevel
-	if level == 0 {
-		level = 1
-	}
 	updates := map[string]interface{}{
-		"vip_level": level, "vip_expires_at": base.AddDate(0, 0, int(days)),
-		"user_type": domain.AppUserTypePaid, "subscription_status": domain.AppUserSubscriptionSubscribed,
+		"vip_expires_at": base.AddDate(0, 0, int(days)),
+		"user_type":      domain.AppUserTypePaid, "subscription_status": domain.AppUserSubscriptionSubscribed,
 	}
 	if user.VIPStartedAt == nil {
 		updates["vip_started_at"] = now
@@ -311,14 +306,14 @@ func (s *AppUserService) TransferVIP(ctx context.Context, id, targetID uint64) e
 		if err != nil {
 			return err
 		}
-		if source.VIPLevel == 0 || source.VipExpiresAt == nil || !source.VipExpiresAt.After(time.Now()) {
+		if source.SubscriptionStatus != 2 || source.VipExpiresAt == nil || !source.VipExpiresAt.After(time.Now()) {
 			return errors.New("当前用户没有可转移的有效会员")
 		}
-		if target.VIPLevel > 0 && target.VipExpiresAt != nil && target.VipExpiresAt.After(time.Now()) {
+		if target.SubscriptionStatus == 2 && target.VipExpiresAt != nil && target.VipExpiresAt.After(time.Now()) {
 			return errors.New("目标用户已有有效会员，不能覆盖")
 		}
 		if err := s.repo.Update(ctx, targetID, map[string]interface{}{
-			"vip_level": source.VIPLevel, "vip_started_at": source.VIPStartedAt, "vip_expires_at": source.VipExpiresAt,
+			"vip_started_at": source.VIPStartedAt, "vip_expires_at": source.VipExpiresAt,
 			"user_type": domain.AppUserTypePaid, "subscription_status": domain.AppUserSubscriptionSubscribed,
 		}); err != nil {
 			return err

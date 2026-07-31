@@ -4,7 +4,9 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"time"
 
+	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 
 	"gorm.io/gen/field"
@@ -115,6 +117,27 @@ func (d *AppUserRepo) Update(ctx context.Context, id uint64, updates map[string]
 	return err
 }
 
+// ExpireDueSubscriptions atomically expires users whose active subscription
+// has reached its VIP end time. Keeping the eligibility predicates on the
+// update prevents a concurrent renewal committed first from being overwritten.
+func (d *AppUserRepo) ExpireDueSubscriptions(ctx context.Context, now time.Time) (int64, error) {
+	q := qFrom(ctx).VideoUser
+	result, err := q.WithContext(ctx).
+		Where(
+			q.SubscriptionStatus.Eq(domain.AppUserSubscriptionSubscribed),
+			q.VipExpiresAt.IsNotNull(),
+			q.VipExpiresAt.Lte(now),
+		).
+		Updates(map[string]interface{}{
+			"subscription_status": domain.AppUserSubscriptionExpired,
+			"points_balance":      uint64(0),
+		})
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected, nil
+}
+
 // IncrementTokenVersion atomically rotates the user's session version. API
 // middleware compares this value with the JWT claim, so older tokens stop
 // working immediately.
@@ -173,12 +196,6 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 		}
 		if filter.Status != nil {
 			dao = dao.Where(user.Status.Eq(int8(*filter.Status)))
-		}
-		if filter.IsFrozen != nil {
-			dao = dao.Where(user.IsFrozen.Eq(boolInt8(*filter.IsFrozen)))
-		}
-		if filter.IsBlacklisted != nil {
-			dao = dao.Where(user.IsBlacklisted.Eq(boolInt8(*filter.IsBlacklisted)))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"

@@ -34,17 +34,19 @@ func newVideoUserPointsLedger(db *gorm.DB, opts ...gen.DOOption) videoUserPoints
 	_videoUserPointsLedger.PointsChange = field.NewInt64(tableName, "points_change")
 	_videoUserPointsLedger.BalanceBefore = field.NewUint64(tableName, "balance_before")
 	_videoUserPointsLedger.BalanceAfter = field.NewUint64(tableName, "balance_after")
-	_videoUserPointsLedger.SourceType = field.NewString(tableName, "source_type")
-	_videoUserPointsLedger.BusinessID = field.NewString(tableName, "business_id")
-	_videoUserPointsLedger.PointsPackageID = field.NewUint64(tableName, "points_package_id")
+	_videoUserPointsLedger.SourceType = field.NewUint32(tableName, "source_type")
+	_videoUserPointsLedger.OrderCode = field.NewString(tableName, "order_code")
+	_videoUserPointsLedger.ShopID = field.NewUint64(tableName, "shop_id")
 	_videoUserPointsLedger.OperatorAdminID = field.NewUint64(tableName, "operator_admin_id")
 	_videoUserPointsLedger.Description = field.NewString(tableName, "description")
 	_videoUserPointsLedger.OccurredAt = field.NewTime(tableName, "occurred_at")
-	_videoUserPointsLedger.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUserPointsLedger.OrderID = field.NewUint64(tableName, "order_id")
 	_videoUserPointsLedger.WorkID = field.NewString(tableName, "work_id")
 	_videoUserPointsLedger.ModeKey = field.NewString(tableName, "mode_key")
 	_videoUserPointsLedger.IdempotencyKey = field.NewString(tableName, "idempotency_key")
+	_videoUserPointsLedger.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoUserPointsLedger.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoUserPointsLedger.DeletedAt = field.NewField(tableName, "deleted_at")
 	_videoUserPointsLedger.User = videoUserPointsLedgerBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -148,41 +150,36 @@ func newVideoUserPointsLedger(db *gorm.DB, opts ...gen.DOOption) videoUserPoints
 		},
 	}
 
-	_videoUserPointsLedger.PointsPackage = videoUserPointsLedgerBelongsToPointsPackage{
-		db: db.Session(&gorm.Session{}),
-
-		RelationField: field.NewRelation("PointsPackage", "model.VideoPointsPackage"),
-	}
-
 	_videoUserPointsLedger.fillFieldMap()
 
 	return _videoUserPointsLedger
 }
 
+// videoUserPointsLedger 用户积分账本
 type videoUserPointsLedger struct {
 	videoUserPointsLedgerDo videoUserPointsLedgerDo
 
 	ALL             field.Asterisk
-	ID              field.Uint64
-	UserID          field.Uint64 // client user ID
-	Direction       field.Int8   // 1 income, 2 expense
-	PointsChange    field.Int64  // signed points change
-	BalanceBefore   field.Uint64 // balance before change
-	BalanceAfter    field.Uint64 // balance after change
-	SourceType      field.String // purchase, consume, reward, refund, admin or other
-	BusinessID      field.String // order or business reference
-	PointsPackageID field.Uint64 // related points package ID
-	OperatorAdminID field.Uint64 // admin operator ID for manual changes
-	Description     field.String // change description
-	OccurredAt      field.Time   // business occurrence time
-	CreatedAt       field.Time
-	OrderID         field.Uint64
-	WorkID          field.String
-	ModeKey         field.String
-	IdempotencyKey  field.String
+	ID              field.Uint64 // 主键ID
+	UserID          field.Uint64 // 客户端用户ID
+	Direction       field.Int8   // 变动方向：1-收入，2-支出
+	PointsChange    field.Int64  // 积分变动量（正数表示增加，负数表示减少）
+	BalanceBefore   field.Uint64 // 变动前积分余额
+	BalanceAfter    field.Uint64 // 变动后积分余额
+	SourceType      field.Uint32 // 来源类型：1=订阅赠送，2=积分购买, 3=模型消费,4=模型退款，5=订阅过期扣除, 6=系统奖励，7=管理员操作，8=其他
+	OrderCode       field.String // 关联的业务单号（如订单号、活动编号等）
+	ShopID          field.Uint64 // 关联的积分包ID（外键指向 video_points_package）
+	OperatorAdminID field.Uint64 // 操作管理员ID（仅当 source_type=admin 时记录）
+	Description     field.String // 变动描述（如“购买VIP月卡赠送”）
+	OccurredAt      field.Time   // 业务发生时间（业务侧时间戳，精确到毫秒）
+	OrderID         field.Uint64 // 关联的订单ID（冗余，便于直接查询）
+	WorkID          field.String // 关联的工作流ID或任务ID
+	ModeKey         field.String // 业务模式标识（用于区分不同业务场景）
+	IdempotencyKey  field.String // 幂等键（用于防止重复记录，唯一索引）
+	CreatedAt       field.Time   // 记录创建时间（系统时间戳）
+	UpdatedAt       field.Time
+	DeletedAt       field.Field
 	User            videoUserPointsLedgerBelongsToUser
-
-	PointsPackage videoUserPointsLedgerBelongsToPointsPackage
 
 	fieldMap map[string]field.Expr
 }
@@ -205,17 +202,19 @@ func (v *videoUserPointsLedger) updateTableName(table string) *videoUserPointsLe
 	v.PointsChange = field.NewInt64(table, "points_change")
 	v.BalanceBefore = field.NewUint64(table, "balance_before")
 	v.BalanceAfter = field.NewUint64(table, "balance_after")
-	v.SourceType = field.NewString(table, "source_type")
-	v.BusinessID = field.NewString(table, "business_id")
-	v.PointsPackageID = field.NewUint64(table, "points_package_id")
+	v.SourceType = field.NewUint32(table, "source_type")
+	v.OrderCode = field.NewString(table, "order_code")
+	v.ShopID = field.NewUint64(table, "shop_id")
 	v.OperatorAdminID = field.NewUint64(table, "operator_admin_id")
 	v.Description = field.NewString(table, "description")
 	v.OccurredAt = field.NewTime(table, "occurred_at")
-	v.CreatedAt = field.NewTime(table, "created_at")
 	v.OrderID = field.NewUint64(table, "order_id")
 	v.WorkID = field.NewString(table, "work_id")
 	v.ModeKey = field.NewString(table, "mode_key")
 	v.IdempotencyKey = field.NewString(table, "idempotency_key")
+	v.CreatedAt = field.NewTime(table, "created_at")
+	v.UpdatedAt = field.NewTime(table, "updated_at")
+	v.DeletedAt = field.NewField(table, "deleted_at")
 
 	v.fillFieldMap()
 
@@ -244,7 +243,7 @@ func (v *videoUserPointsLedger) GetFieldByName(fieldName string) (field.OrderExp
 }
 
 func (v *videoUserPointsLedger) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 19)
+	v.fieldMap = make(map[string]field.Expr, 20)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["direction"] = v.Direction
@@ -252,16 +251,18 @@ func (v *videoUserPointsLedger) fillFieldMap() {
 	v.fieldMap["balance_before"] = v.BalanceBefore
 	v.fieldMap["balance_after"] = v.BalanceAfter
 	v.fieldMap["source_type"] = v.SourceType
-	v.fieldMap["business_id"] = v.BusinessID
-	v.fieldMap["points_package_id"] = v.PointsPackageID
+	v.fieldMap["order_code"] = v.OrderCode
+	v.fieldMap["shop_id"] = v.ShopID
 	v.fieldMap["operator_admin_id"] = v.OperatorAdminID
 	v.fieldMap["description"] = v.Description
 	v.fieldMap["occurred_at"] = v.OccurredAt
-	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["order_id"] = v.OrderID
 	v.fieldMap["work_id"] = v.WorkID
 	v.fieldMap["mode_key"] = v.ModeKey
 	v.fieldMap["idempotency_key"] = v.IdempotencyKey
+	v.fieldMap["created_at"] = v.CreatedAt
+	v.fieldMap["updated_at"] = v.UpdatedAt
+	v.fieldMap["deleted_at"] = v.DeletedAt
 
 }
 
@@ -269,15 +270,12 @@ func (v videoUserPointsLedger) clone(db *gorm.DB) videoUserPointsLedger {
 	v.videoUserPointsLedgerDo.ReplaceConnPool(db.Statement.ConnPool)
 	v.User.db = db.Session(&gorm.Session{Initialized: true})
 	v.User.db.Statement.ConnPool = db.Statement.ConnPool
-	v.PointsPackage.db = db.Session(&gorm.Session{Initialized: true})
-	v.PointsPackage.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoUserPointsLedger) replaceDB(db *gorm.DB) videoUserPointsLedger {
 	v.videoUserPointsLedgerDo.ReplaceDB(db)
 	v.User.db = db.Session(&gorm.Session{})
-	v.PointsPackage.db = db.Session(&gorm.Session{})
 	return v
 }
 
@@ -392,87 +390,6 @@ func (a videoUserPointsLedgerBelongsToUserTx) Count() int64 {
 }
 
 func (a videoUserPointsLedgerBelongsToUserTx) Unscoped() *videoUserPointsLedgerBelongsToUserTx {
-	a.tx = a.tx.Unscoped()
-	return &a
-}
-
-type videoUserPointsLedgerBelongsToPointsPackage struct {
-	db *gorm.DB
-
-	field.RelationField
-}
-
-func (a videoUserPointsLedgerBelongsToPointsPackage) Where(conds ...field.Expr) *videoUserPointsLedgerBelongsToPointsPackage {
-	if len(conds) == 0 {
-		return &a
-	}
-
-	exprs := make([]clause.Expression, 0, len(conds))
-	for _, cond := range conds {
-		exprs = append(exprs, cond.BeCond().(clause.Expression))
-	}
-	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
-	return &a
-}
-
-func (a videoUserPointsLedgerBelongsToPointsPackage) WithContext(ctx context.Context) *videoUserPointsLedgerBelongsToPointsPackage {
-	a.db = a.db.WithContext(ctx)
-	return &a
-}
-
-func (a videoUserPointsLedgerBelongsToPointsPackage) Session(session *gorm.Session) *videoUserPointsLedgerBelongsToPointsPackage {
-	a.db = a.db.Session(session)
-	return &a
-}
-
-func (a videoUserPointsLedgerBelongsToPointsPackage) Model(m *model.VideoUserPointsLedger) *videoUserPointsLedgerBelongsToPointsPackageTx {
-	return &videoUserPointsLedgerBelongsToPointsPackageTx{a.db.Model(m).Association(a.Name())}
-}
-
-func (a videoUserPointsLedgerBelongsToPointsPackage) Unscoped() *videoUserPointsLedgerBelongsToPointsPackage {
-	a.db = a.db.Unscoped()
-	return &a
-}
-
-type videoUserPointsLedgerBelongsToPointsPackageTx struct{ tx *gorm.Association }
-
-func (a videoUserPointsLedgerBelongsToPointsPackageTx) Find() (result *model.VideoPointsPackage, err error) {
-	return result, a.tx.Find(&result)
-}
-
-func (a videoUserPointsLedgerBelongsToPointsPackageTx) Append(values ...*model.VideoPointsPackage) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Append(targetValues...)
-}
-
-func (a videoUserPointsLedgerBelongsToPointsPackageTx) Replace(values ...*model.VideoPointsPackage) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Replace(targetValues...)
-}
-
-func (a videoUserPointsLedgerBelongsToPointsPackageTx) Delete(values ...*model.VideoPointsPackage) (err error) {
-	targetValues := make([]interface{}, len(values))
-	for i, v := range values {
-		targetValues[i] = v
-	}
-	return a.tx.Delete(targetValues...)
-}
-
-func (a videoUserPointsLedgerBelongsToPointsPackageTx) Clear() error {
-	return a.tx.Clear()
-}
-
-func (a videoUserPointsLedgerBelongsToPointsPackageTx) Count() int64 {
-	return a.tx.Count()
-}
-
-func (a videoUserPointsLedgerBelongsToPointsPackageTx) Unscoped() *videoUserPointsLedgerBelongsToPointsPackageTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }

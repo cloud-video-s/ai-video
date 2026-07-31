@@ -26,9 +26,11 @@ type VideoUser struct {
 	UserType                 uint8                      `gorm:"column:user_type;type:tinyint unsigned;not null;index:idx_video_user_user_type,priority:1;default:1;comment:用户类型 1=免费 2=付费" json:"user_type"`                                     // 用户类型 1=免费 2=付费
 	ActiveDays               uint                       `gorm:"column:active_days;type:int unsigned;not null;comment:活跃天数" json:"active_days"`                                                                                                   // 活跃天数
 	AvgDailyUsageSeconds     uint64                     `gorm:"column:avg_daily_usage_seconds;type:bigint unsigned;not null;comment:平均日使用时长" json:"avg_daily_usage_seconds"`                                                                     // 平均日使用时长
-	VipExpiresAt             *time.Time                 `gorm:"column:vip_expires_at;type:datetime(3);index:idx_video_user_vip_expires_at,priority:1;comment:vip 到期时间" json:"vip_expires_at"`                                                    // vip 到期时间
-	PointsBalance            uint64                     `gorm:"column:points_balance;type:bigint unsigned;not null;comment:积分" json:"points_balance"`                                                                                            // 积分
 	SubscriptionStatus       uint8                      `gorm:"column:subscription_status;type:tinyint unsigned;not null;index:idx_video_user_subscription_status,priority:1;default:1;comment:订阅状态 1未订阅 2订阅中 3=已取消" json:"subscription_status"` // 订阅状态 1未订阅 2订阅中 3=已取消
+	VIPStartedAt             *time.Time                 `gorm:"column:vip_started_at;type:datetime(3);comment:vip开始时间" json:"vip_started_at"`                                                                                                    // vip开始时间
+	VipExpiresAt             *time.Time                 `gorm:"column:vip_expires_at;type:datetime(3);index:idx_video_user_vip_expires_at,priority:1;comment:vip 到期时间" json:"vip_expires_at"`                                                    // vip 到期时间
+	VipPoints                uint64                     `gorm:"column:vip_points;type:bigint unsigned;not null;comment:vip_积分" json:"vip_points"`                                                                                                // vip_积分
+	PointsBalance            uint64                     `gorm:"column:points_balance;type:bigint unsigned;not null;comment:积分" json:"points_balance"`                                                                                            // 积分
 	FirstOrderCreatedAt      *time.Time                 `gorm:"column:first_order_created_at;type:datetime(3);comment:首单创建时间" json:"first_order_created_at"`                                                                                     // 首单创建时间
 	FirstPaidAt              *time.Time                 `gorm:"column:first_paid_at;type:datetime(3);comment:首单付费时间" json:"first_paid_at"`                                                                                                       // 首单付费时间
 	OrderCount               uint64                     `gorm:"column:order_count;type:bigint unsigned;not null;comment:订单创建次数" json:"order_count"`                                                                                              // 订单创建次数
@@ -48,9 +50,9 @@ type VideoUser struct {
 	Registered               int8                       `gorm:"column:registered;type:tinyint(1);not null;index:idx_video_user_registered,priority:1;comment:注册达标 1 是 0否" json:"registered"`                                                     // 注册达标 1 是 0否
 	AttributionClickedAt     *time.Time                 `gorm:"column:attribution_clicked_at;type:datetime(3);index:idx_video_user_attribution_clicked_at,priority:1;comment:归因点击时间" json:"attribution_clicked_at"`                              // 归因点击时间
 	PhoneModel               string                     `gorm:"column:phone_model;type:varchar(128);index:idx_video_user_phone_model,priority:1;comment:手机品牌、型号" json:"phone_model"`                                                             // 手机品牌、型号
-	ReRegisteredFromID       uint64                     `gorm:"column:re_registered_from_id;type:bigint unsigned;index:idx_video_user_re_registered_from_id,priority:1;comment:原用户ID" json:"re_registered_from_id"`                              // 原用户ID
+	ReRegisteredFromID       uint64                     `gorm:"column:re_registered_from_id;type:bigint unsigned;not null;index:idx_video_user_re_registered_from_id,priority:1;comment:原用户ID" json:"re_registered_from_id"`                     // 原用户ID
 	AppName                  string                     `gorm:"column:app_name;type:varchar(255);not null;default:0;comment:APP应用名称" json:"app_name"`                                                                                            // APP应用名称
-	TokenVersion             int64                      `gorm:"column:token_version;type:bigint;not null;comment:token版本 防止多端账号登录" json:"token_version"`                                                                                         // token版本 防止多端账号登录
+	TokenVersion             int64                      `gorm:"column:token_version;type:bigint unsigned;not null;comment:token版本 防止多端账号登录" json:"token_version"`                                                                                // token版本 防止多端账号登录
 	Status                   int8                       `gorm:"column:status;type:tinyint;not null;index:idx_video_user_status,priority:1;default:1;comment:状态 1正常 0禁用" json:"status"`                                                           // 状态 1正常 0禁用
 	LastLoginAt              *time.Time                 `gorm:"column:last_login_at;type:datetime(3);comment:上次登录时间" json:"last_login_at"`                                                                                                       // 上次登录时间
 	LastLoginIP              string                     `gorm:"column:last_login_ip;type:varchar(64);comment:上次登录IP" json:"last_login_ip"`                                                                                                       // 上次登录IP
@@ -60,14 +62,10 @@ type VideoUser struct {
 	PackageCode              string                     `gorm:"column:package_code;type:varchar(128);not null;comment:package identifier" json:"package_code"` // package identifier
 	IMEI                     string                     `gorm:"column:imei;type:varchar(50);comment:imei" json:"imei"`                                         // imei
 	ServerCountry            string                     `gorm:"column:server_country;type:varchar(255);comment:ip获取国家" json:"server_country"`                  // ip获取国家
-	CreatedAt                time.Time                  `gorm:"column:created_at;type:datetime(3);index:idx_video_user_created_at,priority:1" json:"created_at"`
-	UpdatedAt                time.Time                  `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt                gorm.DeletedAt             `gorm:"column:deleted_at;type:datetime(3);index:idx_video_user_deleted_at,priority:1" json:"deleted_at"`
 	Phone                    string                     `gorm:"column:phone;type:varchar(32);not null;index:idx_video_user_phone,priority:1" json:"phone"`
-	VIPLevel                 uint                       `gorm:"column:vip_level;type:int unsigned;not null;index:idx_video_user_vip_level,priority:1" json:"vip_level"`
-	VIPStartedAt             *time.Time                 `gorm:"column:vip_started_at;type:datetime(3)" json:"vip_started_at"`
-	IsFrozen                 int8                       `gorm:"column:is_frozen;type:tinyint(1);not null;index:idx_video_user_is_frozen,priority:1" json:"is_frozen"`
-	IsBlacklisted            int8                       `gorm:"column:is_blacklisted;type:tinyint(1);not null;index:idx_video_user_is_blacklisted,priority:1" json:"is_blacklisted"`
+	CreatedAt                time.Time                  `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_user_created_at,priority:1" json:"created_at"`
+	UpdatedAt                time.Time                  `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
+	DeletedAt                gorm.DeletedAt             `gorm:"column:deleted_at;type:datetime(3);index:idx_video_user_deleted_at,priority:1" json:"deleted_at"`
 	Channel                  VideoChannel               `gorm:"foreignKey:ChannelID;references:ChannelCode" json:"channel"`
 	PointsLedgers            []*VideoUserPointsLedger   `gorm:"foreignKey:UserID;references:ID" json:"points_ledgers"`
 	Works                    []*VideoUserGenerationTask `gorm:"foreignKey:UserID;references:ID" json:"works"`

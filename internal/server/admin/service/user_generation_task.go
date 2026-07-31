@@ -66,6 +66,7 @@ type UserGenerationTaskView struct {
 	ProviderResponse interface{}              `json:"provider_response,omitempty"`
 	RemoteURLs       []string                 `json:"remote_urls"`
 	LocalURLs        []string                 `json:"local_urls"`
+	CoverImageURL    string                   `json:"cover_image_url"`
 	PreviewURLs      []string                 `json:"preview_urls"`
 	ResultCount      int                      `json:"result_count"`
 	ErrorMessage     string                   `json:"error_message"`
@@ -126,7 +127,8 @@ func generationTaskView(record *repository.UserGenerationTaskAdminRecord, detail
 		ClientRequestID: task.ClientRequestID, TaskCode: task.TaskCode, ThirdTaskCode: task.ThirdTaskCode,
 		Status: task.Status, StatusName: generationTaskStatusName(task.Status), Progress: task.Progress,
 		MediaType: generationTaskMediaType(record, previewURLs), Prompt: task.Prompt,
-		RemoteURLs: remoteURLs, LocalURLs: localURLs, PreviewURLs: previewURLs, ResultCount: len(previewURLs),
+		RemoteURLs: remoteURLs, LocalURLs: localURLs, CoverImageURL: task.CoverImageURL,
+		PreviewURLs: previewURLs, ResultCount: len(previewURLs),
 		ErrorMessage: task.ErrorMessage, UsageDuration: task.UsageDuration,
 		SubmittedAt: generationTaskTimePtr(task.SubmittedAt), StartedAt: generationTaskTimePtr(task.StartedAt),
 		FinishedAt: generationTaskTimePtr(task.FinishedAt), LastPolledAt: generationTaskTimePtr(task.LastPolledAt),

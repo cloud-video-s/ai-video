@@ -91,6 +91,7 @@ type TaskView struct {
 	Input         map[string]any `json:"input,omitempty"`
 	Parameters    map[string]any `json:"parameters,omitempty"`
 	LocalURLs     []string       `json:"local_urls"`
+	CoverImageURL string         `json:"cover_image_url"`
 	ErrorMessage  string         `json:"error_message,omitempty"`
 	UsageDuration uint32         `json:"usage_duration"`
 	SubmittedAt   *time.Time     `json:"submitted_at,omitempty"`
@@ -105,7 +106,8 @@ func ViewOf(item *model.VideoUserGenerationTask) TaskView {
 		ID: item.ID, TaskCode: item.TaskCode, TemplateID: item.TemplateID, TaskType: item.TaskType,
 		Status: item.Status, Progress: uint8(item.Progress),
 		ErrorMessage: item.ErrorMessage, UsageDuration: item.UsageDuration,
-		SubmittedAt: nullableTime(item.SubmittedAt), StartedAt: nullableTime(item.StartedAt), FinishedAt: nullableTime(item.FinishedAt),
+		CoverImageURL: item.CoverImageURL,
+		SubmittedAt:   nullableTime(item.SubmittedAt), StartedAt: nullableTime(item.StartedAt), FinishedAt: nullableTime(item.FinishedAt),
 		CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt, LocalURLs: []string{},
 	}
 	var request remoteSubmitRequest

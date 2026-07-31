@@ -222,11 +222,11 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 			ledger := &model.VideoUserPointsLedger{
 				UserID: user.ID, OrderID: order.ID, Direction: int8(domain.PointsDirectionIncome),
 				PointsChange: int64(order.BonusPoints), BalanceBefore: before, BalanceAfter: after,
-				SourceType: domain.PointsSourcePurchase, BusinessID: order.OrderNo,
+				SourceType: domain.PointsSourcePurchase, OrderCode: order.OrderNo,
 				IdempotencyKey: key, Description: "purchase bonus points", OccurredAt: paidAt, CreatedAt: now,
 			}
 			if order.ProductType == domain.OrderProductPointsPackage {
-				ledger.PointsPackageID = &order.ProductID
+				ledger.ShopID = order.ProductID
 			}
 			if err := s.ledgers.Create(ctx, ledger); err != nil {
 				return err
@@ -321,8 +321,8 @@ func (s *Service) ConsumePoints(ctx context.Context, req ConsumePointsRequest) (
 		ledger := &model.VideoUserPointsLedger{
 			UserID: user.ID, WorkID: req.WorkID, ModeKey: req.ModeKey,
 			Direction: int8(domain.PointsDirectionExpense), PointsChange: -int64(req.Points),
-			BalanceBefore: user.PointsBalance, BalanceAfter: after, SourceType: domain.PointsSourceConsume,
-			BusinessID: req.WorkID, IdempotencyKey: key, Description: strings.TrimSpace(req.Description),
+			BalanceBefore: user.PointsBalance, BalanceAfter: after, SourceType: domain.PointsSourceModelConsume,
+			IdempotencyKey: key, Description: strings.TrimSpace(req.Description),
 			OccurredAt: now, CreatedAt: now,
 		}
 		if err := s.ledgers.Create(ctx, ledger); err != nil {

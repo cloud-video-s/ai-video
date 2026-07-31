@@ -111,7 +111,7 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 	}
 
 	if user.ID != apiUserID {
-		if user.Status != 1 || user.IsFrozen != 0 || user.IsBlacklisted != 0 {
+		if user.Status != 1 {
 			return nil, errors.New("当前邮箱绑定账号已停用，暂时无法使用")
 		}
 		if err := s.userRepo.Update(ctx, user.ID, ThirdPartyLoginBinding(req.ThirdType, clientIP, serverCountry, now)); err != nil {

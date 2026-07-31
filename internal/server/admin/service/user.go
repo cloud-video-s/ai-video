@@ -32,7 +32,7 @@ type CreateAppUserRequest struct {
 	AvgDailyUsageSeconds     uint64     `json:"avg_daily_usage_seconds"`
 	VIPExpiresAt             *time.Time `json:"vip_expires_at"`
 	PointsBalance            uint64     `json:"points_balance"`
-	SubscriptionStatus       uint32     `json:"subscription_status" binding:"omitempty,oneof=1 2 3"`
+	SubscriptionStatus       uint32     `json:"subscription_status" binding:"omitempty,oneof=1 2 3 4"`
 	FirstOrderCreatedAt      *time.Time `json:"first_order_created_at"`
 	FirstPaidAt              *time.Time `json:"first_paid_at"`
 	OrderCount               uint64     `json:"order_count"`
@@ -78,7 +78,7 @@ type UpdateAppUserRequest struct {
 	AvgDailyUsageSeconds     *uint64    `json:"avg_daily_usage_seconds"`
 	VIPExpiresAt             *time.Time `json:"vip_expires_at"`
 	PointsBalance            *uint64    `json:"points_balance"`
-	SubscriptionStatus       *uint32    `json:"subscription_status" binding:"omitempty,oneof=1 2 3"`
+	SubscriptionStatus       *uint32    `json:"subscription_status" binding:"omitempty,oneof=1 2 3 4"`
 	FirstOrderCreatedAt      *time.Time `json:"first_order_created_at"`
 	FirstPaidAt              *time.Time `json:"first_paid_at"`
 	OrderCount               *uint64    `json:"order_count"`
@@ -112,7 +112,7 @@ type ListAppUserRequest struct {
 	AppName            string  `form:"app_name" binding:"max=255"`
 	LoginType          uint32  `form:"login_type" binding:"omitempty,oneof=1 2 3"`
 	UserType           uint32  `form:"user_type" binding:"omitempty,oneof=1 2"`
-	SubscriptionStatus uint32  `form:"subscription_status" binding:"omitempty,oneof=1 2 3"`
+	SubscriptionStatus uint32  `form:"subscription_status" binding:"omitempty,oneof=1 2 3 4"`
 	Activated          *uint32 `form:"activated" binding:"omitempty,oneof=0 1"`
 	Registered         *bool   `form:"registered"`
 	PaymentMet         *bool   `form:"payment_met"`

@@ -24,8 +24,9 @@ type Config struct {
 }
 
 type TaskConfig struct {
-	Concurrency int      `mapstructure:"concurrency"`
-	Queues      []string `mapstructure:"queues"`
+	Concurrency                int      `mapstructure:"concurrency"`
+	Queues                     []string `mapstructure:"queues"`
+	SubscriptionExpirationCron string   `mapstructure:"subscription_expiration_cron"`
 }
 
 type ServerConfig struct {
@@ -203,6 +204,7 @@ func setConfigDefaults() {
 	viper.SetDefault("upload.image_mime_types", []string{"image/jpeg", "image/png", "image/gif", "image/webp"})
 	viper.SetDefault("upload.video_mime_types", []string{"video/mp4", "video/quicktime", "video/webm", "video/x-matroska"})
 	viper.SetDefault("task.concurrency", 10)
+	viper.SetDefault("task.subscription_expiration_cron", "@every 1m")
 }
 
 // InitTimezone sets the process-wide time.Local from config so that every
@@ -236,6 +238,9 @@ func validateConfig() error {
 	}
 	if Cfg.Upload.OSSSignatureTTLSeconds < 60 || Cfg.Upload.OSSSignatureTTLSeconds > 3600 {
 		return fmt.Errorf("upload.oss_signature_ttl_seconds must be between 60 and 3600")
+	}
+	if strings.TrimSpace(Cfg.Task.SubscriptionExpirationCron) == "" {
+		return fmt.Errorf("task.subscription_expiration_cron is required")
 	}
 	if Cfg.Server.Mode == "release" {
 		if Cfg.JWT.Secret == defaultJWTSecret {

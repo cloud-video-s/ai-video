@@ -561,6 +561,7 @@ func newGenerationManagerTestDB(t *testing.T) *gorm.DB {
 			finished_at DATETIME NULL,
 			last_polled_at DATETIME NULL,
 			template_id INTEGER NOT NULL DEFAULT 0,
+			cover_image_url TEXT,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
 			deleted_at DATETIME NULL,

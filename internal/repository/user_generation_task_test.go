@@ -41,6 +41,7 @@ func TestUserGenerationTaskRepoLifecycle(t *testing.T) {
 		finished_at DATETIME NULL,
 		last_polled_at DATETIME NULL,
 		template_id INTEGER NOT NULL DEFAULT 0,
+		cover_image_url TEXT,
 		created_at DATETIME NOT NULL,
 		updated_at DATETIME NOT NULL,
 		deleted_at DATETIME NULL,
@@ -65,6 +66,17 @@ func TestUserGenerationTaskRepoLifecycle(t *testing.T) {
 	}
 	if task.ID == 0 {
 		t.Fatal("task ID was not populated")
+	}
+	task.CoverImageURL = "https://cdn.example.com/generated/7/task-1-cover.jpg"
+	if err := repo.UpdateFields(ctx, task, "CoverImageURL"); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := repo.GetOwned(ctx, task.ID, task.UserID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.CoverImageURL != task.CoverImageURL {
+		t.Fatalf("cover image URL = %q, want %q", stored.CoverImageURL, task.CoverImageURL)
 	}
 
 	var lifecycle struct {
@@ -169,6 +181,7 @@ func TestUserGenerationTaskRepoPageAdmin(t *testing.T) {
 			finished_at DATETIME NULL,
 			last_polled_at DATETIME NULL,
 			template_id INTEGER NOT NULL DEFAULT 0,
+			cover_image_url TEXT,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
 			deleted_at DATETIME NULL

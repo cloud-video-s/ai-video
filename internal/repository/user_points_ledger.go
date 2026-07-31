@@ -14,14 +14,12 @@ type UserPointsLedgerRepo struct{}
 func NewUserPointsLedgerRepo() *UserPointsLedgerRepo { return &UserPointsLedgerRepo{} }
 
 type UserPointsLedgerFilter struct {
-	UserID          uint64
-	Direction       int8
-	SourceType      string
-	PointsPackageID uint64
-	BusinessID      string
-	Keyword         string
-	OccurredFrom    *time.Time
-	OccurredTo      *time.Time
+	UserID       uint64
+	Direction    int8
+	SourceType   uint32
+	Keyword      string
+	OccurredFrom *time.Time
+	OccurredTo   *time.Time
 }
 
 type UserPointsLedgerSummary struct {
@@ -51,14 +49,8 @@ func (r *UserPointsLedgerRepo) PageList(ctx context.Context, page, pageSize int,
 		if filter.Direction != 0 {
 			dao = dao.Where(ledger.Direction.Eq(filter.Direction))
 		}
-		if filter.SourceType != "" {
+		if filter.SourceType > 0 {
 			dao = dao.Where(ledger.SourceType.Eq(filter.SourceType))
-		}
-		if filter.PointsPackageID != 0 {
-			dao = dao.Where(ledger.PointsPackageID.Eq(filter.PointsPackageID))
-		}
-		if filter.BusinessID != "" {
-			dao = dao.Where(ledger.BusinessID.Eq(filter.BusinessID))
 		}
 		if filter.OccurredFrom != nil {
 			dao = dao.Where(ledger.OccurredAt.Gte(*filter.OccurredFrom))
@@ -69,7 +61,7 @@ func (r *UserPointsLedgerRepo) PageList(ctx context.Context, page, pageSize int,
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
 			conditions := []field.Expr{
-				ledger.BusinessID.Like(keyword), ledger.Description.Like(keyword),
+				ledger.Description.Like(keyword),
 				user.Username.Like(keyword), user.IMEI.Like(keyword),
 				user.LoginAccount.Like(keyword), user.Email.Like(keyword),
 			}
@@ -128,9 +120,6 @@ func (r *UserPointsLedgerRepo) loadRecords(ctx context.Context, items []model.Vi
 	packageIDs := make([]uint64, 0, len(items))
 	for i := range items {
 		userIDs = append(userIDs, items[i].UserID)
-		if items[i].PointsPackageID != nil {
-			packageIDs = append(packageIDs, *items[i].PointsPackageID)
-		}
 	}
 	q := qFrom(ctx)
 	users, err := q.VideoUser.WithContext(ctx).Where(q.VideoUser.ID.In(userIDs...)).Find()
@@ -157,9 +146,6 @@ func (r *UserPointsLedgerRepo) loadRecords(ctx context.Context, items []model.Vi
 	}
 	for i := range items {
 		record := UserPointsLedgerRecord{VideoUserPointsLedger: items[i], User: userByID[items[i].UserID]}
-		if items[i].PointsPackageID != nil {
-			record.PointsPackage = packageByID[*items[i].PointsPackageID]
-		}
 		result = append(result, record)
 	}
 	return result, nil

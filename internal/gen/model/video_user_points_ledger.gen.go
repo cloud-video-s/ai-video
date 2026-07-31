@@ -6,31 +6,34 @@ package model
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 const TableNameVideoUserPointsLedger = "video_user_points_ledger"
 
-// VideoUserPointsLedger mapped from table <video_user_points_ledger>
+// VideoUserPointsLedger 用户积分账本
 type VideoUserPointsLedger struct {
-	ID              uint64             `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	UserID          uint64             `gorm:"column:user_id;type:bigint unsigned;not null;index:idx_video_user_points_ledger_user_id,priority:1;comment:client user ID" json:"user_id"`                                            // client user ID
-	Direction       int8               `gorm:"column:direction;type:tinyint;not null;index:idx_video_user_points_ledger_direction,priority:1;comment:1 income, 2 expense" json:"direction"`                                         // 1 income, 2 expense
-	PointsChange    int64              `gorm:"column:points_change;type:bigint;not null;comment:signed points change" json:"points_change"`                                                                                         // signed points change
-	BalanceBefore   uint64             `gorm:"column:balance_before;type:bigint unsigned;not null;comment:balance before change" json:"balance_before"`                                                                             // balance before change
-	BalanceAfter    uint64             `gorm:"column:balance_after;type:bigint unsigned;not null;comment:balance after change" json:"balance_after"`                                                                                // balance after change
-	SourceType      string             `gorm:"column:source_type;type:varchar(32);not null;index:idx_video_user_points_ledger_source_type,priority:1;comment:purchase, consume, reward, refund, admin or other" json:"source_type"` // purchase, consume, reward, refund, admin or other
-	BusinessID      string             `gorm:"column:business_id;type:varchar(191);index:idx_video_user_points_ledger_business_id,priority:1;comment:order or business reference" json:"business_id"`                               // order or business reference
-	PointsPackageID *uint64            `gorm:"column:points_package_id;type:bigint unsigned;index:idx_video_user_points_ledger_points_package_id,priority:1;comment:related points package ID" json:"points_package_id"`            // related points package ID
-	OperatorAdminID *uint64            `gorm:"column:operator_admin_id;type:bigint unsigned;index:idx_video_user_points_ledger_operator_admin_id,priority:1;comment:admin operator ID for manual changes" json:"operator_admin_id"` // admin operator ID for manual changes
-	Description     string             `gorm:"column:description;type:varchar(1000);comment:change description" json:"description"`                                                                                                 // change description
-	OccurredAt      time.Time          `gorm:"column:occurred_at;type:datetime(3);not null;index:idx_video_user_points_ledger_occurred_at,priority:1;comment:business occurrence time" json:"occurred_at"`                          // business occurrence time
-	CreatedAt       time.Time          `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_user_points_ledger_created_at,priority:1" json:"created_at"`
-	OrderID         uint64             `gorm:"column:order_id;type:bigint unsigned;index:idx_video_user_points_ledger_order_id,priority:1" json:"order_id"`
-	WorkID          string             `gorm:"column:work_id;type:varchar(191);index:idx_video_user_points_ledger_work_id,priority:1" json:"work_id"`
-	ModeKey         string             `gorm:"column:mode_key;type:varchar(64);index:idx_video_user_points_ledger_mode_key,priority:1" json:"mode_key"`
-	IdempotencyKey  string             `gorm:"column:idempotency_key;type:varchar(191);uniqueIndex:uk_video_user_points_ledger_idempotency,priority:1" json:"idempotency_key"`
-	User            VideoUser          `gorm:"foreignKey:UserID;references:ID" json:"user"`
-	PointsPackage   VideoPointsPackage `gorm:"foreignKey:PointsPackageID;references:ID" json:"points_package"`
+	ID              uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                                                                                                                              // 主键ID
+	UserID          uint64         `gorm:"column:user_id;type:bigint unsigned;not null;index:idx_video_user_points_ledger_user_id,priority:1;comment:客户端用户ID" json:"user_id"`                                                                                // 客户端用户ID
+	Direction       int8           `gorm:"column:direction;type:tinyint;not null;index:idx_video_user_points_ledger_direction,priority:1;comment:变动方向：1-收入，2-支出" json:"direction"`                                                                           // 变动方向：1-收入，2-支出
+	PointsChange    int64          `gorm:"column:points_change;type:bigint;not null;comment:积分变动量（正数表示增加，负数表示减少）" json:"points_change"`                                                                                                                      // 积分变动量（正数表示增加，负数表示减少）
+	BalanceBefore   uint64         `gorm:"column:balance_before;type:bigint unsigned;not null;comment:变动前积分余额" json:"balance_before"`                                                                                                                        // 变动前积分余额
+	BalanceAfter    uint64         `gorm:"column:balance_after;type:bigint unsigned;not null;comment:变动后积分余额" json:"balance_after"`                                                                                                                          // 变动后积分余额
+	SourceType      uint32         `gorm:"column:source_type;type:tinyint unsigned;not null;index:idx_video_user_points_ledger_source_type,priority:1;default:1;comment:来源类型：1=订阅赠送，2=积分购买, 3=模型消费,4=模型退款，5=订阅过期扣除, 6=系统奖励，7=管理员操作，8=其他" json:"source_type"` // 来源类型：1=订阅赠送，2=积分购买, 3=模型消费,4=模型退款，5=订阅过期扣除, 6=系统奖励，7=管理员操作，8=其他
+	OrderCode       string         `gorm:"column:order_code;type:varchar(191);comment:关联的业务单号（如订单号、活动编号等）" json:"order_code"`                                                                                                                                // 关联的业务单号（如订单号、活动编号等）
+	ShopID          uint64         `gorm:"column:shop_id;type:bigint unsigned;not null;comment:关联的积分包ID（外键指向 video_points_package）" json:"shop_id"`                                                                                                          // 关联的积分包ID（外键指向 video_points_package）
+	OperatorAdminID *uint64        `gorm:"column:operator_admin_id;type:bigint unsigned;comment:操作管理员ID（仅当 source_type=admin 时记录）" json:"operator_admin_id"`                                                                                                 // 操作管理员ID（仅当 source_type=admin 时记录）
+	Description     string         `gorm:"column:description;type:varchar(1000);comment:变动描述（如“购买VIP月卡赠送”）" json:"description"`                                                                                                                              // 变动描述（如“购买VIP月卡赠送”）
+	OccurredAt      time.Time      `gorm:"column:occurred_at;type:datetime(3);not null;index:idx_video_user_points_ledger_occurred_at,priority:1;comment:业务发生时间（业务侧时间戳，精确到毫秒）" json:"occurred_at"`                                                           // 业务发生时间（业务侧时间戳，精确到毫秒）
+	OrderID         uint64         `gorm:"column:order_id;type:bigint unsigned;index:idx_video_user_points_ledger_order_id,priority:1;comment:关联的订单ID（冗余，便于直接查询）" json:"order_id"`                                                                           // 关联的订单ID（冗余，便于直接查询）
+	WorkID          string         `gorm:"column:work_id;type:varchar(191);index:idx_video_user_points_ledger_work_id,priority:1;comment:关联的工作流ID或任务ID" json:"work_id"`                                                                                      // 关联的工作流ID或任务ID
+	ModeKey         string         `gorm:"column:mode_key;type:varchar(64);index:idx_video_user_points_ledger_mode_key,priority:1;comment:业务模式标识（用于区分不同业务场景）" json:"mode_key"`                                                                               // 业务模式标识（用于区分不同业务场景）
+	IdempotencyKey  string         `gorm:"column:idempotency_key;type:varchar(191);uniqueIndex:uk_video_user_points_ledger_idempotency,priority:1;comment:幂等键（用于防止重复记录，唯一索引）" json:"idempotency_key"`                                                        // 幂等键（用于防止重复记录，唯一索引）
+	CreatedAt       time.Time      `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_user_points_ledger_created_at,priority:1;comment:记录创建时间（系统时间戳）" json:"created_at"`                                                                     // 记录创建时间（系统时间戳）
+	UpdatedAt       time.Time      `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
+	DeletedAt       gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3)" json:"deleted_at"`
+	User            VideoUser      `gorm:"foreignKey:UserID;references:ID" json:"user"`
 }
 
 // TableName VideoUserPointsLedger's table name

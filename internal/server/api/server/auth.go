@@ -78,7 +78,7 @@ type UserResponse struct {
 	ChannelID          string `json:"channel_id"`          // 渠道id
 	LoginType          uint32 `json:"login_type"`          // 登录方式 1=未登录 2=google 3=appid
 	UserType           uint32 `json:"user_type"`           // 用户类型 1=免费 2=付费
-	SubscriptionStatus uint32 `json:"subscription_status"` // 订阅状态 1未订阅 2订阅中 3=已取消
+	SubscriptionStatus uint32 `json:"subscription_status"` // 订阅状态 1未订阅 2订阅中 3=已取消 4=已过期
 	VipExpiresAt       int64  `json:"vip_expires_at"`      // vip 到期时间
 	PointsBalance      uint64 `json:"points_balance"`      // 积分
 	Status             int32  `json:"status"`
@@ -242,7 +242,7 @@ func (s *AuthService) Refresh(ctx context.Context, userID uint64, tokenVersion i
 		}
 		return nil, err
 	}
-	if user.Status != 1 || user.IsFrozen != 0 || user.IsBlacklisted != 0 || user.TokenVersion != tokenVersion || user.DeviceCode != claims.DeviceCode {
+	if user.Status != 1 || user.TokenVersion != tokenVersion || user.DeviceCode != claims.DeviceCode {
 		return nil, ErrAuthStateInvalid
 	}
 

@@ -19,7 +19,7 @@ func NewUserPointsLedgerService() *UserPointsLedgerService {
 type ListUserPointsLedgerRequest struct {
 	UserID          uint64 `form:"user_id"`
 	Direction       int8   `form:"direction" binding:"omitempty,oneof=1 2"`
-	SourceType      string `form:"source_type" binding:"max=32"`
+	SourceType      uint32 `form:"source_type" binding:"max=32"`
 	PointsPackageID uint64 `form:"points_package_id"`
 	BusinessID      string `form:"business_id" binding:"max=191"`
 	Keyword         string `form:"keyword" binding:"max=255"`
@@ -33,14 +33,12 @@ func (s *UserPointsLedgerService) List(ctx context.Context, page, pageSize int, 
 		return nil, 0, repository.UserPointsLedgerSummary{}, err
 	}
 	return s.repo.PageList(ctx, page, pageSize, &repository.UserPointsLedgerFilter{
-		UserID:          req.UserID,
-		Direction:       req.Direction,
-		SourceType:      strings.ToLower(strings.TrimSpace(req.SourceType)),
-		PointsPackageID: req.PointsPackageID,
-		BusinessID:      strings.TrimSpace(req.BusinessID),
-		Keyword:         strings.TrimSpace(req.Keyword),
-		OccurredFrom:    from,
-		OccurredTo:      to,
+		UserID:       req.UserID,
+		Direction:    req.Direction,
+		SourceType:   req.SourceType,
+		Keyword:      strings.TrimSpace(req.Keyword),
+		OccurredFrom: from,
+		OccurredTo:   to,
 	})
 }
 

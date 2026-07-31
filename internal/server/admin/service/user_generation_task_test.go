@@ -32,8 +32,9 @@ func TestGenerationTaskViewPrefersLocalResults(t *testing.T) {
 		Task: model.VideoUserGenerationTask{
 			ID: 1, UserID: 2, ModelID: 3, TaskCode: "task-1", Status: 6, Progress: 100,
 			RequestPayload: `{"input":{"prompt":"hello"}}`, ProviderResponse: `not-json`,
-			RemoteUrls: `["https://remote.example/result.mp4"]`,
-			LocalUrls:  `["/storage/result.mp4"]`,
+			RemoteUrls:    `["https://remote.example/result.mp4"]`,
+			LocalUrls:     `["/storage/result.mp4"]`,
+			CoverImageURL: "https://cdn.example.com/generated/task-1-cover.jpg",
 		},
 		User:  &model.VideoUser{ID: 2, Username: "Alice"},
 		Model: &model.VideoModel{ID: 3, Name: "Video Model", Code: "video-model", ModelType: 2},
@@ -45,6 +46,9 @@ func TestGenerationTaskViewPrefersLocalResults(t *testing.T) {
 	}
 	if listView.MediaType != "video" || listView.ResultCount != 1 {
 		t.Fatalf("media type/count = %q/%d", listView.MediaType, listView.ResultCount)
+	}
+	if listView.CoverImageURL != record.Task.CoverImageURL {
+		t.Fatalf("CoverImageURL = %q", listView.CoverImageURL)
 	}
 	if listView.RequestPayload != nil || listView.ProviderResponse != nil {
 		t.Fatal("list view must omit verbose provider payloads")

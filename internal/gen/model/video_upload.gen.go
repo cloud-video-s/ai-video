@@ -27,8 +27,8 @@ type VideoUpload struct {
 	FilePath        string         `gorm:"column:file_path;type:varchar(1024);not null" json:"file_path"`
 	FileURL         string         `gorm:"column:file_url;type:text;not null" json:"file_url"`
 	SHA256          string         `gorm:"column:sha256;type:varchar(64);not null;index:idx_video_upload_sha256,priority:1" json:"sha256"`
-	CreatedAt       time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_video_upload_created_at,priority:1" json:"created_at"`
-	UpdatedAt       time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
+	CreatedAt       time.Time      `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_upload_created_at,priority:1" json:"created_at"`
+	UpdatedAt       time.Time      `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_upload_deleted_at,priority:1" json:"deleted_at"`
 }
 

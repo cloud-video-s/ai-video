@@ -40,9 +40,11 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.UserType = field.NewUint8(tableName, "user_type")
 	_videoUser.ActiveDays = field.NewUint(tableName, "active_days")
 	_videoUser.AvgDailyUsageSeconds = field.NewUint64(tableName, "avg_daily_usage_seconds")
-	_videoUser.VipExpiresAt = field.NewTime(tableName, "vip_expires_at")
-	_videoUser.PointsBalance = field.NewUint64(tableName, "points_balance")
 	_videoUser.SubscriptionStatus = field.NewUint8(tableName, "subscription_status")
+	_videoUser.VIPStartedAt = field.NewTime(tableName, "vip_started_at")
+	_videoUser.VipExpiresAt = field.NewTime(tableName, "vip_expires_at")
+	_videoUser.VipPoints = field.NewUint64(tableName, "vip_points")
+	_videoUser.PointsBalance = field.NewUint64(tableName, "points_balance")
 	_videoUser.FirstOrderCreatedAt = field.NewTime(tableName, "first_order_created_at")
 	_videoUser.FirstPaidAt = field.NewTime(tableName, "first_paid_at")
 	_videoUser.OrderCount = field.NewUint64(tableName, "order_count")
@@ -74,14 +76,10 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.PackageCode = field.NewString(tableName, "package_code")
 	_videoUser.IMEI = field.NewString(tableName, "imei")
 	_videoUser.ServerCountry = field.NewString(tableName, "server_country")
+	_videoUser.Phone = field.NewString(tableName, "phone")
 	_videoUser.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUser.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUser.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoUser.Phone = field.NewString(tableName, "phone")
-	_videoUser.VIPLevel = field.NewUint(tableName, "vip_level")
-	_videoUser.VIPStartedAt = field.NewTime(tableName, "vip_started_at")
-	_videoUser.IsFrozen = field.NewInt8(tableName, "is_frozen")
-	_videoUser.IsBlacklisted = field.NewInt8(tableName, "is_blacklisted")
 	_videoUser.Channel = videoUserBelongsToChannel{
 		db: db.Session(&gorm.Session{}),
 
@@ -183,9 +181,11 @@ type videoUser struct {
 	UserType                 field.Uint8   // 用户类型 1=免费 2=付费
 	ActiveDays               field.Uint    // 活跃天数
 	AvgDailyUsageSeconds     field.Uint64  // 平均日使用时长
-	VipExpiresAt             field.Time    // vip 到期时间
-	PointsBalance            field.Uint64  // 积分
 	SubscriptionStatus       field.Uint8   // 订阅状态 1未订阅 2订阅中 3=已取消
+	VIPStartedAt             field.Time    // vip开始时间
+	VipExpiresAt             field.Time    // vip 到期时间
+	VipPoints                field.Uint64  // vip_积分
+	PointsBalance            field.Uint64  // 积分
 	FirstOrderCreatedAt      field.Time    // 首单创建时间
 	FirstPaidAt              field.Time    // 首单付费时间
 	OrderCount               field.Uint64  // 订单创建次数
@@ -217,14 +217,10 @@ type videoUser struct {
 	PackageCode              field.String // package identifier
 	IMEI                     field.String // imei
 	ServerCountry            field.String // ip获取国家
+	Phone                    field.String
 	CreatedAt                field.Time
 	UpdatedAt                field.Time
 	DeletedAt                field.Field
-	Phone                    field.String
-	VIPLevel                 field.Uint
-	VIPStartedAt             field.Time
-	IsFrozen                 field.Int8
-	IsBlacklisted            field.Int8
 	Channel                  videoUserBelongsToChannel
 
 	PointsLedgers videoUserHasManyPointsLedgers
@@ -260,9 +256,11 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.UserType = field.NewUint8(table, "user_type")
 	v.ActiveDays = field.NewUint(table, "active_days")
 	v.AvgDailyUsageSeconds = field.NewUint64(table, "avg_daily_usage_seconds")
-	v.VipExpiresAt = field.NewTime(table, "vip_expires_at")
-	v.PointsBalance = field.NewUint64(table, "points_balance")
 	v.SubscriptionStatus = field.NewUint8(table, "subscription_status")
+	v.VIPStartedAt = field.NewTime(table, "vip_started_at")
+	v.VipExpiresAt = field.NewTime(table, "vip_expires_at")
+	v.VipPoints = field.NewUint64(table, "vip_points")
+	v.PointsBalance = field.NewUint64(table, "points_balance")
 	v.FirstOrderCreatedAt = field.NewTime(table, "first_order_created_at")
 	v.FirstPaidAt = field.NewTime(table, "first_paid_at")
 	v.OrderCount = field.NewUint64(table, "order_count")
@@ -294,14 +292,10 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.PackageCode = field.NewString(table, "package_code")
 	v.IMEI = field.NewString(table, "imei")
 	v.ServerCountry = field.NewString(table, "server_country")
+	v.Phone = field.NewString(table, "phone")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
-	v.Phone = field.NewString(table, "phone")
-	v.VIPLevel = field.NewUint(table, "vip_level")
-	v.VIPStartedAt = field.NewTime(table, "vip_started_at")
-	v.IsFrozen = field.NewInt8(table, "is_frozen")
-	v.IsBlacklisted = field.NewInt8(table, "is_blacklisted")
 
 	v.fillFieldMap()
 
@@ -328,7 +322,7 @@ func (v *videoUser) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoUser) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 58)
+	v.fieldMap = make(map[string]field.Expr, 56)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["device_code"] = v.DeviceCode
 	v.fieldMap["username"] = v.Username
@@ -341,9 +335,11 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["user_type"] = v.UserType
 	v.fieldMap["active_days"] = v.ActiveDays
 	v.fieldMap["avg_daily_usage_seconds"] = v.AvgDailyUsageSeconds
-	v.fieldMap["vip_expires_at"] = v.VipExpiresAt
-	v.fieldMap["points_balance"] = v.PointsBalance
 	v.fieldMap["subscription_status"] = v.SubscriptionStatus
+	v.fieldMap["vip_started_at"] = v.VIPStartedAt
+	v.fieldMap["vip_expires_at"] = v.VipExpiresAt
+	v.fieldMap["vip_points"] = v.VipPoints
+	v.fieldMap["points_balance"] = v.PointsBalance
 	v.fieldMap["first_order_created_at"] = v.FirstOrderCreatedAt
 	v.fieldMap["first_paid_at"] = v.FirstPaidAt
 	v.fieldMap["order_count"] = v.OrderCount
@@ -375,14 +371,10 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["package_code"] = v.PackageCode
 	v.fieldMap["imei"] = v.IMEI
 	v.fieldMap["server_country"] = v.ServerCountry
+	v.fieldMap["phone"] = v.Phone
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
-	v.fieldMap["phone"] = v.Phone
-	v.fieldMap["vip_level"] = v.VIPLevel
-	v.fieldMap["vip_started_at"] = v.VIPStartedAt
-	v.fieldMap["is_frozen"] = v.IsFrozen
-	v.fieldMap["is_blacklisted"] = v.IsBlacklisted
 
 }
 

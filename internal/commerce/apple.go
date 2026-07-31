@@ -395,12 +395,12 @@ func (s *Service) revokePaidOrder(ctx context.Context, order *model.VideoOrder, 
 				Direction:     int8(domain.PointsDirectionExpense),
 				PointsChange:  -int64(lockedOrder.BonusPoints),
 				BalanceBefore: before, BalanceAfter: after,
-				SourceType: domain.PointsSourceRefund, BusinessID: lockedOrder.OrderNo,
+				SourceType: domain.PointsSourceModelRefund, OrderCode: lockedOrder.OrderNo,
 				IdempotencyKey: key, Description: "revoke purchase bonus points",
 				OccurredAt: revokedAt, CreatedAt: now,
 			}
 			if lockedOrder.ProductType == domain.OrderProductPointsPackage {
-				ledger.PointsPackageID = &lockedOrder.ProductID
+				ledger.ShopID = lockedOrder.ProductID
 			}
 			if ledgerErr := s.ledgers.Create(ctx, ledger); ledgerErr != nil {
 				if !errors.Is(ledgerErr, gorm.ErrDuplicatedKey) {
