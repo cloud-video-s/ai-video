@@ -42,8 +42,8 @@ const (
 	PointsDirectionIncome  int32 = 1
 	PointsDirectionExpense int32 = 2
 
-	OrderProductVIPSubscription = "vip_subscription"
-	OrderProductPointsPackage   = "points_package"
+	OrderProductVIPSubscription = 1
+	OrderProductPointsPackage   = 2
 
 	OrderStatusPending   = "pending"
 	OrderStatusPaid      = "paid"

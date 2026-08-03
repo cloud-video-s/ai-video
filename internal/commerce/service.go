@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -46,7 +45,7 @@ func NewService() *Service {
 
 type CreateOrderRequest struct {
 	UserID          uint64
-	ProductType     string
+	ProductType     uint32
 	ProductID       uint64
 	PaymentMethod   string
 	ClientRequestID string
@@ -67,8 +66,6 @@ type ApplePaymentResult struct {
 
 type ConsumePointsRequest struct {
 	UserID      uint64
-	WorkID      string
-	ModeKey     string
 	Points      uint64
 	Description string
 }
@@ -76,7 +73,6 @@ type ConsumePointsRequest struct {
 // CreateOrder snapshots all mutable product values so historical orders remain
 // accurate even when an administrator later edits the product.
 func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*model.VideoOrder, error) {
-	req.ProductType = strings.TrimSpace(req.ProductType)
 	req.PaymentMethod = strings.TrimSpace(req.PaymentMethod)
 	req.ClientRequestID = strings.TrimSpace(req.ClientRequestID)
 	if req.UserID == 0 || req.ProductID == 0 || req.ClientRequestID == "" {
@@ -218,15 +214,17 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 				return errors.New("points value exceeds supported range")
 			}
 			before, after := user.PointsBalance, user.PointsBalance+order.BonusPoints
-			key := "order:" + order.OrderNo + ":bonus"
 			ledger := &model.VideoUserPointsLedger{
-				UserID: user.ID, OrderID: order.ID, Direction: int8(domain.PointsDirectionIncome),
+				UserID: user.ID, Direction: int8(domain.PointsDirectionIncome),
 				PointsChange: int64(order.BonusPoints), BalanceBefore: before, BalanceAfter: after,
 				SourceType: domain.PointsSourcePurchase, OrderCode: order.OrderNo,
-				IdempotencyKey: key, Description: "purchase bonus points", OccurredAt: paidAt, CreatedAt: now,
+				Description: "Subscription bonus points", OccurredAt: paidAt, CreatedAt: now,
 			}
 			if order.ProductType == domain.OrderProductPointsPackage {
-				ledger.ShopID = order.ProductID
+				ledger.PointsID = order.ProductID
+			}
+			if order.ProductType == domain.OrderProductVIPSubscription {
+				ledger.VipID = order.ProductID
 			}
 			if err := s.ledgers.Create(ctx, ledger); err != nil {
 				return err
@@ -290,28 +288,13 @@ func (s *Service) CancelOrder(ctx context.Context, userID uint64, orderNo, reaso
 // Retrying the same generation request returns the first ledger without a
 // second balance deduction.
 func (s *Service) ConsumePoints(ctx context.Context, req ConsumePointsRequest) (*model.VideoUserPointsLedger, error) {
-	req.WorkID, req.ModeKey = strings.TrimSpace(req.WorkID), strings.TrimSpace(req.ModeKey)
-	if req.UserID == 0 || req.WorkID == "" || req.ModeKey == "" || req.Points == 0 {
-		return nil, errors.New("user, work, mode and points are required")
-	}
 	if req.Points > uint64MaxInt64 {
 		return nil, errors.New("points value exceeds supported range")
 	}
-	key := fmt.Sprintf("consume:%d:%s:%s", req.UserID, req.WorkID, req.ModeKey)
-	if existing, err := s.ledgers.GetByIdempotencyKey(ctx, key); err == nil {
-		return existing, nil
-	}
-
 	var created *model.VideoUserPointsLedger
 	err := repository.Transaction(ctx, func(ctx context.Context) error {
 		user, err := s.users.GetByIDForUpdate(ctx, req.UserID)
 		if err != nil {
-			return err
-		}
-		if existing, err := s.ledgers.GetByIdempotencyKey(ctx, key); err == nil {
-			created = existing
-			return nil
-		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		if user.PointsBalance < req.Points {
@@ -319,11 +302,11 @@ func (s *Service) ConsumePoints(ctx context.Context, req ConsumePointsRequest) (
 		}
 		now, after := time.Now(), user.PointsBalance-req.Points
 		ledger := &model.VideoUserPointsLedger{
-			UserID: user.ID, WorkID: req.WorkID, ModeKey: req.ModeKey,
+			UserID:    user.ID,
 			Direction: int8(domain.PointsDirectionExpense), PointsChange: -int64(req.Points),
 			BalanceBefore: user.PointsBalance, BalanceAfter: after, SourceType: domain.PointsSourceModelConsume,
-			IdempotencyKey: key, Description: strings.TrimSpace(req.Description),
-			OccurredAt: now, CreatedAt: now,
+			Description: strings.TrimSpace(req.Description),
+			OccurredAt:  now, CreatedAt: now,
 		}
 		if err := s.ledgers.Create(ctx, ledger); err != nil {
 			return err

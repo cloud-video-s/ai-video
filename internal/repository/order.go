@@ -49,7 +49,7 @@ func (r *OrderRepo) GetByPaymentTransaction(ctx context.Context, method, transac
 	return q.WithContext(ctx).Where(q.PaymentMethod.Eq(method), q.ThirdOrderNo.Eq(transactionID)).First()
 }
 
-func (r *OrderRepo) CountPaidByProductType(ctx context.Context, userID uint64, productType string) (int64, error) {
+func (r *OrderRepo) CountPaidByProductType(ctx context.Context, userID uint64, productType uint32) (int64, error) {
 	q := qFrom(ctx).VideoOrder
 	return q.WithContext(ctx).Where(
 		q.UserID.Eq(userID), q.ProductType.Eq(productType), q.Status.Eq(domain.OrderStatusPaid),

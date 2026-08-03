@@ -32,7 +32,7 @@ func newVideoOrder(db *gorm.DB, opts ...gen.DOOption) videoOrder {
 	_videoOrder.OrderNo = field.NewString(tableName, "order_no")
 	_videoOrder.ClientRequestID = field.NewString(tableName, "client_request_id")
 	_videoOrder.UserID = field.NewUint64(tableName, "user_id")
-	_videoOrder.ProductType = field.NewString(tableName, "product_type")
+	_videoOrder.ProductType = field.NewUint32(tableName, "product_type")
 	_videoOrder.ProductID = field.NewUint64(tableName, "product_id")
 	_videoOrder.ProductCode = field.NewString(tableName, "product_code")
 	_videoOrder.ProductName = field.NewString(tableName, "product_name")
@@ -79,7 +79,7 @@ type videoOrder struct {
 	OrderNo               field.String  // 订单编号
 	ClientRequestID       field.String  // 客户端请求唯一标识（用于幂等）
 	UserID                field.Uint64  // 用户ID
-	ProductType           field.String  // 产品类型（如：video_generation, vip等）
+	ProductType           field.Uint32  // 产品类型 1=vip 2=points
 	ProductID             field.Uint64  // 产品ID（关联具体产品表）
 	ProductCode           field.String  // 产品编码
 	ProductName           field.String  // 产品名称
@@ -127,7 +127,7 @@ func (v *videoOrder) updateTableName(table string) *videoOrder {
 	v.OrderNo = field.NewString(table, "order_no")
 	v.ClientRequestID = field.NewString(table, "client_request_id")
 	v.UserID = field.NewUint64(table, "user_id")
-	v.ProductType = field.NewString(table, "product_type")
+	v.ProductType = field.NewUint32(table, "product_type")
 	v.ProductID = field.NewUint64(table, "product_id")
 	v.ProductCode = field.NewString(table, "product_code")
 	v.ProductName = field.NewString(table, "product_name")

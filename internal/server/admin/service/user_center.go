@@ -36,8 +36,6 @@ type UserCenterPointsLedger struct {
 	SourceType    uint32    `json:"source_type"`
 	OrderCode     string    `json:"order_code"`
 	OrderID       uint64    `json:"order_id"`
-	WorkID        string    `json:"work_id"`
-	ModeKey       string    `json:"mode_key"`
 	Description   string    `json:"description"`
 	OccurredAt    time.Time `json:"occurred_at"`
 }
@@ -60,7 +58,7 @@ type UserCenterWork struct {
 type UserCenterOrder struct {
 	ID              uint64     `json:"id"`
 	OrderNo         string     `json:"order_no"`
-	ProductType     string     `json:"product_type"`
+	ProductType     uint32     `json:"product_type"`
 	ProductID       uint64     `json:"product_id"`
 	ProductCode     string     `json:"product_code"`
 	ProductName     string     `json:"product_name"`
@@ -157,8 +155,6 @@ func userCenterPointsLedgers(records []repository.UserPointsLedgerRecord) []User
 			ID: ledger.ID, Direction: ledger.Direction, PointsChange: ledger.PointsChange,
 			BalanceBefore: ledger.BalanceBefore, BalanceAfter: ledger.BalanceAfter,
 			SourceType: ledger.SourceType, OrderCode: ledger.OrderCode,
-			OrderID: ledger.OrderID,
-			WorkID:  ledger.WorkID, ModeKey: ledger.ModeKey,
 			Description: ledger.Description, OccurredAt: ledger.OccurredAt,
 		})
 	}

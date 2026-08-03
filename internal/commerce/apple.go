@@ -154,7 +154,7 @@ type verifiedAppleTransaction struct {
 type ApplePurchaseResponse struct {
 	OrderNo               string     `json:"order_no"`
 	Status                string     `json:"status"`
-	ProductType           string     `json:"product_type"`
+	ProductType           uint32     `json:"product_type"`
 	ProductID             uint64     `json:"product_id"`
 	ProductCode           string     `json:"product_code"`
 	TransactionID         string     `json:"transaction_id"`
@@ -389,18 +389,17 @@ func (s *Service) revokePaidOrder(ctx context.Context, order *model.VideoOrder, 
 		if lockedOrder.BonusPoints > 0 && user.PointsBalance >= lockedOrder.BonusPoints {
 			before := user.PointsBalance
 			after := user.PointsBalance - lockedOrder.BonusPoints
-			key := "refund:" + lockedOrder.OrderNo
 			ledger := &model.VideoUserPointsLedger{
-				UserID: user.ID, OrderID: lockedOrder.ID,
+				UserID: user.ID, OrderCode: lockedOrder.OrderNo,
 				Direction:     int8(domain.PointsDirectionExpense),
 				PointsChange:  -int64(lockedOrder.BonusPoints),
 				BalanceBefore: before, BalanceAfter: after,
-				SourceType: domain.PointsSourceModelRefund, OrderCode: lockedOrder.OrderNo,
-				IdempotencyKey: key, Description: "revoke purchase bonus points",
-				OccurredAt: revokedAt, CreatedAt: now,
+				SourceType:  domain.PointsSourceModelRefund,
+				Description: "revoke purchase bonus points",
+				OccurredAt:  revokedAt, CreatedAt: now,
 			}
 			if lockedOrder.ProductType == domain.OrderProductPointsPackage {
-				ledger.ShopID = lockedOrder.ProductID
+				ledger.PointsID = lockedOrder.ProductID
 			}
 			if ledgerErr := s.ledgers.Create(ctx, ledger); ledgerErr != nil {
 				if !errors.Is(ledgerErr, gorm.ErrDuplicatedKey) {
@@ -526,11 +525,11 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 	if verified.RevokedAt != nil {
 		return nil, ErrApplePurchaseRevoked
 	}
-	//if isSubscriptionType(verified.Type) {
-	//	if !req.IsActive || verified.ExpiresAt == nil || !verified.ExpiresAt.After(time.Now()) {
-	//		return nil, ErrApplePurchaseInactive
-	//	}
-	//}
+	if isSubscriptionType(verified.Type) {
+		if !req.IsActive || verified.ExpiresAt == nil || !verified.ExpiresAt.After(time.Now()) {
+			return nil, ErrApplePurchaseInactive
+		}
+	}
 	if !isSubscriptionType(verified.Type) {
 		return nil, ErrPaymentMismatch
 	}
@@ -543,7 +542,7 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 		productType = domain.OrderProductPointsPackage
 	}
 	order, err := s.CreateOrder(ctx, CreateOrderRequest{
-		UserID: userID, ProductType: productType, ProductID: shopID,
+		UserID: userID, ProductType: uint32(productType), ProductID: shopID,
 		PaymentMethod:   domain.PaymentMethodAppleIAP,
 		ClientRequestID: appleClientRequestID(verified.TransactionID),
 		Renewal: strings.EqualFold(verified.TransactionReason, "RENEWAL") ||
