@@ -29,7 +29,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	result, err := h.svc.Login(c, &req, c.ClientIP(), c.Request.UserAgent())
+	result, err := h.svc.Login(c, &req, c.ClientIP())
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
@@ -46,7 +46,7 @@ func (h *AuthHandler) ThirdBinding(c *gin.Context) {
 	if req.ThirdCode == "" && req.IDToken == "" {
 		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, "参数异常")
 	}
-	result, err := h.svc.ThirdPartyLogin(c, &req, c.ClientIP(), c.Request.UserAgent())
+	result, err := h.svc.ThirdPartyLogin(c, &req, c.ClientIP())
 	if err != nil {
 		h.handleIdentityError(c, err)
 		return

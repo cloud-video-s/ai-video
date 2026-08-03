@@ -44,7 +44,7 @@ var (
 	ErrDeviceCodeNotConfigured       = errors.New("当前设备已绑定另一个同类型第三方账号，是否确认登录？")
 )
 
-func (s *AuthService) ThirdPartyLogin(ctx *gin.Context, req *ThirdPartyLoginRequest, clientIP, userAgent string) (*AuthResponse, error) {
+func (s *AuthService) ThirdPartyLogin(ctx *gin.Context, req *ThirdPartyLoginRequest, clientIP string) (*AuthResponse, error) {
 	provider, err := normalizeIdentityProvider(req.ThirdType)
 	if err != nil {
 		return nil, err
@@ -65,10 +65,10 @@ func (s *AuthService) ThirdPartyLogin(ctx *gin.Context, req *ThirdPartyLoginRequ
 			return nil, ErrIdentityProviderNotConfigured
 		}
 	}
-	return s.loginVerifiedIdentity(ctx, req, clientIP, userAgent)
+	return s.loginVerifiedIdentity(ctx, req, clientIP)
 }
 
-func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLoginRequest, clientIP, userAgent string) (*AuthResponse, error) {
+func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLoginRequest, clientIP string) (*AuthResponse, error) {
 	now := time.Now()
 	var user *model.VideoUser
 	apiUserID := middleware.GetAPIUserID(ctx)
@@ -101,7 +101,8 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 		user.LastLoginIP = clientIP
 		user.LastLoginAt = &now
 		user.ServerCountry = serverCountry
-		updates := ThirdPartyLoginBinding(req.ThirdType, clientIP, serverCountry, now)
+		updates := thirdPartyLoginBinding(req.ThirdType, clientIP, serverCountry, now)
+		updates["active_days"] = 1
 		updates["third_code"] = req.ThirdCode
 		updates["email"] = req.Email
 		if err := s.userRepo.Update(ctx, user.ID, updates); err != nil {
@@ -114,7 +115,7 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 		if user.Status != 1 {
 			return nil, errors.New("当前邮箱绑定账号已停用，暂时无法使用")
 		}
-		if err := s.userRepo.Update(ctx, user.ID, ThirdPartyLoginBinding(req.ThirdType, clientIP, serverCountry, now)); err != nil {
+		if err := s.userRepo.Update(ctx, user.ID, baseTrackingUpdates(ctx, user, int(providerLoginType(req.ThirdType)), &req.AccountBaseRequest, clientIP, now)); err != nil {
 			return nil, errors.New("failed to update third party login info")
 		}
 	}

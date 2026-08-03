@@ -93,7 +93,7 @@ type UpdateCountryRequest struct {
 	Country string `json:"country" binding:"omitempty,max=8"`
 }
 
-func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string, userAgent string) (*AuthResponse, error) {
+func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string) (*AuthResponse, error) {
 	req.DeviceCode = strings.TrimSpace(req.DeviceCode)
 	if req.DeviceCode == "" {
 		return nil, errors.New("设备标识不能为空")
@@ -172,56 +172,6 @@ func (s *AuthService) prepareLoginSession(ctx context.Context, userID uint64) (*
 		}
 	}
 	return s.userRepo.GetByID(ctx, userID)
-}
-
-func (s *AuthService) ReRegister(ctx *gin.Context, req *LoginRequest, clientIP, userAgent string) (*AuthResponse, error) {
-	req.ForceNew = true
-	req.DeviceCode = strings.TrimSpace(req.DeviceCode)
-	if req.DeviceCode == "" {
-		return nil, errors.New("设备标识不能为空")
-	}
-	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
-	now := time.Now()
-	var user *model.VideoUser
-	err := repository.Transaction(ctx, func(ctx context.Context) error {
-		firstOpenedAt := req.FirstOpenedAt
-		if firstOpenedAt == nil {
-			firstOpenedAt = &now
-		}
-		lastOpenedAt := req.LastOpenedAt
-		if lastOpenedAt == nil {
-			lastOpenedAt = &now
-		}
-
-		user = &model.VideoUser{
-			DeviceCode: req.DeviceCode,
-			Username:   newGuestUsername(), LoginType: uint8(domain.AppUserLoginGuest),
-			UserType: uint8(domain.AppUserTypeFree), SubscriptionStatus: domain.AppUserSubscriptionNotSubscribed,
-			ClientCountry: req.ClientCountry,
-			AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
-			FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
-			AttributionClickedAt: req.AttributionClickedAt, Activated: 1,
-			Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
-		}
-		if err := s.userRepo.Create(ctx, user); err != nil {
-			return err
-		}
-		user, _ = s.prepareLoginSession(ctx, user.ID)
-		return nil
-	})
-	if err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			latest, lookupErr := s.userRepo.GetByDeviceCode(ctx, req.DeviceCode, false)
-			if lookupErr == nil {
-				latest, lookupErr = s.prepareLoginSession(ctx, latest.ID)
-				if lookupErr == nil {
-					return issueToken(latest, int(latest.LoginType))
-				}
-			}
-		}
-		return nil, err
-	}
-	return issueToken(user, domain.AppUserLoginGuest)
 }
 
 func (s *AuthService) Logout(token string) error {
@@ -346,23 +296,6 @@ func baseTrackingUpdates(ctx context.Context, user *model.VideoUser, loginType i
 	return updates
 }
 
-func attributionTrackingUpdates(req *AccountBaseRequest, clientIP, userAgent string) map[string]interface{} {
-	updates := map[string]interface{}{}
-	if value := strings.TrimSpace(clientIP); value != "" {
-		updates["ip"] = value
-	}
-	if value := strings.TrimSpace(userAgent); value != "" {
-		if len(value) > 1024 {
-			value = value[:1024]
-		}
-		updates["user_agent"] = value
-	}
-	if req.AttributionClickedAt != nil {
-		updates["attributed_at"] = *req.AttributionClickedAt
-	}
-	return updates
-}
-
 func newGuestUsername() string {
 	randomBytes := make([]byte, 8)
 	if _, err := rand.Read(randomBytes); err == nil {
@@ -371,8 +304,8 @@ func newGuestUsername() string {
 	return fmt.Sprintf("guest_%d", time.Now().UnixNano())
 }
 
-func ThirdPartyLoginBinding(provider string, clientIP, serverCountry string, now time.Time) map[string]interface{} {
-	updates := map[string]interface{}{
+func thirdPartyLoginBinding(provider string, clientIP, serverCountry string, now time.Time) map[string]any {
+	updates := map[string]any{
 		"login_type":     providerLoginType(provider),
 		"registered":     true,
 		"last_login_ip":  clientIP,
