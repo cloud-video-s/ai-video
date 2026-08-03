@@ -2,6 +2,7 @@ package service
 
 import (
 	"ai-video/internal/config"
+	"ai-video/internal/pkg/utils"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -58,6 +59,7 @@ type LoginRequest struct {
 }
 
 var ErrAuthStateInvalid = errors.New("登录状态已失效，请重新登录")
+var ActiveDayKey = "active_day_key_user_id_"
 
 type AuthResponse struct {
 	Token        string `json:"token"`
@@ -99,6 +101,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
 	now := time.Now()
 	var user *model.VideoUser
+	country, _ := utils.GetCountryByIP(utils.ClientIP(ctx))
 	err := repository.Transaction(ctx, func(ctx context.Context) error {
 		firstOpenedAt := req.FirstOpenedAt
 		if firstOpenedAt == nil {
@@ -132,14 +135,15 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 				AppVersion:    req.AppVersion, AppName: req.AppName, PhoneModel: req.PhoneModel,
 				FirstOpenedAt: firstOpenedAt, LastOpenedAt: lastOpenedAt,
 				AttributionClickedAt: req.AttributionClickedAt, Activated: 1, Registered: 1,
-				Status: 1, LastLoginAt: &now, LastLoginIP: clientIP,
+				Status: 1, LastLoginAt: &now, LastLoginIP: clientIP, ServerCountry: country,
+				ActiveDays: 1,
 			}
 			if err = s.userRepo.Create(ctx, user); err != nil {
 				return err
 			}
 			user, err = s.prepareLoginSession(ctx, user.ID)
 		} else {
-			if err = s.userRepo.Update(ctx, latest.ID, baseTrackingUpdates(domain.AppUserLoginGuest, &req.AccountBaseRequest, clientIP, now)); err != nil {
+			if err = s.userRepo.Update(ctx, latest.ID, baseTrackingUpdates(ctx, latest, domain.AppUserLoginGuest, &req.AccountBaseRequest, clientIP, now)); err != nil {
 				return err
 			}
 			user, err = s.prepareLoginSession(ctx, latest.ID)
@@ -326,8 +330,8 @@ func blacklistAPIToken(token string, expiresAt time.Time) error {
 	return cache.BlacklistToken(token, ttl)
 }
 
-func baseTrackingUpdates(loginType int, req *AccountBaseRequest, clientIP string, now time.Time) map[string]any {
-	updates := map[string]any{"last_opened_at": now, "last_login_at": now, "last_login_ip": clientIP, "activated": uint32(1),
+func baseTrackingUpdates(ctx context.Context, user *model.VideoUser, loginType int, req *AccountBaseRequest, clientIP string, now time.Time) map[string]any {
+	updates := map[string]any{"last_opened_at": now, "last_login_at": now, "last_login_ip": clientIP,
 		"client_country": req.ClientCountry,
 		"app_name":       req.AppName,
 		"phone_model":    req.PhoneModel,
@@ -335,6 +339,9 @@ func baseTrackingUpdates(loginType int, req *AccountBaseRequest, clientIP string
 	}
 	if req.LastOpenedAt != nil {
 		updates["last_opened_at"] = *req.LastOpenedAt
+	}
+	if config.Redis.Get(ctx, fmt.Sprintf("%s%d", ActiveDayKey, user.ID)).Val() == "" {
+		updates["active_days"] = user.ActiveDays + 1
 	}
 	return updates
 }
