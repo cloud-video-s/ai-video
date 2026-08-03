@@ -28,7 +28,6 @@ type VideoModel struct {
 	Status         uint32         `gorm:"column:status;type:tinyint unsigned;not null;default:1;comment:状态：0-禁用，1-启用" json:"status"`                      // 状态：0-禁用，1-启用
 	HostURL        string         `gorm:"column:host_url;type:varchar(255);not null;comment:API域名" json:"host_url"`                                       // API域名
 	Score          int64          `gorm:"column:score;type:bigint;not null;comment:模型积分" json:"score"`                                                    // 模型积分
-	APIKeyConfig   string         `gorm:"column:api_key_config;type:varchar(255);comment:密钥" json:"api_key_config"`                                       // 密钥
 	APIKey         string         `gorm:"column:api_key;type:varchar(255);comment:密钥" json:"api_key"`                                                     // 密钥
 	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"`              // 创建时间
 	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"`              // 更新时间
