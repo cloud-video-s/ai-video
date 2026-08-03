@@ -79,7 +79,7 @@ func (r *OrderRepo) MarkPaid(ctx context.Context, id uint64, updates map[string]
 func (r *OrderRepo) CancelPending(ctx context.Context, id uint64, reason string, now time.Time) error {
 	q := qFrom(ctx).VideoOrder
 	result, err := q.WithContext(ctx).Where(q.ID.Eq(id), q.Status.Eq(domain.OrderStatusPending)).
-		Updates(map[string]interface{}{"status": domain.OrderStatusCancelled, "cancel_reason": reason, "cancelled_at": now})
+		Updates(map[string]any{"status": domain.OrderStatusCancelled, "cancel_reason": reason, "cancelled_at": now})
 	if err != nil {
 		return err
 	}

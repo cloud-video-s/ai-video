@@ -108,7 +108,7 @@ func (d *AppUserRepo) GetAuthState(ctx context.Context, id uint64) (string, int6
 	return user.DeviceCode, user.TokenVersion, nil
 }
 
-func (d *AppUserRepo) Update(ctx context.Context, id uint64, updates map[string]interface{}) error {
+func (d *AppUserRepo) Update(ctx context.Context, id uint64, updates map[string]any) error {
 	if len(updates) == 0 {
 		return nil
 	}

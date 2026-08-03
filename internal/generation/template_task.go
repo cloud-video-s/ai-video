@@ -35,7 +35,10 @@ func (m *Manager) CreateTemplateTask(
 		}
 		return nil, err
 	}
-
+	user, err := m.GetByID(ctx, userID)
+	if err != nil {
+		return nil, errors.New("user is not exist")
+	}
 	taskType, err := templateTaskType(template.TemplateType)
 	if err != nil {
 		return nil, fmt.Errorf("template %d: %w", template.ID, err)
@@ -56,11 +59,14 @@ func (m *Manager) CreateTemplateTask(
 			template.ID, taskType, modelConfig.Code, modelConfig.ModelType,
 		)
 	}
-
+	if user.VipPoints < uint64(modelConfig.Score) {
+		return nil, errors.New("not enough points")
+	}
 	configured, err := m.templateParameterRepo.ListByTemplate(ctx, template.ID)
 	if err != nil {
 		return nil, err
 	}
+
 	parameters, err := mergeTemplateParameters(template, configured, request.Parameters)
 	if err != nil {
 		return nil, err
@@ -93,6 +99,7 @@ func (m *Manager) CreateTemplateTask(
 		ClientRequestID: request.ClientRequestID,
 		Input:           input,
 		Parameters:      parameters,
+		Score:           modelConfig.Score,
 		TemplateID:      template.ID,
 	})
 }

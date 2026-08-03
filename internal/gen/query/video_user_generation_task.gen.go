@@ -50,6 +50,7 @@ func newVideoUserGenerationTask(db *gorm.DB, opts ...gen.DOOption) videoUserGene
 	_videoUserGenerationTask.LastPolledAt = field.NewTime(tableName, "last_polled_at")
 	_videoUserGenerationTask.TemplateID = field.NewUint64(tableName, "template_id")
 	_videoUserGenerationTask.CoverImageURL = field.NewString(tableName, "cover_image_url")
+	_videoUserGenerationTask.Score = field.NewUint32(tableName, "score")
 	_videoUserGenerationTask.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUserGenerationTask.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUserGenerationTask.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -121,6 +122,7 @@ type videoUserGenerationTask struct {
 	LastPolledAt     field.Time   // 最后一次轮询外部服务的时间
 	TemplateID       field.Uint64 // 关联模板id
 	CoverImageURL    field.String // 封面URL
+	Score            field.Uint32 // 消耗积分
 	CreatedAt        field.Time   // 记录创建时间
 	UpdatedAt        field.Time   // 记录更新时间
 	DeletedAt        field.Field  // 软删除时间（非NULL表示已删除）
@@ -163,6 +165,7 @@ func (v *videoUserGenerationTask) updateTableName(table string) *videoUserGenera
 	v.LastPolledAt = field.NewTime(table, "last_polled_at")
 	v.TemplateID = field.NewUint64(table, "template_id")
 	v.CoverImageURL = field.NewString(table, "cover_image_url")
+	v.Score = field.NewUint32(table, "score")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -194,7 +197,7 @@ func (v *videoUserGenerationTask) GetFieldByName(fieldName string) (field.OrderE
 }
 
 func (v *videoUserGenerationTask) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 26)
+	v.fieldMap = make(map[string]field.Expr, 27)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["model_id"] = v.ModelID
@@ -217,6 +220,7 @@ func (v *videoUserGenerationTask) fillFieldMap() {
 	v.fieldMap["last_polled_at"] = v.LastPolledAt
 	v.fieldMap["template_id"] = v.TemplateID
 	v.fieldMap["cover_image_url"] = v.CoverImageURL
+	v.fieldMap["score"] = v.Score
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

@@ -297,21 +297,26 @@ func (s *Service) ConsumePoints(ctx context.Context, req ConsumePointsRequest) (
 		if err != nil {
 			return err
 		}
-		if user.PointsBalance < req.Points {
+		if user.VipPoints+user.PointsBalance < req.Points {
 			return ErrInsufficientPoints
 		}
-		now, after := time.Now(), user.PointsBalance-req.Points
+		now := time.Now()
+		user.VipPoints = user.VipPoints - req.Points
+		if user.VipPoints < 0 {
+			user.PointsBalance += user.VipPoints
+			user.VipPoints = 0
+		}
 		ledger := &model.VideoUserPointsLedger{
 			UserID:    user.ID,
 			Direction: int8(domain.PointsDirectionExpense), PointsChange: -int64(req.Points),
-			BalanceBefore: user.PointsBalance, BalanceAfter: after, SourceType: domain.PointsSourceModelConsume,
+			BalanceBefore: user.PointsBalance, BalanceAfter: user.VipPoints + user.PointsBalance, SourceType: domain.PointsSourceModelConsume,
 			Description: strings.TrimSpace(req.Description),
 			OccurredAt:  now, CreatedAt: now,
 		}
-		if err := s.ledgers.Create(ctx, ledger); err != nil {
+		if err = s.ledgers.Create(ctx, ledger); err != nil {
 			return err
 		}
-		if err := s.users.Update(ctx, user.ID, map[string]any{"points_balance": after}); err != nil {
+		if err = s.users.Update(ctx, user.ID, map[string]any{"points_balance": user.PointsBalance, "vip_points": user.VipPoints}); err != nil {
 			return err
 		}
 		created = ledger

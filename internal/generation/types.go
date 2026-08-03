@@ -28,7 +28,8 @@ type CreateTaskRequest struct {
 	ClientRequestID string         `json:"client_request_id" binding:"omitempty,max=64"`
 	Input           map[string]any `json:"input" binding:"required"`
 	Parameters      map[string]any `json:"parameters,omitempty"`
-	TemplateID      uint64         `json:"-"`
+	Score           int64          `json:"score"`
+	TemplateID      uint64         `json:"template_id,omitempty"`
 }
 
 // CreateTemplateTaskRequest selects the template-owned model, task type,

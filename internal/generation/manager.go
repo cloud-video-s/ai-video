@@ -1,6 +1,8 @@
 package generation
 
 import (
+	"ai-video/internal/commerce"
+	"ai-video/internal/domain"
 	"context"
 	"encoding/json"
 	"errors"
@@ -88,7 +90,10 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	if userID == 0 {
 		return nil, errors.New("用户 ID 无效")
 	}
-
+	user, err := m.GetByID(ctx, userID)
+	if err != nil {
+		return nil, errors.New("user is not exist")
+	}
 	request.ModelCode = strings.TrimSpace(request.ModelCode)
 	request.ClientRequestID = strings.TrimSpace(request.ClientRequestID)
 	if request.ClientRequestID == "" {
@@ -118,6 +123,9 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		}
 		return nil, err
 	}
+	if user.VipPoints < uint64(modelConfig.Score) {
+		return nil, errors.New("not enough points")
+	}
 	if modelConfig.ModelType != request.TaskType {
 		return nil, fmt.Errorf("task_type %d does not match model %s type %d", request.TaskType, modelConfig.Code, modelConfig.ModelType)
 	}
@@ -145,7 +153,7 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	}
 	prompt, _ := request.Input["prompt"].(string)
 	task := &model.VideoUserGenerationTask{
-		UserID: userID, ModelID: uint64(modelConfig.ID), ClientRequestID: request.ClientRequestID, TaskCode: taskCode,
+		UserID: userID, ModelID: uint64(modelConfig.ID), ClientRequestID: request.ClientRequestID, TaskCode: taskCode, Score: uint32(request.Score),
 		TemplateID: request.TemplateID, TaskType: request.TaskType, Status: TaskStatusSubmitting, Progress: 0, Prompt: prompt, RequestPayload: string(payload),
 		RemoteUrls: "[]", LocalUrls: "[]",
 	}
@@ -428,7 +436,48 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGe
 	task.Progress = 100
 	task.ErrorMessage = ""
 	task.FinishedAt = now
-	if err := m.taskRepo.UpdateFields(ctx, task, "LocalUrls", "CoverImageURL", "Status", "Progress", "ErrorMessage", "FinishedAt"); err != nil {
+	err = repository.Transaction(ctx, func(txCtx context.Context) error {
+		q := repository.QFrom(txCtx)
+		generationTask := q.VideoUserGenerationTask
+		_, err = q.WithContext(ctx).VideoUserGenerationTask.Select(generationTask.LocalUrls, generationTask.CoverImageURL, generationTask.Status,
+			generationTask.Progress,
+			generationTask.ErrorMessage,
+			generationTask.FinishedAt,
+		).Updates(task)
+		if err != nil {
+			return fmt.Errorf("task update error")
+		}
+
+		user, err := m.GetByIDForUpdate(ctx, task.UserID)
+		if err != nil {
+			return err
+		}
+		if user.VipPoints+user.PointsBalance < uint64(task.Score) {
+			return commerce.ErrInsufficientPoints
+		}
+		user.VipPoints = user.VipPoints - uint64(task.Score)
+		if user.VipPoints < 0 {
+			user.PointsBalance += user.VipPoints
+			user.VipPoints = 0
+		}
+		ledger := &model.VideoUserPointsLedger{
+			UserID:    user.ID,
+			Direction: int8(domain.PointsDirectionExpense), PointsChange: -int64(task.Score),
+			BalanceBefore: user.PointsBalance, BalanceAfter: user.VipPoints + user.PointsBalance, SourceType: domain.PointsSourceModelConsume,
+			Description: "Spend points",
+			OccurredAt:  now, CreatedAt: now,
+		}
+		if err = q.VideoUserPointsLedger.WithContext(ctx).Create(ledger); err != nil {
+			return fmt.Errorf("create ledger error")
+		}
+		videoUser := q.VideoUser
+		_, err = q.VideoUser.WithContext(ctx).Where(videoUser.ID.Eq(task.UserID)).Updates(map[string]any{"points_balance": user.PointsBalance, "vip_points": user.VipPoints})
+		if err != nil {
+			return fmt.Errorf("consume points error")
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 	m.hub.Publish(task)
@@ -452,28 +501,19 @@ func (m *Manager) failTask(ctx context.Context, task *model.VideoUserGenerationT
 	return errors.New(task.ErrorMessage)
 }
 
-func providerFor(name string) (Provider, error) {
-	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "modelverse", "ucloud":
-		return &ModelVerseProvider{}, nil
-	default:
-		return nil, fmt.Errorf("不支持的模型 provider: %s", name)
-	}
-}
-
 func mergeModelParameters(definitions []model.VideoModelParameter, request map[string]any) (map[string]any, error) {
 	return mergeConfiguredParameters(definitions, request)
 }
 
 func mergeLegacyModelParameters(definitions []model.VideoModelParameter, request map[string]any) (map[string]any, error) {
-	result := make(map[string]interface{}, len(definitions)+len(request))
+	result := make(map[string]any, len(definitions)+len(request))
 	for i := range definitions {
 		key := strings.TrimSpace(definitions[i].ParamKey)
 		raw := strings.TrimSpace(definitions[i].DefaultValue)
 		if key == "" || raw == "" {
 			continue
 		}
-		var value interface{}
+		var value any
 		if err := json.Unmarshal([]byte(raw), &value); err != nil {
 			return nil, fmt.Errorf("模型参数 %s 的默认值不是有效 JSON: %w", key, err)
 		}
