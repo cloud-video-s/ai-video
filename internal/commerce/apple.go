@@ -125,9 +125,9 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 		return nil, ErrApplePurchaseRevoked
 	}
 	if isSubscriptionType(verified.Type) {
-		if !req.IsActive || verified.ExpiresAt == nil || !verified.ExpiresAt.After(time.Now()) {
-			return nil, ErrApplePurchaseInactive
-		}
+		//if !req.IsActive || verified.ExpiresAt == nil || !verified.ExpiresAt.After(time.Now()) {
+		//	return nil, ErrApplePurchaseInactive
+		//}
 	}
 	if !isSubscriptionType(verified.Type) {
 		return nil, ErrPaymentMismatch

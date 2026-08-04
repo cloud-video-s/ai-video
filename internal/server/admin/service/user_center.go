@@ -71,7 +71,7 @@ type UserCenterOrder struct {
 	VIPDurationDays uint       `json:"vip_duration_days"`
 	Status          string     `json:"status"`
 	PaymentMethod   string     `json:"payment_method"`
-	PaidAt          *time.Time `json:"paid_at"`
+	PayAt           *time.Time `json:"pay_at"`
 	CreatedAt       time.Time  `json:"created_at"`
 }
 
@@ -185,7 +185,7 @@ func userCenterOrders(records []model.VideoOrder) []UserCenterOrder {
 			RefundedAmount: order.RefundedAmount, BonusPoints: order.BonusPoints,
 			VIPLevel: order.VipLevel, VIPDurationDays: order.VipDurationDays,
 			Status: order.Status, PaymentMethod: order.PaymentMethod,
-			PaidAt: nonZeroTime(order.PaidAt), CreatedAt: order.CreatedAt,
+			PayAt: nonZeroTime(order.PayAt), CreatedAt: order.CreatedAt,
 		})
 	}
 	return items

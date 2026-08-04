@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	ErrOrderAlreadyPaid = errors.New("order already paid")
-	ErrOrderNotPending  = errors.New("order is not pending")
+	ErrOrderAlreadyPaid  = errors.New("order already paid")
+	ErrOrderNotPending   = errors.New("order is not pending")
+	ErrOrderNotCompleted = errors.New("order is not completed")
 )
 
 type OrderRepo struct{}
@@ -56,7 +57,7 @@ func (r *OrderRepo) Create(ctx context.Context, order *model.VideoOrder) error {
 	// zero dates (which would also break the composite unique index).
 	q := qFrom(ctx).VideoOrder
 	return q.WithContext(ctx).Omit(
-		q.ThirdOrderNo, q.OriginalTransactionID, q.PaidAt, q.CancelledAt,
+		q.ThirdOrderNo, q.OriginalTransactionID, q.PayAt, q.CancelledAt,
 	).Create(order)
 }
 
@@ -113,6 +114,25 @@ func (r *OrderRepo) MarkPaid(ctx context.Context, id uint64, updates map[string]
 			return ErrOrderAlreadyPaid
 		}
 		return ErrOrderNotPending
+	}
+	return nil
+}
+
+func (r *OrderRepo) Update(ctx context.Context, id uint64, updates map[string]interface{}) error {
+	q := qFrom(ctx).VideoOrder
+	result, err := q.WithContext(ctx).Where(q.ID.Eq(id), q.Status.Eq(domain.OrderStatusPaid)).Updates(updates)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected == 0 {
+		order, err := q.WithContext(ctx).Select(q.Status).Where(q.ID.Eq(id)).First()
+		if err != nil {
+			return err
+		}
+		if order.Status == domain.OrderStatusCompleted {
+			return ErrOrderNotCompleted
+		}
+		return ErrOrderAlreadyPaid
 	}
 	return nil
 }

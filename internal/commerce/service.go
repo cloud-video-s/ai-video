@@ -217,69 +217,15 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 			math.Abs(result.PaidAmount-order.PayableAmount) > 0.005 {
 			order.PaidAmount = result.PaidAmount
 		}
-		if used, err := s.orders.GetByPaymentTransaction(ctx, domain.PaymentMethodAppleIAP, result.TransactionID); err == nil && used.ID != order.ID {
-			return ErrPaymentTransactionUsed
-		} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
+
+		payAt := result.PurchaseDate
+		if payAt.IsZero() {
+			payAt = time.Now()
 		}
-
-		//user, err := s.users.GetByIDForUpdate(ctx, order.UserID)
-		//if err != nil {
-		//	return err
-		//}
-		//now :=
-		paidAt := result.PurchaseDate
-		if paidAt.IsZero() {
-			paidAt = time.Now()
-		}
-		//if order.BonusPoints > 0 {
-		//if order.ProductType == domain.OrderProductVIPSubscription {
-		//	user.VipPoints = user.VipPoints + order.BonusPoints
-		//} else {
-		//	user.PointsBalance = user.PointsBalance + order.BonusPoints
-		//}
-		//before, after := user.VipPoints+user.PointsBalance-order.BonusPoints, user.VipPoints+user.PointsBalance
-		//ledger := &model.VideoUserPointsLedger{
-		//	UserID: user.ID, Direction: int8(domain.PointsDirectionIncome),
-		//	PointsChange: int64(order.BonusPoints), BalanceBefore: before, BalanceAfter: after,
-		//	SourceType: domain.PointsSourcePurchase, OrderCode: order.OrderNo,
-		//	Description: "Subscription bonus points", OccurredAt: paidAt, CreatedAt: now,
-		//}
-		//if order.ProductType == domain.OrderProductPointsPackage {
-		//	ledger.PointsID = order.ProductID
-		//}
-		//if order.ProductType == domain.OrderProductVIPSubscription {
-		//	ledger.VipID = order.ProductID
-		//}
-		//if err = s.ledgers.Create(ctx, ledger); err != nil {
-		//	return err
-		//}
-		//}
-
-		//updates := map[string]interface{}{
-		//	"vip_points":          user.VipPoints,
-		//	"points_balance":      user.PointsBalance,
-		//	"payment_count":       user.PaymentCount + 1,
-		//	"actual_amount_money": user.ActualAmountMoney + result.PaidAmount,
-		//	"last_paid_at":        paidAt, "payment_met": 1,
-		//}
-		//if user.FirstPaidAt == nil {
-		//	updates["first_paid_at"], updates["first_payment_met"] = paidAt, 1
-		//}
-		//if order.ProductType == domain.OrderProductVIPSubscription {
-		//	updates["subscription_payment_count"] = user.SubscriptionPaymentCount + 1
-		//	applyVIPEntitlement(user, order, paidAt, result.SubscriptionExpiresAt, updates)
-		//} else {
-		//	updates["one_time_payment_count"] = user.OneTimePaymentCount + 1
-		//}
-		//if err := s.users.Update(ctx, user.ID, updates); err != nil {
-		//	return err
-		//}
-
 		if err := s.orders.MarkPaid(ctx, order.ID, map[string]interface{}{
 			"payment_method": domain.PaymentMethodAppleIAP, "third_order_no": result.TransactionID,
 			"original_transaction_id": strings.TrimSpace(result.OriginalTransactionID), "paid_amount": result.PaidAmount,
-			"payment_evidence": result.SignedTransaction, "paid_at": paidAt,
+			"payment_evidence": result.SignedTransaction, "pay_at": payAt,
 		}); err != nil {
 			return err
 		}
@@ -290,7 +236,7 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 	return paidOrder, err
 }
 
-func (s *Service) NotificationApplePayment(ctx context.Context, order *model.VideoOrder, summary *AppleNotificationV2Summary) (paidOrder *model.VideoOrder, err error) {
+func (s *Service) NotificationApplePayment(ctx context.Context, order *model.VideoOrder, summary *AppleNotificationV2Summary) (err error) {
 	defer func() {
 		if err == nil {
 			return
@@ -300,7 +246,7 @@ func (s *Service) NotificationApplePayment(ctx context.Context, order *model.Vid
 		}
 	}()
 	if order.Status != domain.OrderStatusPaid {
-		return nil, repository.ErrOrderAlreadyPaid
+		return repository.ErrOrderAlreadyPaid
 	}
 	summary.TransactionID = strings.TrimSpace(summary.TransactionID)
 	err = repository.Transaction(ctx, func(ctx context.Context) error {
@@ -308,17 +254,12 @@ func (s *Service) NotificationApplePayment(ctx context.Context, order *model.Vid
 		if err != nil {
 			return err
 		}
-		if used, err := s.orders.GetByPaymentTransaction(ctx, domain.PaymentMethodAppleIAP, summary.TransactionID); err == nil && used.ID != order.ID {
-			return ErrPaymentTransactionUsed
-		} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-
 		user, err := s.users.GetByIDForUpdate(ctx, order.UserID)
 		if err != nil {
 			return err
 		}
 		now := time.Now()
+		//积分记录
 		if order.BonusPoints > 0 {
 			if order.ProductType == domain.OrderProductVIPSubscription {
 				user.VipPoints = user.VipPoints + order.BonusPoints
@@ -342,39 +283,48 @@ func (s *Service) NotificationApplePayment(ctx context.Context, order *model.Vid
 				return err
 			}
 		}
-
-		//updates := map[string]interface{}{
-		//	"vip_points":          user.VipPoints,
-		//	"points_balance":      user.PointsBalance,
-		//	"payment_count":       user.PaymentCount + 1,
-		//	"actual_amount_money": user.ActualAmountMoney + order.PaidAmount,
-		//	"last_paid_at":        now, "payment_met": 1,
-		//}
-		//if user.FirstPaidAt == nil {
-		//	updates["first_paid_at"], updates["first_payment_met"] = new, 1
-		//}
-		//if order.ProductType == domain.OrderProductVIPSubscription {
-		//	updates["subscription_payment_count"] = user.SubscriptionPaymentCount + 1
-		//	applyVIPEntitlement(user, order, new, order.SubscriptionExpiresAt, updates)
-		//} else {
-		//	updates["one_time_payment_count"] = user.OneTimePaymentCount + 1
-		//}
-		//if err := s.users.Update(ctx, user.ID, updates); err != nil {
-		//	return err
-		//}
-		//
-		//if err := s.orders.MarkPaid(ctx, order.ID, map[string]interface{}{
-		//	"payment_method": domain.PaymentMethodAppleIAP, "third_order_no": summary.TransactionID,
-		//	"original_transaction_id": strings.TrimSpace(result.OriginalTransactionID), "paid_amount": result.PaidAmount,
-		//	"payment_evidence": result.SignedTransaction, "paid_at": paidAt,
-		//}); err != nil {
-		//	return err
-		//}
-		//order, err = s.orders.GetByOrderNo(ctx, order.OrderNo, false)
-		paidOrder = order
+		//用户数据处理
+		updates := map[string]any{
+			"vip_points":                 user.VipPoints,
+			"points_balance":             user.PointsBalance,
+			"payment_count":              user.PaymentCount + 1,
+			"actual_amount_money":        user.ActualAmountMoney + order.ActualAmountMoney,
+			"last_paid_at":               order.PayAt,
+			"vip_expires_at":             user.VipExpiresAt,
+			"subscription_payment_count": user.SubscriptionPaymentCount + 1,
+			"order_amount_money":         user.OrderAmountMoney + order.PaidAmount,
+		}
+		if user.SubscriptionStatus == domain.SubscriptionStatusSubscribed {
+			if order.VipDurationDays > 0 {
+				updates["vip_expires_at"] = user.VipExpiresAt.Add(time.Duration(order.VipDurationDays * 86400))
+			}
+		} else {
+			user.SubscriptionStatus = domain.SubscriptionStatusSubscribed
+			user.VIPLevel = order.VipLevel
+			user.UserType = 2
+			if order.VipDurationDays > 0 {
+				updates["vip_started_at"] = now
+				updates["vip_expires_at"] = now.Add(time.Duration(order.VipDurationDays * 86400))
+			}
+			if user.FirstPaymentMet == 0 {
+				updates["first_payment_met"] = 1
+			}
+			if user.PaymentMet == 0 {
+				updates["payment_met"] = 1
+			}
+		}
+		if err = s.users.Update(ctx, user.ID, updates); err != nil {
+			return err
+		}
+		// 更新订单状态
+		if err := s.orders.Update(ctx, order.ID, map[string]any{
+			"status": domain.OrderStatusCompleted, "completed_at": now,
+		}); err != nil {
+			return err
+		}
 		return err
 	})
-	return paidOrder, err
+	return err
 }
 
 // CancelOrder cancels a pending order owned by the requested user. Paid,

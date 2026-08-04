@@ -74,6 +74,10 @@ func (s *Service) HandleAppleServerNotificationV2(ctx context.Context, signedPay
 		} else {
 			summary.Message = "pending client confirmation"
 		}
+		err = NewService().NotificationApplePayment(ctx, order, summary)
+		if err != nil {
+			return nil, err
+		}
 	case AppleNotificationDidRenew, AppleNotificationRenewalExtended:
 		summary.Action = "renew"
 		if order != nil && order.ProductType == domain.OrderProductVIPSubscription {

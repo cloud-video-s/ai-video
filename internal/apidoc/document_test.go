@@ -230,9 +230,13 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	assertParameter(t, categoryTemplates, "page_size", "query", false)
 	assertParameter(t, categoryTemplates, "position_key", "query", false)
 	assertParameter(t, categoryTemplates, "template_type_id", "query", false)
-	assertResponseParameter(t, categoryTemplates, "data[].id", true)
-	assertResponseParameter(t, categoryTemplates, "data[].name", true)
-	assertResponseParameterAbsent(t, categoryTemplates, "data[].display_config_id")
+	assertResponseParameter(t, categoryTemplates, "data.page", true)
+	assertResponseParameter(t, categoryTemplates, "data.pageSize", true)
+	assertResponseParameter(t, categoryTemplates, "data.total", true)
+	assertResponseParameter(t, categoryTemplates, "data.totalPages", true)
+	assertResponseParameter(t, categoryTemplates, "data.list[].id", true)
+	assertResponseParameter(t, categoryTemplates, "data.list[].name", true)
+	assertResponseParameterAbsent(t, categoryTemplates, "data.list[].display_config_id")
 	templateInfo := document.Paths["/api/templates/template_info"]["get"].(map[string]any)
 	assertParameter(t, templateInfo, "template_id", "query", true)
 	assertResponseParameter(t, templateInfo, "data.id", true)
@@ -468,20 +472,26 @@ func TestBuildTemplateCategoriesDocumentation(t *testing.T) {
 	}})
 	categories := document.Paths["/api/templates/categories"]["get"].(map[string]any)
 	assertParameter(t, categories, "page", "query", false)
+	assertParameter(t, categories, "page_size", "query", false)
 	assertParameterAbsent(t, categories, "pageSize")
 	assertParameterAbsent(t, categories, "position_key")
-	assertResponseParameter(t, categories, "data[].id", true)
-	assertResponseParameter(t, categories, "data[].templates", true)
-	assertResponseParameter(t, categories, "data[].templates[].cover_image_url", true)
-	assertResponseParameter(t, categories, "data[].templates[].model_score", true)
-	for _, phrase := range []string{"homeCategory", "每页最多返回 5 个分类", "每个分类最多返回 10 个", "没有可用模板", "不包含 total"} {
+	assertResponseParameter(t, categories, "data.page", true)
+	assertResponseParameter(t, categories, "data.pageSize", true)
+	assertResponseParameter(t, categories, "data.total", true)
+	assertResponseParameter(t, categories, "data.totalPages", true)
+	assertResponseParameter(t, categories, "data.list[].id", true)
+	assertResponseParameter(t, categories, "data.list[].templates", true)
+	assertResponseParameter(t, categories, "data.list[].templates[].cover_image_url", true)
+	assertResponseParameter(t, categories, "data.list[].templates[].model_score", true)
+	for _, phrase := range []string{"homeCategory", "page_size 默认 5", "每个分类最多返回 10 个", "没有可用模板", "totalPages"} {
 		if !strings.Contains(categories["description"].(string), phrase) {
 			t.Fatalf("category pagination rules are missing %q: %q", phrase, categories["description"])
 		}
 	}
-	categoriesExample := categories["x-response-example"].(responseExampleEnvelope).Data.([]apiservice.ClientTemplateType)
-	if len(categoriesExample) != 1 || len(categoriesExample[0].Templates) != 1 ||
-		categoriesExample[0].Templates[0].CoverImageURL == "" || categoriesExample[0].Templates[0].ModelScore != 95 {
+	categoriesExample := categories["x-response-example"].(responseExampleEnvelope).Data.(clientTemplateTypePageResponse)
+	if categoriesExample.Page != 1 || categoriesExample.PageSize != 5 || categoriesExample.Total != 1 || categoriesExample.TotalPages != 1 ||
+		len(categoriesExample.List) != 1 || len(categoriesExample.List[0].Templates) != 1 ||
+		categoriesExample.List[0].Templates[0].CoverImageURL == "" || categoriesExample.List[0].Templates[0].ModelScore != 95 {
 		t.Fatalf("category response example is incomplete: %#v", categoriesExample)
 	}
 }
@@ -497,15 +507,29 @@ func TestBuildCurrentTemplateResponseDocumentation(t *testing.T) {
 
 	for _, path := range []string{"/api/templates/categories", "/api/templates/list"} {
 		operation := document.Paths[path]["get"].(map[string]any)
-		assertCurrentTemplateResponseParameters(t, operation, "data[].templates[]")
-	}
-	for _, path := range []string{"/api/templates/recommend", "/api/templates/template_list"} {
-		operation := document.Paths[path]["get"].(map[string]any)
-		assertCurrentTemplateResponseParameters(t, operation, "data[]")
-		example := operation["x-response-example"].(responseExampleEnvelope).Data.([]apiservice.ClientTemplate)
-		if len(example) != 1 || example[0] != clientTemplateResponseExample {
-			t.Fatalf("%s template response example is stale: %#v", path, example)
+		assertCurrentTemplateResponseParameters(t, operation, "data.list[].templates[]")
+		for _, name := range []string{"data.page", "data.pageSize", "data.total", "data.totalPages", "data.list"} {
+			assertResponseParameter(t, operation, name, true)
 		}
+		example := operation["x-response-example"].(responseExampleEnvelope).Data.(clientTemplateTypePageResponse)
+		if example.Page != 1 || example.PageSize != 5 || len(example.List) != 1 || len(example.List[0].Templates) != 1 {
+			t.Fatalf("%s category page response example is stale: %#v", path, example)
+		}
+	}
+	recommend := document.Paths["/api/templates/recommend"]["get"].(map[string]any)
+	assertCurrentTemplateResponseParameters(t, recommend, "data[]")
+	recommendExample := recommend["x-response-example"].(responseExampleEnvelope).Data.([]apiservice.ClientTemplate)
+	if len(recommendExample) != 1 || recommendExample[0] != clientTemplateResponseExample {
+		t.Fatalf("recommend template response example is stale: %#v", recommendExample)
+	}
+	templateList := document.Paths["/api/templates/template_list"]["get"].(map[string]any)
+	assertCurrentTemplateResponseParameters(t, templateList, "data.list[]")
+	for _, name := range []string{"data.page", "data.pageSize", "data.total", "data.totalPages", "data.list"} {
+		assertResponseParameter(t, templateList, name, true)
+	}
+	templateListExample := templateList["x-response-example"].(responseExampleEnvelope).Data.(clientTemplatePageResponse)
+	if templateListExample.Page != 1 || templateListExample.PageSize != 10 || len(templateListExample.List) != 1 || templateListExample.List[0] != clientTemplateResponseExample {
+		t.Fatalf("template list page response example is stale: %#v", templateListExample)
 	}
 	info := document.Paths["/api/templates/template_info"]["get"].(map[string]any)
 	assertCurrentTemplateResponseParameters(t, info, "data")
@@ -515,7 +539,8 @@ func TestBuildCurrentTemplateResponseDocumentation(t *testing.T) {
 
 	list := document.Paths["/api/templates/list"]["get"].(map[string]any)
 	assertParameter(t, list, "position_key", "query", false)
-	assertParameterAbsent(t, list, "page")
+	assertParameter(t, list, "page", "query", false)
+	assertParameter(t, list, "page_size", "query", false)
 	assertParameterAbsent(t, list, "pageSize")
 }
 

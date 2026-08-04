@@ -41,6 +41,7 @@ func newVideoOrder(db *gorm.DB, opts ...gen.DOOption) videoOrder {
 	_videoOrder.DiscountAmount = field.NewFloat64(tableName, "discount_amount")
 	_videoOrder.PayableAmount = field.NewFloat64(tableName, "payable_amount")
 	_videoOrder.PaidAmount = field.NewFloat64(tableName, "paid_amount")
+	_videoOrder.ActualAmountMoney = field.NewFloat64(tableName, "actual_amount_money")
 	_videoOrder.RefundedAmount = field.NewFloat64(tableName, "refunded_amount")
 	_videoOrder.BonusPoints = field.NewUint64(tableName, "bonus_points")
 	_videoOrder.VipLevel = field.NewUint(tableName, "vip_level")
@@ -53,7 +54,8 @@ func newVideoOrder(db *gorm.DB, opts ...gen.DOOption) videoOrder {
 	_videoOrder.FailureCode = field.NewString(tableName, "failure_code")
 	_videoOrder.FailureMessage = field.NewString(tableName, "failure_message")
 	_videoOrder.CancelReason = field.NewString(tableName, "cancel_reason")
-	_videoOrder.PaidAt = field.NewTime(tableName, "paid_at")
+	_videoOrder.PayAt = field.NewTime(tableName, "pay_at")
+	_videoOrder.CompletedAt = field.NewTime(tableName, "completed_at")
 	_videoOrder.CancelledAt = field.NewTime(tableName, "cancelled_at")
 	_videoOrder.ExpiresAt = field.NewTime(tableName, "expires_at")
 	_videoOrder.CreatedAt = field.NewTime(tableName, "created_at")
@@ -88,6 +90,7 @@ type videoOrder struct {
 	DiscountAmount        field.Float64 // 优惠/折扣金额
 	PayableAmount         field.Float64 // 应付金额（需支付）
 	PaidAmount            field.Float64 // 实付金额（已支付）
+	ActualAmountMoney     field.Float64 // 税后金额
 	RefundedAmount        field.Float64 // 已退款金额
 	BonusPoints           field.Uint64  // 赠送的积分数量
 	VipLevel              field.Uint    // 购买后获得的VIP等级（0表示无）
@@ -100,7 +103,8 @@ type videoOrder struct {
 	FailureCode           field.String  // 支付失败时的错误码
 	FailureMessage        field.String  // 支付失败时的错误描述
 	CancelReason          field.String  // 订单取消原因
-	PaidAt                field.Time    // 支付完成时间
+	PayAt                 field.Time    // 支付完成时间
+	CompletedAt           field.Time    // 完成时间
 	CancelledAt           field.Time    // 订单取消时间
 	ExpiresAt             field.Time    // 订单过期时间（未支付自动失效）
 	CreatedAt             field.Time    // 记录创建时间
@@ -136,6 +140,7 @@ func (v *videoOrder) updateTableName(table string) *videoOrder {
 	v.DiscountAmount = field.NewFloat64(table, "discount_amount")
 	v.PayableAmount = field.NewFloat64(table, "payable_amount")
 	v.PaidAmount = field.NewFloat64(table, "paid_amount")
+	v.ActualAmountMoney = field.NewFloat64(table, "actual_amount_money")
 	v.RefundedAmount = field.NewFloat64(table, "refunded_amount")
 	v.BonusPoints = field.NewUint64(table, "bonus_points")
 	v.VipLevel = field.NewUint(table, "vip_level")
@@ -148,7 +153,8 @@ func (v *videoOrder) updateTableName(table string) *videoOrder {
 	v.FailureCode = field.NewString(table, "failure_code")
 	v.FailureMessage = field.NewString(table, "failure_message")
 	v.CancelReason = field.NewString(table, "cancel_reason")
-	v.PaidAt = field.NewTime(table, "paid_at")
+	v.PayAt = field.NewTime(table, "pay_at")
+	v.CompletedAt = field.NewTime(table, "completed_at")
 	v.CancelledAt = field.NewTime(table, "cancelled_at")
 	v.ExpiresAt = field.NewTime(table, "expires_at")
 	v.CreatedAt = field.NewTime(table, "created_at")
@@ -180,7 +186,7 @@ func (v *videoOrder) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoOrder) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 32)
+	v.fieldMap = make(map[string]field.Expr, 34)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["order_no"] = v.OrderNo
 	v.fieldMap["client_request_id"] = v.ClientRequestID
@@ -194,6 +200,7 @@ func (v *videoOrder) fillFieldMap() {
 	v.fieldMap["discount_amount"] = v.DiscountAmount
 	v.fieldMap["payable_amount"] = v.PayableAmount
 	v.fieldMap["paid_amount"] = v.PaidAmount
+	v.fieldMap["actual_amount_money"] = v.ActualAmountMoney
 	v.fieldMap["refunded_amount"] = v.RefundedAmount
 	v.fieldMap["bonus_points"] = v.BonusPoints
 	v.fieldMap["vip_level"] = v.VipLevel
@@ -206,7 +213,8 @@ func (v *videoOrder) fillFieldMap() {
 	v.fieldMap["failure_code"] = v.FailureCode
 	v.fieldMap["failure_message"] = v.FailureMessage
 	v.fieldMap["cancel_reason"] = v.CancelReason
-	v.fieldMap["paid_at"] = v.PaidAt
+	v.fieldMap["pay_at"] = v.PayAt
+	v.fieldMap["completed_at"] = v.CompletedAt
 	v.fieldMap["cancelled_at"] = v.CancelledAt
 	v.fieldMap["expires_at"] = v.ExpiresAt
 	v.fieldMap["created_at"] = v.CreatedAt

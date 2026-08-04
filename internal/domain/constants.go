@@ -50,6 +50,7 @@ const (
 	OrderStatusCancelled = "cancelled"
 	OrderStatusFailed    = "failed"
 	OrderStatusRefunded  = "refunded"
+	OrderStatusCompleted = "completed"
 
 	PaymentMethodAppleIAP = "apple_iap"
 

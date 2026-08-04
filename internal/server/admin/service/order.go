@@ -67,7 +67,7 @@ type OrderAdminView struct {
 	FailureCode           string              `json:"failure_code"`
 	FailureMessage        string              `json:"failure_message"`
 	CancelReason          string              `json:"cancel_reason"`
-	PaidAt                *time.Time          `json:"paid_at"`
+	PayAt                 *time.Time          `json:"pay_at"`
 	CancelledAt           *time.Time          `json:"cancelled_at"`
 	ExpiresAt             *time.Time          `json:"expires_at"`
 	CreatedAt             time.Time           `json:"created_at"`
@@ -118,7 +118,7 @@ func orderAdminView(record *repository.OrderAdminRecord, includeEvidence bool) O
 		Status: order.Status, PaymentMethod: order.PaymentMethod, ThirdOrderNo: order.ThirdOrderNo,
 		OriginalTransactionID: order.OriginalTransactionID, FailureCode: order.FailureCode,
 		FailureMessage: order.FailureMessage, CancelReason: order.CancelReason,
-		PaidAt: orderAdminTimePtr(order.PaidAt), CancelledAt: orderAdminTimePtr(order.CancelledAt),
+		PayAt: orderAdminTimePtr(order.PayAt), CancelledAt: orderAdminTimePtr(order.CancelledAt),
 		ExpiresAt: orderAdminTimePtr(order.ExpiresAt), CreatedAt: order.CreatedAt, UpdatedAt: order.UpdatedAt,
 	}
 	if includeEvidence {

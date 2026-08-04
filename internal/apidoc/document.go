@@ -35,11 +35,7 @@ type endpointType struct {
 }
 
 type templateCategoriesQuery struct {
-	Page int `form:"page" binding:"omitempty,min=1"`
-}
-
-type templateListQuery struct {
-	PositionKey string `form:"position_key"`
+	apiservice.BasePage
 }
 
 type uploadBatchResponse struct {
@@ -64,6 +60,22 @@ type clientPointsListResponse struct {
 	Total      int64                             `json:"total"`
 	TotalPages int64                             `json:"totalPages"`
 	List       []apiservice.ClientPointsResponse `json:"list"`
+}
+
+type clientTemplateTypePageResponse struct {
+	Page       int64                           `json:"page"`
+	PageSize   int64                           `json:"pageSize"`
+	Total      int64                           `json:"total"`
+	TotalPages int64                           `json:"totalPages"`
+	List       []apiservice.ClientTemplateType `json:"list"`
+}
+
+type clientTemplatePageResponse struct {
+	Page       int64                       `json:"page"`
+	PageSize   int64                       `json:"pageSize"`
+	Total      int64                       `json:"total"`
+	TotalPages int64                       `json:"totalPages"`
+	List       []apiservice.ClientTemplate `json:"list"`
 }
 
 type templateTaskInput struct {
@@ -270,11 +282,19 @@ var clientTemplateResponseExample = apiservice.ClientTemplate{
 
 var clientTemplateListResponseExample = []apiservice.ClientTemplate{clientTemplateResponseExample}
 
-var templateCategoriesResponseExample = []apiservice.ClientTemplateType{
+var templateCategoryListResponseExample = []apiservice.ClientTemplateType{
 	{
 		ID: 1, CategoryName: "热门模板", Description: "当前客户端可用的热门模板", Sort: 100,
 		Templates: clientTemplateListResponseExample,
 	},
+}
+
+var templateCategoriesResponseExample = clientTemplateTypePageResponse{
+	Page: 1, PageSize: 5, Total: 1, TotalPages: 1, List: templateCategoryListResponseExample,
+}
+
+var templateListPageResponseExample = clientTemplatePageResponse{
+	Page: 1, PageSize: 10, Total: 1, TotalPages: 1, List: clientTemplateListResponseExample,
 }
 
 var responseDataExamples = map[string]any{
@@ -283,7 +303,7 @@ var responseDataExamples = map[string]any{
 	"GET /api/templates/categories":        templateCategoriesResponseExample,
 	"GET /api/templates/list":              templateCategoriesResponseExample,
 	"GET /api/templates/recommend":         clientTemplateListResponseExample,
-	"GET /api/templates/template_list":     clientTemplateListResponseExample,
+	"GET /api/templates/template_list":     templateListPageResponseExample,
 	"GET /api/templates/template_info":     clientTemplateResponseExample,
 	"GET /api/generation/models":           generationModelResponseExample,
 	"GET /api/generation/tasks":            generationTaskListResponseExample,
@@ -361,9 +381,9 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/ob_delay":                                {response: typeOf[map[string]int64]()},
 	"GET /api/banners/list":                            {query: typeOf[apiservice.ClientBannerRequest](), response: typeOf[[]apiservice.ClientBanner]()},
 	"GET /api/templates/recommend":                     {query: typeOf[apiservice.ClientTemplateRecommendRequest](), response: typeOf[[]apiservice.ClientTemplate]()},
-	"GET /api/templates/list":                          {query: typeOf[templateListQuery](), response: typeOf[[]apiservice.ClientTemplateType]()},
-	"GET /api/templates/categories":                    {query: typeOf[templateCategoriesQuery](), response: typeOf[[]apiservice.ClientTemplateType]()},
-	"GET /api/templates/template_list":                 {query: typeOf[apiservice.TemplateListRequest](), response: typeOf[[]apiservice.ClientTemplate]()},
+	"GET /api/templates/list":                          {query: typeOf[apiservice.ClientTemplateRequest](), response: typeOf[clientTemplateTypePageResponse]()},
+	"GET /api/templates/categories":                    {query: typeOf[templateCategoriesQuery](), response: typeOf[clientTemplateTypePageResponse]()},
+	"GET /api/templates/template_list":                 {query: typeOf[apiservice.TemplateListRequest](), response: typeOf[clientTemplatePageResponse]()},
 	"GET /api/templates/template_info":                 {query: typeOf[apiservice.TemplateInfoRequest](), response: typeOf[apiservice.ClientTemplate]()},
 	"POST /api/templates/:id/favorite":                 {response: typeOf[apiservice.TemplateFavoriteResponse]()},
 	"DELETE /api/templates/:id/favorite":               {response: typeOf[apiservice.TemplateFavoriteResponse]()},
@@ -401,9 +421,9 @@ var operationDescriptions = map[string]string{
 	"GET /api/ob_delay":                "获取客户端延迟配置。",
 	"GET /api/banners/list":            "按必填的 position_key 查询当前客户端可见的 Banner。服务端同时使用公共请求头中的 Video_App_Code、Video_App_Package_Code、Video_App_Version、Video_Device_Country，以及登录用户的会员状态进行投放匹配。某个维度没有关联记录时表示该维度支持全部；存在关联记录时必须命中。展示位置、国家、应用、应用包、版本和会员类型之间按 AND 关系组合。",
 	"GET /api/templates/recommend":     "按必填的 position_key 查询当前客户端可见的推荐模板，响应 data 为模板对象数组。每个模板对象返回 id、template_type_id、name、template_type、cover_image_url、original_url、thumbnail_url、prompt、description、sort、usage_count、favorite_count、view_count、is_favorite 和 model_score。",
-	"GET /api/templates/list":          "按可选的 position_key 查询当前客户端可见的全部分类及其模板，响应 data 为分类对象数组，不分页。每个分类的 templates 使用当前统一模板对象结构。",
-	"GET /api/templates/categories":    "分页查询 homeCategory 展示位置下当前客户端可见的模板分类及其模板。page 未传时按第 1 页处理；服务端固定每页最多返回 5 个分类、每个分类最多返回 10 个启用且未删除的模板，响应为数组且不包含 total 或 has_more。分类必须处于启用状态并至少关联一个启用且未删除的模板；没有可用模板、仅有关联禁用模板或已删除模板的分类不会进入分页结果。分类同时按国家、应用、应用包和版本投放范围匹配，未配置某个范围表示该维度支持全部。",
-	"GET /api/templates/template_list": "按 page、pageSize、template_type_id 和可选 position_key 查询分类下的模板，响应 data 为模板对象数组，不包含 total 或 totalPages。template_type_id 未传或当前客户端不可访问该分类时返回空数组。",
+	"GET /api/templates/list":          "按可选的 position_key 分页查询当前客户端可见的分类及其模板。page 默认 1，page_size 默认 5；响应 data 包含 page、pageSize、total、totalPages 和 list，每个分类的 templates 使用当前统一模板对象结构。",
+	"GET /api/templates/categories":    "分页查询 homeCategory 展示位置下当前客户端可见的模板分类及其模板。page 默认 1，page_size 默认 5；响应 data 包含 page、pageSize、total、totalPages 和 list，每个分类最多返回 10 个启用且未删除的模板。分类必须处于启用状态并至少关联一个启用且未删除的模板；没有可用模板、仅有关联禁用模板或已删除模板的分类不会进入分页结果。分类同时按国家、应用、应用包和版本投放范围匹配，未配置某个范围表示该维度支持全部。",
+	"GET /api/templates/template_list": "按 page、page_size、template_type_id 和可选 position_key 分页查询模板。page 默认 1，page_size 默认 10；响应 data 包含 page、pageSize、total、totalPages 和 list，list 中每项使用当前统一模板对象结构。",
 	"GET /api/templates/template_info": "根据必填的 template_id 查询单个模板对象，并设置当前登录用户的 is_favorite。响应使用当前统一模板对象结构。",
 	"POST /api/templates/:id/favorite": "收藏指定模板；重复收藏保持幂等。", "DELETE /api/templates/:id/favorite": "取消收藏指定模板；重复取消保持幂等。",
 	"POST /api/templates/complaint": "提交模板投诉。请求体使用 application/json，template_id 和 complaint_type 必填，content 为可选的补充说明。",
