@@ -16,11 +16,12 @@ import (
 )
 
 type AuthHandler struct {
-	svc *apiservice.AuthService
+	svc    *apiservice.AuthService
+	points *apiservice.ClientPointsService
 }
 
 func NewAuthHandler() *AuthHandler {
-	return &AuthHandler{svc: apiservice.NewAuthService()}
+	return &AuthHandler{svc: apiservice.NewAuthService(), points: apiservice.NewClientPointsService()}
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -161,6 +162,20 @@ func (h *AuthHandler) UpdateCountry(c *gin.Context) {
 		return
 	}
 	response.OK(c, user)
+}
+
+func (h *AuthHandler) GetPointsList(c *gin.Context) {
+	var req apiservice.ClientPointsRequest
+	if err := c.ShouldBind(&req); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
+	data, err := h.points.GetPointsList(c, req)
+	if err != nil {
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, data)
 }
 
 func bearerToken(c *gin.Context) string {

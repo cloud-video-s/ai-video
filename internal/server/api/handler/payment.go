@@ -54,6 +54,7 @@ func (h *PaymentHandler) AppleServerNotification(c *gin.Context) {
 		response.FailWithStatus(c, 400, errcode.ErrParam, "invalid notification body: "+err.Error())
 		return
 	}
+
 	summary, err := h.service.HandleAppleServerNotificationV2(c.Request.Context(), body.SignedPayload)
 	if err != nil {
 		if errors.Is(err, commerce.ErrAppleEvidenceInvalid) ||
@@ -67,6 +68,7 @@ func (h *PaymentHandler) AppleServerNotification(c *gin.Context) {
 		return
 	}
 	config.Log.Infow("Apple server notification acknowledged",
+		"body", body.SignedPayload,
 		"notification_type", summary.NotificationType,
 		"subtype", summary.Subtype,
 		"notification_uuid", summary.NotificationUUID,

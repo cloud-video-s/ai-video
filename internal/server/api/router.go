@@ -64,6 +64,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 			users.PUT("/me/country", authHandler.UpdateCountry)
 			users.GET("/me/identities", authHandler.ListIdentities)
 			users.DELETE("/me/identities/:provider", authHandler.UnbindIdentity)
+			users.GET("/points", authHandler.GetPointsList)
 		}
 
 		banners := authenticated.Group("/banners")

@@ -58,6 +58,14 @@ type generationTaskListResponse struct {
 	List       []generation.TaskView `json:"list"`
 }
 
+type clientPointsListResponse struct {
+	Page       int64                             `json:"page"`
+	PageSize   int64                             `json:"pageSize"`
+	Total      int64                             `json:"total"`
+	TotalPages int64                             `json:"totalPages"`
+	List       []apiservice.ClientPointsResponse `json:"list"`
+}
+
 type templateTaskInput struct {
 	Images []string `json:"images" binding:"required,min=1"`
 }
@@ -179,6 +187,15 @@ var generationTaskListResponseExample = generationTaskListResponse{
 	},
 }
 
+var clientPointsListResponseExample = clientPointsListResponse{
+	Page: 1, PageSize: 10, Total: 1, TotalPages: 1,
+	List: []apiservice.ClientPointsResponse{{
+		ID: 1, UserID: 8, Direction: 1, PointsChange: 100,
+		BalanceBefore: 20, BalanceAfter: 120, Description: "购买 VIP 月卡赠送",
+		CreatedAt: 1785816000, UpdatedAt: 1785816000,
+	}},
+}
+
 func generationTaskExampleTime(year, month, day, hour, minute, second, millisecond int) *time.Time {
 	value := time.Date(year, time.Month(month), day, hour, minute, second, millisecond*int(time.Millisecond), time.FixedZone("UTC+8", 8*60*60))
 	return &value
@@ -262,6 +279,7 @@ var templateCategoriesResponseExample = []apiservice.ClientTemplateType{
 
 var responseDataExamples = map[string]any{
 	"GET /api/ob_delay":                    delayConfigResponseExample,
+	"GET /api/users/points":                clientPointsListResponseExample,
 	"GET /api/templates/categories":        templateCategoriesResponseExample,
 	"GET /api/templates/list":              templateCategoriesResponseExample,
 	"GET /api/templates/recommend":         clientTemplateListResponseExample,
@@ -339,6 +357,7 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/users/me":                                {response: typeOf[apiservice.UserResponse]()},
 	"PUT /api/users/me/country":                        {body: typeOf[apiservice.UpdateCountryRequest](), response: typeOf[apiservice.UserResponse]()},
 	"GET /api/users/me/identities":                     {response: typeOf[[]model.VideoUserIdentity]()},
+	"GET /api/users/points":                            {query: typeOf[apiservice.ClientPointsRequest](), response: typeOf[clientPointsListResponse]()},
 	"GET /api/ob_delay":                                {response: typeOf[map[string]int64]()},
 	"GET /api/banners/list":                            {query: typeOf[apiservice.ClientBannerRequest](), response: typeOf[[]apiservice.ClientBanner]()},
 	"GET /api/templates/recommend":                     {query: typeOf[apiservice.ClientTemplateRecommendRequest](), response: typeOf[[]apiservice.ClientTemplate]()},
@@ -378,6 +397,7 @@ var operationDescriptions = map[string]string{
 	"POST /api/third_binding": "为当前用户绑定或切换 Google、Apple 等第三方身份。", "POST /api/auth/apple_order_login": "根据请求中的 Apple 订单编号 order_code 查询订单表 original_transaction_id 字段匹配的最新 Apple IAP 订单及其关联用户，并为正常状态的关联用户签发客户端 Token。", "POST /api/auth/refresh": "使用当前未过期的 Bearer Token 签发新 Token，刷新成功后当前 Token 立即失效。", "POST /api/auth/logout": "注销当前 Bearer Token。",
 	"GET /api/users/me": "获取当前登录用户资料。", "PUT /api/users/me/country": "更新当前用户的设备国家或地区。",
 	"GET /api/users/me/identities": "查询当前用户已绑定的第三方身份。", "DELETE /api/users/me/identities/:provider": "解绑指定第三方身份。",
+	"GET /api/users/points":            "分页查询当前用户的积分变动明细。可按收入或支出方向筛选；start_time 和 end_time 必须同时提供才会应用时间范围筛选。",
 	"GET /api/ob_delay":                "获取客户端延迟配置。",
 	"GET /api/banners/list":            "按必填的 position_key 查询当前客户端可见的 Banner。服务端同时使用公共请求头中的 Video_App_Code、Video_App_Package_Code、Video_App_Version、Video_Device_Country，以及登录用户的会员状态进行投放匹配。某个维度没有关联记录时表示该维度支持全部；存在关联记录时必须命中。展示位置、国家、应用、应用包、版本和会员类型之间按 AND 关系组合。",
 	"GET /api/templates/recommend":     "按必填的 position_key 查询当前客户端可见的推荐模板，响应 data 为模板对象数组。每个模板对象返回 id、template_type_id、name、template_type、cover_image_url、original_url、thumbnail_url、prompt、description、sort、usage_count、favorite_count、view_count、is_favorite 和 model_score。",
@@ -403,7 +423,7 @@ var operationSummaries = map[string]string{
 	"POST /api/auth/login": "游客登录", "POST /api/auth/apple_order_login": "Apple 订单登录", "POST /api/auth/refresh": "刷新 Token", "POST /api/third_binding": "绑定第三方身份",
 	"POST /api/auth/logout": "退出登录", "GET /api/users/me": "获取当前用户",
 	"PUT /api/users/me/country": "更新用户国家", "GET /api/users/me/identities": "查询绑定身份",
-	"DELETE /api/users/me/identities/:provider": "解绑第三方身份", "GET /api/ob_delay": "获取延迟配置",
+	"DELETE /api/users/me/identities/:provider": "解绑第三方身份", "GET /api/users/points": "查询积分明细", "GET /api/ob_delay": "获取延迟配置",
 	"GET /api/banners/list": "查询 Banner", "GET /api/templates/recommend": "查询推荐模板",
 	"GET /api/templates/list": "查询模板列表", "GET /api/templates/categories": "查询模板分类",
 	"GET /api/templates/template_list": "查询分类模板", "GET /api/templates/template_info": "查询模板详情",
@@ -431,7 +451,9 @@ var fieldDescriptions = map[string]string{
 	"position_key": "展示位置唯一标识；Banner 查询时为必填 Query 参数", "package": "应用包名", "package_code": "应用包名", "package_version": "应用版本号",
 	"channel": "渠道标识", "user_type": "用户类型：1 免费，2 付费", "subscription_status": "订阅状态：1 未订阅，2 已订阅，3 已取消，4 已过期",
 	"token": "Bearer JWT", "expire_at": "Token 过期时间（Unix 秒）", "token_version": "Token 版本号",
-	"id": "记录 ID", "email": "邮箱", "vip_expires_at": "VIP 到期时间（Unix 秒）", "points_balance": "积分余额",
+	"id": "记录 ID", "user_id": "客户端用户 ID", "email": "邮箱", "vip_expires_at": "VIP 到期时间（Unix 秒）", "points_balance": "积分余额",
+	"points_type": "积分变动方向：1=收入，2=支出", "start_time": "筛选开始时间（Unix 秒；需与 end_time 同时提供）", "end_time": "筛选结束时间（Unix 秒；需与 start_time 同时提供）",
+	"direction": "积分变动方向：1=收入，2=支出", "points_change": "积分变动量；正数表示增加，负数表示减少", "balance_before": "变动前积分余额", "balance_after": "变动后积分余额",
 	"status": "状态", "last_login_at": "最近登录时间", "last_login_ip": "最近登录 IP", "login_account": "登录账号",
 	"appid_binding": "是否已绑定 Apple", "google_binding": "是否已绑定 Google", "provider": "提供方标识；身份接口表示身份提供方，OSS 直传接口表示存储提供方",
 	"provider_subject": "身份提供方用户唯一标识", "issuer": "Token 签发方", "audience": "Token 受众",

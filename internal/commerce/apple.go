@@ -71,6 +71,8 @@ type appleSignedTransaction struct {
 	OfferIdentifier       string `json:"offerIdentifier"`
 }
 
+// verifiedAppleTransaction combines Apple's signed fields with normalized
+// timestamps and currency values used by the order service.
 type verifiedAppleTransaction struct {
 	appleSignedTransaction
 	PurchaseAt   time.Time
@@ -80,6 +82,8 @@ type verifiedAppleTransaction struct {
 	EvidenceMode string
 }
 
+// ApplePurchaseResponse reports the fulfilled local order together with the
+// verified StoreKit transaction state.
 type ApplePurchaseResponse struct {
 	OrderNo               string     `json:"order_no"`
 	Status                string     `json:"status"`
@@ -159,6 +163,8 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 	return applePurchaseResponse(paid, verified), nil
 }
 
+// resolveAppleProduct maps an Apple product identifier to the configured VIP
+// or points product under the authenticated application package.
 func (s *Service) resolveAppleProduct(ctx context.Context, shopType int, sukCode, packageCode string) (shopID uint64, err error) {
 	if shopType == 1 {
 		vip, vipErr := s.vipProducts.GetAppleProduct(ctx, sukCode, packageCode)
@@ -177,6 +183,9 @@ func (s *Service) resolveAppleProduct(ctx context.Context, shopType int, sukCode
 	return 0, ErrAppleProductNotFound
 }
 
+// verifyApplePurchase verifies signed StoreKit evidence and checks every
+// client-supplied identifier and timestamp against the signed transaction.
+// Unsigned JSON is accepted only for explicitly enabled Sandbox development.
 func verifyApplePurchase(req ApplePurchaseRequest, expectedBundle string, allowUnsignedSandbox bool) (*verifiedAppleTransaction, error) {
 	req.BundleID = strings.TrimSpace(req.BundleID)
 	req.TransactionID = strings.TrimSpace(req.TransactionID)
@@ -243,11 +252,15 @@ func verifyApplePurchase(req ApplePurchaseRequest, expectedBundle string, allowU
 	return result, nil
 }
 
+// appleClientRequestID derives the stable idempotency key used to find an order
+// again when Apple retries or reorders notifications.
 func appleClientRequestID(transactionID string) string {
 	digest := sha256.Sum256([]byte(strings.TrimSpace(transactionID)))
 	return "apple:" + base64.RawURLEncoding.EncodeToString(digest[:])
 }
 
+// applePurchaseResponse builds the public response and calculates current
+// activity from verified revocation and expiration fields.
 func applePurchaseResponse(order *model.VideoOrder, transaction *verifiedAppleTransaction) *ApplePurchaseResponse {
 	active := transaction.RevokedAt == nil
 	if isSubscriptionType(transaction.Type) {
@@ -263,11 +276,15 @@ func applePurchaseResponse(order *model.VideoOrder, transaction *verifiedAppleTr
 	}
 }
 
+// isSubscriptionType recognizes StoreKit subscription type descriptions while
+// tolerating the casing used by Sandbox fixtures.
 func isSubscriptionType(value string) bool {
 	value = strings.ToLower(strings.TrimSpace(value))
 	return strings.Contains(value, "subscription") || strings.Contains(value, "auto-renewable")
 }
 
+// durationAbs returns the non-negative magnitude used by timestamp tolerance
+// checks.
 func durationAbs(value time.Duration) time.Duration {
 	if value < 0 {
 		return -value

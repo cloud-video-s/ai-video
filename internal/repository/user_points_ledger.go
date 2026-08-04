@@ -150,3 +150,33 @@ func (r *UserPointsLedgerRepo) loadRecords(ctx context.Context, items []model.Vi
 	}
 	return result, nil
 }
+
+func (r *UserPointsLedgerRepo) GetPointsList(ctx context.Context, page, pageSize int, filter *UserPointsLedgerFilter) ([]*model.VideoUserPointsLedger, int64, error) {
+	q := qFrom(ctx)
+	ledger := q.VideoUserPointsLedger
+	dao := ledger.WithContext(ctx)
+	if filter != nil {
+		if filter.UserID != 0 {
+			dao = dao.Where(ledger.UserID.Eq(filter.UserID))
+		}
+		if filter.Direction != 0 {
+			dao = dao.Where(ledger.Direction.Eq(filter.Direction))
+		}
+		if filter.OccurredFrom != nil {
+			dao = dao.Where(ledger.OccurredAt.Gte(*filter.OccurredFrom))
+		}
+		if filter.OccurredTo != nil {
+			dao = dao.Where(ledger.OccurredAt.Lt(*filter.OccurredTo))
+		}
+	}
+	total, err := dao.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, err := dao.Order(ledger.OccurredAt.Desc(), ledger.ID.Desc()).
+		Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	if err != nil {
+		return nil, 0, err
+	}
+	return rows, total, err
+}

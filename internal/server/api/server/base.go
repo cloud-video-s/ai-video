@@ -49,6 +49,12 @@ type BasePage struct {
 }
 
 func GetPageResponse(page, pageSize, total int64, data any) (*PageResult, error) {
+	if pageSize == 0 {
+		pageSize = 10
+	}
+	if page == 0 {
+		page = 1
+	}
 	// 计算总页数
 	totalPages := (total + pageSize - 1) / pageSize
 	return &PageResult{

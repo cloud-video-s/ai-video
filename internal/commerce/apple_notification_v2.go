@@ -9,51 +9,51 @@ import (
 // App Store Server Notifications V2 notification types.
 // https://developer.apple.com/documentation/appstoreservernotifications/notificationtype
 const (
-	AppleNotificationConsumptionRequest     = "CONSUMPTION_REQUEST"
-	AppleNotificationDidChangeRenewalPref   = "DID_CHANGE_RENEWAL_PREF"
-	AppleNotificationDidChangeRenewalStatus = "DID_CHANGE_RENEWAL_STATUS"
-	AppleNotificationDidFailToRenew         = "DID_FAIL_TO_RENEW"
-	AppleNotificationDidRenew               = "DID_RENEW"
-	AppleNotificationExpired                = "EXPIRED"
-	AppleNotificationGracePeriodExpired     = "GRACE_PERIOD_EXPIRED"
-	AppleNotificationOfferRedeemed          = "OFFER_REDEEMED"
-	AppleNotificationOneTimeCharge          = "ONE_TIME_CHARGE"
-	AppleNotificationPriceIncrease          = "PRICE_INCREASE"
-	AppleNotificationRefund                 = "REFUND"
-	AppleNotificationRefundDeclined         = "REFUND_DECLINED"
-	AppleNotificationRefundReversed         = "REFUND_REVERSED"
-	AppleNotificationRenewalExtended        = "RENEWAL_EXTENDED"
-	AppleNotificationRenewalExtension       = "RENEWAL_EXTENSION"
-	AppleNotificationRevoke                 = "REVOKE"
-	AppleNotificationSubscribed             = "SUBSCRIBED"
-	AppleNotificationTest                   = "TEST"
-	AppleNotificationExternalPurchaseToken  = "EXTERNAL_PURCHASE_TOKEN"
-	AppleNotificationRescindConsent         = "RESCIND_CONSENT"
-	AppleNotificationMetadataUpdate         = "METADATA_UPDATE"
-	AppleNotificationMigration              = "MIGRATION"
-	AppleNotificationPriceChange            = "PRICE_CHANGE"
+	AppleNotificationConsumptionRequest     = "CONSUMPTION_REQUEST"       // 消费请求
+	AppleNotificationDidChangeRenewalPref   = "DID_CHANGE_RENEWAL_PREF"   // 续订偏好已更改
+	AppleNotificationDidChangeRenewalStatus = "DID_CHANGE_RENEWAL_STATUS" // 续订状态已更改
+	AppleNotificationDidFailToRenew         = "DID_FAIL_TO_RENEW"         // 续订失败（扣费失败等）
+	AppleNotificationDidRenew               = "DID_RENEW"                 // 已续订成功
+	AppleNotificationExpired                = "EXPIRED"                   // 订阅已过期
+	AppleNotificationGracePeriodExpired     = "GRACE_PERIOD_EXPIRED"      // 宽限期已过
+	AppleNotificationOfferRedeemed          = "OFFER_REDEEMED"            // 优惠已兑换
+	AppleNotificationOneTimeCharge          = "ONE_TIME_CHARGE"           // 一次性收费
+	AppleNotificationPriceIncrease          = "PRICE_INCREASE"            // 价格上涨（需用户同意）
+	AppleNotificationRefund                 = "REFUND"                    // 退款
+	AppleNotificationRefundDeclined         = "REFUND_DECLINED"           // 退款被拒
+	AppleNotificationRefundReversed         = "REFUND_REVERSED"           // 退款已撤销
+	AppleNotificationRenewalExtended        = "RENEWAL_EXTENDED"          // 续订期已延长
+	AppleNotificationRenewalExtension       = "RENEWAL_EXTENSION"         // 续订延期通知
+	AppleNotificationRevoke                 = "REVOKE"                    // 撤销购买权限
+	AppleNotificationSubscribed             = "SUBSCRIBED"                // 已订阅（首次或恢复）
+	AppleNotificationTest                   = "TEST"                      // 沙盒测试通知
+	AppleNotificationExternalPurchaseToken  = "EXTERNAL_PURCHASE_TOKEN"   // 外部购买令牌
+	AppleNotificationRescindConsent         = "RESCIND_CONSENT"           // 撤销同意（如数据共享）
+	AppleNotificationMetadataUpdate         = "METADATA_UPDATE"           // 元数据更新
+	AppleNotificationMigration              = "MIGRATION"                 // 订阅迁移
+	AppleNotificationPriceChange            = "PRICE_CHANGE"              // 价格变更（双向）
 )
 
 // App Store Server Notifications V2 subtypes.
 // https://developer.apple.com/documentation/appstoreservernotifications/subtype
 const (
-	AppleSubtypeInitialBuy        = "INITIAL_BUY"
-	AppleSubtypeResubscribe       = "RESUBSCRIBE"
-	AppleSubtypeDowngrade         = "DOWNGRADE"
-	AppleSubtypeUpgrade           = "UPGRADE"
-	AppleSubtypeAutoRenewDisabled = "AUTO_RENEW_DISABLED"
-	AppleSubtypeAutoRenewEnabled  = "AUTO_RENEW_ENABLED"
-	AppleSubtypeBillingRecovery   = "BILLING_RECOVERY"
-	AppleSubtypeBillingRetry      = "BILLING_RETRY"
-	AppleSubtypePriceIncrease     = "PRICE_INCREASE"
-	AppleSubtypeGracePeriod       = "GRACE_PERIOD"
-	AppleSubtypePending           = "PENDING"
-	AppleSubtypeAccepted          = "ACCEPTED"
-	AppleSubtypeSummary           = "SUMMARY"
-	AppleSubtypeFailure           = "FAILURE"
-	AppleSubtypeVoluntary         = "VOLUNTARY"
-	AppleSubtypeProductNotForSale = "PRODUCT_NOT_FOR_SALE"
-	AppleSubtypeUnreported        = "UNREPORTED"
+	AppleSubtypeInitialBuy        = "INITIAL_BUY"          // 首次购买[reference:0][reference:1]
+	AppleSubtypeResubscribe       = "RESUBSCRIBE"          // 重新订阅[reference:2]
+	AppleSubtypeDowngrade         = "DOWNGRADE"            // 降级（下次续费生效）[reference:3][reference:4]
+	AppleSubtypeUpgrade           = "UPGRADE"              // 升级（立即生效）[reference:5]
+	AppleSubtypeAutoRenewDisabled = "AUTO_RENEW_DISABLED"  // 自动续费已关闭[reference:6][reference:7]
+	AppleSubtypeAutoRenewEnabled  = "AUTO_RENEW_ENABLED"   // 自动续费已开启[reference:8]
+	AppleSubtypeBillingRecovery   = "BILLING_RECOVERY"     // 计费恢复（过期订阅续费成功）[reference:9]
+	AppleSubtypeBillingRetry      = "BILLING_RETRY"        // 计费重试失败（订阅过期）[reference:10]
+	AppleSubtypePriceIncrease     = "PRICE_INCREASE"       // 价格上调[reference:11]
+	AppleSubtypeGracePeriod       = "GRACE_PERIOD"         // 宽限期[reference:12]
+	AppleSubtypePending           = "PENDING"              // 待处理[reference:13]
+	AppleSubtypeAccepted          = "ACCEPTED"             // 用户已同意（价格上调）[reference:14]
+	AppleSubtypeSummary           = "SUMMARY"              // 续期延期汇总[reference:15]
+	AppleSubtypeFailure           = "FAILURE"              // 续期延期失败[reference:16]
+	AppleSubtypeVoluntary         = "VOLUNTARY"            // 用户主动关闭续费后过期[reference:17][reference:18]
+	AppleSubtypeProductNotForSale = "PRODUCT_NOT_FOR_SALE" // 产品已下架不可售[reference:19]
+	AppleSubtypeUnreported        = "UNREPORTED"           // 外部购买令牌未上报[reference:20]
 )
 
 // AppleNotificationV2Request is the HTTP body sent by App Store Server
@@ -68,23 +68,23 @@ type AppleNotificationRequest = AppleNotificationV2Request
 // AppleNotificationV2Summary contains verified metadata and the local action
 // taken for a V2 notification. It deliberately excludes the compact JWS.
 type AppleNotificationV2Summary struct {
-	NotificationType    string `json:"notification_type"`
-	Subtype             string `json:"subtype,omitempty"`
-	NotificationUUID    string `json:"notification_uuid,omitempty"`
-	BundleID            string `json:"bundle_id,omitempty"`
-	Environment         string `json:"environment,omitempty"`
-	OriginalTransaction string `json:"original_transaction_id,omitempty"`
-	TransactionID       string `json:"transaction_id,omitempty"`
-	ProductID           string `json:"product_id,omitempty"`
-	Version             string `json:"version,omitempty"`
-	SignedDate          int64  `json:"signed_date,omitempty"`
-	AppAppleID          int64  `json:"app_apple_id,omitempty"`
-	SubscriptionStatus  int32  `json:"subscription_status,omitempty"`
-	Processed           bool   `json:"processed"`
-	AffectedUserID      uint64 `json:"affected_user_id,omitempty"`
-	AffectedOrderNo     string `json:"affected_order_no,omitempty"`
-	Action              string `json:"action,omitempty"`
-	Message             string `json:"message,omitempty"`
+	NotificationType    string `json:"notification_type"`                 // 通知类型（对应 NotificationType 常量）
+	Subtype             string `json:"subtype,omitempty"`                 // 子类型（对应 Subtype 常量，如升级、降级等）
+	NotificationUUID    string `json:"notification_uuid,omitempty"`       // 通知唯一标识 UUID
+	BundleID            string `json:"bundle_id,omitempty"`               // App 的 Bundle ID
+	Environment         string `json:"environment,omitempty"`             // 环境（Sandbox / Production）
+	OriginalTransaction string `json:"original_transaction_id,omitempty"` // 原始交易 ID（订阅初始交易）
+	TransactionID       string `json:"transaction_id,omitempty"`          // 当前交易 ID
+	ProductID           string `json:"product_id,omitempty"`              // 产品 ID
+	Version             string `json:"version,omitempty"`                 // 通知版本号
+	SignedDate          int64  `json:"signed_date,omitempty"`             // JWS 签名时间戳（毫秒）
+	AppAppleID          int64  `json:"app_apple_id,omitempty"`            // 应用的 Apple ID（开发者账户中的 App ID）
+	SubscriptionStatus  int32  `json:"subscription_status,omitempty"`     // 订阅状态（内部状态值，如活跃/过期等）
+	Processed           bool   `json:"processed"`                         // 是否已被本地系统处理（用于幂等）
+	AffectedUserID      uint64 `json:"affected_user_id,omitempty"`        // 受影响的内部用户 ID（业务层使用）
+	AffectedOrderNo     string `json:"affected_order_no,omitempty"`       // 受影响的内部订单号（业务层使用）
+	Action              string `json:"action,omitempty"`                  // 本地执行的操作（如发放权益、记录日志等）
+	Message             string `json:"message,omitempty"`                 // 操作结果或错误信息（本地记录）
 }
 
 // AppleNotificationSummary is kept as a source-compatible alias.
@@ -186,10 +186,14 @@ func DecodeAppleNotificationPayload(signedPayload string) (*DecodedAppleNotifica
 	return DecodeAppleNotificationV2Payload(signedPayload)
 }
 
+// decodeAppleNotificationPayload preserves the previous internal entry point
+// while delegating all work to the V2 decoder.
 func decodeAppleNotificationPayload(signedPayload string, roots *x509.CertPool) (*DecodedAppleNotification, error) {
 	return decodeAppleNotificationV2Payload(signedPayload, roots)
 }
 
+// decodeAppleNotificationV2Payload authenticates the outer notification and
+// every nested signed transaction before exposing normalized business fields.
 func decodeAppleNotificationV2Payload(signedPayload string, roots *x509.CertPool) (*DecodedAppleNotificationV2, error) {
 	if strings.TrimSpace(signedPayload) == "" {
 		return nil, ErrAppleEvidenceInvalid
@@ -231,6 +235,8 @@ func decodeAppleNotificationV2Payload(signedPayload string, roots *x509.CertPool
 	return result, nil
 }
 
+// normalizeAppleNotificationV2Payload selects the identity fields from the V2
+// data, summary, externalPurchaseToken, or appData payload shape.
 func normalizeAppleNotificationV2Payload(payload *appleNotificationV2Payload) (*DecodedAppleNotificationV2, error) {
 	var bundleID, environment, productID, signedTransaction, signedRenewalInfo string
 	var appAppleID int64
@@ -287,6 +293,8 @@ func normalizeAppleNotificationV2Payload(payload *appleNotificationV2Payload) (*
 	}, nil
 }
 
+// decodeAppleNotificationV2Transaction verifies signedTransactionInfo, checks
+// its application identity, and copies transaction facts into result.
 func decodeAppleNotificationV2Transaction(result *DecodedAppleNotificationV2, roots *x509.CertPool) error {
 	var transaction appleSignedTransaction
 	if err := verifyAppleJWSWithRoots(result.SignedTransaction, &transaction, roots); err != nil {
@@ -309,6 +317,8 @@ func decodeAppleNotificationV2Transaction(result *DecodedAppleNotificationV2, ro
 	return nil
 }
 
+// verifyAppleNotificationV2AppTransaction verifies appData's nested app
+// transaction and binds it to the outer Bundle ID and environment.
 func verifyAppleNotificationV2AppTransaction(result *DecodedAppleNotificationV2, compact string, roots *x509.CertPool) error {
 	var transaction appleSignedAppTransaction
 	if err := verifyAppleJWSWithRoots(strings.TrimSpace(compact), &transaction, roots); err != nil {

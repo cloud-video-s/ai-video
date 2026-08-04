@@ -45,6 +45,8 @@ at+qIxUCMG1mihDK1A3UT82NQz60imOlM27jbdoXt2QfyFMm+YhidDkLF1vLUagM
 6BgD56KyKA==
 -----END CERTIFICATE-----`
 
+// mustAppleRootCAPool parses the embedded trust anchor at process startup and
+// panics when the configured PEM is not exactly one X.509 certificate.
 func mustAppleRootCAPool() *x509.CertPool {
 	block, rest := pem.Decode([]byte(appleRootCAG3PEM))
 	if block == nil || block.Type != "CERTIFICATE" || len(strings.TrimSpace(string(rest))) != 0 {
@@ -59,19 +61,24 @@ func mustAppleRootCAPool() *x509.CertPool {
 	return pool
 }
 
+// verifyAppleJWS verifies a compact Apple JWS with the production trust store
+// and decodes its authenticated JSON payload into target.
 func verifyAppleJWS(compact string, target any) error {
 	return verifyAppleJWSWithRoots(compact, target, defaultAppleRootCAs)
 }
 
+// verifyAppleJWSWithRoots validates the protected header, Apple certificate
+// chain and certificate OIDs, ES256 signature, and signed payload. The roots
+// parameter permits isolated tests to supply their own trust anchor.
 func verifyAppleJWSWithRoots(compact string, target any, roots *x509.CertPool) error {
 	compact = strings.TrimSpace(compact)
 	if compact == "" || target == nil || roots == nil {
 		return ErrAppleSignatureInvalid
 	}
 	parts := strings.Split(compact, ".")
-	//if len(parts) != 3 {
-	//	return fmt.Errorf("%w: compact JWS must contain exactly 3 segments, got %d", ErrAppleSignatureInvalid, len(parts))
-	//}
+	if len(parts) != 3 {
+		return fmt.Errorf("%w: compact JWS must contain exactly 3 segments, got %d", ErrAppleSignatureInvalid, len(parts))
+	}
 
 	headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
@@ -148,6 +155,8 @@ func verifyAppleJWSWithRoots(compact string, target any, roots *x509.CertPool) e
 	return nil
 }
 
+// hasCertificateExtension reports whether a certificate carries the Apple
+// purpose extension required for receipt signing or WWDR intermediates.
 func hasCertificateExtension(certificate *x509.Certificate, oid []int) bool {
 	if certificate == nil {
 		return false

@@ -31,7 +31,7 @@ func (h *TemplateHandler) List(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	list, err := h.svc.List(c, &req)
+	list, err := h.svc.Categories(c, &req)
 	if err != nil {
 		if errors.Is(err, apiservice.ErrClientTemplateAudienceMismatch) {
 			response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, err.Error())

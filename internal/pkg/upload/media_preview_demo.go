@@ -88,6 +88,7 @@ func GenerateCompressedImagePreview(
 	remoteSourcePath, cleanup, err := preparePreviewSource(
 		ctx,
 		sourcePath,
+		outputPath,
 		options,
 		defaultRemoteImageMaxBytes,
 	)
@@ -190,7 +191,9 @@ func GenerateVideoFirstFramePreview(
 	if client == nil {
 		client = &http.Client{Timeout: defaultRemoteRequestTimeout}
 	}
-	snapshotPath, cleanup, err := downloadPreviewSource(ctx, client, snapshotURL, maxBytes)
+	snapshotPath, cleanup, err := downloadPreviewSource(
+		ctx, client, snapshotURL, maxBytes, filepath.Dir(outputPath),
+	)
 	if err != nil {
 		return fmt.Errorf("download first video frame: %w", err)
 	}
@@ -235,6 +238,7 @@ func normalizeMediaPreviewOptions(options MediaPreviewOptions) (MediaPreviewOpti
 func preparePreviewSource(
 	ctx context.Context,
 	source string,
+	outputPath string,
 	options MediaPreviewOptions,
 	defaultMaxBytes int64,
 ) (string, func(), error) {
@@ -253,7 +257,7 @@ func preparePreviewSource(
 	if client == nil {
 		client = &http.Client{Timeout: defaultRemoteRequestTimeout}
 	}
-	return downloadPreviewSource(ctx, client, parsed, maxBytes)
+	return downloadPreviewSource(ctx, client, parsed, maxBytes, filepath.Dir(outputPath))
 }
 
 func parseRemotePreviewURL(source string) (*url.URL, bool, error) {
@@ -288,6 +292,7 @@ func downloadPreviewSource(
 	client *http.Client,
 	remoteURL *url.URL,
 	maxBytes int64,
+	temporaryDirectory string,
 ) (string, func(), error) {
 	if client == nil || remoteURL == nil || maxBytes <= 0 {
 		return "", func() {}, uploadError(ErrInvalidRequest, "remote preview client, URL and positive size limit are required")
@@ -314,7 +319,13 @@ func downloadPreviewSource(
 		return "", func() {}, uploadError(ErrFileTooLarge, "remote preview source exceeds the %d byte limit", maxBytes)
 	}
 
-	temp, err := os.CreateTemp("", remotePreviewTempPattern(remoteURL.Path))
+	if strings.TrimSpace(temporaryDirectory) == "" {
+		return "", func() {}, uploadError(ErrInvalidRequest, "remote preview temporary directory is required")
+	}
+	if err := os.MkdirAll(temporaryDirectory, 0o750); err != nil {
+		return "", func() {}, fmt.Errorf("create remote preview temporary directory: %w", err)
+	}
+	temp, err := os.CreateTemp(temporaryDirectory, remotePreviewTempPattern(remoteURL.Path))
 	if err != nil {
 		return "", func() {}, fmt.Errorf("create remote preview temporary file: %w", err)
 	}

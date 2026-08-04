@@ -74,7 +74,6 @@ func (s *Service) HandleAppleServerNotificationV2(ctx context.Context, signedPay
 		} else {
 			summary.Message = "pending client confirmation"
 		}
-
 	case AppleNotificationDidRenew, AppleNotificationRenewalExtended:
 		summary.Action = "renew"
 		if order != nil && order.ProductType == domain.OrderProductVIPSubscription {
@@ -153,6 +152,8 @@ func (s *Service) HandleAppleServerNotificationV2(ctx context.Context, signedPay
 	return summary, nil
 }
 
+// newAppleNotificationV2Summary copies only verified metadata into the
+// response/logging view and intentionally omits all compact JWS values.
 func newAppleNotificationV2Summary(decoded *DecodedAppleNotificationV2) *AppleNotificationV2Summary {
 	return &AppleNotificationV2Summary{
 		NotificationType:    decoded.NotificationType,
@@ -170,6 +171,8 @@ func newAppleNotificationV2Summary(decoded *DecodedAppleNotificationV2) *AppleNo
 	}
 }
 
+// validateAppleNotificationV2App ensures the signed Bundle ID belongs to a
+// configured iOS package and enforces appAppleId for Production notifications.
 func (s *Service) validateAppleNotificationV2App(ctx context.Context, decoded *DecodedAppleNotificationV2) error {
 	if decoded == nil || decoded.BundleID == "" {
 		return ErrAppleBundleMismatch
@@ -192,6 +195,8 @@ func (s *Service) validateAppleNotificationV2App(ctx context.Context, decoded *D
 	return nil
 }
 
+// findAppleNotificationV2Order resolves the local order by transaction ID,
+// deterministic request ID, then original transaction ID in that order.
 func (s *Service) findAppleNotificationV2Order(ctx context.Context, decoded *DecodedAppleNotificationV2) (*model.VideoOrder, error) {
 	if decoded.TransactionID != "" {
 		order, err := s.orders.GetByPaymentTransaction(ctx, domain.PaymentMethodAppleIAP, decoded.TransactionID)
@@ -226,6 +231,8 @@ func (s *Service) findAppleNotificationV2Order(ctx context.Context, decoded *Dec
 	return nil, nil
 }
 
+// cancelPendingAppleOrder locks and conditionally cancels an Apple order. The
+// boolean is false when a concurrent request already moved it out of pending.
 func (s *Service) cancelPendingAppleOrder(ctx context.Context, orderNo, reason string) (bool, error) {
 	orderNo = strings.TrimSpace(orderNo)
 	if orderNo == "" {
@@ -249,6 +256,8 @@ func (s *Service) cancelPendingAppleOrder(ctx context.Context, orderNo, reason s
 	return cancelled, err
 }
 
+// revokePaidAppleOrder atomically reverses available purchase benefits and
+// marks the paid order refunded. Repeated notifications are idempotent.
 func (s *Service) revokePaidAppleOrder(ctx context.Context, order *model.VideoOrder, revokedAt time.Time) error {
 	if order.Status == domain.OrderStatusRefunded {
 		return nil
@@ -321,6 +330,8 @@ func (s *Service) revokePaidAppleOrder(ctx context.Context, order *model.VideoOr
 	})
 }
 
+// extendVIPFromAppleNotificationV2 applies a renewal only when Apple's signed
+// expiration is strictly newer than the user's current entitlement.
 func (s *Service) extendVIPFromAppleNotificationV2(ctx context.Context, order *model.VideoOrder, decoded *DecodedAppleNotificationV2) error {
 	if decoded.ExpiresDate <= 0 {
 		return nil
@@ -347,6 +358,8 @@ func (s *Service) extendVIPFromAppleNotificationV2(ctx context.Context, order *m
 	})
 }
 
+// reflectAppleRenewalStatusChange maps Apple's auto-renewal subtype to the
+// local subscription state without changing the current expiration.
 func (s *Service) reflectAppleRenewalStatusChange(ctx context.Context, order *model.VideoOrder, subtype string) error {
 	return repository.Transaction(ctx, func(ctx context.Context) error {
 		user, err := s.users.GetByIDForUpdate(ctx, order.UserID)
@@ -368,6 +381,8 @@ func (s *Service) reflectAppleRenewalStatusChange(ctx context.Context, order *mo
 	})
 }
 
+// expireVIPFromAppleNotificationV2 cancels an expired subscription unless the
+// user already holds an entitlement newer than the notification.
 func (s *Service) expireVIPFromAppleNotificationV2(ctx context.Context, order *model.VideoOrder, notificationExpiresDate int64) error {
 	return repository.Transaction(ctx, func(ctx context.Context) error {
 		user, err := s.users.GetByIDForUpdate(ctx, order.UserID)

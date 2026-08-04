@@ -48,11 +48,11 @@ func storeGeneratedFile(ctx context.Context, storage upload.Storage, objectKey, 
 }
 
 func newGeneratedTemporaryFile() (string, error) {
-	root := strings.TrimSpace(config.Cfg.Upload.RootDir)
+	root := strings.TrimSpace(config.Cfg.Upload.LocalRootDir)
 	if root == "" {
-		return "", errors.New("生成结果临时目录未配置")
+		return "", errors.New("生成结果本地存储目录未配置")
 	}
-	directory := filepath.Join(root, ".generated")
+	directory := filepath.Join(root, "tmp")
 	if err := os.MkdirAll(directory, 0o750); err != nil {
 		return "", fmt.Errorf("创建生成结果临时目录: %w", err)
 	}

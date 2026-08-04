@@ -114,9 +114,9 @@ func configureCoverTestStaging(t *testing.T) string {
 	t.Helper()
 	originalUploadConfig := config.Cfg.Upload
 	t.Cleanup(func() { config.Cfg.Upload = originalUploadConfig })
-	stagingRoot := filepath.Join(t.TempDir(), "staging")
-	config.Cfg.Upload.RootDir = stagingRoot
-	return stagingRoot
+	localRoot := filepath.Join(t.TempDir(), "storage", "uploads", "files")
+	config.Cfg.Upload.LocalRootDir = localRoot
+	return filepath.Join(localRoot, "tmp")
 }
 
 func coverTestResponse(contents []byte, contentType string) *http.Response {
@@ -157,7 +157,7 @@ func assertStoredTaskCover(
 
 func assertCoverStagingEmpty(t *testing.T, stagingRoot string) {
 	t.Helper()
-	entries, err := os.ReadDir(filepath.Join(stagingRoot, ".generated"))
+	entries, err := os.ReadDir(stagingRoot)
 	if err != nil {
 		t.Fatal(err)
 	}

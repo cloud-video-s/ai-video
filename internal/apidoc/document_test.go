@@ -29,6 +29,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodPost, Path: "/api/third_binding", Handler: "api.Auth.ThirdBinding"},
 		{Method: http.MethodPost, Path: "/api/auth/logout", Handler: "api.Auth.Logout"},
 		{Method: http.MethodGet, Path: "/api/users/me/identities", Handler: "api.Auth.ListIdentities"},
+		{Method: http.MethodGet, Path: "/api/users/points", Handler: "api.Auth.GetPointsList"},
 		{Method: http.MethodGet, Path: "/api/ob_delay", Handler: "api.DelayConfig.All"},
 		{Method: http.MethodGet, Path: "/api/banners/list", Handler: "api.Banner.List"},
 		{Method: http.MethodGet, Path: "/api/templates/categories", Handler: "api.Template.Categories"},
@@ -156,6 +157,23 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	assertParameterAbsent(t, logout, "Authorization")
 	identities := document.Paths["/api/users/me/identities"]["get"].(map[string]any)
 	assertResponseParameter(t, identities, "data[].user", true)
+	points := document.Paths["/api/users/points"]["get"].(map[string]any)
+	assertParameter(t, points, "page", "query", false)
+	assertParameter(t, points, "page_size", "query", false)
+	assertParameter(t, points, "points_type", "query", false)
+	assertParameter(t, points, "start_time", "query", false)
+	assertParameter(t, points, "end_time", "query", false)
+	assertResponseParameter(t, points, "data.page", true)
+	assertResponseParameter(t, points, "data.pageSize", true)
+	assertResponseParameter(t, points, "data.total", true)
+	assertResponseParameter(t, points, "data.totalPages", true)
+	assertResponseParameter(t, points, "data.list[].points_change", true)
+	assertResponseParameter(t, points, "data.list[].balance_before", true)
+	assertResponseParameter(t, points, "data.list[].balance_after", true)
+	pointsExample := points["x-response-example"].(responseExampleEnvelope).Data.(clientPointsListResponse)
+	if pointsExample.Total != 1 || len(pointsExample.List) != 1 || pointsExample.List[0].PointsChange != 100 {
+		t.Fatalf("points response example is incomplete: %#v", pointsExample)
+	}
 	chunkPath := document.Paths["/api/uploads/images/{upload_id}/chunks/{index}"]
 	if chunkPath == nil {
 		t.Fatal("Gin path parameters were not converted to OpenAPI syntax")
