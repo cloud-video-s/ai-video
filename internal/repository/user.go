@@ -129,8 +129,10 @@ func (d *AppUserRepo) ExpireDueSubscriptions(ctx context.Context, now time.Time)
 			q.VipExpiresAt.Lte(now),
 		).
 		Updates(map[string]interface{}{
-			"subscription_status": domain.AppUserSubscriptionExpired,
-			"points_balance":      uint64(0),
+			"subscription_status": domain.AppUserSubscriptionCancelled,
+			"vip_points":          uint64(0),
+			"vip_expires_at":      uint64(0),
+			"user_type":           1,
 		})
 	if err != nil {
 		return 0, err

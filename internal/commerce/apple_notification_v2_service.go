@@ -349,7 +349,7 @@ func (s *Service) extendVIPFromAppleNotificationV2(ctx context.Context, order *m
 		if user.VipExpiresAt != nil && !newExpires.After(*user.VipExpiresAt) {
 			return nil
 		}
-		updates := map[string]interface{}{
+		updates := map[string]any{
 			"subscription_status":        domain.AppUserSubscriptionSubscribed,
 			"user_type":                  domain.AppUserTypePaid,
 			"vip_expires_at":             newExpires,
@@ -394,7 +394,7 @@ func (s *Service) expireVIPFromAppleNotificationV2(ctx context.Context, order *m
 			user.VipExpiresAt.After(time.UnixMilli(notificationExpiresDate)) {
 			return nil
 		}
-		updates := map[string]interface{}{
+		updates := map[string]any{
 			"subscription_status": domain.AppUserSubscriptionCancelled,
 		}
 		now := time.Now()

@@ -14,7 +14,6 @@ const (
 	AppUserSubscriptionNotSubscribed uint8 = 1
 	AppUserSubscriptionSubscribed    uint8 = 2
 	AppUserSubscriptionCancelled     uint8 = 3
-	AppUserSubscriptionExpired       uint8 = 4
 
 	IdentityProviderGoogle = "google"
 	IdentityProviderApple  = "apple"
