@@ -148,7 +148,7 @@ func (r *ModelRepo) UpdateFields(ctx context.Context, item *model.VideoModel) er
 	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID)).Select(
 		q.PlatformID, q.Name, q.Code, q.ModelType, q.Version,
 		q.SubmitEndpoint, q.StatusEndpoint, q.RequestMethod, q.AuthType,
-		q.Description, q.Status, q.HostURL, q.Score,
+		q.Description, q.Status, q.HostURL, q.Score, q.Icon,
 	).Updates(item)
 	return err
 }

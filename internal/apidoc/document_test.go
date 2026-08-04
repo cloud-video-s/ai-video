@@ -24,6 +24,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodPost, Path: "/admin/login", Handler: "admin.Login"},
 		{Method: http.MethodPut, Path: "/admin/banners/:id", Handler: "admin.Banner.Update"},
 		{Method: http.MethodPost, Path: "/api/auth/login", Handler: "api.Auth.Login"},
+		{Method: http.MethodPost, Path: "/api/auth/apple_order_login", Handler: "api.Auth.AppleOrderLogin"},
 		{Method: http.MethodPost, Path: "/api/auth/refresh", Handler: "api.Auth.Refresh"},
 		{Method: http.MethodPost, Path: "/api/third_binding", Handler: "api.Auth.ThirdBinding"},
 		{Method: http.MethodPost, Path: "/api/auth/logout", Handler: "api.Auth.Logout"},
@@ -127,6 +128,13 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	if login["description"] != operationDescriptions["POST /api/auth/login"] {
 		t.Fatalf("login method description is missing: %#v", login["description"])
 	}
+	appleOrderLogin := document.Paths["/api/auth/apple_order_login"]["post"].(map[string]any)
+	if _, secured := appleOrderLogin["security"]; !secured {
+		t.Fatal("Apple order login route must require bearer auth")
+	}
+	assertParameter(t, appleOrderLogin, "order_code", "json", true)
+	assertResponseParameter(t, appleOrderLogin, "data.token", true)
+	assertResponseParameter(t, appleOrderLogin, "data.expire_at", true)
 	refresh := document.Paths["/api/auth/refresh"]["post"].(map[string]any)
 	if _, secured := refresh["security"]; !secured {
 		t.Fatal("refresh route must require bearer auth")
@@ -200,9 +208,9 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	}
 	categoryTemplates := document.Paths["/api/templates/template_list"]["get"].(map[string]any)
 	assertParameter(t, categoryTemplates, "page", "query", false)
-	assertParameter(t, categoryTemplates, "pageSize", "query", false)
-	assertParameter(t, categoryTemplates, "position_key", "query", true)
-	assertParameter(t, categoryTemplates, "template_type_id", "query", true)
+	assertParameter(t, categoryTemplates, "page_size", "query", false)
+	assertParameter(t, categoryTemplates, "position_key", "query", false)
+	assertParameter(t, categoryTemplates, "template_type_id", "query", false)
 	assertResponseParameter(t, categoryTemplates, "data[].id", true)
 	assertResponseParameter(t, categoryTemplates, "data[].name", true)
 	assertResponseParameterAbsent(t, categoryTemplates, "data[].display_config_id")
@@ -344,6 +352,46 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	}
 }
 
+func TestBuildComplaintAndTemplateTaskRequestDocumentation(t *testing.T) {
+	document := Build([]gin.RouteInfo{
+		{Method: http.MethodPost, Path: "/api/templates/complaint", Handler: "api.Template.Complaint"},
+		{Method: http.MethodPost, Path: "/api/generation/template-tasks", Handler: "api.Generation.CreateFromTemplate"},
+	})
+
+	complaint := document.Paths["/api/templates/complaint"]["post"].(map[string]any)
+	assertParameter(t, complaint, "template_id", "json", true)
+	assertParameter(t, complaint, "complaint_type", "json", true)
+	assertParameter(t, complaint, "content", "json", false)
+	complaintBody := complaint["requestBody"].(map[string]any)
+	complaintMedia := complaintBody["content"].(map[string]any)["application/json"].(map[string]any)
+	complaintSchema := complaintMedia["schema"].(map[string]any)
+	templateIDSchema := complaintSchema["properties"].(map[string]any)["template_id"].(map[string]any)
+	if templateIDSchema["minimum"] != int64(0) || templateIDSchema["exclusiveMinimum"] != true || templateIDSchema["maximum"] != nil {
+		t.Fatalf("complaint template_id constraints are invalid: %#v", templateIDSchema)
+	}
+	complaintExample := requestExample(t, complaint)
+	if complaintExample["template_id"] != uint64(3) || complaintExample["complaint_type"] != "Hate speech or discrimination" || complaintExample["content"] != "测试" {
+		t.Fatalf("complaint request example is incomplete: %#v", complaintExample)
+	}
+
+	templateTask := document.Paths["/api/generation/template-tasks"]["post"].(map[string]any)
+	assertParameter(t, templateTask, "template_id", "json", true)
+	assertParameter(t, templateTask, "input", "json", true)
+	assertParameter(t, templateTask, "input.images", "json", true)
+	assertParameterAbsent(t, templateTask, "client_request_id")
+	assertParameterAbsent(t, templateTask, "parameters")
+	assertParameterAbsent(t, templateTask, "input.video")
+	assertParameterAbsent(t, templateTask, "input.first_frame")
+	assertParameterAbsent(t, templateTask, "input.end_frame")
+	assertResponseParameter(t, templateTask, "data.template_id", false)
+	templateTaskExample := requestExample(t, templateTask)
+	input := templateTaskExample["input"].(map[string]any)
+	images := input["images"].([]string)
+	if templateTaskExample["template_id"] != uint64(9) || len(images) != 1 || images[0] == "" {
+		t.Fatalf("template task request example is incomplete: %#v", templateTaskExample)
+	}
+}
+
 func TestResponseSchemaHandlesRecursiveTypes(t *testing.T) {
 	schema := responseSchemaForType(typeOf[recursiveResponse]())
 	properties := schema["properties"].(map[string]any)
@@ -354,6 +402,21 @@ func TestResponseSchemaHandlesRecursiveTypes(t *testing.T) {
 	if _, nested := next["properties"]; nested {
 		t.Fatalf("recursive field unexpectedly expanded itself: %#v", next)
 	}
+}
+
+func requestExample(t *testing.T, operation map[string]any) map[string]any {
+	t.Helper()
+	requestBody, ok := operation["requestBody"].(map[string]any)
+	if !ok {
+		t.Fatalf("request body is missing: %#v", operation)
+	}
+	content := requestBody["content"].(map[string]any)
+	media := content["application/json"].(map[string]any)
+	example, ok := media["example"].(map[string]any)
+	if !ok {
+		t.Fatalf("JSON request example is missing: %#v", media)
+	}
+	return example
 }
 
 func TestBuildGenerationModelDocumentation(t *testing.T) {
@@ -460,6 +523,27 @@ func TestBuildRefreshTokenDocumentation(t *testing.T) {
 	assertResponseParameter(t, refresh, "data.expire_at", true)
 	if refresh["description"] != operationDescriptions["POST /api/auth/refresh"] {
 		t.Fatalf("refresh method description is missing: %#v", refresh["description"])
+	}
+}
+
+func TestBuildAppleOrderLoginDocumentation(t *testing.T) {
+	document := Build([]gin.RouteInfo{{
+		Method: http.MethodPost, Path: "/api/auth/apple_order_login", Handler: "api.Auth.AppleOrderLogin",
+	}})
+	operation := document.Paths["/api/auth/apple_order_login"]["post"].(map[string]any)
+	if _, secured := operation["security"]; !secured {
+		t.Fatal("Apple order login route must require bearer auth")
+	}
+	assertParameter(t, operation, "order_code", "json", true)
+	assertResponseParameter(t, operation, "data.token", true)
+	assertResponseParameter(t, operation, "data.login_type", true)
+	assertResponseParameter(t, operation, "data.expire_at", true)
+	assertResponseParameter(t, operation, "data.token_version", true)
+	if operation["responses"].(map[string]any)["404"] == nil {
+		t.Fatal("Apple order login route must document its not-found response")
+	}
+	if operation["description"] != operationDescriptions["POST /api/auth/apple_order_login"] {
+		t.Fatalf("Apple order login method description is missing: %#v", operation["description"])
 	}
 }
 

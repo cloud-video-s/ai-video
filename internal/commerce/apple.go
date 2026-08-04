@@ -108,7 +108,7 @@ type AppleNotificationSummary struct {
 // JSON value is accepted only for Sandbox while the server is not in release
 // mode, matching the development payload supplied by the client.
 type ApplePurchaseRequest struct {
-	ShopType              int        `json:"shop_type" binding:"required,max=2"	`
+	ShopType              int        `json:"shop_type" binding:"required,max=2"`
 	BundleID              string     `json:"bundleID" binding:"required,max=191"`
 	ExpirationDate        *time.Time `json:"expirationDate"`
 	IsActive              bool       `json:"isActive"`
@@ -190,7 +190,7 @@ type DecodedAppleNotification struct {
 // DecodeAppleNotificationPayload 从 Apple JWS 通知的 signedPayload 中解码业务字段
 func DecodeAppleNotificationPayload(signedPayload string) (*DecodedAppleNotification, error) {
 	signedPayload = strings.TrimSpace(signedPayload)
-	if signedPayload == "" || strings.Count(signedPayload, ".") != 2 {
+	if signedPayload == "" {
 		return nil, ErrAppleEvidenceInvalid
 	}
 	parts := strings.Split(signedPayload, ".")
@@ -206,21 +206,45 @@ func DecodeAppleNotificationPayload(signedPayload string) (*DecodedAppleNotifica
 		Environment       string `json:"environment"`
 		SignedRenewalInfo string `json:"signedRenewalInfo"`
 		SignedTransaction string `json:"signedTransactionInfo"`
+		Data              struct {
+			BundleID          string `json:"bundleId"`
+			Environment       string `json:"environment"`
+			SignedRenewalInfo string `json:"signedRenewalInfo"`
+			SignedTransaction string `json:"signedTransactionInfo"`
+		} `json:"data"`
 	}
 	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
 		return nil, fmt.Errorf("%w: invalid notification JSON", ErrAppleEvidenceInvalid)
+	}
+	bundleID := payload.Data.BundleID
+	environment := payload.Data.Environment
+	signedRenewalInfo := payload.Data.SignedRenewalInfo
+	signedTransaction := payload.Data.SignedTransaction
+	// Keep accepting the flattened shape used by older sandbox fixtures while
+	// preferring the data object from App Store Server Notifications V2.
+	if bundleID == "" {
+		bundleID = payload.BundleID
+	}
+	if environment == "" {
+		environment = payload.Environment
+	}
+	if signedRenewalInfo == "" {
+		signedRenewalInfo = payload.SignedRenewalInfo
+	}
+	if signedTransaction == "" {
+		signedTransaction = payload.SignedTransaction
 	}
 	result := &DecodedAppleNotification{
 		NotificationType:  payload.NotificationType,
 		Subtype:           payload.Subtype,
 		NotificationUUID:  payload.NotificationUUID,
-		BundleID:          payload.BundleID,
-		Environment:       payload.Environment,
-		SignedRenewalInfo: payload.SignedRenewalInfo,
-		SignedTransaction: payload.SignedTransaction,
+		BundleID:          bundleID,
+		Environment:       environment,
+		SignedRenewalInfo: signedRenewalInfo,
+		SignedTransaction: signedTransaction,
 	}
-	if payload.SignedTransaction != "" && strings.Count(payload.SignedTransaction, ".") == 2 {
-		txParts := strings.Split(payload.SignedTransaction, ".")
+	if signedTransaction != "" && strings.Count(signedTransaction, ".") == 2 {
+		txParts := strings.Split(signedTransaction, ".")
 		txPayload, txErr := base64.RawURLEncoding.DecodeString(txParts[1])
 		if txErr == nil {
 			var tx appleSignedTransaction
@@ -257,19 +281,9 @@ func (s *Service) HandleAppleServerNotification(ctx context.Context, signedPaylo
 		ProductID:           decoded.ProductID,
 	}
 
-	var order *model.VideoOrder
-	var lookupErr error
-	if decoded.TransactionID != "" {
-		order, lookupErr = s.orders.GetByPaymentTransaction(ctx, domain.PaymentMethodAppleIAP, decoded.TransactionID)
-	}
-	if order == nil && decoded.OriginalTransaction != "" {
-		q := repository.QFrom(ctx).VideoOrder
-		order, lookupErr = q.WithContext(ctx).
-			Where(q.OriginalTransactionID.Eq(decoded.OriginalTransaction)).
-			Order(q.ID.Desc()).First()
-	}
-	if lookupErr != nil && !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
-		return nil, lookupErr
+	order, err := s.findAppleNotificationOrder(ctx, decoded)
+	if err != nil {
+		return nil, err
 	}
 	if order != nil {
 		summary.AffectedUserID = order.UserID
@@ -337,7 +351,29 @@ func (s *Service) HandleAppleServerNotification(ctx context.Context, signedPaylo
 			summary.Message = "no subscription order to update"
 		}
 
-	case AppleNotificationExpired, AppleNotificationGracePeriodExpired, AppleNotificationDidFailToRenew:
+	case AppleNotificationDidFailToRenew:
+		summary.Action = "cancel_failed_payment"
+		summary.Processed = true
+		switch {
+		case order == nil:
+			summary.Message = "no matching pending Apple order to cancel"
+		case order.Status == domain.OrderStatusCancelled:
+			summary.Message = "pending Apple order was already cancelled"
+		case order.Status != domain.OrderStatusPending:
+			summary.Message = "matching Apple order is not pending; left unchanged"
+		default:
+			cancelled, innerErr := s.cancelPendingAppleOrder(ctx, order.OrderNo, "Apple DID_FAIL_TO_RENEW notification")
+			if innerErr != nil {
+				return nil, innerErr
+			}
+			if cancelled {
+				summary.Message = "cancelled pending Apple order"
+			} else {
+				summary.Message = "matching Apple order is no longer pending; left unchanged"
+			}
+		}
+
+	case AppleNotificationExpired, AppleNotificationGracePeriodExpired:
 		summary.Action = "expire_or_fail"
 		if order != nil && order.ProductType == domain.OrderProductVIPSubscription {
 			if innerErr := s.expireVIPSubscription(ctx, order); innerErr == nil {
@@ -363,6 +399,63 @@ func (s *Service) HandleAppleServerNotification(ctx context.Context, signedPaylo
 	}
 
 	return summary, nil
+}
+
+func (s *Service) findAppleNotificationOrder(ctx context.Context, decoded *DecodedAppleNotification) (*model.VideoOrder, error) {
+	if decoded.TransactionID != "" {
+		order, err := s.orders.GetByPaymentTransaction(ctx, domain.PaymentMethodAppleIAP, decoded.TransactionID)
+		if err == nil {
+			return order, nil
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+
+		// A payment failure can arrive before a provider transaction ID has
+		// been persisted. The purchase flow's deterministic request ID lets the
+		// callback find that pending order without trusting client-owned fields.
+		order, err = s.orders.GetByClientRequestID(ctx, appleClientRequestID(decoded.TransactionID))
+		if err == nil {
+			if order.PaymentMethod == domain.PaymentMethodAppleIAP {
+				return order, nil
+			}
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+	}
+	if decoded.OriginalTransaction != "" {
+		order, err := s.orders.GetByAppleOriginalTransactionID(ctx, decoded.OriginalTransaction)
+		if err == nil {
+			return order, nil
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+	}
+	return nil, nil
+}
+
+func (s *Service) cancelPendingAppleOrder(ctx context.Context, orderNo, reason string) (bool, error) {
+	orderNo = strings.TrimSpace(orderNo)
+	if orderNo == "" {
+		return false, nil
+	}
+	cancelled := false
+	err := repository.Transaction(ctx, func(ctx context.Context) error {
+		order, err := s.orders.GetByOrderNo(ctx, orderNo, true)
+		if err != nil {
+			return err
+		}
+		if order.PaymentMethod != domain.PaymentMethodAppleIAP || order.Status != domain.OrderStatusPending {
+			return nil
+		}
+		if err := s.orders.CancelPending(ctx, order.ID, strings.TrimSpace(reason), time.Now()); err != nil {
+			return err
+		}
+		cancelled = true
+		return nil
+	})
+	return cancelled, err
 }
 
 func (s *Service) revokePaidOrder(ctx context.Context, order *model.VideoOrder, revokedAt time.Time) error {

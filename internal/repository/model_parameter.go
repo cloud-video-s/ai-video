@@ -65,7 +65,7 @@ func (r *ModelParameterRepo) UpdateFields(ctx context.Context, item *model.Video
 	q := qFrom(ctx).VideoModelParameter
 	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID), q.ModelID.Eq(item.ModelID)).Select(
 		q.ParamKey, q.ParamType, q.IsRequired, q.DefaultValue, q.AllowedValues,
-		q.Description, q.SortOrder, q.ParameterType, q.Constraints,
+		q.Description, q.SortOrder, q.ParameterType, q.Constraints, q.Alias_, q.DisplayType,
 	).Updates(item)
 	return err
 }

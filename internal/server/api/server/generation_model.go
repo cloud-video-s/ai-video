@@ -38,12 +38,17 @@ type GenerationModelParameter struct {
 	Description   string        `json:"description"`
 	ParameterType uint32        `json:"parameter_type"`
 	Constraints   string        `json:"constraints"`
+	Alias         string        `json:"alias"`
+	DisplayType   string        `json:"display_type"`
 }
 
 type GenerationModelView struct {
-	Name       string                     `json:"name"`
-	ModelCode  string                     `json:"model_code"`
-	Parameters []GenerationModelParameter `json:"parameter"`
+	Name        string                     `json:"name"`
+	ModelCode   string                     `json:"model_code"`
+	Score       uint64                     `json:"score"`
+	Icon        string                     `json:"icon"`
+	Description string                     `json:"description"`
+	Parameters  []GenerationModelParameter `json:"parameter"`
 }
 
 type GenerationListRequest struct {
@@ -95,7 +100,12 @@ func (s *GenerationModelService) List(ctx context.Context, modelType uint32) ([]
 		if items == nil {
 			items = []GenerationModelParameter{}
 		}
-		result = append(result, GenerationModelView{Name: models[i].Name, ModelCode: models[i].Code, Parameters: items})
+		result = append(result, GenerationModelView{Name: models[i].Name,
+			ModelCode:   models[i].Code,
+			Score:       uint64(models[i].Score),
+			Icon:        models[i].Icon,
+			Description: models[i].Description,
+			Parameters:  items})
 	}
 	return result, nil
 }
@@ -131,5 +141,7 @@ func generationModelParameterView(item *model.VideoModelParameter) (GenerationMo
 		Description:   item.Description,
 		ParameterType: item.ParameterType,
 		Constraints:   item.Constraints,
+		DisplayType:   item.DisplayType,
+		Alias:         item.Alias_,
 	}, nil
 }

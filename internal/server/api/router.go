@@ -53,6 +53,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		directUploadHandler.RegisterDirectRoute(authenticated.Group("/uploads"))
 		auth := authenticated.Group("/auth")
 		{
+			auth.POST("/apple_order_login", authHandler.AppleOrderLogin)
 			auth.POST("/refresh", authHandler.Refresh)
 			auth.POST("/logout", authHandler.Logout)
 		}

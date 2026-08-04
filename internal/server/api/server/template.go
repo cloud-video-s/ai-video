@@ -94,7 +94,7 @@ type ClientTemplateDisplayItem struct {
 }
 
 type ClientCategoriesRequest struct {
-	TemplateID    uint64 `json:"template_id" binding:"required,max=64"`
+	TemplateID    uint64 `json:"template_id" binding:"required,gt=0"`
 	ComplaintType string `json:"complaint_type" binding:"required,max=64"`
 	Content       string `json:"content"`
 }

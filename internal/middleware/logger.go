@@ -25,6 +25,7 @@ func Logger() gin.HandlerFunc {
 			"method", method,
 			"path", path,
 			"query", query,
+			"body", c.Request.Body,
 			"ip", clientIP,
 			"latency", latency.String(),
 			"errors", c.Errors.ByType(gin.ErrorTypePrivate).String(),

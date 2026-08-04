@@ -26,6 +26,7 @@ import (
 
 type AuthService struct {
 	userRepo          *repository.AppUserRepo
+	orderRepo         *repository.OrderRepo
 	attributionRepo   *repository.UserAttributionRepo
 	identityRepo      *repository.UserIdentityRepo
 	identityVerifiers map[string]identityTokenVerifier
@@ -43,8 +44,9 @@ func NewAuthService() *AuthService {
 	}
 	cacheTTL := time.Duration(authConfig.JWKSCacheSeconds) * time.Second
 	return &AuthService{
-		userRepo: repository.NewAppUserRepo(), attributionRepo: repository.NewUserAttributionRepo(),
-		identityRepo: repository.NewUserIdentityRepo(),
+		userRepo: repository.NewAppUserRepo(), orderRepo: repository.NewOrderRepo(),
+		attributionRepo: repository.NewUserAttributionRepo(),
+		identityRepo:    repository.NewUserIdentityRepo(),
 		identityVerifiers: map[string]identityTokenVerifier{
 			domain.IdentityProviderGoogle: oidc.NewVerifier(oidc.Config{Issuers: authConfig.Google.Issuers, Audiences: authConfig.Google.ClientIDs, JWKSURL: authConfig.Google.JWKSURL, HTTPClient: &http.Client{Timeout: timeout}, CacheTTL: cacheTTL}),
 			domain.IdentityProviderApple:  oidc.NewVerifier(oidc.Config{Issuers: authConfig.Apple.Issuers, Audiences: authConfig.Apple.ClientIDs, JWKSURL: authConfig.Apple.JWKSURL, HTTPClient: &http.Client{Timeout: timeout}, CacheTTL: cacheTTL}),
@@ -58,7 +60,14 @@ type LoginRequest struct {
 	AccountBaseRequest
 }
 
+type AppleOrderLoginRequest struct {
+	OrderCode string `json:"order_code" binding:"required,max=191"`
+}
+
 var ErrAuthStateInvalid = errors.New("登录状态已失效，请重新登录")
+var ErrAppleOrderNotFound = errors.New("Apple 支付订单不存在")
+var ErrAppleOrderUserNotFound = errors.New("Apple 支付订单关联用户不存在")
+var ErrAppleOrderUserDisabled = errors.New("Apple 支付订单关联用户已禁用")
 var ActiveDayKey = "active_day_key_user_id_"
 
 type AuthResponse struct {
@@ -163,6 +172,40 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 		return nil, err
 	}
 	return issueToken(user, domain.AppUserLoginGuest)
+}
+
+// LoginByAppleOrder resolves the user linked to an Apple original transaction
+// and issues the same client JWT used by the other login flows.
+func (s *AuthService) LoginByAppleOrder(ctx context.Context, req *AppleOrderLoginRequest) (*AuthResponse, error) {
+	originalTransactionID := strings.TrimSpace(req.OrderCode)
+	if originalTransactionID == "" {
+		return nil, ErrAppleOrderNotFound
+	}
+
+	order, err := s.orderRepo.GetByAppleOriginalTransactionID(ctx, originalTransactionID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrAppleOrderNotFound
+		}
+		return nil, err
+	}
+
+	user, err := s.userRepo.GetByID(ctx, order.UserID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrAppleOrderUserNotFound
+		}
+		return nil, err
+	}
+	if user.Status != 1 {
+		return nil, ErrAppleOrderUserDisabled
+	}
+
+	user, err = s.prepareLoginSession(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	return issueToken(user, int(user.LoginType))
 }
 
 func (s *AuthService) prepareLoginSession(ctx context.Context, userID uint64) (*model.VideoUser, error) {

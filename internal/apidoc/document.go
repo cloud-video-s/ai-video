@@ -58,6 +58,27 @@ type generationTaskListResponse struct {
 	List       []generation.TaskView `json:"list"`
 }
 
+type templateTaskInput struct {
+	Images []string `json:"images" binding:"required,min=1"`
+}
+
+type templateTaskRequest struct {
+	TemplateID uint64            `json:"template_id" binding:"required"`
+	Input      templateTaskInput `json:"input" binding:"required"`
+}
+
+var requestBodyExamples = map[string]any{
+	"POST /api/templates/complaint": map[string]any{
+		"template_id": uint64(3), "complaint_type": "Hate speech or discrimination", "content": "测试",
+	},
+	"POST /api/generation/template-tasks": map[string]any{
+		"template_id": uint64(9),
+		"input": map[string]any{"images": []string{
+			"https://balaaitest.oss-ap-southeast-1.aliyuncs.com/uploads/images/2026/07/30/12f35f980837d2e557f1e07a3078d1dc.png",
+		}},
+	},
+}
+
 type responseExampleEnvelope struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -311,6 +332,7 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/health":                                  {response: typeOf[map[string]string]()},
 	"GET /api/configs/list":                            {response: typeOf[map[string]string]()},
 	"POST /api/auth/login":                             {body: typeOf[apiservice.LoginRequest](), response: typeOf[apiservice.AuthResponse]()},
+	"POST /api/auth/apple_order_login":                 {body: typeOf[apiservice.AppleOrderLoginRequest](), response: typeOf[apiservice.AuthResponse]()},
 	"POST /api/auth/refresh":                           {response: typeOf[apiservice.AuthResponse]()},
 	"POST /api/third_binding":                          {body: typeOf[apiservice.ThirdPartyLoginRequest](), response: typeOf[apiservice.ThirdAuthResponse]()},
 	"POST /api/auth/logout":                            {},
@@ -326,8 +348,10 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/templates/template_info":                 {query: typeOf[apiservice.TemplateInfoRequest](), response: typeOf[apiservice.ClientTemplate]()},
 	"POST /api/templates/:id/favorite":                 {response: typeOf[apiservice.TemplateFavoriteResponse]()},
 	"DELETE /api/templates/:id/favorite":               {response: typeOf[apiservice.TemplateFavoriteResponse]()},
+	"POST /api/templates/complaint":                    {body: typeOf[apiservice.ClientCategoriesRequest]()},
 	"GET /api/generation/models":                       {query: typeOf[apiservice.GenerationModelRequest](), response: typeOf[[]apiservice.GenerationModelView]()},
 	"POST /api/generation/tasks":                       {body: typeOf[generation.CreateTaskRequest](), response: typeOf[generation.TaskView]()},
+	"POST /api/generation/template-tasks":              {body: typeOf[templateTaskRequest](), response: typeOf[generation.TaskView]()},
 	"GET /api/generation/tasks":                        {query: typeOf[apiservice.GenerationListRequest](), response: typeOf[generationTaskListResponse]()},
 	"GET /api/generation/tasks/:id":                    {response: typeOf[generation.TaskView]()},
 	"GET /api/generation/tasks/:id/events":             {response: typeOf[generation.TaskView]()},
@@ -350,7 +374,7 @@ var endpointTypes = map[string]endpointType{
 var operationDescriptions = map[string]string{
 	"GET /api/health":       "检查 API 服务是否正常运行。",
 	"GET /api/configs/list": "获取客户端可见的公开应用配置。", "POST /api/auth/login": "使用设备标识登录或创建游客账号。",
-	"POST /api/third_binding": "为当前用户绑定或切换 Google、Apple 等第三方身份。", "POST /api/auth/refresh": "使用当前未过期的 Bearer Token 签发新 Token，刷新成功后当前 Token 立即失效。", "POST /api/auth/logout": "注销当前 Bearer Token。",
+	"POST /api/third_binding": "为当前用户绑定或切换 Google、Apple 等第三方身份。", "POST /api/auth/apple_order_login": "根据请求中的 Apple 订单编号 order_code 查询订单表 original_transaction_id 字段匹配的最新 Apple IAP 订单及其关联用户，并为正常状态的关联用户签发客户端 Token。", "POST /api/auth/refresh": "使用当前未过期的 Bearer Token 签发新 Token，刷新成功后当前 Token 立即失效。", "POST /api/auth/logout": "注销当前 Bearer Token。",
 	"GET /api/users/me": "获取当前登录用户资料。", "PUT /api/users/me/country": "更新当前用户的设备国家或地区。",
 	"GET /api/users/me/identities": "查询当前用户已绑定的第三方身份。", "DELETE /api/users/me/identities/:provider": "解绑指定第三方身份。",
 	"GET /api/ob_delay":                "获取客户端延迟配置。",
@@ -361,8 +385,10 @@ var operationDescriptions = map[string]string{
 	"GET /api/templates/template_list": "按 page、pageSize、template_type_id 和可选 position_key 查询分类下的模板，响应 data 为模板对象数组，不包含 total 或 totalPages。template_type_id 未传或当前客户端不可访问该分类时返回空数组。",
 	"GET /api/templates/template_info": "根据必填的 template_id 查询单个模板对象，并设置当前登录用户的 is_favorite。响应使用当前统一模板对象结构。",
 	"POST /api/templates/:id/favorite": "收藏指定模板；重复收藏保持幂等。", "DELETE /api/templates/:id/favorite": "取消收藏指定模板；重复取消保持幂等。",
-	"GET /api/generation/models": "按必填 model_type 查询平台和模型均启用的模型及其参数；同时返回 parameter_type=1 的选项参数和 parameter_type=2 的请求参数，并按 parameter_type、sort_order、id 排序。", "POST /api/generation/tasks": "校验请求并创建待异步处理的生成任务，返回任务订单号。",
-	"GET /api/generation/tasks": "分页查询当前用户的生成任务，列表项返回完整任务快照。", "GET /api/generation/tasks/:id": "查询指定生成任务详情，返回结构与列表中的单个任务一致。",
+	"POST /api/templates/complaint": "提交模板投诉。请求体使用 application/json，template_id 和 complaint_type 必填，content 为可选的补充说明。",
+	"GET /api/generation/models":    "按必填 model_type 查询平台和模型均启用的模型及其参数；同时返回 parameter_type=1 的选项参数和 parameter_type=2 的请求参数，并按 parameter_type、sort_order、id 排序。", "POST /api/generation/tasks": "校验请求并创建待异步处理的生成任务，返回任务订单号。",
+	"POST /api/generation/template-tasks": "按模板创建生成任务。请求体仅展示必填的 template_id 和 input.images；模板提示词和模型设置由服务端补充。",
+	"GET /api/generation/tasks":           "分页查询当前用户的生成任务，列表项返回完整任务快照。", "GET /api/generation/tasks/:id": "查询指定生成任务详情，返回结构与列表中的单个任务一致。",
 	"GET /api/generation/tasks/:id/events": "通过 SSE 实时订阅生成任务状态，任务结束后连接关闭。", "DELETE /api/generation/tasks/:id": "删除指定生成任务。",
 	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
 	"GET /api/vip/list":                     "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
@@ -373,7 +399,7 @@ var operationDescriptions = map[string]string{
 
 var operationSummaries = map[string]string{
 	"GET /api/health": "健康检查", "GET /api/configs/list": "获取客户端配置",
-	"POST /api/auth/login": "游客登录", "POST /api/auth/refresh": "刷新 Token", "POST /api/third_binding": "绑定第三方身份",
+	"POST /api/auth/login": "游客登录", "POST /api/auth/apple_order_login": "Apple 订单登录", "POST /api/auth/refresh": "刷新 Token", "POST /api/third_binding": "绑定第三方身份",
 	"POST /api/auth/logout": "退出登录", "GET /api/users/me": "获取当前用户",
 	"PUT /api/users/me/country": "更新用户国家", "GET /api/users/me/identities": "查询绑定身份",
 	"DELETE /api/users/me/identities/:provider": "解绑第三方身份", "GET /api/ob_delay": "获取延迟配置",
@@ -381,9 +407,9 @@ var operationSummaries = map[string]string{
 	"GET /api/templates/list": "查询模板列表", "GET /api/templates/categories": "查询模板分类",
 	"GET /api/templates/template_list": "查询分类模板", "GET /api/templates/template_info": "查询模板详情",
 	"POST /api/templates/:id/favorite":   "收藏模板",
-	"DELETE /api/templates/:id/favorite": "取消收藏模板", "GET /api/vip/recommend": "查询推荐 VIP 套餐",
+	"DELETE /api/templates/:id/favorite": "取消收藏模板", "POST /api/templates/complaint": "投诉模板", "GET /api/vip/recommend": "查询推荐 VIP 套餐",
 	"GET /api/vip/list":          "查询 VIP 套餐列表",
-	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务",
+	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务", "POST /api/generation/template-tasks": "按模板创建生成任务",
 	"GET /api/generation/tasks": "查询生成任务", "GET /api/generation/tasks/:id": "获取生成任务",
 	"GET /api/generation/tasks/:id/events": "订阅生成任务事件", "DELETE /api/generation/tasks/:id": "删除生成任务",
 	"POST /api/payments/apple/pay": "确认 Apple 支付", "POST /api/payments/apple/notification": "接收 Apple 支付通知",
@@ -412,13 +438,15 @@ var fieldDescriptions = map[string]string{
 	"key": "配置键", "value": "配置值", "name": "名称", "template_type": "模板类型：1=图片模板，2=视频模板", "cover_image": "封面图片地址",
 	"cover_image_url": "模板封面图片地址", "original_url": "模板原始媒体地址", "thumbnail_url": "模板缩略媒体地址", "model_score": "生成模型评分",
 	"template_video": "模板视频地址", "thumbnail_video": "缩略视频地址", "jump_type": "跳转类型：1 链接，2 模板，3 文生图，4 文生视频", "route": "客户端最终跳转路由、深链或外部链接",
-	"target_template": "模板跳转时返回的目标模板摘要；其他跳转类型不返回", "template_id": "目标模板 ID；仅模板跳转时返回", "sort": "排序值", "category_name": "分类名称",
+	"target_template": "模板跳转时返回的目标模板摘要；其他跳转类型不返回", "template_id": "模板 ID", "sort": "排序值", "category_name": "分类名称",
 	"description": "说明", "position_keys": "支持的展示位置", "user_types": "适用用户类型", "subscription_statuses": "适用订阅状态",
 	"templates": "模板列表", "prompt": "模板提示词", "usage_count": "使用次数",
 	"favorite_count": "收藏次数", "favorited": "当前用户是否已收藏", "is_favorite": "当前用户是否已收藏：0=否，1=是", "view_count": "浏览次数", "display_config_id": "展示配置 ID", "display_sort": "展示排序",
 	"page": "页码，从 1 开始", "page_size": "每页数量", "pageSize": "每页数量", "total": "总记录数", "totalPages": "总页数", "list": "当前页数据列表", "template_type_id": "模板分类 ID", "third_type": "第三方身份类型：google 或 apple",
 	"third_code": "第三方平台用户标识",
-	"model_code": "生成模型代码", "model_type": "模型类型：1=生成图片，2=生成视频", "client_request_id": "客户端幂等请求 ID", "task_code": "任务唯一编码", "task_type": "任务类型：1=生成图片，2=生成视频；列表查询值 3 表示全部", "input": "模型输入参数", "parameters": "模型扩展参数",
+	"model_code": "生成模型代码", "model_type": "模型类型：1=生成图片，2=生成视频", "client_request_id": "客户端幂等请求 ID", "task_code": "任务唯一编码", "task_type": "任务类型：1=生成图片，2=生成视频；列表查询值 3 表示全部", "input": "生成任务输入参数", "parameters": "生成参数",
+	"images": "参考图片 URL 数组", "video": "参考视频 URL", "first_frame": "首帧图片 URL", "end_frame": "尾帧图片 URL",
+	"complaint_type": "投诉类型", "content": "投诉补充内容",
 	"parameter": "模型参数列表", "param_key": "参数键名", "parameter_type": "参数类型：1=选项参数，2=请求参数",
 	"default_value": "参数默认值", "allowed_values": "参数允许值数组", "constraints": "JSON 字符串格式的参数约束；空约束为 {}",
 	"model_config_id": "生成模型配置 ID", "external_task_id": "第三方任务 ID", "progress": "任务进度，范围 0-100",
@@ -433,7 +461,7 @@ var fieldDescriptions = map[string]string{
 	"product_id": "Apple 商品 ID", "processed": "是否已完成对应业务处理", "affected_user_id": "受影响的用户 ID",
 	"affected_order_no": "受影响的订单号", "action": "本次通知执行的业务动作", "message": "处理结果说明",
 	"purchaseDate": "客户端购买时间，RFC 3339 格式，必须与签名交易一致", "expirationDate": "订阅到期时间，RFC 3339 格式；无到期时间时为 null", "revocationDate": "撤销时间，RFC 3339 格式；未撤销时为 null", "isActive": "客户端上报的订阅状态；服务端不以此值作为最终状态",
-	"source": "购买入口来源，可选", "order_no": "服务端订单号", "product_type": "订单商品类型",
+	"source": "购买入口来源，可选", "order_no": "服务端订单号", "order_code": "订单编号；Apple 订单登录时传 Apple 原始交易 ID", "product_type": "订单商品类型",
 	"product_code": "Apple 商品 ID", "paid_amount": "实付金额，单位由 currency 指定", "purchase_date": "已验签的购买时间",
 	"expiration_date": "已验签的订阅到期时间", "is_active": "服务端计算的当前状态：交易未撤销，且订阅到期时间晚于服务端当前时间",
 	"evidence_mode": "交易凭证模式：jws 或 sandbox_json",
@@ -557,6 +585,9 @@ func buildOperation(route gin.RouteInfo, pathParams []string, tag, resource stri
 		operation["responses"].(map[string]any)["413"] = errorResponse("文件超过当前媒体类型的上传大小上限")
 		operation["responses"].(map[string]any)["503"] = errorResponse("当前未启用阿里云 OSS，或 OSS 直传配置不可用")
 	}
+	if key == "POST /api/auth/apple_order_login" {
+		operation["responses"].(map[string]any)["404"] = errorResponse("Apple 支付订单或订单关联用户不存在")
+	}
 	if sseRoutes[key] {
 		eventSchema := responseSchemaForType(metadata.response)
 		operation["responses"].(map[string]any)["200"] = map[string]any{
@@ -630,8 +661,12 @@ func requestBody(route gin.RouteInfo, bodyType reflect.Type) map[string]any {
 	if bodyParameterLocation(bodyType) == "form" {
 		contentType = "application/x-www-form-urlencoded"
 	}
+	media := map[string]any{"schema": schema}
+	if example, exists := requestBodyExamples[route.Method+" "+route.Path]; exists {
+		media["example"] = example
+	}
 	return map[string]any{"required": true, "content": map[string]any{
-		contentType: map[string]any{"schema": schema},
+		contentType: media,
 	}}
 }
 

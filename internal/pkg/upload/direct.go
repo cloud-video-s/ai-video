@@ -23,7 +23,7 @@ const (
 type DirectUploadRequest struct {
 	MediaType   MediaKind `json:"media_type" binding:"required,oneof=image video"`
 	FileName    string    `json:"file_name" binding:"required,max=255"`
-	Size        int64     `json:"size"`
+	Size        int64     `json:"size" binding:"required,gt=0"`
 	ContentType string    `json:"content_type" binding:"required,max=255"`
 }
 

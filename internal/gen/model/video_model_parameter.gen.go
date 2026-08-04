@@ -14,19 +14,21 @@ const TableNameVideoModelParameter = "video_model_parameter"
 
 // VideoModelParameter 模型参数配置表
 type VideoModelParameter struct {
-	ID            int64          `gorm:"column:id;type:bigint;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                                             // 主键ID
-	ModelID       int64          `gorm:"column:model_id;type:bigint;not null;comment:模型ID，关联model表" json:"model_id"`                                             // 模型ID，关联model表
-	ParamKey      string         `gorm:"column:param_key;type:varchar(64);not null;comment:参数键名" json:"param_key"`                                               // 参数键名
-	ParamType     string         `gorm:"column:param_type;type:varchar(16);not null;comment:参数类型：string / integer / boolean / object / array" json:"param_type"` // 参数类型：string / integer / boolean / object / array
-	IsRequired    uint32         `gorm:"column:is_required;type:tinyint unsigned;not null;comment:是否必填：0-否，1-是" json:"is_required"`                              // 是否必填：0-否，1-是
-	DefaultValue  string         `gorm:"column:default_value;type:text;comment:默认值（JSON格式存储）" json:"default_value"`                                              // 默认值（JSON格式存储）
-	AllowedValues string         `gorm:"column:allowed_values;type:text;comment:允许的值列表（JSON数组格式）" json:"allowed_values"`                                         // 允许的值列表（JSON数组格式）
-	Description   string         `gorm:"column:description;type:varchar(255);comment:参数说明" json:"description"`                                                   // 参数说明
-	SortOrder     uint32         `gorm:"column:sort_order;type:int unsigned;not null;comment:排序权重" json:"sort_order"`                                            // 排序权重
-	ParameterType uint32         `gorm:"column:parameter_type;type:tinyint unsigned;not null;default:1;comment:类型 1 选项 2请求参数" json:"parameter_type"`             // 类型 1 选项 2请求参数
-	Constraints   string         `gorm:"column:constraints;type:json;comment:字段限制" json:"constraints"`                                                           // 字段限制
-	CreatedAt     time.Time      `gorm:"column:created_at;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"`                      // 创建时间
-	UpdatedAt     time.Time      `gorm:"column:updated_at;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"`                      // 更新时间
+	ID            int64          `gorm:"column:id;type:bigint;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                                                                    // 主键ID
+	ModelID       int64          `gorm:"column:model_id;type:bigint;not null;comment:模型ID，关联model表" json:"model_id"`                                                                    // 模型ID，关联model表
+	ParamKey      string         `gorm:"column:param_key;type:varchar(64);not null;comment:参数键名" json:"param_key"`                                                                      // 参数键名
+	ParamType     string         `gorm:"column:param_type;type:varchar(16);not null;comment:参数类型：string / integer / boolean / object / array" json:"param_type"`                        // 参数类型：string / integer / boolean / object / array
+	IsRequired    uint32         `gorm:"column:is_required;type:tinyint unsigned;not null;comment:是否必填：0-否，1-是" json:"is_required"`                                                     // 是否必填：0-否，1-是
+	DefaultValue  string         `gorm:"column:default_value;type:text;comment:默认值（JSON格式存储）" json:"default_value"`                                                                     // 默认值（JSON格式存储）
+	AllowedValues string         `gorm:"column:allowed_values;type:text;comment:允许的值列表（JSON数组格式）" json:"allowed_values"`                                                                // 允许的值列表（JSON数组格式）
+	Description   string         `gorm:"column:description;type:varchar(255);comment:参数说明" json:"description"`                                                                          // 参数说明
+	SortOrder     uint32         `gorm:"column:sort_order;type:int unsigned;not null;comment:排序权重" json:"sort_order"`                                                                   // 排序权重
+	ParameterType uint32         `gorm:"column:parameter_type;type:tinyint unsigned;not null;default:1;comment:类型 1 选项 2请求参数" json:"parameter_type"`                                    // 类型 1 选项 2请求参数
+	Constraints   string         `gorm:"column:constraints;type:json;comment:字段限制" json:"constraints"`                                                                                  // 字段限制
+	Alias_        string         `gorm:"column:alias;type:varchar(255);not null;comment:别名" json:"alias"`                                                                               // 别名
+	DisplayType   string         `gorm:"column:display_type;type:varchar(255);not null;comment:展示数据类型 string / integer / boolean / object / array / select / time" json:"display_type"` // 展示数据类型 string / integer / boolean / object / array / select / time
+	CreatedAt     time.Time      `gorm:"column:created_at;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"`                                             // 创建时间
+	UpdatedAt     time.Time      `gorm:"column:updated_at;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"`                                             // 更新时间
 	DeletedAt     gorm.DeletedAt `gorm:"column:deleted_at;type:datetime" json:"deleted_at"`
 }
 

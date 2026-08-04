@@ -43,6 +43,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	vipSubscriptionHandler := handler.NewVIPSubscriptionHandler()
 	vipSubscriptionLevelHandler := handler.NewVIPSubscriptionLevelHandler()
 	pointsPackageHandler := handler.NewPointsPackageHandler()
+	orderAdminHandler := handler.NewOrderAdminHandler()
 	userPointsLedgerHandler := handler.NewUserPointsLedgerHandler()
 	userGenerationTaskHandler := handler.NewUserGenerationTaskHandler()
 	bannerHandler := handler.NewBannerHandler()
@@ -288,6 +289,10 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.DELETE("/points-packages/:id", pointsPackageHandler.Delete)
 		auth.PATCH("/points-packages/:id/status", pointsPackageHandler.UpdateStatus)
 		auth.PATCH("/points-packages/:id/default", pointsPackageHandler.SetDefault)
+
+		// Read-only commerce orders
+		auth.GET("/orders", orderAdminHandler.List)
+		auth.GET("/orders/:id", orderAdminHandler.GetByID)
 
 		// Read-only user points ledger
 		auth.GET("/user-points-ledgers", userPointsLedgerHandler.List)

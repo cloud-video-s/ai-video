@@ -39,6 +39,8 @@ func newVideoModelParameter(db *gorm.DB, opts ...gen.DOOption) videoModelParamet
 	_videoModelParameter.SortOrder = field.NewUint32(tableName, "sort_order")
 	_videoModelParameter.ParameterType = field.NewUint32(tableName, "parameter_type")
 	_videoModelParameter.Constraints = field.NewString(tableName, "constraints")
+	_videoModelParameter.Alias_ = field.NewString(tableName, "alias")
+	_videoModelParameter.DisplayType = field.NewString(tableName, "display_type")
 	_videoModelParameter.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoModelParameter.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoModelParameter.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -64,6 +66,8 @@ type videoModelParameter struct {
 	SortOrder     field.Uint32 // 排序权重
 	ParameterType field.Uint32 // 类型 1 选项 2请求参数
 	Constraints   field.String // 字段限制
+	Alias_        field.String // 别名
+	DisplayType   field.String // 展示数据类型 string / integer / boolean / object / array / select / time
 	CreatedAt     field.Time   // 创建时间
 	UpdatedAt     field.Time   // 更新时间
 	DeletedAt     field.Field
@@ -94,6 +98,8 @@ func (v *videoModelParameter) updateTableName(table string) *videoModelParameter
 	v.SortOrder = field.NewUint32(table, "sort_order")
 	v.ParameterType = field.NewUint32(table, "parameter_type")
 	v.Constraints = field.NewString(table, "constraints")
+	v.Alias_ = field.NewString(table, "alias")
+	v.DisplayType = field.NewString(table, "display_type")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -125,7 +131,7 @@ func (v *videoModelParameter) GetFieldByName(fieldName string) (field.OrderExpr,
 }
 
 func (v *videoModelParameter) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 14)
+	v.fieldMap = make(map[string]field.Expr, 16)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["model_id"] = v.ModelID
 	v.fieldMap["param_key"] = v.ParamKey
@@ -137,6 +143,8 @@ func (v *videoModelParameter) fillFieldMap() {
 	v.fieldMap["sort_order"] = v.SortOrder
 	v.fieldMap["parameter_type"] = v.ParameterType
 	v.fieldMap["constraints"] = v.Constraints
+	v.fieldMap["alias"] = v.Alias_
+	v.fieldMap["display_type"] = v.DisplayType
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

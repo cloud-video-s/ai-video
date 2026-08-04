@@ -30,6 +30,10 @@ func SeedModelAdmin() error {
 			{Path: "/admin/models/:id/parameters", Method: "POST", Group: "模型配置", Description: "新增模型配置"},
 			{Path: "/admin/models/:id/parameters/:parameter_id", Method: "PUT", Group: "模型配置", Description: "编辑模型配置"},
 			{Path: "/admin/models/:id/parameters/:parameter_id", Method: "DELETE", Group: "模型配置", Description: "软删除模型配置"},
+			{Path: "/admin/uploads/images/batches", Method: "POST", Group: "文件上传", Description: "批量初始化图片上传"},
+			{Path: "/admin/uploads/images/:upload_id/chunks/:index", Method: "PUT", Group: "文件上传", Description: "上传图片分片"},
+			{Path: "/admin/uploads/images/:upload_id", Method: "GET", Group: "文件上传", Description: "查询图片上传进度"},
+			{Path: "/admin/uploads/images/:upload_id/complete", Method: "POST", Group: "文件上传", Description: "完成图片上传"},
 		}
 		apis := make([]model.VideoAPI, 0, len(seeds))
 		for _, seed := range seeds {
@@ -75,6 +79,9 @@ func SeedModelAdmin() error {
 			return err
 		}
 
+		imageUploadAPIs := apis[14:]
+		modelAddAPIs := append([]model.VideoAPI{apis[7]}, imageUploadAPIs...)
+		modelEditAPIs := append([]model.VideoAPI{apis[6], apis[8]}, imageUploadAPIs...)
 		buttonSeeds := []struct {
 			menu model.VideoMenu
 			apis []model.VideoAPI
@@ -82,8 +89,8 @@ func SeedModelAdmin() error {
 			{menu: model.VideoMenu{ParentID: platformPage.ID, Name: "新增平台", Sort: 1, Type: 2, Permission: "platform:add", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[2]}},
 			{menu: model.VideoMenu{ParentID: platformPage.ID, Name: "编辑平台", Sort: 2, Type: 2, Permission: "platform:edit", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[1], apis[3]}},
 			{menu: model.VideoMenu{ParentID: platformPage.ID, Name: "删除平台", Sort: 3, Type: 2, Permission: "platform:delete", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[4]}},
-			{menu: model.VideoMenu{ParentID: modelPage.ID, Name: "新增模型", Sort: 1, Type: 2, Permission: "model:add", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[7]}},
-			{menu: model.VideoMenu{ParentID: modelPage.ID, Name: "编辑模型", Sort: 2, Type: 2, Permission: "model:edit", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[6], apis[8]}},
+			{menu: model.VideoMenu{ParentID: modelPage.ID, Name: "新增模型", Sort: 1, Type: 2, Permission: "model:add", Visible: 1, Status: 1}, apis: modelAddAPIs},
+			{menu: model.VideoMenu{ParentID: modelPage.ID, Name: "编辑模型", Sort: 2, Type: 2, Permission: "model:edit", Visible: 1, Status: 1}, apis: modelEditAPIs},
 			{menu: model.VideoMenu{ParentID: modelPage.ID, Name: "删除模型", Sort: 3, Type: 2, Permission: "model:delete", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[9]}},
 			{menu: model.VideoMenu{ParentID: modelPage.ID, Name: "模型配置", Sort: 4, Type: 2, Permission: "model:config", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[10], apis[11], apis[12], apis[13]}},
 		}

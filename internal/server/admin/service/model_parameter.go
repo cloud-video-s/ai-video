@@ -8,6 +8,7 @@ import (
 	"math"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
@@ -45,6 +46,8 @@ type ModelParameterPayload struct {
 	Constraints   map[string]interface{} `json:"constraints"`
 	Description   string                 `json:"description" binding:"max=255"`
 	SortOrder     uint32                 `json:"sort_order"`
+	Alias         string                 `json:"alias" binding:"omitempty,max=255"`
+	DisplayType   string                 `json:"display_type" binding:"omitempty,oneof=string integer boolean object array select time"`
 }
 
 type ModelParameterView struct {
@@ -59,6 +62,8 @@ type ModelParameterView struct {
 	Constraints   map[string]interface{} `json:"constraints"`
 	Description   string                 `json:"description"`
 	SortOrder     uint32                 `json:"sort_order"`
+	Alias         string                 `json:"alias"`
+	DisplayType   string                 `json:"display_type"`
 	CreatedAt     string                 `json:"created_at"`
 	UpdatedAt     string                 `json:"updated_at"`
 }
@@ -179,8 +184,21 @@ func (s *ModelParameterService) validatePayload(ctx context.Context, modelID int
 	req.ParamKey = strings.TrimSpace(req.ParamKey)
 	req.ValueType = strings.ToLower(strings.TrimSpace(req.ValueType))
 	req.Description = strings.TrimSpace(req.Description)
+	req.Alias = strings.TrimSpace(req.Alias)
+	req.DisplayType = strings.ToLower(strings.TrimSpace(req.DisplayType))
 	if !parameterKeyPattern.MatchString(req.ParamKey) {
 		return errors.New("参数字段必须以字母或下划线开头，且只能包含字母、数字、点、下划线和中划线")
+	}
+	if req.Alias == "" {
+		return errors.New("别名不能为空")
+	}
+	if utf8.RuneCountInString(req.Alias) > 255 {
+		return errors.New("别名不能超过 255 个字符")
+	}
+	switch req.DisplayType {
+	case "string", "integer", "boolean", "object", "array", "select", "time":
+	default:
+		return errors.New("展示类型必须为 string、integer、boolean、object、array、select 或 time")
 	}
 	if req.ParameterType == ParameterTypeOption {
 		if req.ValueType == "object" || req.ValueType == "array" {
@@ -339,7 +357,7 @@ func buildModelParameter(modelID int64, req *ModelParameterPayload) (*model.Vide
 		ModelID: modelID, ParamKey: req.ParamKey, ParamType: req.ValueType,
 		IsRequired: req.IsRequired, DefaultValue: defaultJSON, AllowedValues: string(allowedJSON),
 		Description: req.Description, SortOrder: req.SortOrder, ParameterType: req.ParameterType,
-		Constraints: constraintsJSON,
+		Constraints: constraintsJSON, Alias_: req.Alias, DisplayType: req.DisplayType,
 	}
 	return videoModelParameter, nil
 }
@@ -367,7 +385,8 @@ func modelParameterView(item *model.VideoModelParameter) (ModelParameterView, er
 		ID: item.ID, ModelID: item.ModelID, ParamKey: item.ParamKey, ValueType: item.ParamType,
 		ParameterType: item.ParameterType, IsRequired: item.IsRequired, DefaultValue: defaultValue,
 		AllowedValues: allowedValues, Constraints: constraints, Description: item.Description,
-		SortOrder: item.SortOrder, CreatedAt: item.CreatedAt.Format("2006-01-02 15:04:05"),
+		SortOrder: item.SortOrder, Alias: item.Alias_, DisplayType: item.DisplayType,
+		CreatedAt: item.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt: item.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}, nil
 }

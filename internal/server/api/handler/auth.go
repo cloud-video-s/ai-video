@@ -37,6 +37,36 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	response.OK(c, result)
 }
 
+func (h *AuthHandler) AppleOrderLogin(c *gin.Context) {
+	var req apiservice.AppleOrderLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, "Apple 支付订单参数错误: "+err.Error())
+		return
+	}
+	req.OrderCode = strings.TrimSpace(req.OrderCode)
+	if req.OrderCode == "" {
+		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, "order_code 不能为空")
+		return
+	}
+
+	result, err := h.svc.LoginByAppleOrder(c.Request.Context(), &req)
+	switch {
+	case errors.Is(err, apiservice.ErrAppleOrderNotFound):
+		response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, err.Error())
+		return
+	case errors.Is(err, apiservice.ErrAppleOrderUserNotFound):
+		response.FailWithStatus(c, http.StatusNotFound, errcode.ErrUserNotFound, err.Error())
+		return
+	case errors.Is(err, apiservice.ErrAppleOrderUserDisabled):
+		response.FailWithStatus(c, http.StatusForbidden, errcode.ErrUserDisabled, err.Error())
+		return
+	case err != nil:
+		response.FailWithStatus(c, http.StatusInternalServerError, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, result)
+}
+
 func (h *AuthHandler) ThirdBinding(c *gin.Context) {
 	var req apiservice.ThirdPartyLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

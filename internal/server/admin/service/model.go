@@ -53,6 +53,7 @@ type ModelPayload struct {
 	AuthType       uint32 `json:"auth_type" binding:"required,oneof=1 2"`
 	APIKey         string `json:"api_key" binding:"max=2048"`
 	Score          int64  `json:"score" binding:"gte=0"`
+	Icon           string `json:"icon" binding:"max=255"`
 	Description    string `json:"description" binding:"max=255"`
 	Status         uint32 `json:"status" binding:"oneof=0 1"`
 }
@@ -80,6 +81,7 @@ type ModelView struct {
 	APIKey           string             `json:"api_key"`
 	APIKeyConfigured bool               `json:"api_key_configured"`
 	Score            int64              `json:"score"`
+	Icon             string             `json:"icon"`
 	Description      string             `json:"description"`
 	Status           uint32             `json:"status"`
 	CreatedAt        string             `json:"created_at"`
@@ -223,6 +225,7 @@ func (s *ModelService) validatePayload(ctx context.Context, req *ModelPayload, c
 	req.StatusEndpoint = strings.TrimSpace(req.StatusEndpoint)
 	req.RequestMethod = strings.ToUpper(strings.TrimSpace(req.RequestMethod))
 	req.APIKey = strings.TrimSpace(req.APIKey)
+	req.Icon = strings.TrimSpace(req.Icon)
 	req.Description = strings.TrimSpace(req.Description)
 	if req.Name == "" || req.ModelType == 0 || req.Version == "" || !modelCodePattern.MatchString(req.Code) {
 		return nil, errors.New("模型名称、类型和版本不能为空，模型编码只能包含字母、数字、点、下划线和中划线")
@@ -272,7 +275,7 @@ func applyModelPayload(item *model.VideoModel, req *ModelPayload) {
 	item.HostURL = req.HostURL
 	item.SubmitEndpoint, item.StatusEndpoint = req.SubmitEndpoint, req.StatusEndpoint
 	item.RequestMethod, item.AuthType = req.RequestMethod, req.AuthType
-	item.Score, item.Description, item.Status = req.Score, req.Description, req.Status
+	item.Score, item.Icon, item.Description, item.Status = req.Score, req.Icon, req.Description, req.Status
 }
 
 func modelView(item *model.VideoModel, apiKeyConfigured bool) ModelView {
@@ -289,7 +292,7 @@ func modelView(item *model.VideoModel, apiKeyConfigured bool) ModelView {
 		Name: item.Name, Code: item.Code, ModelType: item.ModelType, Version: item.Version,
 		HostURL: item.HostURL, SubmitEndpoint: item.SubmitEndpoint, StatusEndpoint: item.StatusEndpoint,
 		RequestMethod: item.RequestMethod, AuthType: item.AuthType, APIKey: masked,
-		APIKeyConfigured: apiKeyConfigured, Score: item.Score, Description: item.Description, Status: item.Status,
+		APIKeyConfigured: apiKeyConfigured, Score: item.Score, Icon: item.Icon, Description: item.Description, Status: item.Status,
 		CreatedAt: item.CreatedAt.Format("2006-01-02 15:04:05"), UpdatedAt: item.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}
 }

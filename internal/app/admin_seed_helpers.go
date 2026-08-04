@@ -156,6 +156,7 @@ func upsertTemplateAPI(tx *gorm.DB, seed templateAPISeed) (*model.VideoAPI, erro
 }
 
 func upsertTemplateMenu(tx *gorm.DB, desired model.VideoMenu) (*model.VideoMenu, error) {
+	requestedType := desired.Type
 	var menu model.VideoMenu
 	query := tx
 	if desired.Permission != "" {
@@ -174,10 +175,11 @@ func upsertTemplateMenu(tx *gorm.DB, desired model.VideoMenu) (*model.VideoMenu,
 		}
 		// VideoMenu.Type has database default 1. GORM omits a zero value on
 		// Create, so explicitly restore directory type 0 after the insert.
-		if desired.Type == 0 {
+		if requestedType == 0 {
 			if err := tx.Model(&model.VideoMenu{}).Where("id = ?", desired.ID).Update("type", 0).Error; err != nil {
 				return nil, err
 			}
+			desired.Type = requestedType
 		}
 		return &desired, nil
 	}

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -168,13 +169,21 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 // ConfirmApplePayment must be called only after the Apple signed transaction
 // has been verified. Row locks, a conditional status update and the provider
 // transaction unique index jointly prevent duplicate payment or fulfillment.
-func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, result ApplePaymentResult) (*model.VideoOrder, error) {
+func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, result ApplePaymentResult) (paidOrder *model.VideoOrder, err error) {
+	defer func() {
+		if err == nil {
+			return
+		}
+		if _, cancelErr := s.cancelPendingAppleOrder(ctx, orderNo, "Apple payment confirmation failed"); cancelErr != nil {
+			err = errors.Join(err, fmt.Errorf("cancel pending Apple order: %w", cancelErr))
+		}
+	}()
+
 	result.TransactionID = strings.TrimSpace(result.TransactionID)
 	if result.TransactionID == "" || result.PaidAmount < 0 {
 		return nil, errors.New("invalid Apple payment result")
 	}
-	var paidOrder *model.VideoOrder
-	err := repository.Transaction(ctx, func(ctx context.Context) error {
+	err = repository.Transaction(ctx, func(ctx context.Context) error {
 		order, err := s.orders.GetByOrderNo(ctx, orderNo, true)
 		if err != nil {
 			return err
@@ -325,7 +334,7 @@ func (s *Service) ConsumePoints(ctx context.Context, req ConsumePointsRequest) (
 	return created, err
 }
 
-const uint64MaxInt64 = uint64(^uint64(0) >> 1)
+const uint64MaxInt64 = ^uint64(0) >> 1
 
 func newOrderNo() string {
 	random := make([]byte, 6)

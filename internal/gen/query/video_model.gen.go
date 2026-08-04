@@ -42,6 +42,7 @@ func newVideoModel(db *gorm.DB, opts ...gen.DOOption) videoModel {
 	_videoModel.Status = field.NewUint32(tableName, "status")
 	_videoModel.HostURL = field.NewString(tableName, "host_url")
 	_videoModel.Score = field.NewInt64(tableName, "score")
+	_videoModel.Icon = field.NewString(tableName, "icon")
 	_videoModel.APIKey = field.NewString(tableName, "api_key")
 	_videoModel.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoModel.UpdatedAt = field.NewTime(tableName, "updated_at")
@@ -76,6 +77,7 @@ type videoModel struct {
 	Status         field.Uint32 // 状态：0-禁用，1-启用
 	HostURL        field.String // API域名
 	Score          field.Int64  // 模型积分
+	Icon           field.String // 图标
 	APIKey         field.String // 密钥
 	CreatedAt      field.Time   // 创建时间
 	UpdatedAt      field.Time   // 更新时间
@@ -111,6 +113,7 @@ func (v *videoModel) updateTableName(table string) *videoModel {
 	v.Status = field.NewUint32(table, "status")
 	v.HostURL = field.NewString(table, "host_url")
 	v.Score = field.NewInt64(table, "score")
+	v.Icon = field.NewString(table, "icon")
 	v.APIKey = field.NewString(table, "api_key")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
@@ -141,7 +144,7 @@ func (v *videoModel) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoModel) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 19)
+	v.fieldMap = make(map[string]field.Expr, 20)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["platform_id"] = v.PlatformID
 	v.fieldMap["name"] = v.Name
@@ -156,6 +159,7 @@ func (v *videoModel) fillFieldMap() {
 	v.fieldMap["status"] = v.Status
 	v.fieldMap["host_url"] = v.HostURL
 	v.fieldMap["score"] = v.Score
+	v.fieldMap["icon"] = v.Icon
 	v.fieldMap["api_key"] = v.APIKey
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt

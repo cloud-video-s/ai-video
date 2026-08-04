@@ -139,7 +139,7 @@ func (h *TemplateHandler) setFavorite(c *gin.Context, favorited bool) {
 
 func (h *TemplateHandler) Complaint(c *gin.Context) {
 	var req apiservice.ClientCategoriesRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
