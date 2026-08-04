@@ -65,9 +65,10 @@
           <el-input v-model="form.phone" />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="form.role_ids" multiple placeholder="请选择角色" style="width: 100%">
+          <el-select v-model="form.role_ids" multiple collapse-tags :max-collapse-tags="3" placeholder="请选择一个或多个角色" style="width: 100%">
             <el-option v-for="r in allRoles" :key="r.id" :label="r.name" :value="r.id" />
           </el-select>
+          <div style="color: var(--el-text-color-secondary); font-size: 12px; line-height: 20px">账号权限为所选角色权限的并集</div>
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="form.status">

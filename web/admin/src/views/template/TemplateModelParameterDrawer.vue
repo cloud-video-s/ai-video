@@ -178,7 +178,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { ModelParameter, ModelParameterPayload, VideoModel } from '@/api/videoModel'
+import type { ModelParameter, VideoModel } from '@/api/videoModel'
+import type { TemplateModelParameterPayload } from '@/api/template'
 
 type ValueType = ModelParameter['value_type']
 
@@ -186,12 +187,12 @@ const props = defineProps<{
   modelValue: boolean
   model: VideoModel | null
   definitions: ModelParameter[]
-  parameters: ModelParameterPayload[]
+  parameters: TemplateModelParameterPayload[]
   loading?: boolean
 }>()
 const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void
-  (event: 'update:parameters', value: ModelParameterPayload[]): void
+  (event: 'update:parameters', value: TemplateModelParameterPayload[]): void
 }>()
 
 const visible = computed({
@@ -262,7 +263,7 @@ function openCreate() {
   dialogVisible.value = true
 }
 
-function openEdit(row: ModelParameterPayload) {
+function openEdit(row: TemplateModelParameterPayload) {
   const definition = props.definitions.find((item) => item.param_key === row.param_key)
   if (!definition) {
     ElMessage.error(`模型参数 ${row.param_key} 已不存在，请移除该模板配置`)
@@ -333,7 +334,7 @@ function handleSubmit() {
     return
   }
 
-  const payload: ModelParameterPayload = {
+  const payload: TemplateModelParameterPayload = {
     param_key: definition.param_key,
     value_type: definition.value_type,
     parameter_type: definition.parameter_type,

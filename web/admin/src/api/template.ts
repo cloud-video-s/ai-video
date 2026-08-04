@@ -4,7 +4,7 @@ import type { PackageVersion } from '@/api/packageVersion'
 import type { Country } from '@/api/country'
 import type { DisplayPosition } from '@/api/displayPosition'
 import type { VideoApp } from '@/api/videoApp'
-import type { ModelParameter, ModelParameterPayload, VideoModel } from '@/api/videoModel'
+import type { ModelParameter, VideoModel } from '@/api/videoModel'
 
 export interface VideoTemplateType {
   id: number
@@ -65,12 +65,14 @@ export interface VideoTemplatePayload {
   prompt: string
   status: number
   description: string
-  model_parameters?: ModelParameterPayload[]
+  model_parameters?: TemplateModelParameterPayload[]
 }
 
-export interface TemplateModelParameter extends ModelParameter {
+export interface TemplateModelParameter extends Omit<ModelParameter, 'alias' | 'display_type'> {
   template_id: number
 }
+
+export type TemplateModelParameterPayload = Omit<TemplateModelParameter, 'id' | 'model_id' | 'template_id' | 'created_at' | 'updated_at'>
 
 export interface TemplateModelConfiguration {
   template_id: number
@@ -131,7 +133,7 @@ export function getTemplateModelParameters(id: number) {
   return request.get(`/admin/templates/${id}/model-parameters`)
 }
 
-export function replaceTemplateModelParameters(id: number, parameters: ModelParameterPayload[]) {
+export function replaceTemplateModelParameters(id: number, parameters: TemplateModelParameterPayload[]) {
   return request.put(`/admin/templates/${id}/model-parameters`, { parameters })
 }
 

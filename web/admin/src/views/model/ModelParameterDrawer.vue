@@ -19,6 +19,7 @@
       <el-table-column label="字段" min-width="160">
         <template #default="{ row }">
           <code class="param-key">{{ row.param_key }}</code>
+          <div class="alias">{{ row.alias }}</div>
           <div class="description">{{ row.description || '暂无说明' }}</div>
         </template>
       </el-table-column>
@@ -31,6 +32,9 @@
       </el-table-column>
       <el-table-column label="值类型" width="105" align="center">
         <template #default="{ row }"><el-tag type="info">{{ row.value_type }}</el-tag></template>
+      </el-table-column>
+      <el-table-column label="展示类型" width="105" align="center">
+        <template #default="{ row }"><el-tag effect="plain">{{ row.display_type }}</el-tag></template>
       </el-table-column>
       <el-table-column label="配置内容" min-width="290">
         <template #default="{ row }">
@@ -93,6 +97,22 @@
               <el-option label="boolean（布尔值）" value="boolean" />
               <el-option v-if="form.parameter_type === 2" label="object（对象）" value="object" />
               <el-option v-if="form.parameter_type === 2" label="array（数组）" value="array" />
+            </el-select>
+          </el-form-item>
+        </div>
+        <div class="form-grid">
+          <el-form-item label="别名" required>
+            <el-input v-model="form.alias" maxlength="255" show-word-limit placeholder="例如：画面比例" />
+          </el-form-item>
+          <el-form-item label="展示类型" required>
+            <el-select v-model="form.display_type" style="width: 100%">
+              <el-option label="string（字符串）" value="string" />
+              <el-option label="integer（整数）" value="integer" />
+              <el-option label="boolean（布尔值）" value="boolean" />
+              <el-option label="object（对象）" value="object" />
+              <el-option label="array（数组）" value="array" />
+              <el-option label="select（选择器）" value="select" />
+              <el-option label="time（时间）" value="time" />
             </el-select>
           </el-form-item>
         </div>
@@ -178,6 +198,7 @@ import {
 } from '@/api/videoModel'
 
 type ValueType = ModelParameter['value_type']
+type DisplayType = ModelParameter['display_type']
 
 const props = defineProps<{ modelValue: boolean; model: VideoModel | null }>()
 const emit = defineEmits<{ (event: 'update:modelValue', value: boolean): void }>()
@@ -195,6 +216,8 @@ interface ParameterForm {
   id: number
   param_key: string
   value_type: ValueType
+  alias: string
+  display_type: DisplayType
   parameter_type: 1 | 2
   is_required: number
   option_values: string[]
@@ -210,6 +233,8 @@ const defaultForm: ParameterForm = {
   id: 0,
   param_key: '',
   value_type: 'string',
+  alias: '',
+  display_type: 'string',
   parameter_type: 1,
   is_required: 0,
   option_values: [],
@@ -262,6 +287,8 @@ function openEdit(row: ModelParameter) {
     id: row.id,
     param_key: row.param_key,
     value_type: row.value_type,
+    alias: row.alias,
+    display_type: row.display_type,
     parameter_type: row.parameter_type,
     is_required: row.is_required,
     option_values: optionValues,
@@ -294,6 +321,10 @@ async function handleSubmit() {
     ElMessage.error('参数字段格式不正确')
     return
   }
+  if (!form.alias.trim()) {
+    ElMessage.error('请填写别名')
+    return
+  }
 
   let defaultValue: unknown = null
   let allowedValues: unknown[] = []
@@ -321,6 +352,8 @@ async function handleSubmit() {
   const payload: ModelParameterPayload = {
     param_key: form.param_key.trim(),
     value_type: form.value_type,
+    alias: form.alias.trim(),
+    display_type: form.display_type,
     parameter_type: form.parameter_type,
     is_required: form.parameter_type === 2 ? form.is_required : 0,
     default_value: defaultValue,
@@ -394,6 +427,7 @@ function sameValue(left: unknown, right: unknown): boolean {
 .drawer-subtitle { margin-top: 4px; color: #909399; font-size: 12px; }
 .drawer-toolbar { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px; margin-bottom: 16px; }
 .param-key { color: #409eff; font-weight: 600; }
+.alias { margin-top: 4px; color: #606266; }
 .description { margin-top: 5px; color: #909399; font-size: 12px; }
 .value-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .muted { color: #909399; }

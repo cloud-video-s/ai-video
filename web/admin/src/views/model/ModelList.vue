@@ -39,8 +39,20 @@
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column label="模型" min-width="190">
           <template #default="{ row }">
-            <div class="primary-text">{{ row.name }}</div>
-            <div class="model-meta"><code>{{ row.code }}</code><el-tag size="small" type="info">{{ row.version }}</el-tag></div>
+            <div class="model-cell">
+              <el-image
+                v-if="row.icon"
+                :src="row.icon"
+                :preview-src-list="[row.icon]"
+                preview-teleported
+                fit="contain"
+                class="model-icon"
+              />
+              <div>
+                <div class="primary-text">{{ row.name }}</div>
+                <div class="model-meta"><code>{{ row.code }}</code><el-tag size="small" type="info">{{ row.version }}</el-tag></div>
+              </div>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="平台 / 类型" min-width="160">
@@ -130,6 +142,14 @@
           <el-form-item label="模型积分" prop="score">
             <el-input-number v-model="form.score" :min="0" :max="999999999" controls-position="right" style="width: 100%" />
           </el-form-item>
+          <el-form-item label="模型图标" prop="icon" class="form-grid-wide">
+            <LogoImageUploader
+              v-model="form.icon"
+              image-name="模型图标"
+              placeholder="上传或输入图标 URL"
+              :crop-aspect-ratio="1"
+            />
+          </el-form-item>
         </div>
 
         <el-divider content-position="left">接口与认证</el-divider>
@@ -195,6 +215,7 @@ import {
   type VideoPlatform,
 } from '@/api/videoModel'
 import { useUserStore } from '@/store/user'
+import LogoImageUploader from '@/components/LogoImageUploader.vue'
 import ModelParameterDrawer from './ModelParameterDrawer.vue'
 
 const userStore = useUserStore()
@@ -251,6 +272,7 @@ const defaultForm: ModelForm = {
   auth_type: 'Bearer',
   api_key: '',
   score: 0,
+  icon: '',
   description: '',
   status: 1,
 }
@@ -343,6 +365,7 @@ function openEdit(row: VideoModel) {
     auth_type: row.auth_type === 'None' ? 'Bearer' : row.auth_type,
     api_key: '',
     score: row.score,
+    icon: row.icon || '',
     description: row.description || '',
     status: row.status,
   })
@@ -375,6 +398,7 @@ async function handleSubmit() {
       auth_type: form.auth_type,
       api_key: form.api_key.trim(),
       score: Number(form.score),
+      icon: form.icon.trim(),
       description: form.description.trim(),
       status: form.status,
     }
@@ -429,6 +453,8 @@ onMounted(async () => {
 .platform-warning { margin-bottom: 16px; }
 .filters { display: grid; grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(130px, 0.8fr)) auto auto; gap: 10px; margin-bottom: 16px; }
 .primary-text { color: #303133; font-weight: 600; }
+.model-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.model-icon { width: 42px; height: 42px; flex: 0 0 42px; border: 1px solid #ebeef5; border-radius: 8px; background: #f5f7fa; cursor: zoom-in; }
 .model-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
 .model-meta code { color: #606266; }
 .type-tag { margin-top: 6px; }
@@ -438,6 +464,7 @@ onMounted(async () => {
 .host-line { margin-top: 0; color: #303133; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; overflow-x: auto; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
+.form-grid-wide { grid-column: 1 / -1; }
 @media (max-width: 1080px) {
   .filters { grid-template-columns: repeat(2, minmax(170px, 1fr)); }
 }

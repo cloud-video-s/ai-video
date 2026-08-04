@@ -23,6 +23,7 @@ const routes: RouteRecordRaw[] = [
 	  { path: 'app', redirect: '/package/apps' },
 	  { path: 'channel', redirect: '/channel/list' },
 	  { path: 'subscription', redirect: '/subscription/vip' },
+	  { path: 'operation', redirect: '/operation/orders' },
 	  { path: 'user', redirect: '/user/list' },
 	  { path: 'attribution', redirect: '/attribution/list' },
 	  { path: 'model', redirect: '/model/list' },
@@ -79,6 +80,12 @@ const routes: RouteRecordRaw[] = [
         name: 'SystemOperLog',
         component: () => import('@/views/system/OperationLogList.vue'),
         meta: { title: '操作日志' },
+      },
+      {
+        path: 'operation/orders',
+        name: 'OrderList',
+        component: () => import('@/views/operation/OrderList.vue'),
+        meta: { title: '订单管理' },
       },
       {
         path: 'subscription/vip',

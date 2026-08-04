@@ -9,7 +9,12 @@
       </template>
       <el-table :data="tableData" v-loading="loading" stripe>
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="name" label="角色名称" width="160" />
+        <el-table-column label="角色名称" width="200">
+          <template #default="{ row }">
+            <span>{{ row.name }}</span>
+            <el-tag v-if="isSystemRole(row)" type="danger" size="small" effect="plain" style="margin-left: 8px">内置</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="code" label="角色编码" width="160" />
         <el-table-column prop="sort" label="排序" width="80" />
         <el-table-column label="状态" width="80">
@@ -20,13 +25,16 @@
         <el-table-column prop="remark" label="备注" />
         <el-table-column v-if="userStore.hasPermission('system:role:edit') || userStore.hasPermission('system:role:delete')" label="操作" width="240" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="userStore.hasPermission('system:role:edit')" link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-button v-if="userStore.hasPermission('system:role:edit')" link type="primary" @click="openMenuDialog(row)">分配菜单</el-button>
-            <el-popconfirm v-if="userStore.hasPermission('system:role:delete')" title="确认删除？" @confirm="handleDelete(row.id)">
+            <template v-if="!isSystemRole(row)">
+              <el-button v-if="userStore.hasPermission('system:role:edit')" link type="primary" @click="openDialog(row)">编辑</el-button>
+              <el-button v-if="userStore.hasPermission('system:role:edit')" link type="primary" @click="openMenuDialog(row)">分配菜单</el-button>
+            </template>
+            <el-popconfirm v-if="!isSystemRole(row) && userStore.hasPermission('system:role:delete')" title="确认删除？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button link type="danger">删除</el-button>
               </template>
             </el-popconfirm>
+            <span v-if="isSystemRole(row)" style="color: var(--el-text-color-secondary); font-size: 13px">拥有全部权限，不可编辑</span>
           </template>
         </el-table-column>
       </el-table>
@@ -113,6 +121,7 @@ const currentRoleId = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const SYSTEM_ROLE_CODE = 'admin'
 
 const defaultForm = { id: 0, name: '', code: '', sort: 0, status: 1, remark: '' }
 const form = reactive({ ...defaultForm })
@@ -120,6 +129,10 @@ const form = reactive({ ...defaultForm })
 const rules = {
   name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
+}
+
+function isSystemRole(role: any) {
+  return role?.code === SYSTEM_ROLE_CODE
 }
 
 async function fetchData() {
@@ -134,6 +147,7 @@ async function fetchData() {
 }
 
 function openDialog(row?: any) {
+  if (row && isSystemRole(row)) return
   Object.assign(form, defaultForm)
   if (row) {
     Object.assign(form, { id: row.id, name: row.name, code: row.code, sort: row.sort, status: row.status, remark: row.remark })
@@ -210,6 +224,11 @@ function handleTreeCheck(node: any, data: { checkedKeys: number[] }) {
   const childrenMap = buildChildrenMap(menuTreeData.value)
 
   if (isChecked) {
+    // Check all descendants
+    for (const descId of getAllDescendants(node.id, childrenMap)) {
+      tree.setChecked(descId, true, false)
+    }
+
     // Check all ancestors
     let pid = parentMap.get(node.id)
     while (pid != null) {
@@ -225,6 +244,7 @@ function handleTreeCheck(node: any, data: { checkedKeys: number[] }) {
 }
 
 async function openMenuDialog(row: any) {
+  if (isSystemRole(row)) return
   currentRoleId.value = row.id
   try {
     const [treeRes, roleRes]: any[] = await Promise.all([getMenuTree(), getRoleById(row.id)])

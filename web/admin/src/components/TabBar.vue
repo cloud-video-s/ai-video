@@ -113,14 +113,16 @@ onUnmounted(() => document.removeEventListener('click', hideCtxMenu))
 .tab-bar {
   display: flex;
   align-items: center;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
-  padding: 4px 12px 0;
+  min-height: 45px;
+  padding: 6px 16px;
+  border-bottom: 1px solid #e6ebf1;
+  background: #fbfcfe;
   user-select: none;
 }
 .tab-bar-scroll {
   display: flex;
-  gap: 4px;
+  gap: 6px;
+  min-width: 0;
   overflow-x: auto;
   flex: 1;
 }
@@ -128,37 +130,52 @@ onUnmounted(() => document.removeEventListener('click', hideCtxMenu))
   height: 0;
 }
 .tab-item {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  font-size: 13px;
-  color: #666;
-  background: #fafafa;
-  border: 1px solid #e8e8e8;
-  border-bottom: none;
-  border-radius: 4px 4px 0 0;
+  gap: 7px;
+  min-height: 31px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #778397;
   cursor: pointer;
+  font-size: 12px;
   white-space: nowrap;
-  transition: all 0.2s;
+  transition: color .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
 .tab-item:hover {
-  color: #409eff;
+  background: #f1f5fa;
+  color: #3b6fae;
 }
 .tab-item.active {
-  color: #409eff;
+  border-color: #dfe8f4;
   background: #fff;
-  border-bottom: 2px solid #409eff;
-  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(31, 57, 91, .07);
+  color: #2e70d5;
+  font-weight: 650;
+}
+.tab-item.active::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #3d8df2;
+  box-shadow: 0 0 0 3px rgba(61, 141, 242, .1);
+  content: '';
 }
 .tab-close {
-  font-size: 12px;
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
   border-radius: 50%;
-  padding: 1px;
-  transition: all 0.2s;
+  color: #a2acb9;
+  font-size: 10px;
+  transition: color .18s ease, background .18s ease;
 }
 .tab-close:hover {
-  background: #f56c6c;
+  background: #e76b71;
   color: #fff;
 }
 
@@ -166,21 +183,23 @@ onUnmounted(() => document.removeEventListener('click', hideCtxMenu))
 .tab-ctx-menu {
   position: fixed;
   z-index: 9999;
+  min-width: 136px;
+  padding: 6px;
+  border: 1px solid #e6ebf2;
+  border-radius: 10px;
   background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  padding: 4px 0;
-  min-width: 120px;
+  box-shadow: 0 14px 35px rgba(22, 45, 76, .16);
 }
 .ctx-item {
-  padding: 6px 16px;
-  font-size: 13px;
+  padding: 8px 11px;
+  border-radius: 7px;
+  color: #536075;
   cursor: pointer;
-  color: #333;
+  font-size: 12px;
 }
 .ctx-item:hover {
-  background: #f0f7ff;
-  color: #409eff;
+  background: #eef5ff;
+  color: #2f73df;
 }
 .ctx-item.disabled {
   color: #c0c4cc;
@@ -189,5 +208,9 @@ onUnmounted(() => document.removeEventListener('click', hideCtxMenu))
 .ctx-item.disabled:hover {
   background: transparent;
   color: #c0c4cc;
+}
+
+@media (max-width: 760px) {
+  .tab-bar { padding-right: 10px; padding-left: 10px; }
 }
 </style>

@@ -29,6 +29,7 @@ export interface VideoModel {
   api_key: string
   api_key_configured: boolean
   score: number
+  icon: string
   description: string
   status: number
   created_at: string
@@ -49,6 +50,8 @@ export interface ModelParameter {
   constraints: Record<string, unknown>
   description: string
   sort_order: number
+  alias: string
+  display_type: 'string' | 'integer' | 'boolean' | 'object' | 'array' | 'select' | 'time'
   created_at: string
   updated_at: string
 }

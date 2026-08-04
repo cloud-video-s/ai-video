@@ -9,15 +9,15 @@
     <el-input
       :model-value="modelValue"
       clearable
-      placeholder="Logo URL"
+      :placeholder="placeholder"
       :disabled="disabled"
       @update:model-value="emit('update:modelValue', String($event ?? ''))"
     />
     <input ref="fileInput" class="file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" @change="handleFileChange" />
-    <el-tooltip :content="uploading ? `上传中 ${progress}%` : '选择并裁剪 Logo'">
+    <el-tooltip :content="uploading ? `上传中 ${progress}%` : `选择并裁剪${imageName}`">
       <el-button :icon="Upload" circle :loading="uploading" :disabled="disabled || uploadDisabled" @click="selectFile" />
     </el-tooltip>
-    <el-tooltip content="清除 Logo">
+    <el-tooltip :content="`清除${imageName}`">
       <el-button
         :icon="Delete"
         circle
@@ -28,7 +28,12 @@
       />
     </el-tooltip>
   </div>
-  <ImageCropDialog v-model="cropVisible" :file="pendingImage" @confirm="uploadSelectedImage" />
+  <ImageCropDialog
+    v-model="cropVisible"
+    :file="pendingImage"
+    :default-aspect-ratio="cropAspectRatio"
+    @confirm="uploadSelectedImage"
+  />
 </template>
 
 <script setup lang="ts">
@@ -43,10 +48,16 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   uploadDisabled?: boolean
   maxFileSize?: number
+  placeholder?: string
+  imageName?: string
+  cropAspectRatio?: number
 }>(), {
   disabled: false,
   uploadDisabled: false,
   maxFileSize: 20 * 1024 * 1024,
+  placeholder: 'Logo URL',
+  imageName: 'Logo',
+  cropAspectRatio: 0,
 })
 
 const emit = defineEmits<{ (event: 'update:modelValue', value: string): void }>()
@@ -70,7 +81,7 @@ async function handleFileChange(event: Event) {
     return
   }
   if (file.size > props.maxFileSize) {
-    ElMessage.warning(`Logo 不能超过 ${Math.round(props.maxFileSize / 1024 / 1024)} MB`)
+    ElMessage.warning(`${props.imageName}不能超过 ${Math.round(props.maxFileSize / 1024 / 1024)} MB`)
     return
   }
 
@@ -86,7 +97,9 @@ async function uploadSelectedImage(file: File) {
     const url = await uploadImage(file, (value) => { progress.value = value })
     if (!url) throw new Error('上传完成后未返回文件地址')
     emit('update:modelValue', url)
-    ElMessage.success(file.type === 'image/png' && file.name.includes('-crop-') ? 'Logo 已无损裁剪并上传' : 'Logo 原图已上传')
+    ElMessage.success(file.type === 'image/png' && file.name.includes('-crop-')
+      ? `${props.imageName}已无损裁剪并上传`
+      : `${props.imageName}原图已上传`)
   } finally {
     uploading.value = false
   }

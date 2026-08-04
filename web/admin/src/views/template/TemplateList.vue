@@ -285,6 +285,7 @@ import {
   replaceTemplateModelParameters,
   updateTemplate,
   type TemplateModelParameter,
+  type TemplateModelParameterPayload,
   type VideoTemplate,
   type VideoTemplatePayload,
   type VideoTemplateType,
@@ -293,7 +294,6 @@ import {
   getModelList,
   getModelParameters,
   type ModelParameter,
-  type ModelParameterPayload,
   type VideoModel,
 } from '@/api/videoModel'
 import { useUserStore } from '@/store/user'
@@ -351,7 +351,7 @@ interface TemplateForm {
 }
 
 const modelParameterDefinitions = ref<ModelParameter[]>([])
-const modelParameterPayloads = ref<ModelParameterPayload[]>([])
+const modelParameterPayloads = ref<TemplateModelParameterPayload[]>([])
 const defaultForm: TemplateForm = {
   id: 0,
   template_type_id: 0,
@@ -528,7 +528,7 @@ async function loadPersistedTemplateParameters(row: VideoTemplate) {
   }
 }
 
-function templateModelParameterPayload(item: TemplateModelParameter): ModelParameterPayload {
+function templateModelParameterPayload(item: TemplateModelParameter): TemplateModelParameterPayload {
   return {
     param_key: item.param_key,
     value_type: item.value_type,
@@ -620,7 +620,7 @@ async function openTemplateParameters(row: VideoTemplate) {
   await loadPersistedTemplateParameters(row)
 }
 
-async function handleModelParameterUpdate(next: ModelParameterPayload[]) {
+async function handleModelParameterUpdate(next: TemplateModelParameterPayload[]) {
   const template = configuredTemplate.value
   if (!template) return
   parameterSaving.value = true
