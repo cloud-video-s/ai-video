@@ -127,23 +127,25 @@ func (s *ClientTemplateService) List(ctx *gin.Context, req *ClientTemplateReques
 	return buildClientTemplateGroups(types, rows, configurations), nil
 }
 
-func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplateRequest) ([]ClientTemplateType, error) {
+func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplateRequest) (interface{}, error) {
 	user, err := s.userRepo.GetByID(ctx, middleware.GetAPIUserID(ctx))
 	if err != nil {
 		return nil, err
 	}
-
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
 	countryCode := strings.ToUpper(strings.TrimSpace(req.ClientCountry))
 	if countryCode == "" {
 		countryCode = user.ClientCountry
 	}
-	types, err := s.typeRepo.GetLimitListClient(ctx, repository.ClientTemplateTypeTargets{
+	if req.PageSize == 0 {
+		req.PageSize = 5
+	}
+	types, count, err := s.typeRepo.GetLimitListClient(ctx, repository.ClientTemplateTypeTargets{
 		PositionKey: strings.TrimSpace(req.PositionKey), CountryCode: countryCode,
 		AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
 		VersionCode: strings.TrimSpace(req.AppVersion),
 		Page:        req.Page,
-		Limit:       5,
+		Limit:       req.PageSize,
 	})
 	if err != nil {
 		return nil, err
@@ -167,7 +169,7 @@ func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplate
 			Templates:    templates,
 		})
 	}
-	return data, nil
+	return GetPageResponse(int64(req.Page), int64(req.PageSize), count, data)
 }
 
 func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.VideoTemplate, configurationArgs ...map[uint64]clientTemplateModelConfiguration) []ClientTemplateType {
@@ -272,7 +274,7 @@ func (s *ClientTemplateService) Recommend(ctx *gin.Context, req *ClientTemplateR
 	return result, nil
 }
 
-func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *TemplateListRequest) ([]ClientTemplate, error) {
+func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *TemplateListRequest) (interface{}, error) {
 	user, err := s.userRepo.GetByID(ctx, middleware.GetAPIUserID(ctx))
 	if err != nil {
 		return nil, err
@@ -289,39 +291,38 @@ func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *Temp
 	if pageSize <= 0 {
 		pageSize = 10
 	}
-	types, err := s.typeRepo.ListForClient(ctx, repository.ClientTemplateTypeTargets{
-		PositionKey: strings.TrimSpace(req.PositionKey), CountryCode: countryCode,
-		AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
-		VersionCode: strings.TrimSpace(req.AppVersion),
-	})
-	if err != nil {
-		return nil, err
+	var templateTypeId []uint64
+	if req.TemplateTypeId > 0 {
+		templateTypeId = append(templateTypeId, req.TemplateTypeId)
 	}
-	allowed := false
-	for _, item := range types {
-		if item.ID == req.TemplateTypeId {
-			allowed = true
-			break
+	if req.PositionKey != "" {
+		types, err := s.typeRepo.ListForClient(ctx, repository.ClientTemplateTypeTargets{
+			PositionKey: strings.TrimSpace(req.PositionKey), CountryCode: countryCode,
+			AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
+			VersionCode: strings.TrimSpace(req.AppVersion),
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, t := range types {
+			if req.TemplateTypeId > 0 && t.ID == req.TemplateTypeId {
+				continue
+			}
+			templateTypeId = append(templateTypeId, t.ID)
 		}
 	}
-	if !allowed {
-		return []ClientTemplate{}, nil
-	}
-	rows, _, err := s.templateRepo.PageList(ctx, page, pageSize, &repository.TemplateListFilter{
-		TemplateTypeID: req.TemplateTypeId,
+	templates, total, err := s.templateRepo.GetPageList(ctx, page, pageSize, &repository.TemplateListRequest{
+		TemplateTypeID: templateTypeId,
+		//PositionKey:    req.PositionKey,
 	})
 	if err != nil {
 		return nil, err
-	}
-	templates := make([]model.VideoTemplate, 0, len(rows))
-	for i := range rows {
-		templates = append(templates, rows[i].VideoTemplate)
 	}
 	result := make([]ClientTemplate, 0, len(templates))
 	for i := range templates {
-		result = append(result, mapClientTemplate(&templates[i]))
+		result = append(result, mapClientTemplate(templates[i]))
 	}
-	return result, nil
+	return GetPageResponse(int64(req.Page), int64(req.PageSize), total, result)
 }
 
 func (s *ClientTemplateService) ClientTemplateInfo(ctx *gin.Context, req *TemplateInfoRequest) (ClientTemplate, error) {

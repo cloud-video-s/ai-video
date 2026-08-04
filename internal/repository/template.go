@@ -467,15 +467,19 @@ func (r *TemplateTypeRepo) ListForClient(ctx context.Context, targets ClientTemp
 	return templateTypeValues(rows), nil
 }
 
-func (r *TemplateTypeRepo) GetLimitListClient(ctx context.Context, targets ClientTemplateTypeTargets) ([]model.VideoTemplateType, error) {
+func (r *TemplateTypeRepo) GetLimitListClient(ctx context.Context, targets ClientTemplateTypeTargets) (data []model.VideoTemplateType, count int64, err error) {
 	templateType := qFrom(ctx).VideoTemplateType
 	dao := buildClientTemplateTypeDAO(templateType.WithContext(ctx).Where(templateType.Status.Eq(1)), targets)
+	count, err = dao.Count()
+	if err != nil {
+		return nil, count, err
+	}
 	page := max(targets.Page, 1)
 	rows, err := dao.Order(templateType.Sort.Desc(), templateType.ID.Desc()).Offset((page - 1) * targets.Limit).Limit(targets.Limit).Find()
 	if err != nil {
-		return nil, err
+		return nil, count, err
 	}
-	return templateTypeValues(rows), nil
+	return templateTypeValues(rows), count, nil
 }
 
 func buildClientTemplateTypeDAO(
@@ -544,6 +548,15 @@ type TemplateListFilter struct {
 	Keyword        string
 }
 
+type TemplateListRequest struct {
+	TemplateTypeID []uint64
+	ModelID        uint64
+	PositionKey    string
+	TemplateType   int64
+	Status         *int32
+	Keyword        string
+}
+
 func (r *TemplateRepo) PageList(ctx context.Context, page, pageSize int, filter *TemplateListFilter) ([]TemplateRecord, int64, error) {
 	q := qFrom(ctx).VideoTemplate
 	dao := q.WithContext(ctx)
@@ -584,6 +597,47 @@ func (r *TemplateRepo) PageList(ctx context.Context, page, pageSize int, filter 
 	}
 	records, err := r.loadRecords(ctx, templateValues(rows))
 	return records, total, err
+}
+
+func (r *TemplateRepo) GetPageList(ctx context.Context, page, pageSize int, filter *TemplateListRequest) ([]*model.VideoTemplate, int64, error) {
+	q := qFrom(ctx).VideoTemplate
+	dao := q.WithContext(ctx)
+	if filter != nil {
+		if filter.ModelID != 0 {
+			dao = dao.Where(q.ModelID.Eq(filter.ModelID))
+		}
+		if len(filter.TemplateTypeID) > 0 {
+			dao = dao.Where(q.TemplateTypeID.In(filter.TemplateTypeID...))
+		}
+		if filter.PositionKey != "" {
+			dao = dao.Where(templateSQLCondition(`EXISTS (
+				SELECT 1 FROM video_template_placement_config placement_config
+				WHERE placement_config.template_id = video_template.id
+					AND placement_config.placement_key = ? AND placement_config.deleted_at IS NULL
+			)`, filter.PositionKey)...)
+		}
+		if filter.TemplateType > 0 {
+			dao = dao.Where(q.TemplateType.Eq(filter.TemplateType))
+		}
+		if filter.Status != nil {
+			dao = dao.Where(q.Status.Eq(*filter.Status))
+		}
+		if filter.Keyword != "" {
+			keyword := "%" + filter.Keyword + "%"
+			dao = dao.Where(field.Or(q.Name.Like(keyword), q.Prompt.Like(keyword), q.Description.Like(keyword)))
+		}
+	}
+
+	total, err := dao.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).
+		Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	if err != nil {
+		return nil, 0, err
+	}
+	return rows, total, err
 }
 
 func (r *TemplateRepo) GetTemplateID(ctx context.Context, id uint64) (*model.VideoTemplate, error) {
