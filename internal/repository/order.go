@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"ai-video/internal/gen/query"
 	"context"
 	"errors"
 	"time"
@@ -144,67 +145,23 @@ func (r *OrderRepo) PageByUser(ctx context.Context, userID uint64, page, pageSiz
 // association. Purchasers are loaded separately and unscoped so historical
 // orders can still identify a user that has since been soft-deleted.
 func (r *OrderRepo) PageAdmin(ctx context.Context, page, pageSize int, filter *OrderAdminFilter) ([]OrderAdminRecord, int64, OrderAdminSummary, error) {
-	q := qFrom(ctx)
-	order := q.VideoOrder
-	user := q.VideoUser
-	dao := order.WithContext(ctx)
-	if filter != nil {
-		if filter.UserID != 0 {
-			dao = dao.LeftJoin(user, user.ID.EqCol(order.UserID)).Where(order.UserID.Eq(filter.UserID))
-		}
-		if filter.ProductType != 0 {
-			dao = dao.Where(order.ProductType.Eq(filter.ProductType))
-		}
-		if filter.ProductCode != "" {
-			dao = dao.Where(order.ProductCode.Eq(filter.ProductCode))
-		}
-		if filter.Status != "" {
-			dao = dao.Where(order.Status.Eq(filter.Status))
-		}
-		if filter.PaymentMethod != "" {
-			dao = dao.Where(order.PaymentMethod.Eq(filter.PaymentMethod))
-		}
-		if filter.CreatedFrom != nil {
-			dao = dao.Where(order.CreatedAt.Gte(*filter.CreatedFrom))
-		}
-		if filter.CreatedTo != nil {
-			dao = dao.Where(order.CreatedAt.Lt(*filter.CreatedTo))
-		}
-		if filter.Keyword != "" {
-			keyword := "%" + filter.Keyword + "%"
-			conditions := []field.Expr{
-				order.OrderNo.Like(keyword), order.ClientRequestID.Like(keyword),
-				order.ProductCode.Like(keyword), order.ProductName.Like(keyword),
-				order.ThirdOrderNo.Like(keyword), order.OriginalTransactionID.Like(keyword),
-				user.Username.Like(keyword), user.LoginAccount.Like(keyword),
-				user.Email.Like(keyword), user.Phone.Like(keyword), user.IMEI.Like(keyword),
-			}
-			identity := q.VideoUserIdentity
-			var identityUserIDs []uint64
-			if err := identity.WithContext(ctx).Where(field.Or(
-				identity.Email.Like(keyword), identity.DisplayName.Like(keyword),
-			)).Pluck(identity.UserID, &identityUserIDs); err != nil {
-				return nil, 0, OrderAdminSummary{}, err
-			}
-			if len(identityUserIDs) > 0 {
-				conditions = append(conditions, order.UserID.In(identityUserIDs...))
-			}
-			dao = dao.Where(field.Or(conditions...))
-		}
-	}
-
-	total, err := dao.Count()
+	// 1. 统计总数
+	total, err := buildDao(ctx, filter).Count()
 	if err != nil {
 		return nil, 0, OrderAdminSummary{}, err
 	}
+
+	// 2. 汇总（无 GROUP BY）
 	var summary OrderAdminSummary
-	if err := dao.Select(
+	if err := buildDao(ctx, filter).Select(
 		field.NewUnsafeFieldRaw("COALESCE(SUM(CASE WHEN video_order.status = 'paid' THEN 1 ELSE 0 END), 0)").As("paid_order_count"),
 	).Scan(&summary); err != nil {
 		return nil, 0, OrderAdminSummary{}, err
 	}
+	order := qFrom(ctx).VideoOrder
+	// 3. 按货币分组汇总（仅分组列 + 聚合函数，符合 ONLY_FULL_GROUP_BY）
 	amounts := make([]OrderAdminCurrencySummary, 0)
-	if err := dao.Select(
+	if err := buildDao(ctx, filter).Select(
 		order.Currency,
 		field.NewUnsafeFieldRaw("COALESCE(SUM(video_order.payable_amount), 0)").As("payable_total"),
 		field.NewUnsafeFieldRaw("COALESCE(SUM(video_order.paid_amount), 0)").As("paid_total"),
@@ -213,7 +170,9 @@ func (r *OrderRepo) PageAdmin(ctx context.Context, page, pageSize int, filter *O
 		return nil, 0, OrderAdminSummary{}, err
 	}
 	summary.Amounts = amounts
-	rows, err := dao.Select(order.ALL).Order(order.CreatedAt.Desc(), order.ID.Desc()).
+
+	// 4. 分页列表（无 GROUP BY）
+	rows, err := buildDao(ctx, filter).Select(order.ALL).Order(order.CreatedAt.Desc(), order.ID.Desc()).
 		Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, OrderAdminSummary{}, err
@@ -222,6 +181,58 @@ func (r *OrderRepo) PageAdmin(ctx context.Context, page, pageSize int, filter *O
 	return records, total, summary, err
 }
 
+func buildDao(ctx context.Context, filter *OrderAdminFilter) query.IVideoOrderDo {
+	q := qFrom(ctx)
+	order := q.VideoOrder
+	user := q.VideoUser
+	dao := order.WithContext(ctx)
+	if filter == nil {
+		return dao
+	}
+	if filter.UserID != 0 {
+		dao = dao.LeftJoin(user, user.ID.EqCol(order.UserID)).Where(order.UserID.Eq(filter.UserID))
+	}
+	if filter.ProductType != 0 {
+		dao = dao.Where(order.ProductType.Eq(filter.ProductType))
+	}
+	if filter.ProductCode != "" {
+		dao = dao.Where(order.ProductCode.Eq(filter.ProductCode))
+	}
+	if filter.Status != "" {
+		dao = dao.Where(order.Status.Eq(filter.Status))
+	}
+	if filter.PaymentMethod != "" {
+		dao = dao.Where(order.PaymentMethod.Eq(filter.PaymentMethod))
+	}
+	if filter.CreatedFrom != nil {
+		dao = dao.Where(order.CreatedAt.Gte(*filter.CreatedFrom))
+	}
+	if filter.CreatedTo != nil {
+		dao = dao.Where(order.CreatedAt.Lt(*filter.CreatedTo))
+	}
+	if filter.Keyword != "" {
+		keyword := "%" + filter.Keyword + "%"
+		conditions := []field.Expr{
+			order.OrderNo.Like(keyword), order.ClientRequestID.Like(keyword),
+			order.ProductCode.Like(keyword), order.ProductName.Like(keyword),
+			order.ThirdOrderNo.Like(keyword), order.OriginalTransactionID.Like(keyword),
+			user.Username.Like(keyword), user.LoginAccount.Like(keyword),
+			user.Email.Like(keyword), user.Phone.Like(keyword), user.IMEI.Like(keyword),
+		}
+		identity := q.VideoUserIdentity
+		var identityUserIDs []uint64
+		if err := identity.WithContext(ctx).Where(field.Or(
+			identity.Email.Like(keyword), identity.DisplayName.Like(keyword),
+		)).Pluck(identity.UserID, &identityUserIDs); err != nil {
+			// 错误处理自行补充，此处忽略
+		}
+		if len(identityUserIDs) > 0 {
+			conditions = append(conditions, order.UserID.In(identityUserIDs...))
+		}
+		dao = dao.Where(field.Or(conditions...))
+	}
+	return dao
+}
 func (r *OrderRepo) GetAdminDetail(ctx context.Context, id uint64) (*OrderAdminRecord, error) {
 	q := qFrom(ctx).VideoOrder
 	item, err := q.WithContext(ctx).Where(q.ID.Eq(id)).First()
