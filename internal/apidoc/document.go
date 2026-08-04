@@ -359,7 +359,8 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[apiservice.VIPRecommendResponse]()},
 	"GET /api/vip/list":                                {query: typeOf[apiservice.VipVipListRequest](), response: typeOf[[]apiservice.VIPRecommendResponse]()},
 	"POST /api/payments/apple/pay":                     {body: typeOf[commerce.ApplePurchaseRequest](), response: typeOf[commerce.ApplePurchaseResponse]()},
-	"POST /api/payments/apple/notification":            {body: typeOf[commerce.AppleNotificationRequest](), response: typeOf[commerce.AppleNotificationSummary]()},
+	"POST /api/payments/apple/notification":            {body: typeOf[commerce.AppleNotificationV2Request](), response: typeOf[commerce.AppleNotificationV2Summary]()},
+	"POST /api/apy":                                    {body: typeOf[commerce.AppleNotificationV2Request](), response: typeOf[commerce.AppleNotificationV2Summary]()},
 	"POST /api/uploads/images/batches":                 {response: typeOf[uploadBatchResponse]()},
 	"POST /api/uploads/videos/batches":                 {response: typeOf[uploadBatchResponse]()},
 	"GET /api/uploads/images/:upload_id":               {response: typeOf[upload.Session]()},
@@ -489,7 +490,8 @@ var resourceNames = map[string]string{
 }
 
 var publicRoutes = map[string]bool{
-	"GET /api/health": true, "POST /api/auth/login": true, "POST /api/payments/apple/notification": true,
+	"GET /api/health": true, "POST /api/auth/login": true,
+	"POST /api/payments/apple/notification": true, "POST /api/apy": true,
 }
 
 var paginatedRoutes = map[string]bool{

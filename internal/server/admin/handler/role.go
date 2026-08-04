@@ -111,7 +111,7 @@ func (h *RoleHandler) SetMenus(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	if err := h.svc.SetMenus(c.Request.Context(), id, req.MenuIDs); err != nil {
+	if err := h.svc.SetMenus(c.Request.Context(), id, *req.MenuIDs); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}
@@ -129,7 +129,7 @@ func (h *RoleHandler) SetAPIs(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	if err := h.svc.SetAPIs(c.Request.Context(), id, req.APIs); err != nil {
+	if err := h.svc.SetAPIs(c.Request.Context(), id, *req.APIs); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}

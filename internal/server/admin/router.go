@@ -22,6 +22,7 @@ func (m *Module) Name() string {
 
 func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	authHandler := handler.NewAuthHandler()
+	dashboardHandler := handler.NewDashboardHandler()
 	userHandler := handler.NewUserHandler()
 	appUserHandler := handler.NewAppUserHandler()
 	attributionHandler := handler.NewUserAttributionHandler()
@@ -75,6 +76,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	authenticated := rg.Group("", middleware.AdminAuth())
 	{
 		authenticated.POST("/logout", authHandler.Logout)
+		authenticated.GET("/dashboard", dashboardHandler.Get)
 		authenticated.GET("/profile", authHandler.GetProfile)
 		authenticated.GET("/permissions", authHandler.GetPermissions)
 		authenticated.GET("/menus/user", menuHandler.GetUserMenuTree)

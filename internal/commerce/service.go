@@ -3,6 +3,7 @@ package commerce
 import (
 	"context"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -34,13 +35,16 @@ type Service struct {
 	ledgers       *repository.CommercePointsLedgerRepo
 	vipProducts   *repository.VIPSubscriptionRepo
 	pointProducts *repository.PointsPackageRepo
+	packages      *repository.PackageRepo
+	appleRootCAs  *x509.CertPool
 }
 
 func NewService() *Service {
 	return &Service{
 		orders: repository.NewOrderRepo(), users: repository.NewAppUserRepo(),
 		ledgers: repository.NewCommercePointsLedgerRepo(), vipProducts: repository.NewVIPSubscriptionRepo(),
-		pointProducts: repository.NewPointsPackageRepo(),
+		pointProducts: repository.NewPointsPackageRepo(), packages: repository.NewPackageRepo(),
+		appleRootCAs: defaultAppleRootCAs,
 	}
 }
 
@@ -219,10 +223,12 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 			paidAt = now
 		}
 		if order.BonusPoints > 0 {
-			if order.BonusPoints > uint64MaxInt64 || user.PointsBalance > ^uint64(0)-order.BonusPoints {
-				return errors.New("points value exceeds supported range")
+			if order.ProductType == domain.OrderProductVIPSubscription {
+				user.VipPoints = user.VipPoints + order.BonusPoints
+			} else {
+				user.PointsBalance = user.PointsBalance + order.BonusPoints
 			}
-			before, after := user.PointsBalance, user.PointsBalance+order.BonusPoints
+			before, after := user.VipPoints+user.PointsBalance-order.BonusPoints, user.VipPoints+user.PointsBalance
 			ledger := &model.VideoUserPointsLedger{
 				UserID: user.ID, Direction: int8(domain.PointsDirectionIncome),
 				PointsChange: int64(order.BonusPoints), BalanceBefore: before, BalanceAfter: after,
@@ -235,13 +241,13 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 			if order.ProductType == domain.OrderProductVIPSubscription {
 				ledger.VipID = order.ProductID
 			}
-			if err := s.ledgers.Create(ctx, ledger); err != nil {
+			if err = s.ledgers.Create(ctx, ledger); err != nil {
 				return err
 			}
-			user.PointsBalance = after
 		}
 
 		updates := map[string]interface{}{
+			"vip_points":          user.VipPoints,
 			"points_balance":      user.PointsBalance,
 			"payment_count":       user.PaymentCount + 1,
 			"actual_amount_money": user.ActualAmountMoney + result.PaidAmount,
@@ -370,7 +376,8 @@ func applyVIPEntitlement(user *model.VideoUser, order *model.VideoOrder, now tim
 		expiresAt = *appleExpiresAt
 	}
 	updates["vip_level"], updates["vip_expires_at"] = level, expiresAt
-	updates["user_type"], updates["subscription_status"] = domain.AppUserTypePaid, domain.AppUserSubscriptionSubscribed
+	updates["user_type"] = domain.AppUserTypePaid
+	updates["subscription_status"] = domain.AppUserSubscriptionSubscribed
 	if user.VIPStartedAt == nil {
 		updates["vip_started_at"] = now
 	}

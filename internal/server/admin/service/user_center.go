@@ -243,7 +243,7 @@ func (s *AppUserService) GrantVIP(ctx context.Context, id uint64, req *GrantUser
 		return errors.New("VIP 结束时间必须晚于开始时间")
 	}
 	return s.repo.Update(ctx, id, map[string]interface{}{
-		"vip_level": req.Level, "vip_started_at": startedAt, "vip_expires_at": req.ExpiresAt,
+		"vip_started_at": startedAt, "vip_expires_at": req.ExpiresAt,
 		"user_type": domain.AppUserTypePaid, "subscription_status": domain.AppUserSubscriptionSubscribed,
 	})
 }
@@ -274,7 +274,7 @@ func (s *AppUserService) TerminateVIP(ctx context.Context, id uint64) error {
 	}
 	now := time.Now()
 	return s.repo.Update(ctx, id, map[string]interface{}{
-		"vip_level": 0, "vip_expires_at": now, "user_type": domain.AppUserTypeFree,
+		"vip_expires_at": now, "user_type": domain.AppUserTypeFree,
 		"subscription_status": domain.AppUserSubscriptionCancelled,
 	})
 }

@@ -181,6 +181,24 @@ func (r *OrderRepo) PageAdmin(ctx context.Context, page, pageSize int, filter *O
 	return records, total, summary, err
 }
 
+// PageAdminList is the compact list-only variant used by the dashboard. It
+// avoids running the generic order page's additional summary queries.
+func (r *OrderRepo) PageAdminList(ctx context.Context, page, pageSize int, filter *OrderAdminFilter) ([]OrderAdminRecord, int64, error) {
+	total, err := buildDao(ctx, filter).Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	order := qFrom(ctx).VideoOrder
+	rows, err := buildDao(ctx, filter).Select(order.ALL).
+		Order(order.CreatedAt.Desc(), order.ID.Desc()).
+		Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	if err != nil {
+		return nil, 0, err
+	}
+	records, err := r.loadAdminRecords(ctx, valuesOf(rows))
+	return records, total, err
+}
+
 func buildDao(ctx context.Context, filter *OrderAdminFilter) query.IVideoOrderDo {
 	q := qFrom(ctx)
 	order := q.VideoOrder
@@ -189,8 +207,11 @@ func buildDao(ctx context.Context, filter *OrderAdminFilter) query.IVideoOrderDo
 	if filter == nil {
 		return dao
 	}
+	if filter.Keyword != "" {
+		dao = dao.LeftJoin(user, user.ID.EqCol(order.UserID))
+	}
 	if filter.UserID != 0 {
-		dao = dao.LeftJoin(user, user.ID.EqCol(order.UserID)).Where(order.UserID.Eq(filter.UserID))
+		dao = dao.Where(order.UserID.Eq(filter.UserID))
 	}
 	if filter.ProductType != 0 {
 		dao = dao.Where(order.ProductType.Eq(filter.ProductType))

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"ai-video/internal/gen/model"
 
@@ -18,6 +19,12 @@ type RoleRecord struct {
 type RoleRepo struct{}
 
 func NewRoleRepo() *RoleRepo { return &RoleRepo{} }
+
+// RolePolicy is the persisted Casbin policy derived from a role's menus.
+type RolePolicy struct {
+	Path   string
+	Method string
+}
 
 func (d *RoleRepo) Create(ctx context.Context, role *model.VideoRole) error {
 	q := qFrom(ctx).VideoRole
@@ -56,6 +63,19 @@ func (d *RoleRepo) Delete(ctx context.Context, id uint64) error {
 	return Transaction(ctx, func(txCtx context.Context) error {
 		q := qFrom(txCtx)
 		adminRole := q.VideoAdminRole
+		var adminIDs []uint64
+		if err := adminRole.WithContext(txCtx).Where(adminRole.VideoRoleID.Eq(id)).
+			Pluck(adminRole.VideoAdminID, &adminIDs); err != nil {
+			return err
+		}
+		adminIDs = uniqueUint64(adminIDs)
+		if len(adminIDs) > 0 {
+			admin := q.VideoAdmin
+			if _, err := admin.WithContext(txCtx).Where(admin.ID.In(adminIDs...)).
+				Update(admin.TokenVersion, gorm.Expr("token_version + 1")); err != nil {
+				return err
+			}
+		}
 		if _, err := adminRole.WithContext(txCtx).Unscoped().
 			Where(adminRole.VideoRoleID.Eq(id)).Delete(); err != nil {
 			return err
@@ -66,11 +86,20 @@ func (d *RoleRepo) Delete(ctx context.Context, id uint64) error {
 			return err
 		}
 		role := q.VideoRole
-		if _, err := role.WithContext(txCtx).Where(role.ID.Eq(id)).
-			Update(role.Code, gorm.Expr("CONCAT('del#', id, '#', LEFT(code, 40))")); err != nil {
+		stored, err := role.WithContext(txCtx).Select(role.Code).Where(role.ID.Eq(id)).First()
+		if err != nil {
 			return err
 		}
-		_, err := role.WithContext(txCtx).Where(role.ID.Eq(id)).Delete()
+		codeRunes := []rune(stored.Code)
+		if len(codeRunes) > 40 {
+			codeRunes = codeRunes[:40]
+		}
+		deletedCode := fmt.Sprintf("del#%d#%s", id, string(codeRunes))
+		if _, err := role.WithContext(txCtx).Where(role.ID.Eq(id)).
+			Update(role.Code, deletedCode); err != nil {
+			return err
+		}
+		_, err = role.WithContext(txCtx).Where(role.ID.Eq(id)).Delete()
 		return err
 	})
 }
@@ -169,4 +198,40 @@ func (d *RoleRepo) GetAdminIDsByRoleID(ctx context.Context, roleID uint64) ([]ui
 	err := relation.WithContext(ctx).Where(relation.VideoRoleID.Eq(roleID)).
 		Pluck(relation.VideoAdminID, &adminIDs)
 	return uniqueUint64(adminIDs), err
+}
+
+// ReplacePolicies atomically replaces only the p-policies owned by roleCode.
+// Menu mappings remain the source of truth; casbin_rule is their materialized
+// representation for request-time authorization.
+func (d *RoleRepo) ReplacePolicies(ctx context.Context, roleCode string, policies []RolePolicy) error {
+	roleCode = strings.TrimSpace(roleCode)
+	if roleCode == "" {
+		return fmt.Errorf("角色编码不能为空")
+	}
+	return Transaction(ctx, func(txCtx context.Context) error {
+		db := dbFrom(txCtx)
+		if err := db.Where("ptype = ? AND v0 = ?", "p", roleCode).
+			Delete(&model.CasbinRule{}).Error; err != nil {
+			return err
+		}
+		rows := make([]model.CasbinRule, 0, len(policies))
+		seen := make(map[string]struct{}, len(policies))
+		for _, policy := range policies {
+			path := strings.TrimSpace(policy.Path)
+			method := strings.ToUpper(strings.TrimSpace(policy.Method))
+			if path == "" || method == "" {
+				continue
+			}
+			key := method + " " + path
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			rows = append(rows, model.CasbinRule{Ptype: "p", V0: roleCode, V1: path, V2: method})
+		}
+		if len(rows) == 0 {
+			return nil
+		}
+		return db.Create(&rows).Error
+	})
 }

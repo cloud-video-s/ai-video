@@ -53,16 +53,19 @@ type VideoUser struct {
 	ReRegisteredFromID       uint64                     `gorm:"column:re_registered_from_id;type:bigint unsigned;not null;index:idx_video_user_re_registered_from_id,priority:1;comment:原用户ID" json:"re_registered_from_id"`                     // 原用户ID
 	AppName                  string                     `gorm:"column:app_name;type:varchar(255);not null;default:0;comment:APP应用名称" json:"app_name"`                                                                                            // APP应用名称
 	TokenVersion             int64                      `gorm:"column:token_version;type:bigint unsigned;not null;comment:token版本 防止多端账号登录" json:"token_version"`                                                                                // token版本 防止多端账号登录
-	Status                   int8                       `gorm:"column:status;type:tinyint;not null;index:idx_video_user_status,priority:1;default:1;comment:状态 1正常 0禁用" json:"status"`                                                           // 状态 1正常 0禁用
+	Status                   int8                       `gorm:"column:status;type:tinyint;not null;index:idx_video_user_status,priority:1;default:1;comment:状态 1正常 2冻结 3拉黑 0禁用" json:"status"`                                                   // 状态 1正常 2冻结 3拉黑 0禁用
 	LastLoginAt              *time.Time                 `gorm:"column:last_login_at;type:datetime(3);comment:上次登录时间" json:"last_login_at"`                                                                                                       // 上次登录时间
 	LastLoginIP              string                     `gorm:"column:last_login_ip;type:varchar(64);comment:上次登录IP" json:"last_login_ip"`                                                                                                       // 上次登录IP
 	LoginAccount             string                     `gorm:"column:login_account;type:varchar(255)" json:"login_account"`
-	Email                    string                     `gorm:"column:email;type:varchar(255);index:idx_video_user_email,priority:1" json:"email"`
-	ThirdCode                string                     `gorm:"column:third_code;type:varchar(50);comment:三方唯一码" json:"third_code"`                            // 三方唯一码
-	PackageCode              string                     `gorm:"column:package_code;type:varchar(128);not null;comment:package identifier" json:"package_code"` // package identifier
-	IMEI                     string                     `gorm:"column:imei;type:varchar(50);comment:imei" json:"imei"`                                         // imei
-	ServerCountry            string                     `gorm:"column:server_country;type:varchar(255);comment:ip获取国家" json:"server_country"`                  // ip获取国家
-	Phone                    string                     `gorm:"column:phone;type:varchar(32);not null;index:idx_video_user_phone,priority:1" json:"phone"`
+	Email                    string                     `gorm:"column:email;type:varchar(255);index:idx_video_user_email,priority:1;comment:三方邮箱" json:"email"`        // 三方邮箱
+	ThirdCode                string                     `gorm:"column:third_code;type:varchar(50);comment:三方唯一码" json:"third_code"`                                    // 三方唯一码
+	PackageCode              string                     `gorm:"column:package_code;type:varchar(128);not null;comment:package identifier" json:"package_code"`         // package identifier
+	IMEI                     string                     `gorm:"column:imei;type:varchar(50);comment:imei" json:"imei"`                                                 // imei
+	ServerCountry            string                     `gorm:"column:server_country;type:varchar(255);comment:ip获取国家" json:"server_country"`                          // ip获取国家
+	Phone                    string                     `gorm:"column:phone;type:varchar(32);not null;index:idx_video_user_phone,priority:1;comment:手机号" json:"phone"` // 手机号
+	IsFrozen                 int8                       `gorm:"column:is_frozen;type:tinyint unsigned;not null;comment:是否冻结 1是 0否" json:"is_frozen"`                   // 是否冻结 1是 0否
+	IsBlacklisted            int8                       `gorm:"column:is_blacklisted;type:tinyint unsigned;not null;comment:是否拉黑 1是 0否" json:"is_blacklisted"`         // 是否拉黑 1是 0否
+	VIPLevel                 uint                       `gorm:"column:vip_level;type:int unsigned;not null;comment:VIP等级" json:"vip_level"`                            // VIP等级
 	CreatedAt                time.Time                  `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_user_created_at,priority:1" json:"created_at"`
 	UpdatedAt                time.Time                  `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt                gorm.DeletedAt             `gorm:"column:deleted_at;type:datetime(3);index:idx_video_user_deleted_at,priority:1" json:"deleted_at"`

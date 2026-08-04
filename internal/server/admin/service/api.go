@@ -88,10 +88,24 @@ func (s *APIService) Update(ctx context.Context, id uint, req *UpdateAPIRequest)
 	if err != nil {
 		return err
 	}
-	if err := s.apiRepo.Update(ctx, api); err != nil {
+	roleService := NewRoleService()
+	if err := repository.Transaction(ctx, func(txCtx context.Context) error {
+		if err := s.apiRepo.Update(txCtx, api); err != nil {
+			return err
+		}
+		for _, roleID := range roleIDs {
+			if err := roleService.persistMenuPolicies(txCtx, roleID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
-	return s.syncRoles(ctx, roleIDs)
+	if len(roleIDs) == 0 {
+		return nil
+	}
+	return roleService.reloadPolicies()
 }
 
 func (s *APIService) Delete(ctx context.Context, id uint) error {
@@ -102,10 +116,24 @@ func (s *APIService) Delete(ctx context.Context, id uint) error {
 	if err != nil {
 		return err
 	}
-	if err := s.apiRepo.Delete(ctx, id); err != nil {
+	roleService := NewRoleService()
+	if err := repository.Transaction(ctx, func(txCtx context.Context) error {
+		if err := s.apiRepo.Delete(txCtx, id); err != nil {
+			return err
+		}
+		for _, roleID := range roleIDs {
+			if err := roleService.persistMenuPolicies(txCtx, roleID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
-	return s.syncRoles(ctx, roleIDs)
+	if len(roleIDs) == 0 {
+		return nil
+	}
+	return roleService.reloadPolicies()
 }
 
 func (s *APIService) List(ctx context.Context, page, pageSize int, req *ListAPIRequest) ([]model.VideoAPI, int64, error) {
@@ -143,16 +171,6 @@ func (s *APIService) affectedRoleIDs(ctx context.Context, apiID uint64) ([]uint6
 		}
 	}
 	return result, nil
-}
-
-func (s *APIService) syncRoles(ctx context.Context, roleIDs []uint64) error {
-	roleService := NewRoleService()
-	for _, roleID := range roleIDs {
-		if err := roleService.syncMenuPolicies(ctx, roleID); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func normalizeAPIIdentity(path, method string) (string, string, error) {

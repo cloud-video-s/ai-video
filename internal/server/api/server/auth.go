@@ -267,7 +267,7 @@ func (s *AuthService) GetProfile(ctx context.Context, userID uint64) (*UserRespo
 		ChannelID:          user.ChannelID,
 		LoginType:          uint32(user.LoginType),
 		UserType:           uint32(user.UserType),
-		PointsBalance:      user.PointsBalance,
+		PointsBalance:      user.PointsBalance + user.VipPoints,
 		SubscriptionStatus: uint32(user.SubscriptionStatus),
 		Status:             int32(user.Status),
 		LastLoginIP:        user.LastLoginIP,

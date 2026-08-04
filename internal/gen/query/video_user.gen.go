@@ -77,6 +77,9 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.IMEI = field.NewString(tableName, "imei")
 	_videoUser.ServerCountry = field.NewString(tableName, "server_country")
 	_videoUser.Phone = field.NewString(tableName, "phone")
+	_videoUser.IsFrozen = field.NewInt8(tableName, "is_frozen")
+	_videoUser.IsBlacklisted = field.NewInt8(tableName, "is_blacklisted")
+	_videoUser.VIPLevel = field.NewUint(tableName, "vip_level")
 	_videoUser.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUser.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUser.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -208,16 +211,19 @@ type videoUser struct {
 	ReRegisteredFromID       field.Uint64  // 原用户ID
 	AppName                  field.String  // APP应用名称
 	TokenVersion             field.Int64   // token版本 防止多端账号登录
-	Status                   field.Int8    // 状态 1正常 0禁用
+	Status                   field.Int8    // 状态 1正常 2冻结 3拉黑 0禁用
 	LastLoginAt              field.Time    // 上次登录时间
 	LastLoginIP              field.String  // 上次登录IP
 	LoginAccount             field.String
-	Email                    field.String
+	Email                    field.String // 三方邮箱
 	ThirdCode                field.String // 三方唯一码
 	PackageCode              field.String // package identifier
 	IMEI                     field.String // imei
 	ServerCountry            field.String // ip获取国家
-	Phone                    field.String
+	Phone                    field.String // 手机号
+	IsFrozen                 field.Int8   // 是否冻结 1是 0否
+	IsBlacklisted            field.Int8   // 是否拉黑 1是 0否
+	VIPLevel                 field.Uint   // VIP等级
 	CreatedAt                field.Time
 	UpdatedAt                field.Time
 	DeletedAt                field.Field
@@ -293,6 +299,9 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.IMEI = field.NewString(table, "imei")
 	v.ServerCountry = field.NewString(table, "server_country")
 	v.Phone = field.NewString(table, "phone")
+	v.IsFrozen = field.NewInt8(table, "is_frozen")
+	v.IsBlacklisted = field.NewInt8(table, "is_blacklisted")
+	v.VIPLevel = field.NewUint(table, "vip_level")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -322,7 +331,7 @@ func (v *videoUser) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoUser) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 56)
+	v.fieldMap = make(map[string]field.Expr, 59)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["device_code"] = v.DeviceCode
 	v.fieldMap["username"] = v.Username
@@ -372,6 +381,9 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["imei"] = v.IMEI
 	v.fieldMap["server_country"] = v.ServerCountry
 	v.fieldMap["phone"] = v.Phone
+	v.fieldMap["is_frozen"] = v.IsFrozen
+	v.fieldMap["is_blacklisted"] = v.IsBlacklisted
+	v.fieldMap["vip_level"] = v.VIPLevel
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

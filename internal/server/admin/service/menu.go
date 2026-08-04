@@ -116,19 +116,27 @@ func (s *MenuService) Update(ctx context.Context, id uint64, req *UpdateMenuRequ
 	if err != nil {
 		return err
 	}
+	roleService := NewRoleService()
 	if err := repository.Transaction(ctx, func(txCtx context.Context) error {
 		if err := s.menuRepo.Update(txCtx, &menu.VideoMenu); err != nil {
 			return err
 		}
 		if req.APIIDs != nil {
-			return s.menuRepo.SetAPIs(txCtx, id, *req.APIIDs)
+			if err := s.menuRepo.SetAPIs(txCtx, id, *req.APIIDs); err != nil {
+				return err
+			}
+		}
+		for _, roleID := range roleIDs {
+			if err := roleService.persistMenuPolicies(txCtx, roleID); err != nil {
+				return err
+			}
 		}
 		return nil
 	}); err != nil {
 		return err
 	}
-	if err := s.syncRoles(ctx, roleIDs); err != nil {
-		return err
+	if len(roleIDs) > 0 {
+		return roleService.reloadPolicies()
 	}
 	cache.ClearAllPermissionCache()
 	return nil
@@ -149,11 +157,22 @@ func (s *MenuService) Delete(ctx context.Context, id uint64) error {
 	if err != nil {
 		return err
 	}
-	if err := s.menuRepo.Delete(ctx, id); err != nil {
+	roleService := NewRoleService()
+	if err := repository.Transaction(ctx, func(txCtx context.Context) error {
+		if err := s.menuRepo.Delete(txCtx, id); err != nil {
+			return err
+		}
+		for _, roleID := range roleIDs {
+			if err := roleService.persistMenuPolicies(txCtx, roleID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
-	if err := s.syncRoles(ctx, roleIDs); err != nil {
-		return err
+	if len(roleIDs) > 0 {
+		return roleService.reloadPolicies()
 	}
 	cache.ClearAllPermissionCache()
 	return nil
@@ -279,16 +298,6 @@ func (s *MenuService) validateParent(ctx context.Context, menuID, parentID uint6
 	}
 	if cycle {
 		return errors.New("上级菜单不能是当前菜单或其子菜单")
-	}
-	return nil
-}
-
-func (s *MenuService) syncRoles(ctx context.Context, roleIDs []uint64) error {
-	roleService := NewRoleService()
-	for _, roleID := range roleIDs {
-		if err := roleService.syncMenuPolicies(ctx, roleID); err != nil {
-			return err
-		}
 	}
 	return nil
 }

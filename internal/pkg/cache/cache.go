@@ -57,18 +57,23 @@ func GetUserPermissions(userID uint64) ([]string, bool) {
 }
 
 func ClearUserPermissions(userID uint64) {
+	if store == nil {
+		return
+	}
 	store.Del(permKey(userID))
 }
 
 func ClearAllPermissionCache() {
+	if store == nil {
+		return
+	}
 	keys, err := store.Scan("perm:user:*")
 	if err != nil {
 		return
 	}
 	for _, k := range keys {
-		// keys from Scan already have the prefix, use raw client Del
-		// but since our store.Del adds prefix again, we need to strip it
-		// Instead, just delete by known user pattern
+		// Store.Scan returns logical (prefix-free) keys, and Del applies the
+		// configured store prefix exactly once.
 		store.Del(k)
 	}
 }

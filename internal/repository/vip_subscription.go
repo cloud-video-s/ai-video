@@ -441,26 +441,20 @@ func uint64sToInt64s(values []uint64) []int64 {
 }
 
 // GetAppleProduct 按 iOS SKU 和调用方包名解析启用的 VIP 商品。
-func (r *VIPSubscriptionRepo) GetAppleProduct(ctx context.Context, productID, packageCode string) (*model.VideoVipSubscription, error) {
+func (r *VIPSubscriptionRepo) GetAppleProduct(ctx context.Context, sukCode, packageCode string) (*model.VideoVipSubscription, error) {
 	q := qFrom(ctx)
-	appPackage, err := q.VideoPackage.WithContext(ctx).Select(q.VideoPackage.PackageCode).
-		Where(q.VideoPackage.PackageCode.Eq(packageCode)).First()
+	vip := q.VideoVipSubscription
+	//relation := q.VideoVipSubscriptionPackage
+	result, err := vip.WithContext(ctx).
+		//Join(relation, relation.SubscriptionID.EqCol(vip.ID)).
+		//Where(relation.PackageCode.Eq(packageCode)).
+		Where(vip.SukCode.Eq(sukCode)).
+		Where(vip.Status.Eq(1)).
+		First()
 	if err != nil {
 		return nil, err
 	}
-	relation := q.VideoVipSubscriptionPackage
-	var subscriptionIDs []uint64
-	if err := relation.WithContext(ctx).Where(relation.PackageCode.Eq(appPackage.PackageCode)).
-		Pluck(relation.SubscriptionID, &subscriptionIDs); err != nil {
-		return nil, err
-	}
-	if len(subscriptionIDs) == 0 {
-		return nil, fmt.Errorf("VIP product is not associated with package %s", packageCode)
-	}
-	vip := q.VideoVipSubscription
-	return vip.WithContext(ctx).Where(
-		vip.ID.In(subscriptionIDs...), vip.SukCode.Eq(productID), vip.Status.Eq(1),
-	).First()
+	return result, nil
 }
 
 func (r *VIPSubscriptionRepo) UpdateFields(ctx context.Context, item *model.VideoVipSubscription) error {

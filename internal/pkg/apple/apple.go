@@ -11,7 +11,7 @@ import (
 // AppleIAPConfig 保存 App Store Connect 下发的 API 凭据，用于签发
 // App Store Server API V2 所需的 ES256 JWT bearer token。
 // StoreKit 2 交易与 Server Notifications V2 的 JWS 验签无需这些凭据，
-// 已在 ai-video/internal/commerce/apple.go 中使用 Apple 根证书链本地完成。
+// 已在 ai-video/internal/commerce/apple_notification_v2.go 中使用 Apple 根证书链本地完成。
 type AppleIAPConfig struct {
 	IssuerID      string
 	BundleID      string

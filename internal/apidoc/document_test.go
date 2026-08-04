@@ -47,6 +47,7 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 		{Method: http.MethodGet, Path: "/api/vip/list", Handler: "api.Vip.List"},
 		{Method: http.MethodPost, Path: "/api/payments/apple/pay", Handler: "api.Payment.ConfirmApple"},
 		{Method: http.MethodPost, Path: "/api/payments/apple/notification", Handler: "api.Payment.AppleServerNotification"},
+		{Method: http.MethodPost, Path: "/api/apy", Handler: "api.Payment.AppleServerNotification"},
 		{Method: http.MethodPost, Path: "/api/uploads/images/batches", Handler: "upload.CreateBatch"},
 		{Method: http.MethodPut, Path: "/api/uploads/images/:upload_id/chunks/:index", Handler: "upload.PutChunk"},
 		{Method: http.MethodPost, Path: "/api/uploads/oss/signature", Handler: "upload.DirectSignature"},
@@ -328,6 +329,11 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	assertResponseParameter(t, notification, "data.processed", true)
 	if _, secured := notification["security"]; secured {
 		t.Fatal("Apple notification route must be public")
+	}
+	legacyNotification := document.Paths["/api/apy"]["post"].(map[string]any)
+	assertParameter(t, legacyNotification, "signedPayload", "json", true)
+	if _, secured := legacyNotification["security"]; secured {
+		t.Fatal("legacy Apple notification route must be public")
 	}
 	thirdBinding := document.Paths["/api/third_binding"]["post"].(map[string]any)
 	assertParameter(t, thirdBinding, "third_type", "json", true)
