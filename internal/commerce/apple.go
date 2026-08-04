@@ -86,7 +86,7 @@ type verifiedAppleTransaction struct {
 // verified StoreKit transaction state.
 type ApplePurchaseResponse struct {
 	OrderNo               string     `json:"order_no"`
-	Status                string     `json:"status"`
+	Status                uint32     `json:"status"`
 	ProductType           uint32     `json:"product_type"`
 	ProductID             uint64     `json:"product_id"`
 	ProductCode           string     `json:"product_code"`

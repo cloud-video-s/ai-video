@@ -74,7 +74,7 @@ func (s *Service) HandleAppleServerNotificationV2(ctx context.Context, signedPay
 		} else {
 			summary.Message = "pending client confirmation"
 		}
-		err = NewService().NotificationApplePayment(ctx, order, summary)
+		err = NewService().NotificationApplePaymentSuccess(ctx, order, summary)
 		if err != nil {
 			return nil, err
 		}
@@ -282,10 +282,20 @@ func (s *Service) revokePaidAppleOrder(ctx context.Context, order *model.VideoOr
 			return err
 		}
 		now := time.Now()
-		updates := map[string]interface{}{}
+		updates := map[string]any{}
+		updates["refund_amount_money"] = user.RefundAmountMoney + lockedOrder.PaidAmount
+		if order.ProductType == domain.OrderProductVIPSubscription {
+			updates["vip_points"] = 0
+			updates["vip_expires_at"] = 0
+			updates["vip_started_at"] = 0
+			updates["user_type"] = 1
+			updates["subscription_status"] = 1
+		} else {
+			updates["points_balance"] = user.PointsBalance - order.BonusPoints
+		}
 		if lockedOrder.BonusPoints > 0 && user.PointsBalance >= lockedOrder.BonusPoints {
-			before := user.PointsBalance
-			after := user.PointsBalance - lockedOrder.BonusPoints
+			before := user.PointsBalance + user.VipPoints
+			after := before - lockedOrder.BonusPoints
 			ledger := &model.VideoUserPointsLedger{
 				UserID: user.ID, OrderCode: lockedOrder.OrderNo,
 				Direction:     int8(domain.PointsDirectionExpense),
@@ -301,28 +311,15 @@ func (s *Service) revokePaidAppleOrder(ctx context.Context, order *model.VideoOr
 			if err := s.ledgers.Create(ctx, ledger); err != nil && !errors.Is(err, gorm.ErrDuplicatedKey) {
 				return err
 			}
-			user.PointsBalance = after
-			updates["points_balance"] = after
-		}
-		if lockedOrder.PaidAmount > 0 {
-			updates["refund_amount_money"] = user.RefundAmountMoney + lockedOrder.PaidAmount
-		}
-		if lockedOrder.ProductType == domain.OrderProductVIPSubscription &&
-			user.VipExpiresAt != nil && user.VipExpiresAt.After(now) {
-			updates["vip_expires_at"] = revokedAt
-			if revokedAt.Before(now) {
-				updates["subscription_status"] = domain.AppUserSubscriptionCancelled
-				if user.PointsBalance == 0 {
-					updates["user_type"] = domain.AppUserTypeFree
-				}
-			}
+			//user.PointsBalance = after
+			//updates["points_balance"] = after
 		}
 		if len(updates) > 0 {
 			if err := s.users.Update(ctx, user.ID, updates); err != nil {
 				return err
 			}
 		}
-		orderUpdates := map[string]interface{}{
+		orderUpdates := map[string]any{
 			"status":          domain.OrderStatusRefunded,
 			"refunded_amount": lockedOrder.PaidAmount,
 			"cancelled_at":    revokedAt,

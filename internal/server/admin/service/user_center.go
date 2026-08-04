@@ -69,7 +69,7 @@ type UserCenterOrder struct {
 	BonusPoints     uint64     `json:"bonus_points"`
 	VIPLevel        uint       `json:"vip_level"`
 	VIPDurationDays uint       `json:"vip_duration_days"`
-	Status          string     `json:"status"`
+	Status          uint32     `json:"status"`
 	PaymentMethod   string     `json:"payment_method"`
 	PayAt           *time.Time `json:"pay_at"`
 	CreatedAt       time.Time  `json:"created_at"`

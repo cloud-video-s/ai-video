@@ -310,7 +310,7 @@ var responseDataExamples = map[string]any{
 	"GET /api/generation/tasks/:id":        generationTaskResponseExample,
 	"GET /api/generation/tasks/:id/events": generationTaskResponseExample,
 	"POST /api/payments/apple/pay": commerce.ApplePurchaseResponse{
-		OrderNo: "20260728090907cc7d7c1ffd15", Status: "paid", ProductType: 1,
+		OrderNo: "20260728090907cc7d7c1ffd15", Status: 4, ProductType: 1,
 		ProductID: 1, ProductCode: "dolaai18", TransactionID: "2000001209105682",
 		OriginalTransactionID: "2000001209105682", Currency: "USD", PaidAmount: 19.99,
 		PurchaseDate:   time.Date(2026, 7, 22, 16, 42, 39, 0, time.FixedZone("UTC+8", 8*60*60)),

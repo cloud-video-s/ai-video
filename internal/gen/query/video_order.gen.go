@@ -46,7 +46,7 @@ func newVideoOrder(db *gorm.DB, opts ...gen.DOOption) videoOrder {
 	_videoOrder.BonusPoints = field.NewUint64(tableName, "bonus_points")
 	_videoOrder.VipLevel = field.NewUint(tableName, "vip_level")
 	_videoOrder.VipDurationDays = field.NewUint(tableName, "vip_duration_days")
-	_videoOrder.Status = field.NewString(tableName, "status")
+	_videoOrder.Status = field.NewUint32(tableName, "status")
 	_videoOrder.PaymentMethod = field.NewString(tableName, "payment_method")
 	_videoOrder.ThirdOrderNo = field.NewString(tableName, "third_order_no")
 	_videoOrder.OriginalTransactionID = field.NewString(tableName, "original_transaction_id")
@@ -95,7 +95,7 @@ type videoOrder struct {
 	BonusPoints           field.Uint64  // 赠送的积分数量
 	VipLevel              field.Uint    // 购买后获得的VIP等级（0表示无）
 	VipDurationDays       field.Uint    // VIP有效期天数（0表示非VIP商品）
-	Status                field.String  // 订单状态（pending, paid, cancelled, refunded等）
+	Status                field.Uint32  // 订单状态 1=待支付 2=支付中 3=支付成功 4=订单完成5=订单取消 6=订单退款
 	PaymentMethod         field.String  // 支付方式（stripe, apple, google等）
 	ThirdOrderNo          field.String  // 支付平台返回的交易ID
 	OriginalTransactionID field.String  // 原始交易凭证ID（如苹果收据的原始交易ID）
@@ -145,7 +145,7 @@ func (v *videoOrder) updateTableName(table string) *videoOrder {
 	v.BonusPoints = field.NewUint64(table, "bonus_points")
 	v.VipLevel = field.NewUint(table, "vip_level")
 	v.VipDurationDays = field.NewUint(table, "vip_duration_days")
-	v.Status = field.NewString(table, "status")
+	v.Status = field.NewUint32(table, "status")
 	v.PaymentMethod = field.NewString(table, "payment_method")
 	v.ThirdOrderNo = field.NewString(table, "third_order_no")
 	v.OriginalTransactionID = field.NewString(table, "original_transaction_id")

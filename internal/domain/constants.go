@@ -45,12 +45,13 @@ const (
 	OrderProductVIPSubscription = 1
 	OrderProductPointsPackage   = 2
 
-	OrderStatusPending   = "pending"
-	OrderStatusPaid      = "paid"
-	OrderStatusCancelled = "cancelled"
-	OrderStatusFailed    = "failed"
-	OrderStatusRefunded  = "refunded"
-	OrderStatusCompleted = "completed"
+	OrderStatusPending   = 1 //待处理
+	OrderStatusPaying    = 2 //支付中
+	OrderStatusPaid      = 3 //支付完成
+	OrderStatusEnd       = 4 //订单完成
+	OrderStatusCancelled = 5 //取消
+	OrderStatusFailed    = 6 //支付失败
+	OrderStatusRefunded  = 7 //已退款
 
 	PaymentMethodAppleIAP = "apple_iap"
 

@@ -27,7 +27,7 @@ type OrderAdminFilter struct {
 	UserID        uint64
 	ProductType   uint32
 	ProductCode   string
-	Status        string
+	Status        uint32
 	PaymentMethod string
 	Keyword       string
 	CreatedFrom   *time.Time
@@ -57,7 +57,7 @@ func (r *OrderRepo) Create(ctx context.Context, order *model.VideoOrder) error {
 	// zero dates (which would also break the composite unique index).
 	q := qFrom(ctx).VideoOrder
 	return q.WithContext(ctx).Omit(
-		q.ThirdOrderNo, q.OriginalTransactionID, q.PayAt, q.CancelledAt,
+		q.ThirdOrderNo, q.OriginalTransactionID, q.PayAt, q.CancelledAt, q.CompletedAt,
 	).Create(order)
 }
 
@@ -94,7 +94,7 @@ func (r *OrderRepo) GetByAppleOriginalTransactionID(ctx context.Context, origina
 func (r *OrderRepo) CountPaidByProductType(ctx context.Context, userID uint64, productType uint32) (int64, error) {
 	q := qFrom(ctx).VideoOrder
 	return q.WithContext(ctx).Where(
-		q.UserID.Eq(userID), q.ProductType.Eq(productType), q.Status.Eq(domain.OrderStatusPaid),
+		q.UserID.Eq(userID), q.ProductType.Eq(productType),
 	).Count()
 }
 
@@ -129,7 +129,7 @@ func (r *OrderRepo) Update(ctx context.Context, id uint64, updates map[string]in
 		if err != nil {
 			return err
 		}
-		if order.Status == domain.OrderStatusCompleted {
+		if order.Status == domain.OrderStatusEnd {
 			return ErrOrderNotCompleted
 		}
 		return ErrOrderAlreadyPaid
@@ -239,7 +239,7 @@ func buildDao(ctx context.Context, filter *OrderAdminFilter) query.IVideoOrderDo
 	if filter.ProductCode != "" {
 		dao = dao.Where(order.ProductCode.Eq(filter.ProductCode))
 	}
-	if filter.Status != "" {
+	if filter.Status > 0 {
 		dao = dao.Where(order.Status.Eq(filter.Status))
 	}
 	if filter.PaymentMethod != "" {

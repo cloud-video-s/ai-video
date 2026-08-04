@@ -21,7 +21,7 @@ type ListOrderRequest struct {
 	UserID        uint64 `form:"user_id"`
 	ProductType   uint32 `form:"product_type" binding:"omitempty,oneof=1 2"`
 	ProductCode   string `form:"product_code" binding:"max=191"`
-	Status        string `form:"status" binding:"max=20"`
+	Status        uint32 `form:"status" binding:"max=20"`
 	PaymentMethod string `form:"payment_method" binding:"max=32"`
 	Keyword       string `form:"keyword" binding:"max=255"`
 	DateFrom      string `form:"date_from" binding:"omitempty,datetime=2006-01-02"`
@@ -59,7 +59,7 @@ type OrderAdminView struct {
 	BonusPoints           uint64              `json:"bonus_points"`
 	VIPLevel              uint                `json:"vip_level"`
 	VIPDurationDays       uint                `json:"vip_duration_days"`
-	Status                string              `json:"status"`
+	Status                uint32              `json:"status"`
 	PaymentMethod         string              `json:"payment_method"`
 	ThirdOrderNo          string              `json:"third_order_no"`
 	OriginalTransactionID string              `json:"original_transaction_id"`
@@ -83,7 +83,7 @@ func (s *OrderAdminService) List(ctx context.Context, page, pageSize int, req *L
 	}
 	records, total, summary, err := s.repo.PageAdmin(ctx, page, pageSize, &repository.OrderAdminFilter{
 		UserID: req.UserID, ProductType: req.ProductType,
-		ProductCode: strings.TrimSpace(req.ProductCode), Status: strings.TrimSpace(req.Status),
+		ProductCode: strings.TrimSpace(req.ProductCode), Status: req.Status,
 		PaymentMethod: strings.TrimSpace(req.PaymentMethod), Keyword: strings.TrimSpace(req.Keyword),
 		CreatedFrom: from, CreatedTo: to,
 	})

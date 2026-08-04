@@ -129,12 +129,13 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 			if err != nil {
 				return err
 			}
-			price, bonus := product.SubscriptionPrice, product.SubscriptionPoints
+
+			price, revenue, bonus := product.SubscriptionPrice, product.FirstSubscriptionRevenue, product.SubscriptionPoints
 			if paidCount == 0 && !req.Renewal {
-				price, bonus = product.FirstSubscriptionPrice, product.FirstBonusPoints
+				price, revenue, bonus = product.FirstSubscriptionPrice, product.SubscriptionRevenue, product.FirstBonusPoints
 			}
 			order.ProductCode, order.ProductName, order.Currency = product.SukCode, product.Name, strings.ToUpper(product.Currency)
-			order.ProductAmount, order.PayableAmount, order.BonusPoints = price, req.PaidAmount, bonus
+			order.ProductAmount, order.PayableAmount, order.ActualAmountMoney, order.BonusPoints = price, req.PaidAmount, revenue, bonus
 			order.VipLevel, order.VipDurationDays = uint(product.LevelID), product.VIPDurationDays
 		case domain.OrderProductPointsPackage:
 			product, err := s.pointProducts.GetByID(ctx, uint(req.ProductID))
@@ -149,16 +150,16 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 		default:
 			return ErrUnsupportedProduct
 		}
-		expiresAt := time.Now().Add(30 * time.Minute)
+		expiresAt := time.Now().Add(7 * time.Minute)
 		order.ExpiresAt = expiresAt
+		order.CompletedAt = time.Now().UTC()
 		if err := s.orders.Create(ctx, order); err != nil {
 			return err
 		}
 
 		now := time.Now()
-		updates := map[string]interface{}{
-			"order_count":        user.OrderCount + 1,
-			"order_amount_money": user.OrderAmountMoney + order.ProductAmount,
+		updates := map[string]any{
+			"order_count": user.OrderCount + 1,
 		}
 		if user.FirstOrderCreatedAt == nil {
 			updates["first_order_created_at"] = now
@@ -236,7 +237,7 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 	return paidOrder, err
 }
 
-func (s *Service) NotificationApplePayment(ctx context.Context, order *model.VideoOrder, summary *AppleNotificationV2Summary) (err error) {
+func (s *Service) NotificationApplePaymentSuccess(ctx context.Context, order *model.VideoOrder, summary *AppleNotificationV2Summary) (err error) {
 	defer func() {
 		if err == nil {
 			return
@@ -318,7 +319,7 @@ func (s *Service) NotificationApplePayment(ctx context.Context, order *model.Vid
 		}
 		// 更新订单状态
 		if err := s.orders.Update(ctx, order.ID, map[string]any{
-			"status": domain.OrderStatusCompleted, "completed_at": now,
+			"status": domain.OrderStatusEnd, "completed_at": now,
 		}); err != nil {
 			return err
 		}

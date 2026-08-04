@@ -27,7 +27,7 @@ func NewDashboardService() *DashboardService {
 type DashboardRequest struct {
 	UserID        uint64 `form:"user_id"`
 	ProductCode   string `form:"product_code" binding:"max=191"`
-	Status        string `form:"status" binding:"max=20"`
+	Status        uint32 `form:"status" binding:"max=20"`
 	PaymentMethod string `form:"payment_method" binding:"max=32"`
 	Keyword       string `form:"keyword" binding:"max=255"`
 	DateFrom      string `form:"date_from" binding:"omitempty,datetime=2006-01-02"`
@@ -70,7 +70,7 @@ func (s *DashboardService) Get(ctx context.Context, page, pageSize int, req *Das
 	}
 	records, total, err := s.orderRepo.PageAdminList(ctx, page, pageSize, &repository.OrderAdminFilter{
 		UserID: req.UserID, ProductType: domain.OrderProductVIPSubscription,
-		ProductCode: strings.TrimSpace(req.ProductCode), Status: strings.TrimSpace(req.Status),
+		ProductCode: strings.TrimSpace(req.ProductCode), Status: req.Status,
 		PaymentMethod: strings.TrimSpace(req.PaymentMethod), Keyword: strings.TrimSpace(req.Keyword),
 		CreatedFrom: createdFrom, CreatedTo: createdTo,
 	})
