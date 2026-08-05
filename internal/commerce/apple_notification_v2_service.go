@@ -217,7 +217,7 @@ func (s *Service) processAppleSubscriptionTransaction(
 	requestID := appleClientRequestID(decoded.TransactionID)
 	renewal := createFromOriginal || strings.EqualFold(decoded.TransactionReason, "RENEWAL") ||
 		decoded.TransactionID != decoded.OriginalTransaction
-	orderType := orderTypeForRenewal(renewal)
+	orderType := orderTypeForRenewal(decoded.NotificationType == AppleNotificationDidRenew)
 	isTransactionOrder := order != nil &&
 		(order.ThirdOrderNo == decoded.TransactionID || order.ClientRequestID == requestID)
 	if !isTransactionOrder {
