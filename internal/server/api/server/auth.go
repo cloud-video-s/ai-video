@@ -61,13 +61,16 @@ type LoginRequest struct {
 }
 
 type AppleOrderLoginRequest struct {
-	OrderCode string `json:"order_code" binding:"required,max=191"`
+	OrderCode []string `json:"order_code" binding:"required,max=191"`
+	ForceNew  bool     `json:"force_new"`
 }
 
-var ErrAuthStateInvalid = errors.New("登录状态已失效，请重新登录")
-var ErrAppleOrderNotFound = errors.New("Apple 支付订单不存在")
-var ErrAppleOrderUserNotFound = errors.New("Apple 支付订单关联用户不存在")
-var ErrAppleOrderUserDisabled = errors.New("Apple 支付订单关联用户已禁用")
+var ErrAuthSignInvalid = errors.New("This membership is linked to testXXX@gamial.com. Please sign in with that account.")
+var ErrAuthAccountInvalid = errors.New("This membership is linked to another account. Would you like to switch accounts?")
+var ErrAuthStateInvalid = errors.New("Your login status has expired. Please sign in again.")
+var ErrAppleOrderNotFound = errors.New("Apple Pay order not found.")
+var ErrAppleOrderUserNotFound = errors.New("User associated with Apple Pay order not found.")
+var ErrAppleOrderUserDisabled = errors.New("User associated with Apple Pay order is disabled.")
 var ActiveDayKey = "active_day_key_user_id_"
 
 type AuthResponse struct {
@@ -127,9 +130,9 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 		var latest *model.VideoUser
 		var err error
 		if req.ForceNew {
-			latest, err = s.userRepo.GetByDeviceCodeSubscription(ctx, req.DeviceCode, true)
+			latest, err = s.userRepo.GetByDeviceCodeSubscription(ctx, req.DeviceCode, false)
 		} else {
-			latest, err = s.userRepo.GetByDeviceCode(ctx, req.DeviceCode, true)
+			latest, err = s.userRepo.GetByDeviceCode(ctx, req.DeviceCode, false)
 		}
 		isTrue := false
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -180,36 +183,53 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 
 // LoginByAppleOrder resolves the user linked to an Apple original transaction
 // and issues the same client JWT used by the other login flows.
-func (s *AuthService) LoginByAppleOrder(ctx context.Context, req *AppleOrderLoginRequest) (*AuthResponse, error) {
-	originalTransactionID := strings.TrimSpace(req.OrderCode)
-	if originalTransactionID == "" {
-		return nil, ErrAppleOrderNotFound
+func (s *AuthService) LoginByAppleOrder(ctx context.Context, loginUserID uint64, req *AppleOrderLoginRequest) (*AuthResponse, int, error) {
+	if len(req.OrderCode) == 0 {
+		return nil, 0, ErrAppleOrderNotFound
 	}
-
-	order, err := s.orderRepo.GetByAppleOriginalTransactionID(ctx, originalTransactionID)
+	var originalTransactionIDs []string
+	for _, orderCode := range req.OrderCode {
+		originalTransactionIDs = append(originalTransactionIDs, strings.TrimSpace(orderCode))
+	}
+	if len(originalTransactionIDs) == 0 {
+		return nil, 0, ErrAppleOrderNotFound
+	}
+	order, err := s.orderRepo.GetByAppleOriginalTransactionIDs(ctx, originalTransactionIDs)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrAppleOrderNotFound
+			return nil, 0, ErrAppleOrderNotFound
 		}
-		return nil, err
+		return nil, 0, err
 	}
-
 	user, err := s.userRepo.GetByID(ctx, order.UserID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrAppleOrderUserNotFound
+			return nil, 0, ErrAppleOrderUserNotFound
 		}
-		return nil, err
+		return nil, 0, err
 	}
-	if user.Status != 1 {
-		return nil, ErrAppleOrderUserDisabled
+	if order.UserID != loginUserID {
+		if user.ThirdCode != "" {
+			email, err := utils.DesensitizeEmail(user.Email)
+			if err != nil {
+				return nil, 0, err
+			}
+			return nil, 1, errors.New(fmt.Sprintf("This membership is linked to %s. Please sign in with that account.", email))
+		}
+		if !req.ForceNew {
+			return nil, 0, ErrAuthAccountInvalid
+		}
 	}
 
+	if user.Status != 1 {
+		return nil, 0, ErrAppleOrderUserDisabled
+	}
 	user, err = s.prepareLoginSession(ctx, user.ID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return issueToken(user, int(user.LoginType))
+	token, err := issueToken(user, int(user.LoginType))
+	return token, 0, err
 }
 
 func (s *AuthService) prepareLoginSession(ctx context.Context, userID uint64) (*model.VideoUser, error) {

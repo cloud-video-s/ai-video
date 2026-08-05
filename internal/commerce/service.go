@@ -397,6 +397,7 @@ func (s *Service) ConsumePoints(ctx context.Context, req ConsumePointsRequest) (
 			return ErrInsufficientPoints
 		}
 		now := time.Now()
+		beforeBalance := user.VipPoints + user.PointsBalance
 		user.VipPoints = user.VipPoints - int64(req.Points)
 		if user.VipPoints < 0 {
 			user.PointsBalance += user.VipPoints
@@ -405,7 +406,7 @@ func (s *Service) ConsumePoints(ctx context.Context, req ConsumePointsRequest) (
 		ledger := &model.VideoUserPointsLedger{
 			UserID:    user.ID,
 			Direction: int8(domain.PointsDirectionExpense), PointsChange: -int64(req.Points),
-			BalanceBefore: uint64(user.PointsBalance), BalanceAfter: uint64(user.VipPoints + user.PointsBalance), SourceType: domain.PointsSourceModelConsume,
+			BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(user.VipPoints + user.PointsBalance), SourceType: domain.PointsSourceModelConsume,
 			Description: strings.TrimSpace(req.Description),
 			OccurredAt:  now, CreatedAt: now,
 		}

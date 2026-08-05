@@ -3,6 +3,7 @@ package handler
 import (
 	"strconv"
 
+	"ai-video/internal/middleware"
 	"ai-video/internal/pkg/errcode"
 	"ai-video/internal/pkg/response"
 	"ai-video/internal/pkg/utils"
@@ -129,7 +130,7 @@ func (h *AppUserHandler) GrantVIP(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	if err := h.svc.GrantVIP(c.Request.Context(), id, &req); err != nil {
+	if err := h.svc.GrantVIP(c.Request.Context(), id, middleware.GetAdminID(c), &req); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}

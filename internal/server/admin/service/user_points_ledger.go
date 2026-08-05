@@ -19,8 +19,10 @@ func NewUserPointsLedgerService() *UserPointsLedgerService {
 type ListUserPointsLedgerRequest struct {
 	UserID          uint64 `form:"user_id"`
 	Direction       int8   `form:"direction" binding:"omitempty,oneof=1 2"`
-	SourceType      uint32 `form:"source_type" binding:"max=32"`
+	SourceType      uint32 `form:"source_type" binding:"omitempty,oneof=1 2 3 4 5 6 7 8"`
+	PointsID        uint64 `form:"points_id"`
 	PointsPackageID uint64 `form:"points_package_id"`
+	OrderCode       string `form:"order_code" binding:"max=191"`
 	BusinessID      string `form:"business_id" binding:"max=191"`
 	Keyword         string `form:"keyword" binding:"max=255"`
 	DateFrom        string `form:"date_from" binding:"omitempty,datetime=2006-01-02"`
@@ -32,10 +34,20 @@ func (s *UserPointsLedgerService) List(ctx context.Context, page, pageSize int, 
 	if err != nil {
 		return nil, 0, repository.UserPointsLedgerSummary{}, err
 	}
+	pointsID := req.PointsID
+	if pointsID == 0 {
+		pointsID = req.PointsPackageID
+	}
+	orderCode := strings.TrimSpace(req.OrderCode)
+	if orderCode == "" {
+		orderCode = strings.TrimSpace(req.BusinessID)
+	}
 	return s.repo.PageList(ctx, page, pageSize, &repository.UserPointsLedgerFilter{
 		UserID:       req.UserID,
 		Direction:    req.Direction,
 		SourceType:   req.SourceType,
+		PointsID:     pointsID,
+		OrderCode:    orderCode,
 		Keyword:      strings.TrimSpace(req.Keyword),
 		OccurredFrom: from,
 		OccurredTo:   to,

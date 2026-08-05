@@ -11,10 +11,11 @@ import (
 )
 
 type HTTPHandler struct {
-	manager       *Manager
-	recorder      CompletionRecorder
-	ownerResolver func(*gin.Context) (UploadOwner, error)
-	directSigner  DirectUploadSigner
+	manager        *Manager
+	recorder       CompletionRecorder
+	directRecorder DirectPreUploadRecorder
+	ownerResolver  func(*gin.Context) (UploadOwner, error)
+	directSigner   DirectUploadSigner
 }
 
 type HTTPHandlerOption func(*HTTPHandler)
@@ -29,6 +30,12 @@ func WithCompletionRecording(recorder CompletionRecorder, resolver func(*gin.Con
 func WithUploadOwnerResolver(resolver func(*gin.Context) (UploadOwner, error)) HTTPHandlerOption {
 	return func(handler *HTTPHandler) {
 		handler.ownerResolver = resolver
+	}
+}
+
+func WithDirectPreUploadRecording(recorder DirectPreUploadRecorder) HTTPHandlerOption {
+	return func(handler *HTTPHandler) {
+		handler.directRecorder = recorder
 	}
 }
 
@@ -65,7 +72,8 @@ func (h *HTTPHandler) directSignature(c *gin.Context) {
 		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	if _, err := h.resolveOwner(c); err != nil {
+	owner, err := h.resolveOwner(c)
+	if err != nil {
 		handleHTTPError(c, err)
 		return
 	}
@@ -73,6 +81,14 @@ func (h *HTTPHandler) directSignature(c *gin.Context) {
 	if err != nil {
 		handleHTTPError(c, err)
 		return
+	}
+	if h.directRecorder != nil {
+		if err := h.directRecorder.RecordDirectPreUpload(c.Request.Context(), DirectPreUpload{
+			Owner: owner, Request: request, Credential: *credential,
+		}); err != nil {
+			handleHTTPError(c, err)
+			return
+		}
 	}
 	response.OK(c, credential)
 }
@@ -157,7 +173,7 @@ func (h *HTTPHandler) complete(kind MediaKind) gin.HandlerFunc {
 			return
 		}
 		if h.recorder != nil {
-			if err := h.recorder.RecordCompleted(c.Request.Context(), CompletedUpload{Owner: owner, Session: *session}); err != nil {
+			if err = h.recorder.RecordCompleted(c.Request.Context(), CompletedUpload{Owner: owner, Session: *session}); err != nil {
 				handleHTTPError(c, err)
 				return
 			}

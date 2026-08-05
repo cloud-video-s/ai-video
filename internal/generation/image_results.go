@@ -28,6 +28,7 @@ func (m *Manager) finishImageTask(ctx context.Context, task *model.VideoUserGene
 	if err != nil {
 		return err
 	}
+	storage = recordGeneratedUploads(storage, m.uploadRepo, task, upload.MediaImage)
 	storedURLs, err := downloadImages(ctx, storage, task, remoteURLs)
 	if err != nil {
 		return err
@@ -76,6 +77,7 @@ func (m *Manager) finishImageTask(ctx context.Context, task *model.VideoUserGene
 		if user.VipPoints+user.PointsBalance < int64(task.Score) {
 			return commerce.ErrInsufficientPoints
 		}
+		beforeBalance := user.VipPoints + user.PointsBalance
 		user.VipPoints = user.VipPoints - int64(task.Score)
 		if user.VipPoints < 0 {
 			user.PointsBalance += user.VipPoints
@@ -84,7 +86,7 @@ func (m *Manager) finishImageTask(ctx context.Context, task *model.VideoUserGene
 		ledger := &model.VideoUserPointsLedger{
 			UserID:    user.ID,
 			Direction: int8(domain.PointsDirectionExpense), PointsChange: -int64(task.Score),
-			BalanceBefore: uint64(user.PointsBalance), BalanceAfter: uint64(user.VipPoints + user.PointsBalance), SourceType: domain.PointsSourceModelConsume,
+			BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(user.VipPoints + user.PointsBalance), SourceType: domain.PointsSourceModelConsume,
 			Description: "Spend points",
 			OccurredAt:  now, CreatedAt: now,
 		}

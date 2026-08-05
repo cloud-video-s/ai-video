@@ -2,8 +2,11 @@ package generation
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -13,8 +16,63 @@ import (
 	"time"
 
 	"ai-video/internal/config"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/upload"
 )
+
+type generatedRecordingStorage struct {
+	upload.Storage
+	recorder upload.StoredUploadRecorder
+	task     *model.VideoUserGenerationTask
+	kind     upload.MediaKind
+}
+
+func recordGeneratedUploads(
+	storage upload.Storage,
+	recorder upload.StoredUploadRecorder,
+	task *model.VideoUserGenerationTask,
+	kind upload.MediaKind,
+) upload.Storage {
+	if storage == nil || recorder == nil || task == nil {
+		return storage
+	}
+	return &generatedRecordingStorage{Storage: storage, recorder: recorder, task: task, kind: kind}
+}
+
+func (s *generatedRecordingStorage) Store(ctx context.Context, objectKey, sourcePath, contentType string) (*upload.StoredFile, error) {
+	stored, err := s.Storage.Store(ctx, objectKey, sourcePath, contentType)
+	if err != nil {
+		return nil, err
+	}
+	if stored == nil {
+		return nil, errors.New("生成结果存储未返回文件信息")
+	}
+	info, err := os.Stat(sourcePath)
+	if err != nil {
+		return nil, err
+	}
+	file, err := os.Open(sourcePath)
+	if err != nil {
+		return nil, err
+	}
+	hasher := sha256.New()
+	_, hashErr := io.Copy(hasher, file)
+	closeErr := file.Close()
+	if hashErr != nil {
+		return nil, hashErr
+	}
+	if closeErr != nil {
+		return nil, closeErr
+	}
+	if err := s.recorder.RecordStored(ctx, upload.StoredUpload{
+		Owner: upload.UploadOwner{Type: upload.UploaderAPIUser, ID: s.task.UserID},
+		Kind:  s.kind, OriginalName: filepath.Base(objectKey), ContentType: contentType,
+		FileSize: info.Size(), SHA256: hex.EncodeToString(hasher.Sum(nil)), Stored: *stored,
+	}); err != nil {
+		return nil, err
+	}
+	return stored, nil
+}
 
 func storeGeneratedBytes(
 	ctx context.Context,

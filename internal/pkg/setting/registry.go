@@ -62,7 +62,7 @@ var registry = []definition{
 
 	{Group: "日志", Key: "log.operation_retain_days", Name: "操作日志保留天数", Type: "int", Value: "30", Remark: "留存清理任务读取此值，0 表示不清理"},
 
-	{Group: "文件上传", Key: "upload.storage_provider", Name: "存储方式", Type: "select", Value: "local", Options: `[{"label":"本地存储","value":"local"},{"label":"阿里云 OSS","value":"aliyun_oss"}]`, Remark: "修改后对新完成的上传立即生效", Sort: 100},
+	{Group: "文件上传", Key: "upload.storage_provider", Name: "存储方式", Type: "select", Value: "aliyun_oss", Options: `[{"label":"阿里云 OSS","value":"aliyun_oss"}]`, Remark: "服务端上传和客户端直传统一使用阿里云 OSS", Sort: 100},
 	{Group: "文件上传", Key: "upload.local_base_url", Name: "本地文件访问前缀", Type: "string", Value: "/uploads", Remark: "本地文件的公开 URL 前缀", Sort: 101},
 	{Group: "文件上传", Key: "upload.image_extensions", Name: "图片允许格式", Type: "string", Value: ".jpg,.jpeg,.png,.gif,.webp", Options: `[{"label":"JPG","value":".jpg"},{"label":"JPEG","value":".jpeg"},{"label":"PNG","value":".png"},{"label":"GIF","value":".gif"},{"label":"WebP","value":".webp"}]`, Remark: "至少选择一种；保存后新上传立即生效", Sort: 102},
 	{Group: "文件上传", Key: "upload.image_max_file_size", Name: "单张图片大小", Type: "int", Value: "20971520", Remark: "单个图片文件上限，界面单位 MB", Sort: 103},
@@ -74,7 +74,7 @@ var registry = []definition{
 	{Group: "文件上传", Key: "upload.oss.access_key_secret", Name: "OSS AccessKey Secret", Type: "password", Value: "", Sensitive: 1, Sort: 112},
 	{Group: "文件上传", Key: "upload.oss.bucket", Name: "OSS Bucket", Type: "string", Value: "", Sort: 113},
 	{Group: "文件上传", Key: "upload.oss.object_prefix", Name: "OSS 对象前缀", Type: "string", Value: "uploads", Remark: "不需要前后斜杠", Sort: 114},
-	{Group: "文件上传", Key: "upload.oss.base_url", Name: "OSS 访问域名", Type: "string", Value: "", Remark: "可选，填写 CDN 或自定义域名", Sort: 115},
+	{Group: "文件上传", Key: "upload.oss.base_url", Name: "OSS 访问域名", Type: "string", Value: "https://test-cdn.zdrawai.com/", Remark: "前端在文件半链接前拼接的 CDN 域名", Sort: 115},
 	{Group: "文件上传", Key: "upload.oss.signature_ttl_seconds", Name: "OSS 直传签名有效期", Type: "int", Value: "600", Remark: "单位秒，允许 60-3600", Sort: 116},
 }
 

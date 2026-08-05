@@ -398,35 +398,41 @@ func (s *Service) revokePaidAppleOrder(ctx context.Context, order *model.VideoOr
 		now := time.Now()
 		updates := map[string]any{}
 		updates["refund_amount_money"] = user.RefundAmountMoney + lockedOrder.PaidAmount
+		deductedPoints := int64(0)
+		sourceType := uint32(domain.PointsSourceOther)
 		if lockedOrder.ProductType == domain.OrderProductVIPSubscription {
+			deductedPoints = user.VipPoints
+			sourceType = uint32(domain.PointsSourceSubscriptionGift)
 			updates["vip_points"] = 0
 			updates["vip_expires_at"] = nil
 			updates["vip_started_at"] = nil
 			updates["user_type"] = domain.AppUserTypeFree
 			updates["subscription_status"] = domain.AppUserSubscriptionNotSubscribed
 		} else if user.PointsBalance >= lockedOrder.BonusPoints {
+			deductedPoints = lockedOrder.BonusPoints
+			sourceType = uint32(domain.PointsSourcePurchase)
 			updates["points_balance"] = user.PointsBalance - lockedOrder.BonusPoints
 		}
-		if lockedOrder.BonusPoints > 0 && user.PointsBalance >= lockedOrder.BonusPoints {
+		if deductedPoints > 0 {
 			before := user.PointsBalance + user.VipPoints
-			after := before - lockedOrder.BonusPoints
+			after := before - deductedPoints
 			ledger := &model.VideoUserPointsLedger{
 				UserID: user.ID, OrderCode: lockedOrder.OrderNo,
 				Direction:     int8(domain.PointsDirectionExpense),
-				PointsChange:  -lockedOrder.BonusPoints,
+				PointsChange:  -deductedPoints,
 				BalanceBefore: uint64(before), BalanceAfter: uint64(after),
-				SourceType:  domain.PointsSourceModelRefund,
+				SourceType:  sourceType,
 				Description: "revoke purchase bonus points",
 				OccurredAt:  revokedAt, CreatedAt: now,
 			}
-			if lockedOrder.ProductType == domain.OrderProductPointsPackage {
+			if lockedOrder.ProductType == domain.OrderProductVIPSubscription {
+				ledger.VipID = lockedOrder.ProductID
+			} else if lockedOrder.ProductType == domain.OrderProductPointsPackage {
 				ledger.PointsID = lockedOrder.ProductID
 			}
 			if err := s.ledgers.Create(ctx, ledger); err != nil && !errors.Is(err, gorm.ErrDuplicatedKey) {
 				return err
 			}
-			//user.PointsBalance = after
-			//updates["points_balance"] = after
 		}
 		if len(updates) > 0 {
 			if err := s.users.Update(ctx, user.ID, updates); err != nil {
@@ -518,11 +524,28 @@ func (s *Service) expireVIPFromAppleNotificationV2(ctx context.Context, order *m
 		if expiresAt.After(now) {
 			return nil
 		}
+		beforeBalance := user.VipPoints + user.PointsBalance
+		expiredPoints := user.VipPoints
 		updates := map[string]any{
 			"subscription_status": domain.AppUserSubscriptionExpired,
 			"user_type":           domain.AppUserTypeFree,
 			"vip_points":          uint64(0),
 			"vip_expires_at":      expiresAt,
+		}
+		if expiredPoints > 0 {
+			ledger := &model.VideoUserPointsLedger{
+				UserID: user.ID, OrderCode: order.OrderNo,
+				Direction:     int8(domain.PointsDirectionExpense),
+				PointsChange:  -expiredPoints,
+				BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(user.PointsBalance),
+				SourceType:  uint32(domain.PointsSourceExpireDeduct),
+				VipID:       order.ProductID,
+				Description: "subscription expired points deduction",
+				OccurredAt:  expiresAt, CreatedAt: now,
+			}
+			if err := s.ledgers.Create(ctx, ledger); err != nil {
+				return err
+			}
 		}
 		return s.users.Update(ctx, user.ID, updates)
 	})

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,15 +42,52 @@ func ManagerConfig() (upload.Config, error) {
 	return managerConfig, nil
 }
 
-// Storage returns the dynamic storage used by both regular uploads and
-// generated task results. The active provider is resolved for every Store
-// call, so changes made in the upload settings take effect without a restart.
+// Storage returns the dynamic Aliyun OSS storage used by both regular uploads
+// and generated task results. Credentials and CDN settings are resolved for
+// every Store call, so configuration changes take effect without a restart.
 func Storage() (upload.Storage, error) {
 	return upload.NewDynamicStorage(sharedStorageFactory.resolve)
 }
 
 func DirectSigner() upload.DirectUploadSigner {
 	return &directSignerFactory{}
+}
+
+// PublicURL expands a persisted half URL for third-party providers. Absolute
+// third-party URLs pass through unchanged.
+func PublicURL(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	if parsed, err := url.Parse(value); err == nil && parsed.IsAbs() {
+		return value
+	}
+	half := upload.HalfURL(value)
+	cfg := config.Cfg.Upload
+	provider := configured("upload.storage_provider", cfg.StorageProvider)
+	baseURL := configured("upload.local_base_url", cfg.LocalBaseURL)
+	if provider == upload.StorageAliyunOSS {
+		baseURL = configured("upload.oss.base_url", cfg.OSSBaseURL)
+		if baseURL == "" {
+			endpoint := configured("upload.oss.endpoint", cfg.OSSEndpoint)
+			bucket := configured("upload.oss.bucket", cfg.OSSBucket)
+			if endpoint != "" && bucket != "" {
+				if !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
+					endpoint = "https://" + endpoint
+				}
+				if parsedEndpoint, err := url.Parse(endpoint); err == nil && parsedEndpoint.Host != "" {
+					parsedEndpoint.Host = bucket + "." + parsedEndpoint.Host
+					baseURL = parsedEndpoint.String()
+				}
+			}
+		}
+	}
+	parsedBase, err := url.Parse(baseURL)
+	if err != nil || !parsedBase.IsAbs() || parsedBase.Host == "" {
+		return half
+	}
+	return parsedBase.Scheme + "://" + parsedBase.Host + half
 }
 
 func (f *directSignerFactory) Sign(ctx context.Context, request upload.DirectUploadRequest) (*upload.DirectUploadCredential, error) {
@@ -153,7 +191,10 @@ func (f *storageFactory) resolve() (upload.Storage, error) {
 	cfg := config.Cfg.Upload
 	provider := configured("upload.storage_provider", cfg.StorageProvider)
 	if provider == "" {
-		provider = upload.StorageLocal
+		provider = upload.StorageAliyunOSS
+	}
+	if provider != upload.StorageAliyunOSS {
+		return nil, fmt.Errorf("backend uploads require %q storage, got %q", upload.StorageAliyunOSS, provider)
 	}
 
 	values := []string{
@@ -175,21 +216,10 @@ func (f *storageFactory) resolve() (upload.Storage, error) {
 		return f.storage, nil
 	}
 
-	var (
-		storage upload.Storage
-		err     error
-	)
-	switch provider {
-	case upload.StorageLocal:
-		storage, err = upload.NewLocalStorage(cfg.LocalRootDir, values[1])
-	case upload.StorageAliyunOSS:
-		storage, err = upload.NewOSSStorage(upload.OSSConfig{
-			Region: values[2], Endpoint: values[3], AccessKeyID: values[4], AccessKeySecret: values[5],
-			Bucket: values[6], ObjectPrefix: values[7], BaseURL: values[8],
-		})
-	default:
-		err = fmt.Errorf("unsupported upload storage provider %q", provider)
-	}
+	storage, err := upload.NewOSSStorage(upload.OSSConfig{
+		Region: values[2], Endpoint: values[3], AccessKeyID: values[4], AccessKeySecret: values[5],
+		Bucket: values[6], ObjectPrefix: values[7], BaseURL: values[8],
+	})
 	if err != nil {
 		return nil, err
 	}

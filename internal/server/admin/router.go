@@ -64,7 +64,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	uploadHandler := upload.NewHTTPHandler(uploadManager, upload.WithCompletionRecording(
 		repository.NewUploadRepo(),
 		func(c *gin.Context) (upload.UploadOwner, error) {
-			return upload.UploadOwner{Type: upload.UploaderAdmin, ID: uint64(middleware.GetAdminID(c))}, nil
+			return upload.UploadOwner{Type: upload.UploaderAdmin, ID: middleware.GetAdminID(c)}, nil
 		},
 	))
 

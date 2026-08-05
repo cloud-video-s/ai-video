@@ -35,6 +35,9 @@ const (
 	UploadUserAdmin   int8 = 1
 	UploadUserClient  int8 = 2
 
+	UploadStatusIncomplete int8 = 1
+	UploadStatusCompleted  int8 = 2
+
 	BannerJumpTypeLink        uint8 = 1
 	BannerJumpTypeTemplate    uint8 = 2
 	BannerJumpTypeTextToImage uint8 = 3

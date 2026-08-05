@@ -31,9 +31,12 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	generationHandler := handler.NewGenerationHandler()
 	vipHandler := handler.NewVipHandler()
 	paymentHandler := handler.NewPaymentHandler()
+	uploadRepo := repository.NewUploadRepo()
+	uploadRecordHandler := handler.NewUploadHandler()
 	directUploadHandler := upload.NewHTTPHandler(
 		nil,
 		upload.WithDirectUploadSigner(uploadruntime.DirectSigner()),
+		upload.WithDirectPreUploadRecording(uploadRepo),
 		upload.WithUploadOwnerResolver(func(c *gin.Context) (upload.UploadOwner, error) {
 			return upload.UploadOwner{Type: upload.UploaderAPIUser, ID: middleware.GetAPIUserID(c)}, nil
 		}),
@@ -51,6 +54,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		authenticated.GET("/ob_delay", delayConfigHandler.All)
 		authenticated.POST("/third_binding", authHandler.ThirdBinding)
 		directUploadHandler.RegisterDirectRoute(authenticated.Group("/uploads"))
+		authenticated.GET("/uploads", uploadRecordHandler.ListMine)
 		auth := authenticated.Group("/auth")
 		{
 			auth.POST("/apple_order_login", authHandler.AppleOrderLogin)

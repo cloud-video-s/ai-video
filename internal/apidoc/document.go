@@ -46,6 +46,22 @@ type uploadBatchRequest struct {
 	Files []upload.FileSpec `json:"files" binding:"required,min=1"`
 }
 
+type uploadListQuery struct {
+	apiservice.BasePage
+	Status          int8   `form:"status" binding:"omitempty,oneof=1 2"`
+	MediaType       string `form:"media_type" binding:"omitempty,oneof=image video"`
+	FileType        string `form:"file_type" binding:"max=32"`
+	StorageProvider string `form:"storage_provider" binding:"omitempty,oneof=aliyun_oss"`
+	Keyword         string `form:"keyword" binding:"max=255"`
+}
+
+type uploadListResponse struct {
+	List  []model.VideoUpload `json:"list"`
+	Total int64               `json:"total"`
+	Page  int                 `json:"page"`
+	Size  int                 `json:"size"`
+}
+
 type generationTaskListResponse struct {
 	Page       int64                 `json:"page"`
 	PageSize   int64                 `json:"pageSize"`
@@ -318,14 +334,22 @@ var responseDataExamples = map[string]any{
 		Environment: "Sandbox", EvidenceMode: "jws",
 	},
 	"POST /api/uploads/oss/signature": upload.DirectUploadCredential{
-		Provider: upload.StorageAliyunOSS, Method: "PUT",
+		UploadID: "0123456789abcdef0123456789abcdef", Provider: upload.StorageAliyunOSS, Method: "PUT",
 		UploadURL: "https://example-bucket.oss-cn-hangzhou.aliyuncs.com/uploads/images/2026/07/28/example.png?x-oss-signature-version=OSS4-HMAC-SHA256&x-oss-signature=...",
 		Headers: map[string]string{
 			"Content-Length": "12345", "Content-Type": "image/png", "X-Oss-Forbid-Overwrite": "true",
 		},
 		ObjectKey: "uploads/images/2026/07/28/example.png",
-		FileURL:   "https://cdn.example.com/uploads/images/2026/07/28/example.png",
+		FileURL:   "/uploads/images/2026/07/28/example.png",
 		ExpiresAt: time.Date(2026, 7, 28, 12, 10, 0, 0, time.FixedZone("UTC+8", 8*60*60)),
+	},
+	"GET /api/uploads": uploadListResponse{
+		List: []model.VideoUpload{{
+			UploadID: "0123456789abcdef0123456789abcdef", MediaType: "image", FileType: "png",
+			StorageProvider: upload.StorageAliyunOSS, FilePath: "uploads/images/2026/08/05/example.png",
+			FileURL: "/uploads/images/2026/08/05/example.png", Status: 1,
+		}},
+		Total: 1, Page: 1, Size: 10,
 	},
 	"GET /api/banners/list": []apiservice.ClientBanner{
 		{
@@ -409,6 +433,7 @@ var endpointTypes = map[string]endpointType{
 	"POST /api/uploads/images/:upload_id/complete":     {response: typeOf[upload.Session]()},
 	"POST /api/uploads/videos/:upload_id/complete":     {response: typeOf[upload.Session]()},
 	"POST /api/uploads/oss/signature":                  {body: typeOf[upload.DirectUploadRequest](), response: typeOf[upload.DirectUploadCredential]()},
+	"GET /api/uploads":                                 {query: typeOf[uploadListQuery](), response: typeOf[uploadListResponse]()},
 }
 
 var operationDescriptions = map[string]string{
@@ -436,6 +461,7 @@ var operationDescriptions = map[string]string{
 	"POST /api/payments/apple/pay":          "校验 StoreKit 交易、创建订单并发放对应商品。标准三段式 JWS 直接验签，其他客户端凭证通过 transactionID 调用 App Store Server API 获取已签名交易后验签。接口按 Apple 交易 ID 幂等处理。请求中的 isActive 是客户端上报值；响应中的 is_active 由已验签交易的撤销时间和到期时间按服务端当前时间计算。",
 	"POST /api/payments/apple/notification": "接收 App Store Server Notifications V2 回调。该公开端点由 Apple 服务器调用，不需要 Bearer Token 或客户端公共请求头；服务端按通知中的 signedPayload 验签并幂等处理退款、续费、订阅过期等事件。",
 	"POST /api/uploads/oss/signature":       "校验媒体类型、文件扩展名、MIME 和精确字节数，生成短时效阿里云 OSS V4 预签名 PUT 地址。客户端必须使用响应中的 method、upload_url 和签名 headers 将文件原始字节直接上传到 OSS；该接口需要 Bearer Token，且仅在当前存储方式为 aliyun_oss 时可用。",
+	"GET /api/uploads":                      "分页查询当前登录用户的上传文件记录。status=1 表示未完成，status=2 表示已完成；file_url 始终返回不含 CDN 域名的半链接。",
 }
 
 var operationSummaries = map[string]string{
@@ -459,6 +485,7 @@ var operationSummaries = map[string]string{
 	"PUT /api/uploads/images/:upload_id/chunks/:index": "上传图片分片", "PUT /api/uploads/videos/:upload_id/chunks/:index": "上传视频分片",
 	"POST /api/uploads/images/:upload_id/complete": "完成图片上传", "POST /api/uploads/videos/:upload_id/complete": "完成视频上传",
 	"POST /api/uploads/oss/signature": "获取 OSS 直传签名",
+	"GET /api/uploads":                "查询文件上传列表",
 }
 
 var fieldDescriptions = map[string]string{

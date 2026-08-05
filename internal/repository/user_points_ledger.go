@@ -17,6 +17,8 @@ type UserPointsLedgerFilter struct {
 	UserID       uint64
 	Direction    int8
 	SourceType   uint32
+	PointsID     uint64
+	OrderCode    string
 	Keyword      string
 	OccurredFrom *time.Time
 	OccurredTo   *time.Time
@@ -52,6 +54,12 @@ func (r *UserPointsLedgerRepo) PageList(ctx context.Context, page, pageSize int,
 		if filter.SourceType > 0 {
 			dao = dao.Where(ledger.SourceType.Eq(filter.SourceType))
 		}
+		if filter.PointsID > 0 {
+			dao = dao.Where(ledger.PointsID.Eq(filter.PointsID))
+		}
+		if filter.OrderCode != "" {
+			dao = dao.Where(ledger.OrderCode.Eq(filter.OrderCode))
+		}
 		if filter.OccurredFrom != nil {
 			dao = dao.Where(ledger.OccurredAt.Gte(*filter.OccurredFrom))
 		}
@@ -61,7 +69,7 @@ func (r *UserPointsLedgerRepo) PageList(ctx context.Context, page, pageSize int,
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
 			conditions := []field.Expr{
-				ledger.Description.Like(keyword),
+				ledger.Description.Like(keyword), ledger.OrderCode.Like(keyword),
 				user.Username.Like(keyword), user.IMEI.Like(keyword),
 				user.LoginAccount.Like(keyword), user.Email.Like(keyword),
 			}
@@ -89,7 +97,7 @@ func (r *UserPointsLedgerRepo) PageList(ctx context.Context, page, pageSize int,
 	).Scan(&summary); err != nil {
 		return nil, 0, UserPointsLedgerSummary{}, err
 	}
-	rows, err := dao.Order(ledger.OccurredAt.Desc(), ledger.ID.Desc()).
+	rows, err := dao.Select(ledger.ALL).Order(ledger.OccurredAt.Desc(), ledger.ID.Desc()).
 		Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, UserPointsLedgerSummary{}, err
@@ -120,6 +128,9 @@ func (r *UserPointsLedgerRepo) loadRecords(ctx context.Context, items []model.Vi
 	packageIDs := make([]uint64, 0, len(items))
 	for i := range items {
 		userIDs = append(userIDs, items[i].UserID)
+		if items[i].PointsID > 0 {
+			packageIDs = append(packageIDs, items[i].PointsID)
+		}
 	}
 	q := qFrom(ctx)
 	users, err := q.VideoUser.WithContext(ctx).Where(q.VideoUser.ID.In(userIDs...)).Find()
@@ -145,7 +156,11 @@ func (r *UserPointsLedgerRepo) loadRecords(ctx context.Context, items []model.Vi
 		}
 	}
 	for i := range items {
-		record := UserPointsLedgerRecord{VideoUserPointsLedger: items[i], User: userByID[items[i].UserID]}
+		record := UserPointsLedgerRecord{
+			VideoUserPointsLedger: items[i],
+			User:                  userByID[items[i].UserID],
+			PointsPackage:         packageByID[items[i].PointsID],
+		}
 		result = append(result, record)
 	}
 	return result, nil

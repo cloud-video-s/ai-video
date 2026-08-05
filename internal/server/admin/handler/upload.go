@@ -16,6 +16,7 @@ func NewUploadHandler() *UploadHandler { return &UploadHandler{repo: repository.
 type adminUploadListRequest struct {
 	UserType        int8   `form:"user_type" binding:"omitempty,oneof=1 2"`
 	UserID          uint64 `form:"user_id"`
+	Status          int8   `form:"status" binding:"omitempty,oneof=1 2"`
 	MediaType       string `form:"media_type" binding:"omitempty,oneof=image video"`
 	FileType        string `form:"file_type" binding:"max=32"`
 	StorageProvider string `form:"storage_provider" binding:"omitempty,oneof=local aliyun_oss"`
@@ -30,7 +31,7 @@ func (h *UploadHandler) List(c *gin.Context) {
 	}
 	pagination := utils.GetPagination(c)
 	list, total, err := h.repo.PageList(c.Request.Context(), pagination.Page, pagination.PageSize, &repository.UploadListFilter{
-		UserType: req.UserType, UserID: req.UserID, MediaType: req.MediaType,
+		UserType: req.UserType, UserID: req.UserID, Status: req.Status, MediaType: req.MediaType,
 		FileType: req.FileType, StorageProvider: req.StorageProvider, Keyword: req.Keyword,
 	})
 	if err != nil {

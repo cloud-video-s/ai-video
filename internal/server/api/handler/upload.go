@@ -16,9 +16,10 @@ type UploadHandler struct{ repo *repository.UploadRepo }
 func NewUploadHandler() *UploadHandler { return &UploadHandler{repo: repository.NewUploadRepo()} }
 
 type apiUploadListRequest struct {
+	Status          int8   `form:"status" binding:"omitempty,oneof=1 2"`
 	MediaType       string `form:"media_type" binding:"omitempty,oneof=image video"`
 	FileType        string `form:"file_type" binding:"max=32"`
-	StorageProvider string `form:"storage_provider" binding:"omitempty,oneof=local aliyun_oss"`
+	StorageProvider string `form:"storage_provider" binding:"omitempty,oneof=aliyun_oss"`
 	Keyword         string `form:"keyword" binding:"max=255"`
 }
 
@@ -30,7 +31,7 @@ func (h *UploadHandler) ListMine(c *gin.Context) {
 	}
 	pagination := utils.GetPagination(c)
 	list, total, err := h.repo.PageList(c.Request.Context(), pagination.Page, pagination.PageSize, &repository.UploadListFilter{
-		UserType: int8(domain.UploadUserClient), UserID: middleware.GetAPIUserID(c), MediaType: req.MediaType,
+		UserType: int8(domain.UploadUserClient), UserID: middleware.GetAPIUserID(c), Status: req.Status, MediaType: req.MediaType,
 		FileType: req.FileType, StorageProvider: req.StorageProvider, Keyword: req.Keyword,
 	})
 	if err != nil {

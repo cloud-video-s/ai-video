@@ -91,6 +91,14 @@ func (r *OrderRepo) GetByAppleOriginalTransactionID(ctx context.Context, origina
 	).Order(q.ID.Desc()).First()
 }
 
+func (r *OrderRepo) GetByAppleOriginalTransactionIDs(ctx context.Context, originalTransactionIDs []string) (*model.VideoOrder, error) {
+	q := qFrom(ctx).VideoOrder
+	return q.WithContext(ctx).Where(
+		q.ProductType.Eq(domain.OrderProductVIPSubscription),
+		q.OriginalTransactionID.In(originalTransactionIDs...),
+	).Order(q.ID.Desc()).First()
+}
+
 func (r *OrderRepo) CountPaidByProductType(ctx context.Context, userID uint64, productType uint32) (int64, error) {
 	q := qFrom(ctx).VideoOrder
 	return q.WithContext(ctx).Where(

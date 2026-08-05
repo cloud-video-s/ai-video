@@ -41,6 +41,7 @@ func newVideoUpload(db *gorm.DB, opts ...gen.DOOption) videoUpload {
 	_videoUpload.FilePath = field.NewString(tableName, "file_path")
 	_videoUpload.FileURL = field.NewString(tableName, "file_url")
 	_videoUpload.SHA256 = field.NewString(tableName, "sha256")
+	_videoUpload.Status = field.NewInt8(tableName, "status")
 	_videoUpload.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUpload.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUpload.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -50,26 +51,28 @@ func newVideoUpload(db *gorm.DB, opts ...gen.DOOption) videoUpload {
 	return _videoUpload
 }
 
+// videoUpload 视频上传记录表
 type videoUpload struct {
 	videoUploadDo videoUploadDo
 
 	ALL             field.Asterisk
-	ID              field.Uint64
-	UploadID        field.String
+	ID              field.Uint64 // 主键ID
+	UploadID        field.String // 上传唯一标识
 	UserType        field.Int8   // 用户类型 1=admin 2=客户端
 	UserID          field.Uint64 // 用户ID
-	MediaType       field.String
-	FileType        field.String
-	MIMEType        field.String
-	OriginalName    field.String
-	FileSize        field.Uint64
-	StorageProvider field.String
-	FilePath        field.String
-	FileURL         field.String
-	SHA256          field.String
-	CreatedAt       field.Time
-	UpdatedAt       field.Time
-	DeletedAt       field.Field
+	MediaType       field.String // 媒体类型（如video、audio等）
+	FileType        field.String // 文件扩展名（如mp4、mov等）
+	MIMEType        field.String // MIME类型（如video/mp4）
+	OriginalName    field.String // 原始文件名
+	FileSize        field.Uint64 // 文件大小（字节）
+	StorageProvider field.String // 存储服务商（如oss、s3、cos等）
+	FilePath        field.String // 存储路径
+	FileURL         field.String // 文件访问URL
+	SHA256          field.String // 文件SHA256哈希值
+	Status          field.Int8   // 文件状态 1=预上传 2=已上传
+	CreatedAt       field.Time   // 创建时间
+	UpdatedAt       field.Time   // 更新时间
+	DeletedAt       field.Field  // 软删除时间（null表示未删除）
 
 	fieldMap map[string]field.Expr
 }
@@ -99,6 +102,7 @@ func (v *videoUpload) updateTableName(table string) *videoUpload {
 	v.FilePath = field.NewString(table, "file_path")
 	v.FileURL = field.NewString(table, "file_url")
 	v.SHA256 = field.NewString(table, "sha256")
+	v.Status = field.NewInt8(table, "status")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -128,7 +132,7 @@ func (v *videoUpload) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoUpload) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 16)
+	v.fieldMap = make(map[string]field.Expr, 17)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["upload_id"] = v.UploadID
 	v.fieldMap["user_type"] = v.UserType
@@ -142,6 +146,7 @@ func (v *videoUpload) fillFieldMap() {
 	v.fieldMap["file_path"] = v.FilePath
 	v.fieldMap["file_url"] = v.FileURL
 	v.fieldMap["sha256"] = v.SHA256
+	v.fieldMap["status"] = v.Status
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

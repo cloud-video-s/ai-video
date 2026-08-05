@@ -101,7 +101,7 @@ func (s *LocalStorage) Store(ctx context.Context, objectKey, sourcePath, _ strin
 	if err := os.Rename(tempPath, target); err != nil {
 		return nil, err
 	}
-	return &StoredFile{Provider: StorageLocal, Path: filepath.ToSlash(objectKey), URL: joinPublicURL(s.baseURL, objectKey)}, nil
+	return &StoredFile{Provider: StorageLocal, Path: filepath.ToSlash(objectKey), URL: HalfURL(joinPublicURL(s.baseURL, objectKey))}, nil
 }
 
 type OSSConfig struct {
@@ -204,7 +204,29 @@ func (s *OSSStorage) Store(ctx context.Context, objectKey, sourcePath, contentTy
 	if _, err := s.client.PutObjectFromFile(ctx, request, sourcePath); err != nil {
 		return nil, fmt.Errorf("upload to Aliyun OSS: %w", err)
 	}
-	return &StoredFile{Provider: StorageAliyunOSS, Path: key, URL: joinPublicURL(s.baseURL, key)}, nil
+	return &StoredFile{Provider: StorageAliyunOSS, Path: key, URL: HalfURL(joinPublicURL(s.baseURL, key))}, nil
+}
+
+// HalfURL converts a public file address into the domain-free value persisted
+// by business tables. Query strings and fragments are deliberately removed;
+// uploaded objects are addressed by their stable path.
+func HalfURL(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	parsed, err := url.Parse(value)
+	if err == nil && (parsed.IsAbs() || parsed.Host != "") {
+		value = parsed.EscapedPath()
+	}
+	value = filepath.ToSlash(strings.TrimSpace(value))
+	if value == "" {
+		return ""
+	}
+	if !strings.HasPrefix(value, "/") {
+		value = "/" + value
+	}
+	return value
 }
 
 func safeStoragePath(root, objectKey string) (string, error) {

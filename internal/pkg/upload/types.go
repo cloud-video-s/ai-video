@@ -110,8 +110,37 @@ type CompletedUpload struct {
 	Session Session
 }
 
+// DirectPreUpload is persisted when a client receives an OSS upload
+// credential. The file is confirmed only when a business request references
+// its half URL.
+type DirectPreUpload struct {
+	Owner      UploadOwner
+	Request    DirectUploadRequest
+	Credential DirectUploadCredential
+}
+
+// StoredUpload describes a file that was uploaded by the backend. Since Store
+// has already returned successfully, these records are persisted as uploaded.
+type StoredUpload struct {
+	Owner        UploadOwner
+	Kind         MediaKind
+	OriginalName string
+	ContentType  string
+	FileSize     int64
+	SHA256       string
+	Stored       StoredFile
+}
+
 type CompletionRecorder interface {
 	RecordCompleted(ctx context.Context, upload CompletedUpload) error
+}
+
+type DirectPreUploadRecorder interface {
+	RecordDirectPreUpload(ctx context.Context, upload DirectPreUpload) error
+}
+
+type StoredUploadRecorder interface {
+	RecordStored(ctx context.Context, upload StoredUpload) error
 }
 
 type UploadError struct {

@@ -86,7 +86,7 @@ func (d *AppUserRepo) GetByDeviceCode(ctx context.Context, deviceCode string, lo
 
 func (d *AppUserRepo) GetByDeviceCodeSubscription(ctx context.Context, deviceCode string, lock bool) (*model.VideoUser, error) {
 	q := qFrom(ctx).VideoUser
-	dao := q.WithContext(ctx).Where(q.DeviceCode.Eq(deviceCode)).Where(q.ThirdCode.IsNull())
+	dao := q.WithContext(ctx).Where(q.DeviceCode.Eq(deviceCode)).Where(q.ThirdCode.Eq(""))
 	if lock {
 		dao = dao.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
@@ -140,7 +140,7 @@ func (d *AppUserRepo) ExpireDueSubscriptions(ctx context.Context, now time.Time)
 		Updates(map[string]any{
 			"subscription_status": domain.AppUserSubscriptionCancelled,
 			"vip_points":          uint64(0),
-			"vip_expires_at":      uint64(0),
+			"vip_expires_at":      time.Now(),
 			"user_type":           domain.AppUserTypeFree,
 		})
 	if err != nil {

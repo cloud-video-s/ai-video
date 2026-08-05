@@ -16,7 +16,7 @@ const (
 	ErrTokenInvalid = 30001
 	ErrTokenExpired = 30002
 
-	ErrRoleExist    = 40001
+	ErrRoleExist    = 40001 //需要三方登录
 	ErrRoleNotFound = 40002
 
 	ErrMenuNotFound = 50001

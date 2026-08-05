@@ -35,7 +35,9 @@ type UserCenterPointsLedger struct {
 	BalanceAfter  uint64    `json:"balance_after"`
 	SourceType    uint32    `json:"source_type"`
 	OrderCode     string    `json:"order_code"`
-	OrderID       uint64    `json:"order_id"`
+	PointsID      uint64    `json:"points_id"`
+	VIPID         uint64    `json:"vip_id"`
+	AdminID       uint64    `json:"admin_id"`
 	Description   string    `json:"description"`
 	OccurredAt    time.Time `json:"occurred_at"`
 }
@@ -156,6 +158,7 @@ func userCenterPointsLedgers(records []repository.UserPointsLedgerRecord) []User
 			ID: ledger.ID, Direction: ledger.Direction, PointsChange: ledger.PointsChange,
 			BalanceBefore: ledger.BalanceBefore, BalanceAfter: ledger.BalanceAfter,
 			SourceType: ledger.SourceType, OrderCode: ledger.OrderCode,
+			PointsID: ledger.PointsID, VIPID: ledger.VipID, AdminID: ledger.AdminID,
 			Description: ledger.Description, OccurredAt: ledger.OccurredAt,
 		})
 	}

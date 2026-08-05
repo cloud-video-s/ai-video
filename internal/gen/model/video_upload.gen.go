@@ -12,24 +12,25 @@ import (
 
 const TableNameVideoUpload = "video_upload"
 
-// VideoUpload mapped from table <video_upload>
+// VideoUpload 视频上传记录表
 type VideoUpload struct {
-	ID              uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
-	UploadID        string         `gorm:"column:upload_id;type:varchar(32);not null;uniqueIndex:idx_video_upload_upload_id,priority:1" json:"upload_id"`
-	UserType        int8           `gorm:"column:user_type;type:tinyint;not null;index:idx_video_upload_owner,priority:1;comment:用户类型 1=admin 2=客户端" json:"user_type"` // 用户类型 1=admin 2=客户端
-	UserID          uint64         `gorm:"column:user_id;type:bigint unsigned;not null;index:idx_video_upload_owner,priority:2;comment:用户ID" json:"user_id"`           // 用户ID
-	MediaType       string         `gorm:"column:media_type;type:varchar(16);not null;index:idx_video_upload_media_type,priority:1" json:"media_type"`
-	FileType        string         `gorm:"column:file_type;type:varchar(32);not null;index:idx_video_upload_file_type,priority:1" json:"file_type"`
-	MIMEType        string         `gorm:"column:mime_type;type:varchar(128);not null" json:"mime_type"`
-	OriginalName    string         `gorm:"column:original_name;type:varchar(255);not null" json:"original_name"`
-	FileSize        uint64         `gorm:"column:file_size;type:bigint unsigned;not null" json:"file_size"`
-	StorageProvider string         `gorm:"column:storage_provider;type:varchar(32);not null;index:idx_video_upload_storage_provider,priority:1" json:"storage_provider"`
-	FilePath        string         `gorm:"column:file_path;type:varchar(1024);not null" json:"file_path"`
-	FileURL         string         `gorm:"column:file_url;type:text;not null" json:"file_url"`
-	SHA256          string         `gorm:"column:sha256;type:varchar(64);not null;index:idx_video_upload_sha256,priority:1" json:"sha256"`
-	CreatedAt       time.Time      `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_upload_created_at,priority:1" json:"created_at"`
-	UpdatedAt       time.Time      `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
-	DeletedAt       gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_upload_deleted_at,priority:1" json:"deleted_at"`
+	ID              uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                                                                      // 主键ID
+	UploadID        string         `gorm:"column:upload_id;type:varchar(32);not null;uniqueIndex:idx_video_upload_upload_id,priority:1;comment:上传唯一标识" json:"upload_id"`                             // 上传唯一标识
+	UserType        int8           `gorm:"column:user_type;type:tinyint;not null;index:idx_video_upload_owner,priority:1;comment:用户类型 1=admin 2=客户端" json:"user_type"`                               // 用户类型 1=admin 2=客户端
+	UserID          uint64         `gorm:"column:user_id;type:bigint unsigned;not null;index:idx_video_upload_owner,priority:2;comment:用户ID" json:"user_id"`                                         // 用户ID
+	MediaType       string         `gorm:"column:media_type;type:varchar(16);not null;index:idx_video_upload_media_type,priority:1;comment:媒体类型（如video、audio等）" json:"media_type"`                   // 媒体类型（如video、audio等）
+	FileType        string         `gorm:"column:file_type;type:varchar(32);not null;index:idx_video_upload_file_type,priority:1;comment:文件扩展名（如mp4、mov等）" json:"file_type"`                         // 文件扩展名（如mp4、mov等）
+	MIMEType        string         `gorm:"column:mime_type;type:varchar(128);not null;comment:MIME类型（如video/mp4）" json:"mime_type"`                                                                  // MIME类型（如video/mp4）
+	OriginalName    string         `gorm:"column:original_name;type:varchar(255);not null;comment:原始文件名" json:"original_name"`                                                                       // 原始文件名
+	FileSize        uint64         `gorm:"column:file_size;type:bigint unsigned;not null;comment:文件大小（字节）" json:"file_size"`                                                                         // 文件大小（字节）
+	StorageProvider string         `gorm:"column:storage_provider;type:varchar(32);not null;index:idx_video_upload_storage_provider,priority:1;comment:存储服务商（如oss、s3、cos等）" json:"storage_provider"` // 存储服务商（如oss、s3、cos等）
+	FilePath        string         `gorm:"column:file_path;type:varchar(1024);not null;comment:存储路径" json:"file_path"`                                                                               // 存储路径
+	FileURL         string         `gorm:"column:file_url;type:text;not null;comment:文件访问URL" json:"file_url"`                                                                                       // 文件访问URL
+	SHA256          string         `gorm:"column:sha256;type:varchar(64);not null;index:idx_video_upload_sha256,priority:1;comment:文件SHA256哈希值" json:"sha256"`                                       // 文件SHA256哈希值
+	Status          int8           `gorm:"column:status;type:tinyint unsigned;not null;index:idx_video_upload_status,priority:1;default:2;comment:文件状态 1=预上传 2=已上传" json:"status"`                   // 文件状态 1=预上传 2=已上传
+	CreatedAt       time.Time      `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_upload_created_at,priority:1;comment:创建时间" json:"created_at"`                                  // 创建时间
+	UpdatedAt       time.Time      `gorm:"column:updated_at;type:datetime(3);not null;comment:更新时间" json:"updated_at"`                                                                               // 更新时间
+	DeletedAt       gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_upload_deleted_at,priority:1;comment:软删除时间（null表示未删除）" json:"deleted_at"`                               // 软删除时间（null表示未删除）
 }
 
 // TableName VideoUpload's table name

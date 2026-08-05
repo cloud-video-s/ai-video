@@ -34,6 +34,7 @@ type Manager struct {
 	*repository.AppUserRepo
 	parameterRepo         *repository.ModelParameterRepo
 	taskRepo              *repository.UserGenerationTaskRepo
+	uploadRepo            *repository.UploadRepo
 	templateRepo          *repository.TemplateRepo
 	templateParameterRepo *repository.TemplateModelParameterRepo
 	hub                   *Hub
@@ -47,6 +48,7 @@ var sharedManager = &Manager{
 	modelRepo:             repository.NewModelRepo(),
 	parameterRepo:         repository.NewModelParameterRepo(),
 	taskRepo:              repository.NewUserGenerationTaskRepo(),
+	uploadRepo:            repository.NewUploadRepo(),
 	templateRepo:          repository.NewTemplateRepo(),
 	templateParameterRepo: repository.NewTemplateModelParameterRepo(),
 	hub:                   NewHub(),
@@ -101,7 +103,8 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	} else if !requestIDPattern.MatchString(request.ClientRequestID) {
 		return nil, errors.New("client_request_id 只能包含字母、数字、点、下划线和中划线")
 	}
-	if _, err := generationInputFromMap(request.TaskType, request.Input); err != nil {
+	generationInput, err := generationInputFromMap(request.TaskType, request.Input)
+	if err != nil {
 		return nil, err
 	}
 	if len(request.Input) == 0 {
@@ -114,6 +117,20 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		return existing, nil
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
+	}
+	uploadOwner := upload.UploadOwner{Type: upload.UploaderAPIUser, ID: userID}
+	inputFileURLs := generationInputFileURLs(generationInput)
+	if m.uploadRepo != nil && len(inputFileURLs) > 0 {
+		ownedURLs, err := m.uploadRepo.OwnedHalfURLs(ctx, uploadOwner, inputFileURLs)
+		if err != nil {
+			return nil, err
+		}
+		normalizeOwnedGenerationInput(request.Input, generationInput, ownedURLs)
+		generationInput, err = generationInputFromMap(request.TaskType, request.Input)
+		if err != nil {
+			return nil, err
+		}
+		inputFileURLs = generationInputFileURLs(generationInput)
 	}
 
 	modelConfig, err := m.modelRepo.GetEnabledByCode(ctx, request.ModelCode)
@@ -157,7 +174,15 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		TemplateID: request.TemplateID, TaskType: request.TaskType, Status: TaskStatusSubmitting, Progress: 0, Prompt: prompt, RequestPayload: string(payload),
 		RemoteUrls: "[]", LocalUrls: "[]",
 	}
-	if err := m.taskRepo.Create(ctx, task); err != nil {
+	if err := repository.Transaction(ctx, func(txCtx context.Context) error {
+		if err := m.taskRepo.Create(txCtx, task); err != nil {
+			return err
+		}
+		if m.uploadRepo != nil {
+			return m.uploadRepo.ConfirmUploadedByURLs(txCtx, uploadOwner, inputFileURLs)
+		}
+		return nil
+	}); err != nil {
 		if existing, lookupErr := m.taskRepo.GetByClientRequestID(ctx, userID, request.ClientRequestID); lookupErr == nil {
 			if err := validateIdempotentTemplate(existing, request.TemplateID); err != nil {
 				return nil, err
@@ -177,6 +202,47 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	return task, nil
 }
 
+func generationInputFileURLs(input GenerationInput) []string {
+	result := make([]string, 0, len(input.Images)+3)
+	result = append(result, input.Images...)
+	if input.Video != "" {
+		result = append(result, input.Video)
+	}
+	if input.FirstFrame != "" {
+		result = append(result, input.FirstFrame)
+	}
+	if input.EndFrame != "" {
+		result = append(result, input.EndFrame)
+	}
+	return result
+}
+
+func normalizeOwnedGenerationInput(source map[string]any, input GenerationInput, owned map[string]struct{}) {
+	normalize := func(value string) string {
+		half := upload.HalfURL(value)
+		if _, exists := owned[half]; exists {
+			return half
+		}
+		return value
+	}
+	if len(input.Images) > 0 {
+		images := make([]string, len(input.Images))
+		for i := range input.Images {
+			images[i] = normalize(input.Images[i])
+		}
+		source["images"] = images
+	}
+	if input.Video != "" {
+		source["video"] = normalize(input.Video)
+	}
+	if input.FirstFrame != "" {
+		source["first_frame"] = normalize(input.FirstFrame)
+	}
+	if input.EndFrame != "" {
+		source["end_frame"] = normalize(input.EndFrame)
+	}
+}
+
 func validateIdempotentTemplate(task *model.VideoUserGenerationTask, templateID uint64) error {
 	if task != nil && task.TemplateID != templateID {
 		return errors.New("client_request_id is already used by a task with a different template")
@@ -186,7 +252,9 @@ func validateIdempotentTemplate(task *model.VideoUserGenerationTask, templateID 
 
 func (m *Manager) submitTask(ctx context.Context, task *model.VideoUserGenerationTask, modelConfig *model.VideoModel, request remoteSubmitRequest) error {
 	provider := &ModelVerseProvider{}
-	result, err := provider.Submit(ctx, modelConfig, request)
+	providerRequest := request
+	providerRequest.Input = providerGenerationInput(request.Input)
+	result, err := provider.Submit(ctx, modelConfig, providerRequest)
 	if err != nil {
 		return err
 	}
@@ -229,6 +297,35 @@ func (m *Manager) submitTask(ctx context.Context, task *model.VideoUserGeneratio
 	}
 	m.hub.Publish(task)
 	return nil
+}
+
+func providerGenerationInput(source map[string]any) map[string]any {
+	result := cloneMap(source)
+	input, err := generationInputFromMap(TaskTypeVideo, source)
+	if err != nil {
+		input, err = generationInputFromMap(TaskTypeImage, source)
+	}
+	if err != nil {
+		return result
+	}
+	expand := uploadruntime.PublicURL
+	if len(input.Images) > 0 {
+		images := make([]string, len(input.Images))
+		for i := range input.Images {
+			images[i] = expand(input.Images[i])
+		}
+		result["images"] = images
+	}
+	if input.Video != "" {
+		result["video"] = expand(input.Video)
+	}
+	if input.FirstFrame != "" {
+		result["first_frame"] = expand(input.FirstFrame)
+	}
+	if input.EndFrame != "" {
+		result["end_frame"] = expand(input.EndFrame)
+	}
+	return result
 }
 
 func (m *Manager) GetTask(ctx context.Context, userID, taskID uint64) (*model.VideoUserGenerationTask, error) {
@@ -411,7 +508,7 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGe
 	if len(remoteURLs) == 0 || strings.TrimSpace(remoteURLs[0]) == "" {
 		return m.failTask(ctx, task, "生成视频任务没有返回可用于封面的第一个视频")
 	}
-	localURLs, err := downloadVideos(ctx, task, remoteURLs)
+	localURLs, err := downloadVideos(ctx, task, remoteURLs, m.uploadRepo)
 	if err != nil {
 		return m.failTask(ctx, task, "保存生成视频失败: "+err.Error())
 	}
@@ -419,6 +516,7 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGe
 	if err != nil {
 		return m.failTask(ctx, task, "获取视频封面存储失败: "+err.Error())
 	}
+	storage = recordGeneratedUploads(storage, m.uploadRepo, task, upload.MediaImage)
 	coverSource := strings.TrimSpace(localURLs[0])
 	coverURL, err := generateAndStoreTaskCover(ctx, storage, task, upload.MediaVideo, coverSource)
 	remoteCoverSource := strings.TrimSpace(remoteURLs[0])
@@ -455,6 +553,7 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGe
 		if user.VipPoints+user.PointsBalance < int64(task.Score) {
 			return commerce.ErrInsufficientPoints
 		}
+		beforeBalance := user.VipPoints + user.PointsBalance
 		user.VipPoints = user.VipPoints - int64(task.Score)
 		if user.VipPoints < 0 {
 			user.PointsBalance += user.VipPoints
@@ -463,7 +562,7 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGe
 		ledger := &model.VideoUserPointsLedger{
 			UserID:    user.ID,
 			Direction: int8(domain.PointsDirectionExpense), PointsChange: -int64(task.Score),
-			BalanceBefore: uint64(user.PointsBalance), BalanceAfter: uint64(user.VipPoints + user.PointsBalance), SourceType: domain.PointsSourceModelConsume,
+			BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(user.VipPoints + user.PointsBalance), SourceType: domain.PointsSourceModelConsume,
 			Description: "Spend points",
 			OccurredAt:  now, CreatedAt: now,
 		}

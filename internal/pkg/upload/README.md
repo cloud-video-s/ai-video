@@ -47,12 +47,14 @@ Use `uploaded_chunks` to skip chunks already stored by the server. Sessions are 
 The server requires every chunk, merges them in order, validates total size, optional full-file SHA-256, extension, MIME type, and file signature, then returns `file_path` and the computed `sha256`.
 
 Runtime limits are configured under `upload` in `config/config.yaml`. Defaults are 20 MB per image, 2 GB per video, 20 files per batch, 5 MB chunks, and a 24-hour resumable session.
-The active final storage provider is selected in Admin -> System Config with
-`upload.storage_provider` (`local` or `aliyun_oss`). Provider settings are
-resolved when a file is completed, so switching providers does not require a
-service restart. The OSS v2 client requires both a region (for example,
-`cn-hangzhou`) and an endpoint. OSS AccessKey values are masked by the admin
-config API.
+Final files are stored in Aliyun OSS. The runtime requires
+`upload.storage_provider=aliyun_oss`; it will fail explicitly instead of
+falling back to local storage. OSS settings are resolved when a file is
+completed, so credential and CDN changes do not require a service restart. The
+OSS v2 client requires both a region (for example, `cn-hangzhou`) and an
+endpoint. OSS AccessKey values are masked by the admin config API. File URLs
+returned to clients and persisted by business tables are domain-free half
+links; the frontend expands them with `https://test-cdn.zdrawai.com/`.
 
 ## Aliyun OSS direct upload
 

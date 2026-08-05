@@ -267,7 +267,7 @@ func (m *Manager) Complete(ctx context.Context, uploadID string) (*Session, erro
 	if err != nil {
 		return nil, err
 	}
-	if err := m.ensureActive(session); err != nil {
+	if err = m.ensureActive(session); err != nil {
 		return nil, err
 	}
 	if session.Completed {
@@ -327,11 +327,11 @@ func (m *Manager) Complete(ctx context.Context, uploadID string) (*Session, erro
 		temp.Close()
 		return nil, uploadError(ErrInvalidChunk, "merged file has %d bytes, expected %d", mergedSize, session.TotalSize)
 	}
-	if err := temp.Sync(); err != nil {
+	if err = temp.Sync(); err != nil {
 		temp.Close()
 		return nil, err
 	}
-	if err := temp.Close(); err != nil {
+	if err = temp.Close(); err != nil {
 		return nil, err
 	}
 	actualSHA256 := hex.EncodeToString(hasher.Sum(nil))
@@ -346,7 +346,7 @@ func (m *Manager) Complete(ctx context.Context, uploadID string) (*Session, erro
 	if err != nil {
 		return nil, err
 	}
-	if err := validateSessionPolicy(session, policy); err != nil {
+	if err = validateSessionPolicy(session, policy); err != nil {
 		return nil, err
 	}
 	detectedType, err := detectAndValidateContent(session.Kind, session.Extension, header, policy)
@@ -365,10 +365,10 @@ func (m *Manager) Complete(ctx context.Context, uploadID string) (*Session, erro
 	session.UploadedChunks = allChunkIndexes(session.TotalChunks)
 	session.FilePath = stored.Path
 	session.FileURL = stored.URL
-	if err := m.saveSession(session); err != nil {
+	if err = m.saveSession(session); err != nil {
 		return nil, err
 	}
-	if err := os.RemoveAll(m.chunkDir(uploadID)); err != nil {
+	if err = os.RemoveAll(m.chunkDir(uploadID)); err != nil {
 		return nil, fmt.Errorf("remove completed chunks: %w", err)
 	}
 	return session, nil

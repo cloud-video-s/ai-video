@@ -30,6 +30,7 @@ type DirectUploadRequest struct {
 // DirectUploadCredential contains everything a client needs to PUT the raw
 // file directly to OSS. All returned headers must be present on the PUT.
 type DirectUploadCredential struct {
+	UploadID  string            `json:"upload_id"`
 	Provider  string            `json:"provider"`
 	Method    string            `json:"method"`
 	UploadURL string            `json:"upload_url"`
@@ -176,9 +177,9 @@ func (s *OSSDirectUploadSigner) Sign(ctx context.Context, request DirectUploadRe
 		}
 	}
 	return &DirectUploadCredential{
-		Provider: StorageAliyunOSS, Method: result.Method, UploadURL: result.URL,
+		UploadID: objectID, Provider: StorageAliyunOSS, Method: result.Method, UploadURL: result.URL,
 		Headers: result.SignedHeaders, ObjectKey: objectKey,
-		FileURL: joinPublicURL(s.baseURL, objectKey), ExpiresAt: result.Expiration,
+		FileURL: HalfURL(joinPublicURL(s.baseURL, objectKey)), ExpiresAt: result.Expiration,
 	}, nil
 }
 

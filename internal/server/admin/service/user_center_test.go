@@ -8,6 +8,7 @@ import (
 	"ai-video/internal/config"
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/repository"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -125,6 +126,10 @@ func TestUserCenterVIPAndAccessOperations(t *testing.T) {
 	if ledger.PointsChange != 120 || ledger.BalanceBefore != 9 || ledger.BalanceAfter != 129 ||
 		ledger.AdminID != 42 || ledger.SourceType != uint32(domain.PointsSourceAdminOp) {
 		t.Fatalf("unexpected VIP gift ledger: %#v", ledger)
+	}
+	centerLedgers := userCenterPointsLedgers([]repository.UserPointsLedgerRecord{{VideoUserPointsLedger: ledger}})
+	if len(centerLedgers) != 1 || centerLedgers[0].AdminID != 42 || centerLedgers[0].SourceType != uint32(domain.PointsSourceAdminOp) {
+		t.Fatalf("unexpected user-center ledger mapping: %#v", centerLedgers)
 	}
 	if updated.TokenVersion != 1 {
 		t.Fatalf("token version=%d, want 1", updated.TokenVersion)
