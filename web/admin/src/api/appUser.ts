@@ -174,7 +174,7 @@ export function bindUserPhone(id: number, phone: string) {
   return request.put(`/admin/app-users/${id}/phone`, { phone })
 }
 
-export function grantUserVIP(id: number, data: { level: number; started_at?: string | null; expires_at: string }) {
+export function grantUserVIP(id: number, data: { level: number; vip_points?: number; started_at?: string | null; expires_at: string }) {
   return request.post(`/admin/app-users/${id}/vip`, data)
 }
 

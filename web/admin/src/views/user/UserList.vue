@@ -266,6 +266,9 @@
     <el-dialog v-model="vipDialogVisible" title="添加 VIP" width="480px">
       <el-form label-width="100px">
 <!--        <el-form-item label="VIP 等级" required><el-input-number v-model="vipForm.level" :min="1" :max="999" /></el-form-item>-->
+        <el-form-item label="赠送积分">
+          <el-input-number v-model="vipForm.vip_points" :min="0" :max="999999999" :precision="0" style="width:100%" />
+        </el-form-item>
         <el-form-item label="开始时间"><el-date-picker v-model="vipForm.started_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" style="width:100%" /></el-form-item>
         <el-form-item label="结束时间" required><el-date-picker v-model="vipForm.expires_at" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" style="width:100%" /></el-form-item>
       </el-form>
@@ -302,7 +305,7 @@ const user = computed(() => detail.value!.user)
 const detailVisible = ref(false)
 const activeTab = ref('account')
 const vipDialogVisible = ref(false)
-const vipForm = reactive({ level: 1, started_at: '', expires_at: '' })
+const vipForm = reactive({ level: 1, vip_points: 0, started_at: '', expires_at: '' })
 
 async function fetchList() {
   listLoading.value = true
@@ -351,6 +354,7 @@ async function runOperation(message: string, operation: () => Promise<unknown>) 
 
 function openVIPDialog() {
   vipForm.level = user.value.vip_level || 1
+  vipForm.vip_points = 0
   vipForm.started_at = new Date().toISOString()
   const expires = new Date(); expires.setDate(expires.getDate() + 30)
   vipForm.expires_at = expires.toISOString()
@@ -360,7 +364,8 @@ function openVIPDialog() {
 async function submitVIP() {
   if (!vipForm.expires_at) { ElMessage.warning('请选择 VIP 结束时间'); return }
   await runOperation('VIP 已添加', () => grantUserVIP(user.value.id, {
-    level: vipForm.level, started_at: vipForm.started_at || null, expires_at: vipForm.expires_at,
+    level: vipForm.level, vip_points: vipForm.vip_points,
+    started_at: vipForm.started_at || null, expires_at: vipForm.expires_at,
   }))
   vipDialogVisible.value = false
 }

@@ -20,17 +20,19 @@ func NewAppUserRepo() *AppUserRepo { return &AppUserRepo{} }
 
 type AppUserListFilter struct {
 	Keyword            string
-	DeviceCountry      string
+	ClientCountry      string
+	ServerCountry      string
 	ChannelID          string
 	AppVersion         string
 	AppName            string
-	LoginType          uint32
-	UserType           uint32
-	SubscriptionStatus uint32
-	Activated          *uint32
+	PackageCode        string
+	LoginType          uint8
+	UserType           uint8
+	SubscriptionStatus uint8
+	Activated          *uint
 	Registered         *bool
 	PaymentMet         *bool
-	Status             *int32
+	Status             *int8
 	IsFrozen           *bool
 	IsBlacklisted      *bool
 }
@@ -44,8 +46,8 @@ func (d *AppUserRepo) GetByID(ctx context.Context, id uint64) (*model.VideoUser,
 	return q.WithContext(ctx).Where(q.ID.Eq(id)).First()
 }
 
-// GetByLookup resolves an exact user ID, account/email or an email stored in
-// the normalized identity table. It keeps legacy direct-email rows searchable.
+// GetByLookup resolves an exact user ID or current account/device identifier.
+// It also keeps emails from the normalized identity table searchable.
 func (d *AppUserRepo) GetByLookup(ctx context.Context, value string) (*model.VideoUser, error) {
 	value = strings.TrimSpace(value)
 	q := qFrom(ctx)
@@ -53,7 +55,10 @@ func (d *AppUserRepo) GetByLookup(ctx context.Context, value string) (*model.Vid
 	if id, err := strconv.ParseUint(value, 10, 64); err == nil && id != 0 {
 		return user.WithContext(ctx).Where(user.ID.Eq(id)).First()
 	}
-	conditions := []field.Expr{user.LoginAccount.Eq(value), user.Email.Eq(value)}
+	conditions := []field.Expr{
+		user.LoginAccount.Eq(value), user.Email.Eq(value), user.DeviceCode.Eq(value),
+		user.IMEI.Eq(value), user.Phone.Eq(value), user.ThirdCode.Eq(value),
+	}
 	identity := q.VideoUserIdentity
 	var identityUserIDs []uint64
 	if err := identity.WithContext(ctx).Where(identity.Email.Eq(value)).Pluck(identity.UserID, &identityUserIDs); err != nil {
@@ -100,7 +105,11 @@ func (d *AppUserRepo) GetByThirdCode(ctx context.Context, thirdCode string, lock
 func (d *AppUserRepo) GetAuthState(ctx context.Context, id uint64) (string, int64, error) {
 	q := qFrom(ctx).VideoUser
 	user, err := q.WithContext(ctx).Where(q.ID.Eq(id)).
-		Where(q.Status.Eq(1)).
+		Where(
+			q.Status.Eq(domain.AppUserStatusNormal),
+			q.IsFrozen.Eq(0),
+			q.IsBlacklisted.Eq(0),
+		).
 		Select(q.DeviceCode, q.TokenVersion).First()
 	if err != nil {
 		return "", 0, err
@@ -166,8 +175,11 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 	user := q.VideoUser
 	dao := user.WithContext(ctx)
 	if filter != nil {
-		if filter.DeviceCountry != "" {
-			dao = dao.Where(user.ClientCountry.Eq(filter.DeviceCountry))
+		if filter.ClientCountry != "" {
+			dao = dao.Where(user.ClientCountry.Eq(filter.ClientCountry))
+		}
+		if filter.ServerCountry != "" {
+			dao = dao.Where(user.ServerCountry.Eq(filter.ServerCountry))
 		}
 		if filter.ChannelID != "" {
 			dao = dao.Where(user.ChannelID.Eq(filter.ChannelID))
@@ -178,17 +190,20 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 		if filter.AppName != "" {
 			dao = dao.Where(user.AppName.Eq(filter.AppName))
 		}
+		if filter.PackageCode != "" {
+			dao = dao.Where(user.PackageCode.Eq(filter.PackageCode))
+		}
 		if filter.LoginType != 0 {
-			dao = dao.Where(user.LoginType.Eq(uint8(filter.LoginType)))
+			dao = dao.Where(user.LoginType.Eq(filter.LoginType))
 		}
 		if filter.UserType != 0 {
-			dao = dao.Where(user.UserType.Eq(uint8(filter.UserType)))
+			dao = dao.Where(user.UserType.Eq(filter.UserType))
 		}
 		if filter.SubscriptionStatus != 0 {
-			dao = dao.Where(user.SubscriptionStatus.Eq(uint8(filter.SubscriptionStatus)))
+			dao = dao.Where(user.SubscriptionStatus.Eq(filter.SubscriptionStatus))
 		}
 		if filter.Activated != nil {
-			dao = dao.Where(user.Activated.Eq(uint(*filter.Activated)))
+			dao = dao.Where(user.Activated.Eq(*filter.Activated))
 		}
 		if filter.Registered != nil {
 			dao = dao.Where(user.Registered.Eq(boolInt8(*filter.Registered)))
@@ -197,13 +212,21 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 			dao = dao.Where(user.PaymentMet.Eq(boolInt8(*filter.PaymentMet)))
 		}
 		if filter.Status != nil {
-			dao = dao.Where(user.Status.Eq(int8(*filter.Status)))
+			dao = dao.Where(user.Status.Eq(*filter.Status))
+		}
+		if filter.IsFrozen != nil {
+			dao = dao.Where(user.IsFrozen.Eq(boolInt8(*filter.IsFrozen)))
+		}
+		if filter.IsBlacklisted != nil {
+			dao = dao.Where(user.IsBlacklisted.Eq(boolInt8(*filter.IsBlacklisted)))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
 			conditions := []field.Expr{
-				user.Username.Like(keyword), user.LoginAccount.Like(keyword), user.IMEI.Like(keyword),
-				user.Email.Like(keyword), user.Phone.Like(keyword), user.ThirdCode.Like(keyword), user.AppName.Like(keyword),
+				user.Username.Like(keyword), user.LoginAccount.Like(keyword), user.DeviceCode.Like(keyword),
+				user.IMEI.Like(keyword), user.Email.Like(keyword), user.Phone.Like(keyword),
+				user.ThirdCode.Like(keyword), user.AppName.Like(keyword), user.PackageCode.Like(keyword),
+				user.ServerCountry.Like(keyword),
 			}
 			if id, err := strconv.ParseUint(strings.TrimSpace(filter.Keyword), 10, 64); err == nil {
 				conditions = append(conditions, user.ID.Eq(id))

@@ -379,11 +379,8 @@ func (s *AuthService) CheckUserVIP(ctx *gin.Context, userID uint64) bool {
 	if err != nil {
 		return false
 	}
-	if user.SubscriptionStatus != 2 {
-		return false
+	if user.SubscriptionStatus == 2 && user.VipExpiresAt != nil && user.VipExpiresAt.Unix() > time.Now().Unix() {
+		return true
 	}
-	if user.VipExpiresAt == nil || user.VipExpiresAt.Unix() <= time.Now().Unix() {
-		return false
-	}
-	return true
+	return false
 }

@@ -85,6 +85,7 @@ type BindUserPhoneRequest struct {
 
 type GrantUserVIPRequest struct {
 	Level     uint32     `json:"level" binding:"required,min=1,max=999"`
+	VIPPoints int64      `json:"vip_points" binding:"min=0,max=999999999"`
 	StartedAt *time.Time `json:"started_at"`
 	ExpiresAt time.Time  `json:"expires_at" binding:"required"`
 }
@@ -139,7 +140,7 @@ func (s *AppUserService) GetCenter(ctx context.Context, id uint64) (*UserCenterD
 	}
 	now := time.Now()
 	return &UserCenterDetail{
-		User: user, IsMember: user.SubscriptionStatus == 2 && user.VipExpiresAt != nil && user.VipExpiresAt.After(now),
+		User: user, IsMember: user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed && user.VipExpiresAt != nil && user.VipExpiresAt.After(now),
 		Identities: identities, Attribution: attribution,
 		PointsLedgers: userCenterPointsLedgers(pointRecords), PointsLedgerTotal: pointsTotal, PointsSummary: summary,
 		Works: userCenterWorks(works), WorkTotal: workTotal,
@@ -199,24 +200,25 @@ func nonZeroTime(value time.Time) *time.Time {
 }
 
 func (s *AppUserService) SetFrozen(ctx context.Context, id uint64, frozen bool) error {
-	if _, err := s.GetByID(ctx, id); err != nil {
+	user, err := s.GetByID(ctx, id)
+	if err != nil {
 		return err
 	}
-	status := int32(1)
-	if frozen {
-		status = 0
-	}
+	status := appUserStatus(frozen, user.IsBlacklisted != 0)
 	return s.repo.Update(ctx, id, map[string]interface{}{
-		"is_frozen": frozen, "status": status, "token_version": gorm.Expr("token_version + 1"),
+		"is_frozen": boolInt8(frozen), "status": status, "token_version": gorm.Expr("token_version + 1"),
 	})
 }
 
 func (s *AppUserService) SetBlacklisted(ctx context.Context, id uint64, blacklisted bool) error {
-	if _, err := s.GetByID(ctx, id); err != nil {
+	user, err := s.GetByID(ctx, id)
+	if err != nil {
 		return err
 	}
 	return s.repo.Update(ctx, id, map[string]interface{}{
-		"is_blacklisted": blacklisted, "token_version": gorm.Expr("token_version + 1"),
+		"is_blacklisted": boolInt8(blacklisted),
+		"status":         appUserStatus(user.IsFrozen != 0, blacklisted),
+		"token_version":  gorm.Expr("token_version + 1"),
 	})
 }
 
@@ -231,10 +233,7 @@ func (s *AppUserService) BindPhone(ctx context.Context, id uint64, phone string)
 	return s.repo.Update(ctx, id, map[string]interface{}{"phone": phone})
 }
 
-func (s *AppUserService) GrantVIP(ctx context.Context, id uint64, req *GrantUserVIPRequest) error {
-	if _, err := s.GetByID(ctx, id); err != nil {
-		return err
-	}
+func (s *AppUserService) GrantVIP(ctx context.Context, id, adminID uint64, req *GrantUserVIPRequest) error {
 	startedAt := time.Now()
 	if req.StartedAt != nil {
 		startedAt = *req.StartedAt
@@ -242,9 +241,30 @@ func (s *AppUserService) GrantVIP(ctx context.Context, id uint64, req *GrantUser
 	if !req.ExpiresAt.After(startedAt) {
 		return errors.New("VIP 结束时间必须晚于开始时间")
 	}
-	return s.repo.Update(ctx, id, map[string]interface{}{
-		"vip_started_at": startedAt, "vip_expires_at": req.ExpiresAt,
-		"user_type": domain.AppUserTypePaid, "subscription_status": domain.AppUserSubscriptionSubscribed,
+	return repository.Transaction(ctx, func(ctx context.Context) error {
+		user, err := s.repo.GetByIDForUpdate(ctx, id)
+		if err != nil {
+			return notFoundOr(err, "客户端用户不存在")
+		}
+		beforeBalance := user.VipPoints + user.PointsBalance
+		afterVIPPoints := user.VipPoints + req.VIPPoints
+		if err := s.repo.Update(ctx, id, map[string]interface{}{
+			"vip_started_at": startedAt, "vip_expires_at": req.ExpiresAt,
+			"vip_level": uint(req.Level), "vip_points": afterVIPPoints,
+			"user_type": domain.AppUserTypePaid, "subscription_status": domain.AppUserSubscriptionSubscribed,
+		}); err != nil {
+			return err
+		}
+		if req.VIPPoints == 0 {
+			return nil
+		}
+		now := time.Now()
+		return repository.NewUserPointsLedgerRepo().Create(ctx, &model.VideoUserPointsLedger{
+			UserID: id, Direction: int8(domain.PointsDirectionIncome), PointsChange: req.VIPPoints,
+			BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(beforeBalance + req.VIPPoints),
+			Description: "管理员添加 VIP 赠送积分", SourceType: uint32(domain.PointsSourceAdminOp),
+			AdminID: adminID, OccurredAt: now, CreatedAt: now, UpdatedAt: now,
+		})
 	})
 }
 
@@ -274,7 +294,7 @@ func (s *AppUserService) TerminateVIP(ctx context.Context, id uint64) error {
 	}
 	now := time.Now()
 	return s.repo.Update(ctx, id, map[string]interface{}{
-		"vip_expires_at": now, "user_type": domain.AppUserTypeFree,
+		"vip_level": 0, "vip_expires_at": now, "user_type": domain.AppUserTypeFree,
 		"subscription_status": domain.AppUserSubscriptionCancelled,
 	})
 }
@@ -302,21 +322,22 @@ func (s *AppUserService) TransferVIP(ctx context.Context, id, targetID uint64) e
 		if err != nil {
 			return err
 		}
-		if source.SubscriptionStatus != 2 || source.VipExpiresAt == nil || !source.VipExpiresAt.After(time.Now()) {
+		if source.SubscriptionStatus != domain.AppUserSubscriptionSubscribed || source.VipExpiresAt == nil || !source.VipExpiresAt.After(time.Now()) {
 			return errors.New("当前用户没有可转移的有效会员")
 		}
-		if target.SubscriptionStatus == 2 && target.VipExpiresAt != nil && target.VipExpiresAt.After(time.Now()) {
+		if target.SubscriptionStatus == domain.AppUserSubscriptionSubscribed && target.VipExpiresAt != nil && target.VipExpiresAt.After(time.Now()) {
 			return errors.New("目标用户已有有效会员，不能覆盖")
 		}
 		if err := s.repo.Update(ctx, targetID, map[string]interface{}{
 			"vip_started_at": source.VIPStartedAt, "vip_expires_at": source.VipExpiresAt,
+			"vip_level": source.VIPLevel,
 			"user_type": domain.AppUserTypePaid, "subscription_status": domain.AppUserSubscriptionSubscribed,
 		}); err != nil {
 			return err
 		}
 		now := time.Now()
 		return s.repo.Update(ctx, id, map[string]interface{}{
-			"vip_level": 0, "vip_expires_at": now, "user_type": domain.AppUserTypeFree,
+			"vip_level": 0, "vip_started_at": nil, "vip_expires_at": now, "user_type": domain.AppUserTypeFree,
 			"subscription_status": domain.AppUserSubscriptionCancelled,
 		})
 	})
@@ -328,7 +349,7 @@ func (s *AppUserService) ClearDevice(ctx context.Context, id uint64) error {
 	}
 	return repository.Transaction(ctx, func(ctx context.Context) error {
 		if err := s.repo.Update(ctx, id, map[string]interface{}{
-			"imei": "", "phone_model": "", "client_country": "", "last_login_ip": "",
+			"imei": "", "phone_model": "", "client_country": "", "server_country": "", "last_login_ip": "",
 			"token_version": gorm.Expr("token_version + 1"),
 		}); err != nil {
 			return err
