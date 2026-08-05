@@ -140,7 +140,7 @@ func TestDecodeAppleNotificationPayloadVerifiesNestedData(t *testing.T) {
 		"transactionId": "tx-1", "originalTransactionId": "original-1",
 		"bundleId": "com.example.video", "productId": "vip.monthly",
 		"purchaseDate": signedDate - 1_000, "expiresDate": signedDate + 3_600_000,
-		"environment": "Sandbox", "signedDate": signedDate,
+		"environment": "Sandbox", "signedDate": signedDate, "price": 9990, "currency": "usd",
 	})
 	signedRenewalInfo := signer.sign(t, map[string]any{
 		"environment": "Sandbox", "signedDate": signedDate,
@@ -162,8 +162,51 @@ func TestDecodeAppleNotificationPayloadVerifiesNestedData(t *testing.T) {
 	if decoded.NotificationType != AppleNotificationDidRenew || decoded.NotificationUUID != "notification-1" ||
 		decoded.Version != "2.0" || decoded.SignedDate != signedDate || decoded.AppAppleID != 123456789 ||
 		decoded.SubscriptionStatus != 1 || decoded.TransactionID != "tx-1" ||
-		decoded.OriginalTransaction != "original-1" || decoded.ProductID != "vip.monthly" {
+		decoded.OriginalTransaction != "original-1" || decoded.ProductID != "vip.monthly" ||
+		decoded.Price != 9990 || decoded.Currency != "USD" {
 		t.Fatalf("unexpected decoded notification: %#v", decoded)
+	}
+}
+
+func TestVerifyApplePurchaseRequiresSignedJWS(t *testing.T) {
+	signer := newAppleJWSTestSigner(t)
+	purchaseAt := signer.now
+	expiresAt := purchaseAt.Add(30 * 24 * time.Hour)
+	transaction := appleSignedTransaction{
+		TransactionID: "purchase-tx-1", OriginalTransactionID: "purchase-tx-1",
+		BundleID: "com.example.video", ProductID: "vip.monthly",
+		PurchaseDate: purchaseAt.UnixMilli(), ExpiresDate: expiresAt.UnixMilli(),
+		Quantity: 1, Type: "Auto-Renewable Subscription", SignedDate: signer.now.UnixMilli(),
+		Environment: "Sandbox", TransactionReason: "PURCHASE", Price: 9990, Currency: "USD",
+	}
+	request := ApplePurchaseRequest{
+		ShopType: 1, BundleID: transaction.BundleID, ExpirationDate: &expiresAt, IsActive: true,
+		OriginalTransactionID: transaction.OriginalTransactionID, ProductID: transaction.ProductID,
+		PurchaseDate: purchaseAt, TransactionID: transaction.TransactionID,
+		SignedTransactionInfo: `{"environment":"Sandbox"}`,
+	}
+	if _, err := verifyApplePurchase(request, transaction.BundleID, signer.roots); !errors.Is(err, ErrAppleUnsignedProduction) {
+		t.Fatalf("unsigned Sandbox evidence error=%v, want unsigned evidence rejection", err)
+	}
+
+	request.SignedTransactionInfo = signer.sign(t, transaction)
+	verified, err := verifyApplePurchase(request, transaction.BundleID, signer.roots)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified.EvidenceMode != "jws" || verified.TransactionID != transaction.TransactionID {
+		t.Fatalf("unexpected verified purchase: %#v", verified)
+	}
+
+	parts := strings.Split(request.SignedTransactionInfo, ".")
+	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
+	if err != nil {
+		t.Fatal(err)
+	}
+	signature[0] ^= 0x01
+	request.SignedTransactionInfo = parts[0] + "." + parts[1] + "." + base64.RawURLEncoding.EncodeToString(signature)
+	if _, err := verifyApplePurchase(request, transaction.BundleID, signer.roots); !errors.Is(err, ErrAppleSignatureInvalid) {
+		t.Fatalf("tampered purchase evidence error=%v, want signature rejection", err)
 	}
 }
 
@@ -175,6 +218,24 @@ func TestDecodeAppleNotificationPayloadRejectsInvalidCompactJWS(t *testing.T) {
 	}
 	if _, err := decodeAppleNotificationPayload("a.b.c.d.e", newAppleJWSTestSigner(t).roots); !errors.Is(err, ErrAppleSignatureInvalid) || !strings.Contains(err.Error(), "exactly 3 segments, got 5") {
 		t.Fatalf("five-part payload error=%v", err)
+	}
+}
+
+func TestVerifyAppleJWSRejectsSubstitutedX5CRoot(t *testing.T) {
+	signer := newAppleJWSTestSigner(t)
+	untrusted := newAppleJWSTestSigner(t)
+	signer.x5c = append([]string(nil), signer.x5c...)
+	signer.x5c[2] = untrusted.x5c[2]
+	payload := signer.sign(t, map[string]any{
+		"notificationType": AppleNotificationTest,
+		"notificationUUID": "test-root-substitution",
+		"signedDate":       signer.now.UnixMilli(),
+		"data": map[string]any{
+			"bundleId": "com.example.video", "environment": "Sandbox",
+		},
+	})
+	if _, err := decodeAppleNotificationPayload(payload, signer.roots); !errors.Is(err, ErrAppleSignatureInvalid) {
+		t.Fatalf("substituted x5c root error=%v, want signature rejection", err)
 	}
 }
 

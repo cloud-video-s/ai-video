@@ -3,15 +3,13 @@ package commerce
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"math"
 	"strings"
 	"time"
 
-	"ai-video/internal/config"
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 
@@ -21,7 +19,7 @@ import (
 var (
 	ErrAppleEvidenceInvalid     = errors.New("invalid Apple transaction evidence")
 	ErrAppleSignatureInvalid    = errors.New("Apple transaction signature verification failed")
-	ErrAppleUnsignedProduction  = errors.New("unsigned Apple transaction is not allowed in production")
+	ErrAppleUnsignedProduction  = errors.New("unsigned Apple transaction evidence is not allowed")
 	ErrAppleBundleMismatch      = errors.New("Apple transaction bundle does not match request package")
 	ErrAppleEnvironmentMismatch = errors.New("Apple transaction environment does not match notification")
 	ErrAppleProductNotFound     = errors.New("Apple product is not configured for this package")
@@ -30,12 +28,12 @@ var (
 	ErrApplePurchaseRevoked     = errors.New("Apple transaction has been revoked")
 )
 
-// ApplePurchaseRequest mirrors the StoreKit result returned by the app. The
-// signedTransactionInfo field may be a compact JWS in production. A decoded
-// JSON value is accepted only for Sandbox while the server is not in release
-// mode, matching the development payload supplied by the client.
+// ApplePurchaseRequest mirrors the StoreKit result returned by the app. A
+// three-part signedTransactionInfo is verified directly; missing or non-JWS
+// client evidence is replaced by the signed result from App Store Server API.
 type ApplePurchaseRequest struct {
-	ShopType              int        `json:"shop_type" binding:"required,max=2"`
+	OrderNo               string     `json:"order_no" binding:"omitempty,max=40"`
+	ShopType              int        `json:"shop_type" binding:"required,oneof=1 2"`
 	BundleID              string     `json:"bundleID" binding:"required,max=191"`
 	ExpirationDate        *time.Time `json:"expirationDate"`
 	IsActive              bool       `json:"isActive"`
@@ -43,7 +41,7 @@ type ApplePurchaseRequest struct {
 	ProductID             string     `json:"productID" binding:"required,max=191"`
 	PurchaseDate          time.Time  `json:"purchaseDate" binding:"required"`
 	RevocationDate        *time.Time `json:"revocationDate"`
-	SignedTransactionInfo string     `json:"signedTransactionInfo" binding:"required"`
+	SignedTransactionInfo string     `json:"signedTransactionInfo"`
 	Source                string     `json:"source" binding:"omitempty,max=64"`
 	TransactionID         string     `json:"transactionID" binding:"required,max=191"`
 }
@@ -75,11 +73,12 @@ type appleSignedTransaction struct {
 // timestamps and currency values used by the order service.
 type verifiedAppleTransaction struct {
 	appleSignedTransaction
-	PurchaseAt   time.Time
-	ExpiresAt    *time.Time
-	RevokedAt    *time.Time
-	PaidAmount   float64
-	EvidenceMode string
+	PurchaseAt        time.Time
+	ExpiresAt         *time.Time
+	RevokedAt         *time.Time
+	PaidAmount        float64
+	EvidenceMode      string
+	SignedTransaction string
 }
 
 // ApplePurchaseResponse reports the fulfilled local order together with the
@@ -108,13 +107,24 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 		return nil, errors.New("authenticated user is required")
 	}
 	expectedBundle = strings.TrimSpace(expectedBundle)
-	verified, err := verifyApplePurchase(req, expectedBundle, config.Cfg.Server.Mode != "release")
+	verified, err := s.verifyApplePurchaseEvidence(ctx, req, expectedBundle)
 	if err != nil {
 		return nil, err
 	}
 
 	if existing, lookupErr := s.orders.GetByPaymentTransaction(ctx, domain.PaymentMethodAppleIAP, verified.TransactionID); lookupErr == nil {
 		if existing.UserID != userID || existing.ProductCode != verified.ProductID {
+			return nil, ErrPaymentTransactionUsed
+		}
+		if existing.Status == domain.OrderStatusPaid {
+			if err := s.fulfillAppleOrder(ctx, existing, verified.ExpiresAt); err != nil {
+				return nil, err
+			}
+			existing, lookupErr = s.orders.GetByOrderNo(ctx, existing.OrderNo, false)
+			if lookupErr != nil {
+				return nil, lookupErr
+			}
+		} else if existing.Status != domain.OrderStatusEnd {
 			return nil, ErrPaymentTransactionUsed
 		}
 		return applePurchaseResponse(existing, verified), nil
@@ -124,12 +134,14 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 	if verified.RevokedAt != nil {
 		return nil, ErrApplePurchaseRevoked
 	}
-	if isSubscriptionType(verified.Type) {
+	isSubscription := isSubscriptionType(verified.Type)
+	if isSubscription {
 		//if !req.IsActive || verified.ExpiresAt == nil || !verified.ExpiresAt.After(time.Now()) {
 		//	return nil, ErrApplePurchaseInactive
 		//}
 	}
-	if !isSubscriptionType(verified.Type) {
+	if (req.ShopType == domain.OrderProductVIPSubscription && !isSubscription) ||
+		(req.ShopType == domain.OrderProductPointsPackage && isSubscription) {
 		return nil, ErrPaymentMismatch
 	}
 	shopID, err := s.resolveAppleProduct(ctx, req.ShopType, verified.ProductID, expectedBundle)
@@ -140,27 +152,51 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 	if req.ShopType == 2 {
 		productType = domain.OrderProductPointsPackage
 	}
-	order, err := s.CreateOrder(ctx, CreateOrderRequest{
-		UserID: userID, ProductType: uint32(productType), ProductID: shopID,
-		PaymentMethod:   domain.PaymentMethodAppleIAP,
-		ClientRequestID: appleClientRequestID(verified.TransactionID),
-		Renewal: strings.EqualFold(verified.TransactionReason, "RENEWAL") ||
-			verified.TransactionID != verified.OriginalTransactionID,
-		PaidAmount: verified.PaidAmount,
-	})
-	if err != nil {
-		return nil, err
+	renewal := productType == domain.OrderProductVIPSubscription &&
+		(strings.EqualFold(verified.TransactionReason, "RENEWAL") ||
+			verified.TransactionID != verified.OriginalTransactionID)
+	orderType := orderTypeForRenewal(renewal)
+	var order *model.VideoOrder
+	if strings.TrimSpace(req.OrderNo) != "" {
+		order, err = s.orders.GetByOrderNo(ctx, strings.TrimSpace(req.OrderNo), false)
+		if err != nil {
+			return nil, err
+		}
+		if order.UserID != userID || order.ProductType != uint32(productType) ||
+			order.ProductID != shopID || order.ProductCode != verified.ProductID ||
+			order.PayType != domain.PaymentMethodAppleIAP {
+			return nil, ErrPaymentMismatch
+		}
+	} else {
+		order, err = s.CreateOrder(ctx, CreateOrderRequest{
+			UserID: userID, ProductType: uint32(productType), ProductID: shopID,
+			PayType:         domain.PaymentMethodAppleIAP,
+			ClientRequestID: appleClientRequestID(verified.TransactionID),
+			Renewal:         renewal,
+			PaidAmount:      verified.PaidAmount,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 	paid, err := s.ConfirmApplePayment(ctx, order.OrderNo, ApplePaymentResult{
 		TransactionID: verified.TransactionID, OriginalTransactionID: verified.OriginalTransactionID,
-		ProductCode: verified.ProductID, Currency: verified.Currency, PaidAmount: verified.PaidAmount,
-		SignedTransaction: req.SignedTransactionInfo, PurchaseDate: verified.PurchaseAt,
+		ProductCode: verified.ProductID, OrderType: orderType,
+		Currency: verified.Currency, PaidAmount: verified.PaidAmount,
+		SignedTransaction: verified.SignedTransaction, PurchaseDate: verified.PurchaseAt,
 		SubscriptionExpiresAt: verified.ExpiresAt,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return applePurchaseResponse(paid, verified), nil
+	if err := s.fulfillAppleOrder(ctx, paid, verified.ExpiresAt); err != nil {
+		return nil, err
+	}
+	completed, err := s.orders.GetByOrderNo(ctx, paid.OrderNo, false)
+	if err != nil {
+		return nil, err
+	}
+	return applePurchaseResponse(completed, verified), nil
 }
 
 // resolveAppleProduct maps an Apple product identifier to the configured VIP
@@ -184,9 +220,10 @@ func (s *Service) resolveAppleProduct(ctx context.Context, shopType int, sukCode
 }
 
 // verifyApplePurchase verifies signed StoreKit evidence and checks every
-// client-supplied identifier and timestamp against the signed transaction.
-// Unsigned JSON is accepted only for explicitly enabled Sandbox development.
-func verifyApplePurchase(req ApplePurchaseRequest, expectedBundle string, allowUnsignedSandbox bool) (*verifiedAppleTransaction, error) {
+// client-supplied identifier and timestamp against the authenticated payload.
+// All environments require a compact JWS; Sandbox JSON is never accepted as
+// payment evidence.
+func verifyApplePurchase(req ApplePurchaseRequest, expectedBundle string, roots *x509.CertPool) (*verifiedAppleTransaction, error) {
 	req.BundleID = strings.TrimSpace(req.BundleID)
 	req.TransactionID = strings.TrimSpace(req.TransactionID)
 	req.OriginalTransactionID = strings.TrimSpace(req.OriginalTransactionID)
@@ -197,19 +234,11 @@ func verifyApplePurchase(req ApplePurchaseRequest, expectedBundle string, allowU
 	}
 
 	var signed appleSignedTransaction
-	mode := "jws"
-	if strings.Count(evidence, ".") == 2 && !strings.HasPrefix(evidence, "{") {
-		if err := verifyAppleJWS(evidence, &signed); err != nil {
-			return nil, err
-		}
-	} else {
-		mode = "sandbox_json"
-		if err := json.Unmarshal([]byte(evidence), &signed); err != nil {
-			return nil, fmt.Errorf("%w: signedTransactionInfo is neither JWS nor JSON", ErrAppleEvidenceInvalid)
-		}
-		if !allowUnsignedSandbox || !strings.EqualFold(signed.Environment, "Sandbox") {
-			return nil, ErrAppleUnsignedProduction
-		}
+	if strings.Count(evidence, ".") != 2 || strings.HasPrefix(evidence, "{") {
+		return nil, ErrAppleUnsignedProduction
+	}
+	if err := verifyAppleJWSWithRoots(evidence, &signed, roots); err != nil {
+		return nil, err
 	}
 
 	if req.BundleID != expectedBundle || signed.BundleID != expectedBundle {
@@ -228,7 +257,7 @@ func verifyApplePurchase(req ApplePurchaseRequest, expectedBundle string, allowU
 	result := &verifiedAppleTransaction{
 		appleSignedTransaction: signed,
 		PurchaseAt:             purchaseAt, PaidAmount: math.Round((float64(signed.Price)/1000)*100) / 100,
-		EvidenceMode: mode,
+		EvidenceMode: "jws", SignedTransaction: evidence,
 	}
 	result.Currency = strings.ToUpper(strings.TrimSpace(result.Currency))
 	if signed.ExpiresDate > 0 {

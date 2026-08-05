@@ -39,12 +39,13 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.LoginType = field.NewUint8(tableName, "login_type")
 	_videoUser.UserType = field.NewUint8(tableName, "user_type")
 	_videoUser.ActiveDays = field.NewUint(tableName, "active_days")
+	_videoUser.ActiveLong = field.NewUint64(tableName, "active_long")
 	_videoUser.AvgDailyUsageSeconds = field.NewUint64(tableName, "avg_daily_usage_seconds")
 	_videoUser.SubscriptionStatus = field.NewUint8(tableName, "subscription_status")
 	_videoUser.VIPStartedAt = field.NewTime(tableName, "vip_started_at")
 	_videoUser.VipExpiresAt = field.NewTime(tableName, "vip_expires_at")
-	_videoUser.VipPoints = field.NewUint64(tableName, "vip_points")
-	_videoUser.PointsBalance = field.NewUint64(tableName, "points_balance")
+	_videoUser.VipPoints = field.NewInt64(tableName, "vip_points")
+	_videoUser.PointsBalance = field.NewInt64(tableName, "points_balance")
 	_videoUser.FirstOrderCreatedAt = field.NewTime(tableName, "first_order_created_at")
 	_videoUser.FirstPaidAt = field.NewTime(tableName, "first_paid_at")
 	_videoUser.OrderCount = field.NewUint64(tableName, "order_count")
@@ -183,12 +184,13 @@ type videoUser struct {
 	LoginType                field.Uint8   // 登录方式 1=未登录 2=google 3=appid
 	UserType                 field.Uint8   // 用户类型 1=免费 2=付费
 	ActiveDays               field.Uint    // 活跃天数
+	ActiveLong               field.Uint64  // 总活跃时长
 	AvgDailyUsageSeconds     field.Uint64  // 平均日使用时长
 	SubscriptionStatus       field.Uint8   // 订阅状态 1未订阅 2订阅中 3=已取消
 	VIPStartedAt             field.Time    // vip开始时间
 	VipExpiresAt             field.Time    // vip 到期时间
-	VipPoints                field.Uint64  // vip_积分
-	PointsBalance            field.Uint64  // 积分
+	VipPoints                field.Int64   // vip_积分
+	PointsBalance            field.Int64   // 积分
 	FirstOrderCreatedAt      field.Time    // 首单创建时间
 	FirstPaidAt              field.Time    // 首单付费时间
 	OrderCount               field.Uint64  // 订单创建次数
@@ -261,12 +263,13 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.LoginType = field.NewUint8(table, "login_type")
 	v.UserType = field.NewUint8(table, "user_type")
 	v.ActiveDays = field.NewUint(table, "active_days")
+	v.ActiveLong = field.NewUint64(table, "active_long")
 	v.AvgDailyUsageSeconds = field.NewUint64(table, "avg_daily_usage_seconds")
 	v.SubscriptionStatus = field.NewUint8(table, "subscription_status")
 	v.VIPStartedAt = field.NewTime(table, "vip_started_at")
 	v.VipExpiresAt = field.NewTime(table, "vip_expires_at")
-	v.VipPoints = field.NewUint64(table, "vip_points")
-	v.PointsBalance = field.NewUint64(table, "points_balance")
+	v.VipPoints = field.NewInt64(table, "vip_points")
+	v.PointsBalance = field.NewInt64(table, "points_balance")
 	v.FirstOrderCreatedAt = field.NewTime(table, "first_order_created_at")
 	v.FirstPaidAt = field.NewTime(table, "first_paid_at")
 	v.OrderCount = field.NewUint64(table, "order_count")
@@ -331,7 +334,7 @@ func (v *videoUser) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoUser) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 59)
+	v.fieldMap = make(map[string]field.Expr, 60)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["device_code"] = v.DeviceCode
 	v.fieldMap["username"] = v.Username
@@ -343,6 +346,7 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["login_type"] = v.LoginType
 	v.fieldMap["user_type"] = v.UserType
 	v.fieldMap["active_days"] = v.ActiveDays
+	v.fieldMap["active_long"] = v.ActiveLong
 	v.fieldMap["avg_daily_usage_seconds"] = v.AvgDailyUsageSeconds
 	v.fieldMap["subscription_status"] = v.SubscriptionStatus
 	v.fieldMap["vip_started_at"] = v.VIPStartedAt

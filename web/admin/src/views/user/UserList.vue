@@ -111,14 +111,17 @@
         <el-descriptions :column="2" border class="summary">
           <el-descriptions-item label="用户 ID">{{ user.id }}</el-descriptions-item>
           <el-descriptions-item label="昵称">{{ user.username || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="是否会员">
-            <el-tag :type="detail.is_member ? 'success' : 'info'">{{ detail.is_member ? '是' : '否' }}</el-tag>
+          <el-descriptions-item label="用户类型">{{ user.user_type == 2 ? '付费用户' : '免费用户' }}</el-descriptions-item>
+          <el-descriptions-item label="是否订阅">
+            <el-tag :type="user.subscription_status == 2 ? 'success' : 'info'">{{ user.subscription_status == 2 ? '是' : '否' }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="VIP 等级">{{ user.vip_level || 0 }}</el-descriptions-item>
-          <el-descriptions-item label="VIP 开始时间">{{ formatDate(user.vip_started_at) }}</el-descriptions-item>
-          <el-descriptions-item label="VIP 结束时间">{{ formatDate(user.vip_expires_at) }}</el-descriptions-item>
-          <el-descriptions-item label="手机号">{{ user.phone || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="用户类型">{{ user.user_type === 2 ? '付费用户' : '免费用户' }}</el-descriptions-item>
+
+<!--          <el-descriptions-item label="订阅 等级">{{ user.vip_level || 0 }}</el-descriptions-item>-->
+
+          <el-descriptions-item label="订阅 开始时间">{{ formatDate(user.vip_started_at) }}</el-descriptions-item>
+          <el-descriptions-item label="订阅 结束时间">{{ formatDate(user.vip_expires_at) }}</el-descriptions-item>
+          <el-descriptions-item label="订阅 积分">{{ user.vip_points || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="自购 积分">{{ user.points_balance || 0 }}</el-descriptions-item>
           <el-descriptions-item label="是否冻结">
             <el-tag :type="user.is_frozen ? 'danger' : 'success'">{{ user.is_frozen ? '是' : '否' }}</el-tag>
           </el-descriptions-item>
@@ -151,9 +154,10 @@
               <el-descriptions-item label="IMEI">{{ user.imei || '-' }}</el-descriptions-item>
               <el-descriptions-item label="设备型号">{{ user.phone_model || '-' }}</el-descriptions-item>
               <el-descriptions-item label="设备国家">{{ user.client_country || user.server_country || '-' }}</el-descriptions-item>
+              <el-table-column prop="email" label="邮箱" min-width="220" />
               <el-descriptions-item label="最近登录 IP">{{ user.last_login_ip || '-' }}</el-descriptions-item>
               <el-descriptions-item label="最近登录时间">{{ formatDate(user.last_login_at) }}</el-descriptions-item>
-              <el-descriptions-item label="积分余额">{{ formatNumber(user.points_balance) }}</el-descriptions-item>
+<!--              <el-descriptions-item label="积分余额">{{ formatNumber(user.points_balance) }}</el-descriptions-item>-->
               <el-descriptions-item label="创建时间">{{ formatDate(user.created_at) }}</el-descriptions-item>
             </el-descriptions>
           </el-tab-pane>

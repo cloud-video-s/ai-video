@@ -128,11 +128,11 @@ func (d *AppUserRepo) ExpireDueSubscriptions(ctx context.Context, now time.Time)
 			q.VipExpiresAt.IsNotNull(),
 			q.VipExpiresAt.Lte(now),
 		).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"subscription_status": domain.AppUserSubscriptionCancelled,
 			"vip_points":          uint64(0),
 			"vip_expires_at":      uint64(0),
-			"user_type":           1,
+			"user_type":           domain.AppUserTypeFree,
 		})
 	if err != nil {
 		return 0, err
@@ -226,6 +226,12 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 	}
 	rows, err := dao.Order(user.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
+}
+
+func (d *AppUserRepo) SaveUserActiveLong(ctx context.Context, id, timeLong uint64) error {
+	q := qFrom(ctx).VideoUser
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(id)).UpdateColumn(q.ActiveLong, q.ActiveLong.Add(timeLong))
+	return err
 }
 
 func boolInt8(value bool) int8 {

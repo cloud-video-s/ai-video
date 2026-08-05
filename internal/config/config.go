@@ -17,6 +17,7 @@ type Config struct {
 	ApiJwt         JWTConfig            `mapstructure:"api_jwt"`
 	GeoIP          GeoIPConfig          `mapstructure:"geoip"`
 	ThirdPartyAuth ThirdPartyAuthConfig `mapstructure:"third_party_auth"`
+	AppStore       AppStoreConfig       `mapstructure:"app_store"`
 	Upload         UploadConfig         `mapstructure:"upload"`
 	Casbin         CasbinConfig         `mapstructure:"casbin"`
 	Log            LogConfig            `mapstructure:"log"`
@@ -104,6 +105,17 @@ type OIDCProviderConfig struct {
 	JWKSURL   string   `mapstructure:"jwks_url"`
 }
 
+// AppStoreConfig contains the App Store Connect API key metadata used to call
+// the App Store Server API. The private key signs outbound API JWTs only; Apple
+// transaction and notification JWS values are verified with Apple's x5c chain.
+type AppStoreConfig struct {
+	BundleID       string `mapstructure:"bundle_id"`
+	IssuerID       string `mapstructure:"issuer_id"`
+	KeyID          string `mapstructure:"key_id"`
+	PrivateKeyPath string `mapstructure:"private_key_path"`
+	HTTPTimeoutMS  int    `mapstructure:"http_timeout_ms"`
+}
+
 type UploadConfig struct {
 	RootDir                string   `mapstructure:"root_dir"`
 	LocalRootDir           string   `mapstructure:"local_root_dir"`
@@ -189,6 +201,11 @@ func setConfigDefaults() {
 	viper.SetDefault("third_party_auth.google.jwks_url", "https://www.googleapis.com/oauth2/v3/certs")
 	viper.SetDefault("third_party_auth.apple.issuers", []string{"https://appleid.apple.com"})
 	viper.SetDefault("third_party_auth.apple.jwks_url", "https://appleid.apple.com/auth/keys")
+	viper.SetDefault("app_store.bundle_id", "")
+	viper.SetDefault("app_store.issuer_id", "")
+	viper.SetDefault("app_store.key_id", "")
+	viper.SetDefault("app_store.private_key_path", "config/appkey.p8")
+	viper.SetDefault("app_store.http_timeout_ms", 10000)
 	viper.SetDefault("upload.root_dir", "storage/uploads/tmp")
 	viper.SetDefault("upload.local_root_dir", "storage/uploads/files")
 	viper.SetDefault("upload.local_base_url", "/uploads")

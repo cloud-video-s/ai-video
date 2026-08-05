@@ -42,13 +42,13 @@ func (r *DashboardRepo) MonthStats(ctx context.Context, start, end time.Time, su
 	}
 
 	if err := db.Unscoped().Model(&model.VideoOrder{}).
-		Where("status = ? AND product_type = ? AND paid_at >= ? AND paid_at < ?",
-			domain.OrderStatusPaid, domain.OrderProductVIPSubscription, start, end).
+		Where("status IN ? AND product_type = ? AND pay_time >= ? AND pay_time < ?",
+			[]int{domain.OrderStatusPaid, domain.OrderStatusEnd}, domain.OrderProductVIPSubscription, start, end).
 		Count(&stats.SuccessfulSubscriptionCount).Error; err != nil {
 		return nil, err
 	}
 	if err := db.Unscoped().Model(&model.VideoOrder{}).
-		Where("status = ? AND paid_at >= ? AND paid_at < ?", domain.OrderStatusPaid, start, end).
+		Where("status IN ? AND pay_time >= ? AND pay_time < ?", []int{domain.OrderStatusPaid, domain.OrderStatusEnd}, start, end).
 		Select("currency, COALESCE(SUM(paid_amount), 0) AS amount").
 		Group("currency").Order("currency ASC").
 		Scan(&stats.TransactionAmounts).Error; err != nil {

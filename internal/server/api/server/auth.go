@@ -102,6 +102,10 @@ type UpdateCountryRequest struct {
 	Country string `json:"country" binding:"omitempty,max=8"`
 }
 
+type ActiveReportingRequest struct {
+	TimeLong uint64 `json:"time_long" binding:"required,min=1"`
+}
+
 func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string) (*AuthResponse, error) {
 	req.DeviceCode = strings.TrimSpace(req.DeviceCode)
 	if req.DeviceCode == "" {
@@ -267,7 +271,7 @@ func (s *AuthService) GetProfile(ctx context.Context, userID uint64) (*UserRespo
 		ChannelID:          user.ChannelID,
 		LoginType:          uint32(user.LoginType),
 		UserType:           uint32(user.UserType),
-		PointsBalance:      user.PointsBalance + user.VipPoints,
+		PointsBalance:      uint64(user.PointsBalance + user.VipPoints),
 		SubscriptionStatus: uint32(user.SubscriptionStatus),
 		Status:             int32(user.Status),
 		LastLoginIP:        user.LastLoginIP,
@@ -302,6 +306,18 @@ func (s *AuthService) UpdateCountry(ctx context.Context, userID uint64, req *Upd
 		return nil, err
 	}
 	return s.GetProfile(ctx, userID)
+}
+
+func (s *AuthService) SaveUserActiveLong(ctx context.Context, userID uint64, req *ActiveReportingRequest) (interface{}, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("用户不存在")
+		}
+		return nil, err
+	}
+	err = s.userRepo.SaveUserActiveLong(ctx, user.ID, req.TimeLong)
+	return nil, err
 }
 
 func issueToken(user *model.VideoUser, loginType int) (*AuthResponse, error) {

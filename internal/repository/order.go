@@ -24,14 +24,14 @@ type OrderRepo struct{}
 func NewOrderRepo() *OrderRepo { return &OrderRepo{} }
 
 type OrderAdminFilter struct {
-	UserID        uint64
-	ProductType   uint32
-	ProductCode   string
-	Status        uint32
-	PaymentMethod string
-	Keyword       string
-	CreatedFrom   *time.Time
-	CreatedTo     *time.Time
+	UserID      uint64
+	ProductType uint32
+	ProductCode string
+	Status      uint32
+	PayType     uint32
+	Keyword     string
+	CreatedFrom *time.Time
+	CreatedTo   *time.Time
 }
 
 type OrderAdminSummary struct {
@@ -57,7 +57,7 @@ func (r *OrderRepo) Create(ctx context.Context, order *model.VideoOrder) error {
 	// zero dates (which would also break the composite unique index).
 	q := qFrom(ctx).VideoOrder
 	return q.WithContext(ctx).Omit(
-		q.ThirdOrderNo, q.OriginalTransactionID, q.PayAt, q.CancelledAt, q.CompletedAt,
+		q.ThirdOrderNo, q.OriginalTransactionID, q.PayTime, q.CancelledAt, q.CompletedAt,
 	).Create(order)
 }
 
@@ -75,9 +75,9 @@ func (r *OrderRepo) GetByClientRequestID(ctx context.Context, requestID string) 
 	return q.WithContext(ctx).Where(q.ClientRequestID.Eq(requestID)).First()
 }
 
-func (r *OrderRepo) GetByPaymentTransaction(ctx context.Context, method, transactionID string) (*model.VideoOrder, error) {
+func (r *OrderRepo) GetByPaymentTransaction(ctx context.Context, payType uint32, transactionID string) (*model.VideoOrder, error) {
 	q := qFrom(ctx).VideoOrder
-	return q.WithContext(ctx).Where(q.PaymentMethod.Eq(method), q.ThirdOrderNo.Eq(transactionID)).First()
+	return q.WithContext(ctx).Where(q.PayType.Eq(payType), q.ThirdOrderNo.Eq(transactionID)).First()
 }
 
 // GetByAppleOriginalTransactionID returns the newest Apple IAP order in an
@@ -86,7 +86,7 @@ func (r *OrderRepo) GetByPaymentTransaction(ctx context.Context, method, transac
 func (r *OrderRepo) GetByAppleOriginalTransactionID(ctx context.Context, originalTransactionID string) (*model.VideoOrder, error) {
 	q := qFrom(ctx).VideoOrder
 	return q.WithContext(ctx).Where(
-		q.PaymentMethod.Eq(domain.PaymentMethodAppleIAP),
+		q.PayType.Eq(domain.PaymentMethodAppleIAP),
 		q.OriginalTransactionID.Eq(originalTransactionID),
 	).Order(q.ID.Desc()).First()
 }
@@ -95,6 +95,7 @@ func (r *OrderRepo) CountPaidByProductType(ctx context.Context, userID uint64, p
 	q := qFrom(ctx).VideoOrder
 	return q.WithContext(ctx).Where(
 		q.UserID.Eq(userID), q.ProductType.Eq(productType),
+		q.Status.In(domain.OrderStatusPaid, domain.OrderStatusEnd),
 	).Count()
 }
 
@@ -174,7 +175,7 @@ func (r *OrderRepo) PageAdmin(ctx context.Context, page, pageSize int, filter *O
 	// 2. 汇总（无 GROUP BY）
 	var summary OrderAdminSummary
 	if err := buildDao(ctx, filter).Select(
-		field.NewUnsafeFieldRaw("COALESCE(SUM(CASE WHEN video_order.status = 'paid' THEN 1 ELSE 0 END), 0)").As("paid_order_count"),
+		field.NewUnsafeFieldRaw("COALESCE(SUM(CASE WHEN video_order.status IN (3, 4) THEN 1 ELSE 0 END), 0)").As("paid_order_count"),
 	).Scan(&summary); err != nil {
 		return nil, 0, OrderAdminSummary{}, err
 	}
@@ -227,9 +228,6 @@ func buildDao(ctx context.Context, filter *OrderAdminFilter) query.IVideoOrderDo
 	if filter == nil {
 		return dao
 	}
-	if filter.Keyword != "" {
-		dao = dao.LeftJoin(user, user.ID.EqCol(order.UserID))
-	}
 	if filter.UserID != 0 {
 		dao = dao.Where(order.UserID.Eq(filter.UserID))
 	}
@@ -242,8 +240,8 @@ func buildDao(ctx context.Context, filter *OrderAdminFilter) query.IVideoOrderDo
 	if filter.Status > 0 {
 		dao = dao.Where(order.Status.Eq(filter.Status))
 	}
-	if filter.PaymentMethod != "" {
-		dao = dao.Where(order.PaymentMethod.Eq(filter.PaymentMethod))
+	if filter.PayType > 0 {
+		dao = dao.Where(order.PayType.Eq(filter.PayType))
 	}
 	if filter.CreatedFrom != nil {
 		dao = dao.Where(order.CreatedAt.Gte(*filter.CreatedFrom))

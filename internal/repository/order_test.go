@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"ai-video/internal/config"
+	"ai-video/internal/domain"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -43,7 +44,7 @@ func TestOrderRepoPageAdminAssociatesPurchaser(t *testing.T) {
 			bonus_points INTEGER NOT NULL DEFAULT 0,
 			vip_level INTEGER NOT NULL DEFAULT 0,
 			vip_duration_days INTEGER NOT NULL DEFAULT 0,
-			status TEXT NOT NULL,
+			status INTEGER NOT NULL,
 			payment_method TEXT NOT NULL,
 			third_order_no TEXT NULL,
 			original_transaction_id TEXT NULL,
@@ -51,7 +52,7 @@ func TestOrderRepoPageAdminAssociatesPurchaser(t *testing.T) {
 			failure_code TEXT NULL,
 			failure_message TEXT NULL,
 			cancel_reason TEXT NULL,
-			paid_at DATETIME NULL,
+			pay_at DATETIME NULL,
 			cancelled_at DATETIME NULL,
 			expires_at DATETIME NULL,
 			created_at DATETIME NOT NULL,
@@ -79,10 +80,10 @@ func TestOrderRepoPageAdminAssociatesPurchaser(t *testing.T) {
 		product_name, currency, product_amount, discount_amount, payable_amount,
 		paid_amount, refunded_amount, bonus_points, vip_level, vip_duration_days,
 		status, payment_method, third_order_no, original_transaction_id,
-		payment_evidence, paid_at, created_at, updated_at
+		payment_evidence, pay_at, created_at, updated_at
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		"order-1", "request-1", 7, 1, 3, "vip-monthly", "VIP Monthly", "USD",
-		19.99, 0, 19.99, 19.99, 2.5, 0, 1, 30, "paid", "apple_iap",
+		19.99, 0, 19.99, 19.99, 2.5, 0, 1, 30, domain.OrderStatusPaid, "apple_iap",
 		"transaction-1", "original-1", `{"transactionId":"transaction-1"}`, now, now, now,
 	).Error; err != nil {
 		t.Fatal(err)
@@ -94,7 +95,7 @@ func TestOrderRepoPageAdminAssociatesPurchaser(t *testing.T) {
 
 	repo := NewOrderRepo()
 	records, total, summary, err := repo.PageAdmin(context.Background(), 1, 20, &OrderAdminFilter{
-		ProductType: 1, Status: "paid", Keyword: "apple-relay@example.com",
+		ProductType: 1, Status: domain.OrderStatusPaid, Keyword: "apple-relay@example.com",
 	})
 	if err != nil {
 		t.Fatal(err)

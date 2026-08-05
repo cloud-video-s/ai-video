@@ -135,10 +135,22 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑 VIP 订阅套餐' : '新增 VIP 订阅套餐'" width="960px" destroy-on-close :close-on-click-modal="false">
+    <el-dialog
+      v-model="dialogVisible"
+      :title="form.id ? '编辑 VIP 订阅套餐' : '新增 VIP 订阅套餐'"
+      width="1040px"
+      top="4vh"
+      class="subscription-edit-dialog"
+      destroy-on-close
+      :close-on-click-modal="false"
+    >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="124px">
-        <el-tabs v-model="formTab">
-          <el-tab-pane label="基础配置" name="base">
+        <div class="form-sections">
+          <section class="form-section">
+            <div class="section-heading">
+              <div class="section-title">基础配置</div>
+              <div class="section-description">设置套餐身份、类型与投放范围</div>
+            </div>
             <div class="form-grid">
               <el-form-item label="产品 SKU" prop="suk_code">
                 <el-input v-model="form.suk_code" maxlength="191" placeholder="应用商店订阅 SKU" />
@@ -230,9 +242,13 @@
             <el-form-item label="套餐描述">
               <el-input v-model="form.description" type="textarea" :rows="3" maxlength="1000" show-word-limit />
             </el-form-item>
-          </el-tab-pane>
+          </section>
 
-          <el-tab-pane label="价格与权益" name="pricing">
+          <section class="form-section">
+            <div class="section-heading">
+              <div class="section-title">价格与权益</div>
+              <div class="section-description">配置首次订阅、续订、积分和试用规则</div>
+            </div>
             <div class="form-grid">
               <el-form-item label="币种" prop="currency">
                 <el-input v-model="form.currency" maxlength="3" @input="form.currency = form.currency.toUpperCase()" />
@@ -254,9 +270,13 @@
               <el-form-item label="免费体验"><el-switch v-model="form.free_trial" /></el-form-item>
             </div>
             <el-form-item label="订阅说明"><el-input v-model="form.subscription_description" type="textarea" :rows="3" maxlength="500" show-word-limit /></el-form-item>
-          </el-tab-pane>
+          </section>
 
-          <el-tab-pane label="展示与状态" name="presentation">
+          <section class="form-section">
+            <div class="section-heading">
+              <div class="section-title">展示与状态</div>
+              <div class="section-description">设置前台文案、默认项与上架状态</div>
+            </div>
             <div class="form-grid">
               <el-form-item label="续费文案"><el-input v-model="form.renewal_text" maxlength="255" /></el-form-item>
               <el-form-item label="角标文案"><el-input v-model="form.badge_text" maxlength="64" placeholder="例如：最受欢迎、限时优惠" /></el-form-item>
@@ -267,8 +287,8 @@
               <el-form-item label="默认套餐"><el-switch v-model="form.is_default" /><span class="form-tip">同一安装包和套餐类型仅保留一个默认套餐</span></el-form-item>
             </div>
             <el-form-item label="内部备注"><el-input v-model="form.remark" type="textarea" :rows="4" maxlength="1000" show-word-limit /></el-form-item>
-          </el-tab-pane>
-        </el-tabs>
+          </section>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -332,7 +352,6 @@ const submitting = ref(false)
 const dialogVisible = ref(false)
 const updatingIds = ref<number[]>([])
 const formRef = ref<FormInstance>()
-const formTab = ref('base')
 const tableData = ref<VIPSubscription[]>([])
 const levelOptions = ref<VIPSubscriptionLevel[]>([])
 const countryOptions = ref<Country[]>([])
@@ -450,7 +469,6 @@ function handleFilterPackageChange() { query.version_code = '' }
 function openCreate() {
   Object.assign(form, createDefaultForm(), { level_id: levelOptions.value[0]?.id || 0 })
   Object.assign(targetModes, { countries: 'all', apps: 'selected', packages: 'selected', versions: 'all', channels: 'all' })
-  formTab.value = 'base'
   dialogVisible.value = true
 }
 function ensureCurrentLevelOption(row: VIPSubscription) {
@@ -516,7 +534,6 @@ function openEdit(row: VIPSubscription) {
   if (availablePackages.length && availablePackages.every((code) => packageCodes.includes(code)) && packageCodes.length === availablePackages.length) {
     targetModes.packages = 'all'
   }
-  formTab.value = 'base'
   dialogVisible.value = true
 }
 function handleCountryModeChange(value: string | number | boolean | undefined) { if (value === 'all') form.country_codes = [] }
@@ -675,15 +692,24 @@ onMounted(() => Promise.all([fetchOptions(), fetchData()]))
 .original-price { color: #909399; font-size: 12px; text-decoration: line-through; }
 .display-state { margin-top: 6px; color: #909399; font-size: 12px; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; overflow-x: auto; }
+.form-sections { display: flex; flex-direction: column; gap: 18px; }
+.form-section { padding: 18px 20px 2px; border: 1px solid #e4e7ed; border-radius: 8px; background: #fff; }
+.section-heading { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.section-title { color: #303133; font-size: 16px; font-weight: 600; }
+.section-description { color: #909399; font-size: 12px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; padding-top: 8px; }
 .form-grid :deep(.el-input-number) { width: 100%; }
 .form-tip { margin-left: 10px; color: #909399; font-size: 12px; }
 .scope-field { display: flex; width: 100%; flex-direction: column; align-items: flex-start; gap: 10px; }
 .scope-tip { color: #909399; font-size: 12px; line-height: 1.5; }
+:global(.subscription-edit-dialog) { max-width: calc(100vw - 32px); }
+:global(.subscription-edit-dialog .el-dialog__body) { max-height: calc(92vh - 132px); overflow-y: auto; }
 @media (max-width: 1200px) { .filters { grid-template-columns: repeat(4, minmax(140px, 1fr)); } }
 @media (max-width: 700px) {
   .page-header { align-items: stretch; flex-direction: column; }
   .filters, .form-grid { grid-template-columns: 1fr; }
+  .form-section { padding: 14px 12px 0; }
+  .section-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
   .page-wrap :deep(.el-card__header), .page-wrap :deep(.el-card__body) { padding: 14px; }
 }
 </style>

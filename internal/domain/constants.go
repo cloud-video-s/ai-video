@@ -14,6 +14,7 @@ const (
 	AppUserSubscriptionNotSubscribed uint8 = 1
 	AppUserSubscriptionSubscribed    uint8 = 2
 	AppUserSubscriptionCancelled     uint8 = 3
+	AppUserSubscriptionExpired       uint8 = 4
 
 	IdentityProviderGoogle = "google"
 	IdentityProviderApple  = "apple"
@@ -43,6 +44,10 @@ const (
 
 	OrderProductVIPSubscription = 1
 	OrderProductPointsPackage   = 2
+	OrderPayTypeApple           = 1
+	OrderPayTypeGoogle          = 2
+	OrderTypeNewPurchase        = 1
+	OrderTypeRenewal            = 2
 
 	OrderStatusPending   = 1 //待处理
 	OrderStatusPaying    = 2 //支付中
@@ -52,16 +57,17 @@ const (
 	OrderStatusFailed    = 6 //支付失败
 	OrderStatusRefunded  = 7 //已退款
 
-	PaymentMethodAppleIAP = "apple_iap"
+	PaymentMethodAppleIAP   = 1
+	PaymentMethodGooglePlay = 2
 
-	PointsSourceSubscriptionGift = iota + 1 // 1: 订阅赠送
-	PointsSourcePurchase                    // 2: 积分购买（注意与原有 "purchase" 字符串常量重名，若需共存请改用其他前缀如 SourceType）
-	PointsSourceModelConsume                // 3: 模型消费
-	PointsSourceModelRefund                 // 4: 模型退款
-	PointsSourceExpireDeduct                // 5: 订阅过期扣除
-	PointsSourceSystemReward                // 6: 系统奖励
-	PointsSourceAdminOp                     // 7: 管理员操作
-	PointsSourceOther                       // 8: 其他
+	PointsSourceSubscriptionGift = 1 // 订阅赠送
+	PointsSourcePurchase         = 2 // 积分购买
+	PointsSourceModelConsume     = 3 // 模型消费
+	PointsSourceModelRefund      = 4 // 模型退款
+	PointsSourceExpireDeduct     = 5 // 订阅过期扣除
+	PointsSourceSystemReward     = 6 // 系统奖励
+	PointsSourceAdminOp          = 7 // 管理员操作
+	PointsSourceOther            = 8 // 其他
 
 	VIPPlanTypeNormal          = "normal"
 	VIPPlanTypeTrial           = "trial"

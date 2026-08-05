@@ -62,9 +62,8 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		{
 			users.GET("/me", authHandler.Profile)
 			users.PUT("/me/country", authHandler.UpdateCountry)
-			users.GET("/me/identities", authHandler.ListIdentities)
-			users.DELETE("/me/identities/:provider", authHandler.UnbindIdentity)
 			users.GET("/points", authHandler.GetPointsList)
+			users.POST("/active_reporting", authHandler.ActiveReporting)
 		}
 
 		banners := authenticated.Group("/banners")
@@ -103,6 +102,8 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 			vip.GET("/recommend", vipHandler.Recommend)
 			vip.GET("list", vipHandler.VipList)
 		}
+
+		authenticated.POST("/orders", paymentHandler.CreateOrder)
 
 		payments := authenticated.Group("/payments")
 		{

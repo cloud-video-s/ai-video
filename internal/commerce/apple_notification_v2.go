@@ -166,6 +166,8 @@ type DecodedAppleNotificationV2 struct {
 	RevocationDate      int64
 	RevocationReason    string
 	TransactionReason   string
+	Price               int64
+	Currency            string
 	Version             string
 	SignedDate          int64
 	AppAppleID          int64
@@ -314,6 +316,8 @@ func decodeAppleNotificationV2Transaction(result *DecodedAppleNotificationV2, ro
 	result.RevocationDate = transaction.RevocationDate
 	result.RevocationReason = transaction.RevocationReason
 	result.TransactionReason = transaction.TransactionReason
+	result.Price = transaction.Price
+	result.Currency = strings.ToUpper(strings.TrimSpace(transaction.Currency))
 	return nil
 }
 

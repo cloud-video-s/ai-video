@@ -130,6 +130,24 @@ func (r *PointsPackageRepo) GetAppleProduct(ctx context.Context, productID, pack
 	return points.WithContext(ctx).Where(points.ProductCode.Eq(productID), points.Status.Eq(1)).First()
 }
 
+// GetEnabledForPackage loads an enabled points product only when it is
+// assigned to the authenticated application package.
+func (r *PointsPackageRepo) GetEnabledForPackage(ctx context.Context, id uint64, packageCode string) (*model.VideoPointsPackage, error) {
+	q := qFrom(ctx)
+	points := q.VideoPointsPackage
+	product, err := points.WithContext(ctx).Where(points.ID.Eq(id), points.Status.Eq(1)).First()
+	if err != nil {
+		return nil, err
+	}
+	relation := q.VideoPointsPackagePackage
+	if _, err := relation.WithContext(ctx).Where(
+		relation.ProductCode.Eq(product.ProductCode), relation.PackageCode.Eq(packageCode),
+	).First(); err != nil {
+		return nil, err
+	}
+	return product, nil
+}
+
 func (r *PointsPackageRepo) ListOptions(ctx context.Context) ([]model.VideoPointsPackage, error) {
 	q := qFrom(ctx).VideoPointsPackage
 	rows, err := q.WithContext(ctx).Where(q.Status.Eq(1)).Order(q.Sort.Asc(), q.ID.Asc()).Find()

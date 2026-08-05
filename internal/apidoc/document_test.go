@@ -338,11 +338,11 @@ func TestBuildGeneratesPathsSchemasAndSecurity(t *testing.T) {
 	}
 	payment := document.Paths["/api/payments/apple/pay"]["post"].(map[string]any)
 	assertParameter(t, payment, "bundleID", "json", true)
-	assertParameter(t, payment, "signedTransactionInfo", "json", true)
+	assertParameter(t, payment, "signedTransactionInfo", "json", false)
 	assertResponseParameter(t, payment, "data.transaction_id", true)
 	assertResponseParameter(t, payment, "data.is_active", true)
 	paymentExample := payment["x-response-example"].(responseExampleEnvelope).Data.(commerce.ApplePurchaseResponse)
-	if paymentExample.OrderNo == "" || paymentExample.IsActive || paymentExample.EvidenceMode != "sandbox_json" {
+	if paymentExample.OrderNo == "" || paymentExample.IsActive || paymentExample.EvidenceMode != "jws" {
 		t.Fatalf("Apple payment response example is incomplete: %#v", paymentExample)
 	}
 	notification := document.Paths["/api/payments/apple/notification"]["post"].(map[string]any)
@@ -642,14 +642,14 @@ func TestBuildApplePaymentDocumentation(t *testing.T) {
 	}})
 	payment := document.Paths["/api/payments/apple/pay"]["post"].(map[string]any)
 	assertParameter(t, payment, "bundleID", "json", true)
-	assertParameter(t, payment, "signedTransactionInfo", "json", true)
+	assertParameter(t, payment, "signedTransactionInfo", "json", false)
 	assertResponseParameter(t, payment, "data.transaction_id", true)
 	assertResponseParameter(t, payment, "data.is_active", true)
 	if !strings.Contains(payment["description"].(string), "is_active") {
 		t.Fatalf("Apple payment active-state semantics are missing: %#v", payment["description"])
 	}
 	example := payment["x-response-example"].(responseExampleEnvelope).Data.(commerce.ApplePurchaseResponse)
-	if example.OrderNo == "" || example.IsActive || example.EvidenceMode != "sandbox_json" {
+	if example.OrderNo == "" || example.IsActive || example.EvidenceMode != "jws" {
 		t.Fatalf("Apple payment response example is incomplete: %#v", example)
 	}
 }

@@ -59,7 +59,7 @@ func (m *Manager) CreateTemplateTask(
 			template.ID, taskType, modelConfig.Code, modelConfig.ModelType,
 		)
 	}
-	if user.VipPoints < uint64(modelConfig.Score) {
+	if user.VipPoints < modelConfig.Score {
 		return nil, errors.New("not enough points")
 	}
 	configured, err := m.templateParameterRepo.ListByTemplate(ctx, template.ID)

@@ -23,6 +23,7 @@ export interface AppUser {
   active_days: number
   avg_daily_usage_seconds: number
   vip_expires_at: string | null
+  vip_points: number | 0
   points_balance: number
   subscription_status: number
   first_order_created_at: string | null
@@ -140,6 +141,7 @@ export interface UserCenterDetail {
   points_summary: { income_total: number; expense_total: number }
   works: UserWork[]
   work_total: number
+  vip_points: number
   orders: UserOrder[]
   order_total: number
 }

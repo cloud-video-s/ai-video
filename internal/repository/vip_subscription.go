@@ -457,6 +457,20 @@ func (r *VIPSubscriptionRepo) GetAppleProduct(ctx context.Context, sukCode, pack
 	return result, nil
 }
 
+// GetEnabledForPackage loads an enabled subscription product only when it is
+// assigned to the authenticated application package.
+func (r *VIPSubscriptionRepo) GetEnabledForPackage(ctx context.Context, id uint64, packageCode string) (*model.VideoVipSubscription, error) {
+	q := qFrom(ctx)
+	relation := q.VideoVipSubscriptionPackage
+	if _, err := relation.WithContext(ctx).Where(
+		relation.SubscriptionID.Eq(id), relation.PackageCode.Eq(packageCode),
+	).First(); err != nil {
+		return nil, err
+	}
+	vip := q.VideoVipSubscription
+	return vip.WithContext(ctx).Where(vip.ID.Eq(id), vip.Status.Eq(1)).First()
+}
+
 func (r *VIPSubscriptionRepo) UpdateFields(ctx context.Context, item *model.VideoVipSubscription) error {
 	q := qFrom(ctx).VideoVipSubscription
 	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID)).Select(

@@ -21,6 +21,28 @@ func NewPaymentHandler() *PaymentHandler {
 	return &PaymentHandler{service: commerce.NewService()}
 }
 
+// CreateOrder creates a pending store order and returns the native Apple or
+// Google payment parameters needed by the authenticated app package.
+func (h *PaymentHandler) CreateOrder(c *gin.Context) {
+	var req commerce.CreatePaymentOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, errcode.ErrParam, "订单参数错误: "+err.Error())
+		return
+	}
+	result, err := h.service.CreatePaymentOrder(
+		c.Request.Context(), middleware.GetAPIUserID(c), middleware.GetAPIAppPackageCode(c), req,
+	)
+	if err != nil {
+		if isCreateOrderInputError(err) {
+			response.Fail(c, errcode.ErrParam, err.Error())
+			return
+		}
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, result)
+}
+
 // ConfirmApple receives the StoreKit result after an app purchase. The
 // authenticated package header is used as the expected Apple bundle ID.
 func (h *PaymentHandler) ConfirmApple(c *gin.Context) {
@@ -68,7 +90,6 @@ func (h *PaymentHandler) AppleServerNotification(c *gin.Context) {
 		return
 	}
 	config.Log.Infow("Apple server notification acknowledged",
-		"body", body.SignedPayload,
 		"notification_type", summary.NotificationType,
 		"subtype", summary.Subtype,
 		"notification_uuid", summary.NotificationUUID,
@@ -92,10 +113,19 @@ func isApplePaymentInputError(err error) bool {
 		errors.Is(err, commerce.ErrAppleUnsignedProduction) ||
 		errors.Is(err, commerce.ErrAppleBundleMismatch) ||
 		errors.Is(err, commerce.ErrAppleEnvironmentMismatch) ||
+		errors.Is(err, commerce.ErrAppleTransactionNotFound) ||
 		errors.Is(err, commerce.ErrAppleProductNotFound) ||
 		errors.Is(err, commerce.ErrAppleProductAmbiguous) ||
 		errors.Is(err, commerce.ErrApplePurchaseInactive) ||
 		errors.Is(err, commerce.ErrApplePurchaseRevoked) ||
 		errors.Is(err, commerce.ErrPaymentMismatch) ||
 		errors.Is(err, commerce.ErrPaymentTransactionUsed)
+}
+
+func isCreateOrderInputError(err error) bool {
+	return errors.Is(err, commerce.ErrUnsupportedProduct) ||
+		errors.Is(err, commerce.ErrUnsupportedPaymentMethod) ||
+		errors.Is(err, commerce.ErrPackageNotAvailable) ||
+		errors.Is(err, commerce.ErrProductNotAvailable) ||
+		errors.Is(err, commerce.ErrPaymentPackageMismatch)
 }

@@ -123,7 +123,7 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		}
 		return nil, err
 	}
-	if user.VipPoints < uint64(modelConfig.Score) {
+	if user.VipPoints < modelConfig.Score {
 		return nil, errors.New("not enough points")
 	}
 	if modelConfig.ModelType != request.TaskType {
@@ -452,10 +452,10 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGe
 		if err != nil {
 			return err
 		}
-		if user.VipPoints+user.PointsBalance < uint64(task.Score) {
+		if user.VipPoints+user.PointsBalance < int64(task.Score) {
 			return commerce.ErrInsufficientPoints
 		}
-		user.VipPoints = user.VipPoints - uint64(task.Score)
+		user.VipPoints = user.VipPoints - int64(task.Score)
 		if user.VipPoints < 0 {
 			user.PointsBalance += user.VipPoints
 			user.VipPoints = 0
@@ -463,7 +463,7 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGe
 		ledger := &model.VideoUserPointsLedger{
 			UserID:    user.ID,
 			Direction: int8(domain.PointsDirectionExpense), PointsChange: -int64(task.Score),
-			BalanceBefore: user.PointsBalance, BalanceAfter: user.VipPoints + user.PointsBalance, SourceType: domain.PointsSourceModelConsume,
+			BalanceBefore: uint64(user.PointsBalance), BalanceAfter: uint64(user.VipPoints + user.PointsBalance), SourceType: domain.PointsSourceModelConsume,
 			Description: "Spend points",
 			OccurredAt:  now, CreatedAt: now,
 		}

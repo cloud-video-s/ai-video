@@ -61,12 +61,6 @@ func mustAppleRootCAPool() *x509.CertPool {
 	return pool
 }
 
-// verifyAppleJWS verifies a compact Apple JWS with the production trust store
-// and decodes its authenticated JSON payload into target.
-func verifyAppleJWS(compact string, target any) error {
-	return verifyAppleJWSWithRoots(compact, target, defaultAppleRootCAs)
-}
-
 // verifyAppleJWSWithRoots validates the protected header, Apple certificate
 // chain and certificate OIDs, ES256 signature, and signed payload. The roots
 // parameter permits isolated tests to supply their own trust anchor.
@@ -108,7 +102,7 @@ func verifyAppleJWSWithRoots(compact string, target any, roots *x509.CertPool) e
 		}
 		certificates = append(certificates, certificate)
 	}
-	leaf, intermediate := certificates[0], certificates[1]
+	leaf, intermediate, suppliedRoot := certificates[0], certificates[1], certificates[2]
 	if !hasCertificateExtension(leaf, appleReceiptSigningOID) ||
 		!hasCertificateExtension(intermediate, appleWWDRIntermediateOID) {
 		return ErrAppleSignatureInvalid
@@ -123,6 +117,22 @@ func verifyAppleJWSWithRoots(compact string, target any, roots *x509.CertPool) e
 	verificationTime := time.Now()
 	if signedData.SignedDate > 0 {
 		verificationTime = time.UnixMilli(signedData.SignedDate)
+	}
+	// Validate the x5c ordering and require its supplied root to resolve to the
+	// server-owned trust store. The untrusted header may not substitute its own
+	// self-signed root even when the leaf signature is otherwise well formed.
+	if err := leaf.CheckSignatureFrom(intermediate); err != nil {
+		return fmt.Errorf("%w: invalid leaf/intermediate chain", ErrAppleSignatureInvalid)
+	}
+	if err := intermediate.CheckSignatureFrom(suppliedRoot); err != nil {
+		return fmt.Errorf("%w: invalid intermediate/root chain", ErrAppleSignatureInvalid)
+	}
+	if _, err := suppliedRoot.Verify(x509.VerifyOptions{
+		Roots:       roots,
+		CurrentTime: verificationTime,
+		KeyUsages:   []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	}); err != nil {
+		return fmt.Errorf("%w: untrusted x5c root", ErrAppleSignatureInvalid)
 	}
 	intermediates := x509.NewCertPool()
 	intermediates.AddCert(intermediate)

@@ -164,6 +164,20 @@ func (h *AuthHandler) UpdateCountry(c *gin.Context) {
 	response.OK(c, user)
 }
 
+func (h *AuthHandler) ActiveReporting(c *gin.Context) {
+	var req apiservice.ActiveReportingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
+	user, err := h.svc.SaveUserActiveLong(c.Request.Context(), middleware.GetAPIUserID(c), &req)
+	if err != nil {
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, user)
+}
+
 func (h *AuthHandler) GetPointsList(c *gin.Context) {
 	var req apiservice.ClientPointsRequest
 	if err := c.ShouldBind(&req); err != nil {

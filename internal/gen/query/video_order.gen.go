@@ -43,21 +43,22 @@ func newVideoOrder(db *gorm.DB, opts ...gen.DOOption) videoOrder {
 	_videoOrder.PaidAmount = field.NewFloat64(tableName, "paid_amount")
 	_videoOrder.ActualAmountMoney = field.NewFloat64(tableName, "actual_amount_money")
 	_videoOrder.RefundedAmount = field.NewFloat64(tableName, "refunded_amount")
-	_videoOrder.BonusPoints = field.NewUint64(tableName, "bonus_points")
+	_videoOrder.BonusPoints = field.NewInt64(tableName, "bonus_points")
 	_videoOrder.VipLevel = field.NewUint(tableName, "vip_level")
 	_videoOrder.VipDurationDays = field.NewUint(tableName, "vip_duration_days")
 	_videoOrder.Status = field.NewUint32(tableName, "status")
-	_videoOrder.PaymentMethod = field.NewString(tableName, "payment_method")
+	_videoOrder.PayType = field.NewUint32(tableName, "pay_type")
+	_videoOrder.PayTime = field.NewTime(tableName, "pay_time")
 	_videoOrder.ThirdOrderNo = field.NewString(tableName, "third_order_no")
 	_videoOrder.OriginalTransactionID = field.NewString(tableName, "original_transaction_id")
 	_videoOrder.PaymentEvidence = field.NewString(tableName, "payment_evidence")
 	_videoOrder.FailureCode = field.NewString(tableName, "failure_code")
 	_videoOrder.FailureMessage = field.NewString(tableName, "failure_message")
 	_videoOrder.CancelReason = field.NewString(tableName, "cancel_reason")
-	_videoOrder.PayAt = field.NewTime(tableName, "pay_at")
 	_videoOrder.CompletedAt = field.NewTime(tableName, "completed_at")
 	_videoOrder.CancelledAt = field.NewTime(tableName, "cancelled_at")
 	_videoOrder.ExpiresAt = field.NewTime(tableName, "expires_at")
+	_videoOrder.OrderType = field.NewUint32(tableName, "order_type")
 	_videoOrder.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoOrder.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoOrder.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -92,21 +93,22 @@ type videoOrder struct {
 	PaidAmount            field.Float64 // 实付金额（已支付）
 	ActualAmountMoney     field.Float64 // 税后金额
 	RefundedAmount        field.Float64 // 已退款金额
-	BonusPoints           field.Uint64  // 赠送的积分数量
+	BonusPoints           field.Int64   // 赠送的积分数量
 	VipLevel              field.Uint    // 购买后获得的VIP等级（0表示无）
 	VipDurationDays       field.Uint    // VIP有效期天数（0表示非VIP商品）
-	Status                field.Uint32  // 订单状态 1=待支付 2=支付中 3=支付成功 4=订单完成5=订单取消 6=订单退款
-	PaymentMethod         field.String  // 支付方式（stripe, apple, google等）
+	Status                field.Uint32  // 订单状态 1=待支付 2=支付中 3=支付成功 4=订单完成5=订单取消 6=支付失败 7=已退款
+	PayType               field.Uint32  // 支付方式 1=apple,2=google等）
+	PayTime               field.Time    // 支付完成时间
 	ThirdOrderNo          field.String  // 支付平台返回的交易ID
 	OriginalTransactionID field.String  // 原始交易凭证ID（如苹果收据的原始交易ID）
 	PaymentEvidence       field.String  // 支付凭证原始数据（JSON格式的收据或回调内容）
 	FailureCode           field.String  // 支付失败时的错误码
 	FailureMessage        field.String  // 支付失败时的错误描述
 	CancelReason          field.String  // 订单取消原因
-	PayAt                 field.Time    // 支付完成时间
 	CompletedAt           field.Time    // 完成时间
 	CancelledAt           field.Time    // 订单取消时间
 	ExpiresAt             field.Time    // 订单过期时间（未支付自动失效）
+	OrderType             field.Uint32  // 订单类型 1新购订单 2续约订单
 	CreatedAt             field.Time    // 记录创建时间
 	UpdatedAt             field.Time    // 记录最后更新时间
 	DeletedAt             field.Field   // 软删时间
@@ -142,21 +144,22 @@ func (v *videoOrder) updateTableName(table string) *videoOrder {
 	v.PaidAmount = field.NewFloat64(table, "paid_amount")
 	v.ActualAmountMoney = field.NewFloat64(table, "actual_amount_money")
 	v.RefundedAmount = field.NewFloat64(table, "refunded_amount")
-	v.BonusPoints = field.NewUint64(table, "bonus_points")
+	v.BonusPoints = field.NewInt64(table, "bonus_points")
 	v.VipLevel = field.NewUint(table, "vip_level")
 	v.VipDurationDays = field.NewUint(table, "vip_duration_days")
 	v.Status = field.NewUint32(table, "status")
-	v.PaymentMethod = field.NewString(table, "payment_method")
+	v.PayType = field.NewUint32(table, "pay_type")
+	v.PayTime = field.NewTime(table, "pay_time")
 	v.ThirdOrderNo = field.NewString(table, "third_order_no")
 	v.OriginalTransactionID = field.NewString(table, "original_transaction_id")
 	v.PaymentEvidence = field.NewString(table, "payment_evidence")
 	v.FailureCode = field.NewString(table, "failure_code")
 	v.FailureMessage = field.NewString(table, "failure_message")
 	v.CancelReason = field.NewString(table, "cancel_reason")
-	v.PayAt = field.NewTime(table, "pay_at")
 	v.CompletedAt = field.NewTime(table, "completed_at")
 	v.CancelledAt = field.NewTime(table, "cancelled_at")
 	v.ExpiresAt = field.NewTime(table, "expires_at")
+	v.OrderType = field.NewUint32(table, "order_type")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -186,7 +189,7 @@ func (v *videoOrder) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoOrder) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 34)
+	v.fieldMap = make(map[string]field.Expr, 35)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["order_no"] = v.OrderNo
 	v.fieldMap["client_request_id"] = v.ClientRequestID
@@ -206,17 +209,18 @@ func (v *videoOrder) fillFieldMap() {
 	v.fieldMap["vip_level"] = v.VipLevel
 	v.fieldMap["vip_duration_days"] = v.VipDurationDays
 	v.fieldMap["status"] = v.Status
-	v.fieldMap["payment_method"] = v.PaymentMethod
+	v.fieldMap["pay_type"] = v.PayType
+	v.fieldMap["pay_time"] = v.PayTime
 	v.fieldMap["third_order_no"] = v.ThirdOrderNo
 	v.fieldMap["original_transaction_id"] = v.OriginalTransactionID
 	v.fieldMap["payment_evidence"] = v.PaymentEvidence
 	v.fieldMap["failure_code"] = v.FailureCode
 	v.fieldMap["failure_message"] = v.FailureMessage
 	v.fieldMap["cancel_reason"] = v.CancelReason
-	v.fieldMap["pay_at"] = v.PayAt
 	v.fieldMap["completed_at"] = v.CompletedAt
 	v.fieldMap["cancelled_at"] = v.CancelledAt
 	v.fieldMap["expires_at"] = v.ExpiresAt
+	v.fieldMap["order_type"] = v.OrderType
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

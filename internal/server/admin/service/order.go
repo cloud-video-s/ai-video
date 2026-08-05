@@ -18,14 +18,14 @@ func NewOrderAdminService() *OrderAdminService {
 }
 
 type ListOrderRequest struct {
-	UserID        uint64 `form:"user_id"`
-	ProductType   uint32 `form:"product_type" binding:"omitempty,oneof=1 2"`
-	ProductCode   string `form:"product_code" binding:"max=191"`
-	Status        uint32 `form:"status" binding:"max=20"`
-	PaymentMethod string `form:"payment_method" binding:"max=32"`
-	Keyword       string `form:"keyword" binding:"max=255"`
-	DateFrom      string `form:"date_from" binding:"omitempty,datetime=2006-01-02"`
-	DateTo        string `form:"date_to" binding:"omitempty,datetime=2006-01-02"`
+	UserID      uint64 `form:"user_id"`
+	ProductType uint32 `form:"product_type" binding:"omitempty,oneof=1 2"`
+	ProductCode string `form:"product_code" binding:"max=191"`
+	Status      uint32 `form:"status" binding:"max=20"`
+	PayType     uint32 `form:"pay_type" binding:"max=32"`
+	Keyword     string `form:"keyword" binding:"max=255"`
+	DateFrom    string `form:"date_from" binding:"omitempty,datetime=2006-01-02"`
+	DateTo      string `form:"date_to" binding:"omitempty,datetime=2006-01-02"`
 }
 
 type OrderAdminUserView struct {
@@ -60,14 +60,14 @@ type OrderAdminView struct {
 	VIPLevel              uint                `json:"vip_level"`
 	VIPDurationDays       uint                `json:"vip_duration_days"`
 	Status                uint32              `json:"status"`
-	PaymentMethod         string              `json:"payment_method"`
+	PayType               uint32              `json:"pay_type"`
 	ThirdOrderNo          string              `json:"third_order_no"`
 	OriginalTransactionID string              `json:"original_transaction_id"`
 	PaymentEvidence       string              `json:"payment_evidence,omitempty"`
 	FailureCode           string              `json:"failure_code"`
 	FailureMessage        string              `json:"failure_message"`
 	CancelReason          string              `json:"cancel_reason"`
-	PayAt                 *time.Time          `json:"pay_at"`
+	PayTime               *time.Time          `json:"pay_time"`
 	CancelledAt           *time.Time          `json:"cancelled_at"`
 	ExpiresAt             *time.Time          `json:"expires_at"`
 	CreatedAt             time.Time           `json:"created_at"`
@@ -84,7 +84,7 @@ func (s *OrderAdminService) List(ctx context.Context, page, pageSize int, req *L
 	records, total, summary, err := s.repo.PageAdmin(ctx, page, pageSize, &repository.OrderAdminFilter{
 		UserID: req.UserID, ProductType: req.ProductType,
 		ProductCode: strings.TrimSpace(req.ProductCode), Status: req.Status,
-		PaymentMethod: strings.TrimSpace(req.PaymentMethod), Keyword: strings.TrimSpace(req.Keyword),
+		PayType: req.PayType, Keyword: strings.TrimSpace(req.Keyword),
 		CreatedFrom: from, CreatedTo: to,
 	})
 	if err != nil {
@@ -114,11 +114,11 @@ func orderAdminView(record *repository.OrderAdminRecord, includeEvidence bool) O
 		ProductCode: order.ProductCode, ProductName: order.ProductName, Currency: order.Currency,
 		ProductAmount: order.ProductAmount, DiscountAmount: order.DiscountAmount,
 		PayableAmount: order.PayableAmount, PaidAmount: order.PaidAmount, RefundedAmount: order.RefundedAmount,
-		BonusPoints: order.BonusPoints, VIPLevel: order.VipLevel, VIPDurationDays: order.VipDurationDays,
-		Status: order.Status, PaymentMethod: order.PaymentMethod, ThirdOrderNo: order.ThirdOrderNo,
+		BonusPoints: uint64(order.BonusPoints), VIPLevel: order.VipLevel, VIPDurationDays: order.VipDurationDays,
+		Status: order.Status, PayType: order.PayType, ThirdOrderNo: order.ThirdOrderNo,
 		OriginalTransactionID: order.OriginalTransactionID, FailureCode: order.FailureCode,
 		FailureMessage: order.FailureMessage, CancelReason: order.CancelReason,
-		PayAt: orderAdminTimePtr(order.PayAt), CancelledAt: orderAdminTimePtr(order.CancelledAt),
+		PayTime: orderAdminTimePtr(order.PayTime), CancelledAt: orderAdminTimePtr(order.CancelledAt),
 		ExpiresAt: orderAdminTimePtr(order.ExpiresAt), CreatedAt: order.CreatedAt, UpdatedAt: order.UpdatedAt,
 	}
 	if includeEvidence {

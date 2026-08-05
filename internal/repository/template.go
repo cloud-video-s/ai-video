@@ -632,7 +632,7 @@ func (r *TemplateRepo) GetPageList(ctx context.Context, page, pageSize int, filt
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).
+	rows, err := dao.Preload(q.AIModel).Order(q.Sort.Asc(), q.ID.Desc()).
 		Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, err
@@ -642,7 +642,7 @@ func (r *TemplateRepo) GetPageList(ctx context.Context, page, pageSize int, filt
 
 func (r *TemplateRepo) GetTemplateID(ctx context.Context, id uint64) (*model.VideoTemplate, error) {
 	q := qFrom(ctx).VideoTemplate
-	return q.WithContext(ctx).Where(q.ID.Eq(id)).First()
+	return q.WithContext(ctx).Preload(q.AIModel).Where(q.ID.Eq(id)).First()
 }
 
 // GetEnabledByID loads a template that may be used to create a client
@@ -686,7 +686,7 @@ func (r *TemplateRepo) ListForClient(ctx context.Context, targets ClientTemplate
 		return []model.VideoTemplate{}, nil
 	}
 	q := qFrom(ctx).VideoTemplate
-	rows, err := q.WithContext(ctx).
+	rows, err := q.WithContext(ctx).Preload(q.AIModel).
 		Where(q.Status.Eq(1), q.TemplateTypeID.In(targets.TemplateTypeIDs...)).
 		Order(q.Sort.Desc(), q.UsageCount.Desc(), q.LikeCount.Desc(), q.ViewCount.Desc(), q.ID.Desc()).Find()
 	if err != nil {
@@ -700,7 +700,7 @@ func (r *TemplateRepo) GetListForClient(ctx context.Context, targets ClientTempl
 		return []model.VideoTemplate{}, nil
 	}
 	q := qFrom(ctx).VideoTemplate
-	rows, err := q.WithContext(ctx).
+	rows, err := q.WithContext(ctx).Preload(q.AIModel).
 		Where(q.Status.Eq(1), q.TemplateTypeID.Eq(targets.TemplateTypeID)).
 		Order(q.Sort.Desc(), q.UsageCount.Desc(), q.LikeCount.Desc(), q.ViewCount.Desc(), q.ID.Desc()).
 		Offset((targets.Page - 1) * targets.PageSize).Limit(targets.PageSize).Find()

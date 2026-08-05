@@ -1,9 +1,11 @@
 package commerce
 
 import (
+	"ai-video/internal/config"
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -27,7 +29,16 @@ func (s *Service) HandleAppleServerNotificationV2(ctx context.Context, signedPay
 	if err != nil {
 		return nil, err
 	}
-	if err := s.validateAppleNotificationV2App(ctx, decoded); err != nil {
+	config.Log.Debug("Apple server notification",
+		"summary", decoded,
+		"notification_type", decoded.NotificationType,
+		"subtype", decoded.Subtype,
+		"notification_uuid", decoded.NotificationUUID,
+		"bundle_id", decoded.BundleID,
+		"environment", decoded.Environment,
+		"transaction_id", decoded.TransactionID,
+	)
+	if err = s.validateAppleNotificationV2App(ctx, decoded); err != nil {
 		return nil, err
 	}
 	summary := newAppleNotificationV2Summary(decoded)
@@ -44,7 +55,7 @@ func (s *Service) HandleAppleServerNotificationV2(ctx context.Context, signedPay
 	switch decoded.NotificationType {
 	case AppleNotificationRefund, AppleNotificationRevoke:
 		summary.Action = "refund_or_revoke"
-		if order != nil && (order.Status == domain.OrderStatusPaid || order.Status == domain.OrderStatusRefunded) {
+		if order != nil && (order.Status == domain.OrderStatusPaid || order.Status == domain.OrderStatusEnd || order.Status == domain.OrderStatusRefunded) {
 			revokedAt := time.Now()
 			if decoded.RevocationDate > 0 {
 				revokedAt = time.UnixMilli(decoded.RevocationDate)
@@ -63,41 +74,61 @@ func (s *Service) HandleAppleServerNotificationV2(ctx context.Context, signedPay
 		summary.Processed = true
 		summary.Message = "refund reversal acknowledged; entitlement restoration requires reconciliation"
 
-	case AppleNotificationSubscribed, AppleNotificationOneTimeCharge:
-		summary.Action = "subscribe_or_purchase"
-		if order == nil && decoded.TransactionID != "" && decoded.OriginalTransaction != "" {
-			summary.Message = "silent notification, awaiting client confirmApple endpoint"
-			summary.Processed = true
-		} else if order != nil && order.Status == domain.OrderStatusPaid {
-			summary.Message = "order already fulfilled"
-			summary.Processed = true
-		} else {
-			summary.Message = "pending client confirmation"
+	case AppleNotificationSubscribed:
+		summary.Action = "subscribe"
+		completed, processErr := s.processAppleSubscriptionTransaction(
+			ctx, order, decoded, decoded.Subtype == AppleSubtypeResubscribe,
+		)
+		if processErr != nil {
+			return nil, processErr
 		}
-		err = NewService().NotificationApplePaymentSuccess(ctx, order, summary)
-		if err != nil {
-			return nil, err
+		if completed == nil {
+			// An initial purchase cannot be associated with a user until the
+			// authenticated client confirmation creates its deterministic order.
+			summary.Processed = true
+			summary.Message = "initial subscription awaiting authenticated client confirmation"
+			break
 		}
-	case AppleNotificationDidRenew, AppleNotificationRenewalExtended:
+		setAppleNotificationSummaryOrder(summary, completed)
+		summary.Processed = true
+		summary.Message = "subscription order completed"
+
+	case AppleNotificationOneTimeCharge:
+		summary.Action = "one_time_charge"
+		summary.Processed = true
+		summary.Message = "one-time charge acknowledged"
+
+	case AppleNotificationDidRenew:
 		summary.Action = "renew"
+		completed, processErr := s.processAppleSubscriptionTransaction(ctx, order, decoded, true)
+		if processErr != nil {
+			return nil, processErr
+		}
+		if completed == nil {
+			// Returning an error asks Apple to retry. A local original order may
+			// appear shortly afterwards through client confirmation or recovery.
+			return nil, fmt.Errorf("Apple renewal %s has no local original order", decoded.TransactionID)
+		}
+		setAppleNotificationSummaryOrder(summary, completed)
+		summary.Processed = true
+		summary.Message = "renewal order completed"
+
+	case AppleNotificationRenewalExtended:
+		summary.Action = "extend_renewal"
 		if order != nil && order.ProductType == domain.OrderProductVIPSubscription {
 			if err := s.extendVIPFromAppleNotificationV2(ctx, order, decoded); err != nil {
 				return nil, err
 			}
-			summary.Processed = true
-			summary.Message = "extended subscription from renewal notification"
-		} else if order == nil {
-			summary.Message = "renewal without local order, awaiting client confirmApple"
-			summary.Processed = true
+			summary.Message = "subscription expiration extended without a new charge"
 		} else {
-			summary.Message = "renewal not actionable for non-subscription order"
-			summary.Processed = true
+			summary.Message = "no local subscription to extend"
 		}
+		summary.Processed = true
 
 	case AppleNotificationDidChangeRenewalStatus:
 		summary.Action = "update_renewal_status"
 		if order != nil && order.ProductType == domain.OrderProductVIPSubscription {
-			if err := s.reflectAppleRenewalStatusChange(ctx, order, decoded.Subtype); err != nil {
+			if err := s.reflectAppleRenewalStatusChange(ctx, order, decoded.Subtype, decoded.ExpiresDate); err != nil {
 				return nil, err
 			}
 			summary.Processed = true
@@ -108,29 +139,21 @@ func (s *Service) HandleAppleServerNotificationV2(ctx context.Context, signedPay
 		}
 
 	case AppleNotificationDidFailToRenew:
-		summary.Action = "cancel_failed_payment"
-		summary.Processed = true
-		switch {
-		case order == nil:
-			summary.Message = "no matching pending Apple order to cancel"
-		case order.Status == domain.OrderStatusCancelled:
-			summary.Message = "pending Apple order was already cancelled"
-		case order.Status != domain.OrderStatusPending:
-			summary.Message = "matching Apple order is not pending; left unchanged"
-		default:
-			cancelled, err := s.cancelPendingAppleOrder(ctx, order.OrderNo, "Apple DID_FAIL_TO_RENEW notification")
-			if err != nil {
+		summary.Action = "renew_failed"
+		if order != nil && order.ProductType == domain.OrderProductVIPSubscription &&
+			decoded.Subtype != AppleSubtypeGracePeriod && decoded.ExpiresDate > 0 &&
+			!time.UnixMilli(decoded.ExpiresDate).After(time.Now()) {
+			if err := s.expireVIPFromAppleNotificationV2(ctx, order, decoded.ExpiresDate); err != nil {
 				return nil, err
 			}
-			if cancelled {
-				summary.Message = "cancelled pending Apple order"
-			} else {
-				summary.Message = "matching Apple order is no longer pending; left unchanged"
-			}
+			summary.Message = "renewal failed and subscription is expired"
+		} else {
+			summary.Message = "renewal failure acknowledged; current entitlement retained"
 		}
+		summary.Processed = true
 
 	case AppleNotificationExpired, AppleNotificationGracePeriodExpired:
-		summary.Action = "expire_or_fail"
+		summary.Action = "expire"
 		if order != nil && order.ProductType == domain.OrderProductVIPSubscription {
 			if err := s.expireVIPFromAppleNotificationV2(ctx, order, decoded.ExpiresDate); err != nil {
 				return nil, err
@@ -175,6 +198,109 @@ func newAppleNotificationV2Summary(decoded *DecodedAppleNotificationV2) *AppleNo
 	}
 }
 
+// processAppleSubscriptionTransaction completes the order for the signed
+// transaction. Renewals and resubscriptions create a new local order from the
+// original order's user/product association; initial purchases wait for the
+// authenticated client endpoint when no local order exists yet.
+func (s *Service) processAppleSubscriptionTransaction(
+	ctx context.Context,
+	order *model.VideoOrder,
+	decoded *DecodedAppleNotificationV2,
+	createFromOriginal bool,
+) (*model.VideoOrder, error) {
+	if decoded == nil || strings.TrimSpace(decoded.TransactionID) == "" ||
+		strings.TrimSpace(decoded.OriginalTransaction) == "" ||
+		strings.TrimSpace(decoded.ProductID) == "" || decoded.PurchaseDate <= 0 || decoded.Price < 0 {
+		return nil, fmt.Errorf("%w: incomplete subscription transaction", ErrAppleEvidenceInvalid)
+	}
+
+	requestID := appleClientRequestID(decoded.TransactionID)
+	renewal := createFromOriginal || strings.EqualFold(decoded.TransactionReason, "RENEWAL") ||
+		decoded.TransactionID != decoded.OriginalTransaction
+	orderType := orderTypeForRenewal(renewal)
+	isTransactionOrder := order != nil &&
+		(order.ThirdOrderNo == decoded.TransactionID || order.ClientRequestID == requestID)
+	if !isTransactionOrder {
+		if order == nil || !createFromOriginal {
+			return nil, nil
+		}
+		if order.ProductType != domain.OrderProductVIPSubscription {
+			return nil, ErrPaymentMismatch
+		}
+		productID := order.ProductID
+		if order.ProductCode != decoded.ProductID {
+			resolvedID, err := s.resolveAppleProduct(ctx, 1, decoded.ProductID, decoded.BundleID)
+			if err != nil {
+				return nil, err
+			}
+			productID = resolvedID
+		}
+		created, err := s.CreateOrder(ctx, CreateOrderRequest{
+			UserID: order.UserID, ProductType: domain.OrderProductVIPSubscription,
+			ProductID: productID, PayType: domain.PaymentMethodAppleIAP,
+			ClientRequestID: requestID, Renewal: renewal,
+			PaidAmount: appleNotificationPaidAmount(decoded.Price),
+		})
+		if err != nil {
+			return nil, err
+		}
+		order = created
+	}
+
+	if order.PayType != domain.PaymentMethodAppleIAP ||
+		order.ProductType != domain.OrderProductVIPSubscription ||
+		order.ProductCode != decoded.ProductID {
+		return nil, ErrPaymentMismatch
+	}
+	var expiresAt *time.Time
+	if decoded.ExpiresDate > 0 {
+		value := time.UnixMilli(decoded.ExpiresDate)
+		expiresAt = &value
+	}
+
+	switch order.Status {
+	case domain.OrderStatusPending:
+		currency := decoded.Currency
+		if currency == "" {
+			currency = order.Currency
+		}
+		paid, err := s.ConfirmApplePayment(ctx, order.OrderNo, ApplePaymentResult{
+			TransactionID: decoded.TransactionID, OriginalTransactionID: decoded.OriginalTransaction,
+			ProductCode: decoded.ProductID, OrderType: orderType, Currency: currency,
+			PaidAmount:        appleNotificationPaidAmount(decoded.Price),
+			SignedTransaction: decoded.SignedTransaction,
+			PurchaseDate:      time.UnixMilli(decoded.PurchaseDate), SubscriptionExpiresAt: expiresAt,
+		})
+		if err != nil {
+			return nil, err
+		}
+		order = paid
+	case domain.OrderStatusPaid:
+		// Continue below and recover a crash between payment and fulfillment.
+	case domain.OrderStatusEnd:
+		return order, nil
+	default:
+		return nil, fmt.Errorf("Apple transaction %s belongs to non-actionable order status %d", decoded.TransactionID, order.Status)
+	}
+
+	if err := s.fulfillAppleOrder(ctx, order, expiresAt); err != nil {
+		return nil, err
+	}
+	return s.orders.GetByOrderNo(ctx, order.OrderNo, false)
+}
+
+func appleNotificationPaidAmount(price int64) float64 {
+	return math.Round((float64(price)/1000)*100) / 100
+}
+
+func setAppleNotificationSummaryOrder(summary *AppleNotificationV2Summary, order *model.VideoOrder) {
+	if summary == nil || order == nil {
+		return
+	}
+	summary.AffectedUserID = order.UserID
+	summary.AffectedOrderNo = order.OrderNo
+}
+
 // validateAppleNotificationV2App ensures the signed Bundle ID belongs to a
 // configured iOS package and enforces appAppleId for Production notifications.
 func (s *Service) validateAppleNotificationV2App(ctx context.Context, decoded *DecodedAppleNotificationV2) error {
@@ -210,18 +336,6 @@ func (s *Service) findAppleNotificationV2Order(ctx context.Context, decoded *Dec
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err
 		}
-
-		// A payment failure can arrive before a provider transaction ID has
-		// been persisted. The purchase flow's deterministic request ID lets the
-		// callback find that pending order without trusting client-owned fields.
-		order, err = s.orders.GetByClientRequestID(ctx, appleClientRequestID(decoded.TransactionID))
-		if err == nil {
-			if order.PaymentMethod == domain.PaymentMethodAppleIAP {
-				return order, nil
-			}
-		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
 	}
 	if decoded.OriginalTransaction != "" {
 		order, err := s.orders.GetByAppleOriginalTransactionID(ctx, decoded.OriginalTransaction)
@@ -248,7 +362,7 @@ func (s *Service) cancelPendingAppleOrder(ctx context.Context, orderNo, reason s
 		if err != nil {
 			return err
 		}
-		if order.PaymentMethod != domain.PaymentMethodAppleIAP || order.Status != domain.OrderStatusPending {
+		if order.PayType != domain.PaymentMethodAppleIAP || order.Status != domain.OrderStatusPending {
 			return nil
 		}
 		if err := s.orders.CancelPending(ctx, order.ID, strings.TrimSpace(reason), time.Now()); err != nil {
@@ -274,7 +388,7 @@ func (s *Service) revokePaidAppleOrder(ctx context.Context, order *model.VideoOr
 		if lockedOrder.Status == domain.OrderStatusRefunded {
 			return nil
 		}
-		if lockedOrder.Status != domain.OrderStatusPaid {
+		if lockedOrder.Status != domain.OrderStatusPaid && lockedOrder.Status != domain.OrderStatusEnd {
 			return fmt.Errorf("order %s is not paid, cannot revoke", lockedOrder.OrderNo)
 		}
 		user, err := s.users.GetByIDForUpdate(ctx, lockedOrder.UserID)
@@ -284,14 +398,14 @@ func (s *Service) revokePaidAppleOrder(ctx context.Context, order *model.VideoOr
 		now := time.Now()
 		updates := map[string]any{}
 		updates["refund_amount_money"] = user.RefundAmountMoney + lockedOrder.PaidAmount
-		if order.ProductType == domain.OrderProductVIPSubscription {
+		if lockedOrder.ProductType == domain.OrderProductVIPSubscription {
 			updates["vip_points"] = 0
-			updates["vip_expires_at"] = 0
-			updates["vip_started_at"] = 0
-			updates["user_type"] = 1
-			updates["subscription_status"] = 1
-		} else {
-			updates["points_balance"] = user.PointsBalance - order.BonusPoints
+			updates["vip_expires_at"] = nil
+			updates["vip_started_at"] = nil
+			updates["user_type"] = domain.AppUserTypeFree
+			updates["subscription_status"] = domain.AppUserSubscriptionNotSubscribed
+		} else if user.PointsBalance >= lockedOrder.BonusPoints {
+			updates["points_balance"] = user.PointsBalance - lockedOrder.BonusPoints
 		}
 		if lockedOrder.BonusPoints > 0 && user.PointsBalance >= lockedOrder.BonusPoints {
 			before := user.PointsBalance + user.VipPoints
@@ -299,8 +413,8 @@ func (s *Service) revokePaidAppleOrder(ctx context.Context, order *model.VideoOr
 			ledger := &model.VideoUserPointsLedger{
 				UserID: user.ID, OrderCode: lockedOrder.OrderNo,
 				Direction:     int8(domain.PointsDirectionExpense),
-				PointsChange:  -int64(lockedOrder.BonusPoints),
-				BalanceBefore: before, BalanceAfter: after,
+				PointsChange:  -lockedOrder.BonusPoints,
+				BalanceBefore: uint64(before), BalanceAfter: uint64(after),
 				SourceType:  domain.PointsSourceModelRefund,
 				Description: "revoke purchase bonus points",
 				OccurredAt:  revokedAt, CreatedAt: now,
@@ -331,8 +445,8 @@ func (s *Service) revokePaidAppleOrder(ctx context.Context, order *model.VideoOr
 	})
 }
 
-// extendVIPFromAppleNotificationV2 applies a renewal only when Apple's signed
-// expiration is strictly newer than the user's current entitlement.
+// extendVIPFromAppleNotificationV2 applies a non-charging extension only when
+// Apple's signed expiration is strictly newer than the current entitlement.
 func (s *Service) extendVIPFromAppleNotificationV2(ctx context.Context, order *model.VideoOrder, decoded *DecodedAppleNotificationV2) error {
 	if decoded.ExpiresDate <= 0 {
 		return nil
@@ -349,31 +463,33 @@ func (s *Service) extendVIPFromAppleNotificationV2(ctx context.Context, order *m
 		if user.VipExpiresAt != nil && !newExpires.After(*user.VipExpiresAt) {
 			return nil
 		}
-		updates := map[string]any{
-			"subscription_status":        domain.AppUserSubscriptionSubscribed,
-			"user_type":                  domain.AppUserTypePaid,
-			"vip_expires_at":             newExpires,
-			"subscription_payment_count": user.SubscriptionPaymentCount + 1,
-		}
+		updates := map[string]any{}
+		applyVIPEntitlement(user, order, time.Now(), &newExpires, updates)
 		return s.users.Update(ctx, user.ID, updates)
 	})
 }
 
 // reflectAppleRenewalStatusChange maps Apple's auto-renewal subtype to the
 // local subscription state without changing the current expiration.
-func (s *Service) reflectAppleRenewalStatusChange(ctx context.Context, order *model.VideoOrder, subtype string) error {
+func (s *Service) reflectAppleRenewalStatusChange(ctx context.Context, order *model.VideoOrder, subtype string, notificationExpiresDate int64) error {
 	return repository.Transaction(ctx, func(ctx context.Context) error {
 		user, err := s.users.GetByIDForUpdate(ctx, order.UserID)
 		if err != nil {
 			return err
+		}
+		if notificationExpiresDate > 0 && user.VipExpiresAt != nil &&
+			user.VipExpiresAt.After(time.UnixMilli(notificationExpiresDate)) {
+			return nil
 		}
 		updates := map[string]interface{}{}
 		switch subtype {
 		case AppleSubtypeAutoRenewDisabled:
 			updates["subscription_status"] = domain.AppUserSubscriptionCancelled
 		case AppleSubtypeAutoRenewEnabled, AppleSubtypeBillingRecovery:
-			updates["subscription_status"] = domain.AppUserSubscriptionSubscribed
-			updates["user_type"] = domain.AppUserTypePaid
+			if user.VipExpiresAt != nil && user.VipExpiresAt.After(time.Now()) {
+				updates["subscription_status"] = domain.AppUserSubscriptionSubscribed
+				updates["user_type"] = domain.AppUserTypePaid
+			}
 		}
 		if len(updates) == 0 {
 			return nil
@@ -394,15 +510,19 @@ func (s *Service) expireVIPFromAppleNotificationV2(ctx context.Context, order *m
 			user.VipExpiresAt.After(time.UnixMilli(notificationExpiresDate)) {
 			return nil
 		}
-		updates := map[string]any{
-			"subscription_status": domain.AppUserSubscriptionCancelled,
-		}
 		now := time.Now()
-		if user.VipExpiresAt == nil || !user.VipExpiresAt.After(now) {
-			updates["vip_expires_at"] = now
+		expiresAt := now
+		if notificationExpiresDate > 0 {
+			expiresAt = time.UnixMilli(notificationExpiresDate)
 		}
-		if user.PointsBalance == 0 && (user.VipExpiresAt == nil || !user.VipExpiresAt.After(now)) {
-			updates["user_type"] = domain.AppUserTypeFree
+		if expiresAt.After(now) {
+			return nil
+		}
+		updates := map[string]any{
+			"subscription_status": domain.AppUserSubscriptionExpired,
+			"user_type":           domain.AppUserTypeFree,
+			"vip_points":          uint64(0),
+			"vip_expires_at":      expiresAt,
 		}
 		return s.users.Update(ctx, user.ID, updates)
 	})

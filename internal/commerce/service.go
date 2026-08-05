@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"ai-video/internal/config"
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
@@ -32,13 +33,14 @@ var (
 // Service coordinates commerce repositories and keeps order, payment,
 // entitlement, and points-ledger mutations inside explicit transactions.
 type Service struct {
-	orders        *repository.OrderRepo
-	users         *repository.AppUserRepo
-	ledgers       *repository.CommercePointsLedgerRepo
-	vipProducts   *repository.VIPSubscriptionRepo
-	pointProducts *repository.PointsPackageRepo
-	packages      *repository.PackageRepo
-	appleRootCAs  *x509.CertPool
+	orders         *repository.OrderRepo
+	users          *repository.AppUserRepo
+	ledgers        *repository.CommercePointsLedgerRepo
+	vipProducts    *repository.VIPSubscriptionRepo
+	pointProducts  *repository.PointsPackageRepo
+	packages       *repository.PackageRepo
+	appleRootCAs   *x509.CertPool
+	appleServerAPI appleTransactionInfoProvider
 }
 
 // NewService constructs a commerce service with production repositories and
@@ -48,7 +50,8 @@ func NewService() *Service {
 		orders: repository.NewOrderRepo(), users: repository.NewAppUserRepo(),
 		ledgers: repository.NewCommercePointsLedgerRepo(), vipProducts: repository.NewVIPSubscriptionRepo(),
 		pointProducts: repository.NewPointsPackageRepo(), packages: repository.NewPackageRepo(),
-		appleRootCAs: defaultAppleRootCAs,
+		appleRootCAs:   defaultAppleRootCAs,
+		appleServerAPI: newAppleServerAPIClient(config.Cfg.AppStore),
 	}
 }
 
@@ -58,7 +61,7 @@ type CreateOrderRequest struct {
 	UserID          uint64
 	ProductType     uint32
 	ProductID       uint64
-	PaymentMethod   string
+	PayType         uint32
 	ClientRequestID string
 	Renewal         bool
 	PaidAmount      float64
@@ -70,6 +73,7 @@ type ApplePaymentResult struct {
 	TransactionID         string
 	OriginalTransactionID string
 	ProductCode           string
+	OrderType             uint32
 	Currency              string
 	PaidAmount            float64
 	SignedTransaction     string
@@ -81,23 +85,27 @@ type ApplePaymentResult struct {
 // VIP points and ordinary points balances.
 type ConsumePointsRequest struct {
 	UserID      uint64
-	Points      uint64
+	Points      int64
 	Description string
 }
 
 // CreateOrder snapshots all mutable product values so historical orders remain
 // accurate even when an administrator later edits the product.
 func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*model.VideoOrder, error) {
-	req.PaymentMethod = strings.TrimSpace(req.PaymentMethod)
 	req.ClientRequestID = strings.TrimSpace(req.ClientRequestID)
+	orderType := orderTypeForRenewal(req.Renewal)
 	if req.UserID == 0 || req.ProductID == 0 || req.ClientRequestID == "" {
 		return nil, errors.New("user, product and client request ID are required")
 	}
-	if req.PaymentMethod != domain.PaymentMethodAppleIAP {
+	if req.PaidAmount < 0 {
+		return nil, errors.New("paid amount cannot be negative")
+	}
+	if req.PayType != domain.PaymentMethodAppleIAP && req.PayType != domain.PaymentMethodGooglePlay {
 		return nil, ErrUnsupportedPaymentMethod
 	}
 	if existing, err := s.orders.GetByClientRequestID(ctx, req.ClientRequestID); err == nil {
-		if existing.UserID != req.UserID || existing.ProductType != req.ProductType || existing.ProductID != req.ProductID {
+		if existing.UserID != req.UserID || existing.ProductType != req.ProductType ||
+			existing.ProductID != req.ProductID || existing.PayType != req.PayType {
 			return nil, errors.New("client request ID was used for a different order")
 		}
 		return existing, nil
@@ -113,8 +121,8 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 		}
 		order := &model.VideoOrder{
 			OrderNo: newOrderNo(), ClientRequestID: req.ClientRequestID, UserID: req.UserID,
-			ProductType: req.ProductType, ProductID: req.ProductID, PaymentMethod: req.PaymentMethod,
-			Status: domain.OrderStatusPending,
+			ProductType: req.ProductType, ProductID: req.ProductID, PayType: req.PayType,
+			Status: domain.OrderStatusPending, OrderType: orderType,
 		}
 		switch req.ProductType {
 		case domain.OrderProductVIPSubscription:
@@ -130,12 +138,16 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 				return err
 			}
 
-			price, revenue, bonus := product.SubscriptionPrice, product.FirstSubscriptionRevenue, product.SubscriptionPoints
+			price, revenue, bonus := product.SubscriptionPrice, product.SubscriptionRevenue, product.SubscriptionPoints
 			if paidCount == 0 && !req.Renewal {
-				price, revenue, bonus = product.FirstSubscriptionPrice, product.SubscriptionRevenue, product.FirstBonusPoints
+				price, revenue, bonus = product.FirstSubscriptionPrice, product.FirstSubscriptionRevenue, product.FirstBonusPoints
+			}
+			payableAmount := price
+			if req.PaidAmount > 0 {
+				payableAmount = req.PaidAmount
 			}
 			order.ProductCode, order.ProductName, order.Currency = product.SukCode, product.Name, strings.ToUpper(product.Currency)
-			order.ProductAmount, order.PayableAmount, order.ActualAmountMoney, order.BonusPoints = price, req.PaidAmount, revenue, bonus
+			order.ProductAmount, order.PayableAmount, order.ActualAmountMoney, order.BonusPoints = price, payableAmount, revenue, int64(bonus)
 			order.VipLevel, order.VipDurationDays = uint(product.LevelID), product.VIPDurationDays
 		case domain.OrderProductPointsPackage:
 			product, err := s.pointProducts.GetByID(ctx, uint(req.ProductID))
@@ -145,8 +157,12 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 			if product.Status != 1 {
 				return errors.New("points product is disabled")
 			}
+			payableAmount := product.SalePrice
+			if req.PaidAmount > 0 {
+				payableAmount = req.PaidAmount
+			}
 			order.ProductCode, order.ProductName, order.Currency = product.ProductCode, product.Name, strings.ToUpper(product.Currency)
-			order.ProductAmount, order.PayableAmount, order.BonusPoints = product.SalePrice, product.SalePrice, product.Points
+			order.ProductAmount, order.PayableAmount, order.ActualAmountMoney, order.BonusPoints = product.SalePrice, payableAmount, product.ActualRevenue, int64(product.Points)
 		default:
 			return ErrUnsupportedProduct
 		}
@@ -195,7 +211,11 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 	}()
 
 	result.TransactionID = strings.TrimSpace(result.TransactionID)
-	if result.TransactionID == "" || result.PaidAmount < 0 {
+	if result.OrderType == 0 {
+		result.OrderType = domain.OrderTypeNewPurchase
+	}
+	if result.TransactionID == "" || result.PaidAmount < 0 ||
+		(result.OrderType != domain.OrderTypeNewPurchase && result.OrderType != domain.OrderTypeRenewal) {
 		return nil, errors.New("invalid Apple payment result")
 	}
 	err = repository.Transaction(ctx, func(ctx context.Context) error {
@@ -224,9 +244,9 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 			payAt = time.Now()
 		}
 		if err := s.orders.MarkPaid(ctx, order.ID, map[string]interface{}{
-			"payment_method": domain.PaymentMethodAppleIAP, "third_order_no": result.TransactionID,
+			"pay_type": domain.PaymentMethodAppleIAP, "third_order_no": result.TransactionID,
 			"original_transaction_id": strings.TrimSpace(result.OriginalTransactionID), "paid_amount": result.PaidAmount,
-			"payment_evidence": result.SignedTransaction, "pay_at": payAt,
+			"payment_evidence": result.SignedTransaction, "pay_time": payAt, "order_type": result.OrderType,
 		}); err != nil {
 			return err
 		}
@@ -237,95 +257,107 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 	return paidOrder, err
 }
 
-func (s *Service) NotificationApplePaymentSuccess(ctx context.Context, order *model.VideoOrder, summary *AppleNotificationV2Summary) (err error) {
-	defer func() {
-		if err == nil {
-			return
-		}
-		if _, cancelErr := s.cancelPendingAppleOrder(ctx, order.OrderNo, "Apple payment confirmation failed"); cancelErr != nil {
-			err = errors.Join(err, fmt.Errorf("cancel pending Apple order: %w", cancelErr))
-		}
-	}()
-	if order.Status != domain.OrderStatusPaid {
-		return repository.ErrOrderAlreadyPaid
+func orderTypeForRenewal(renewal bool) uint32 {
+	if renewal {
+		return domain.OrderTypeRenewal
 	}
-	summary.TransactionID = strings.TrimSpace(summary.TransactionID)
-	err = repository.Transaction(ctx, func(ctx context.Context) error {
-		order, err = s.orders.GetByOrderNo(ctx, order.OrderNo, true)
+	return domain.OrderTypeNewPurchase
+}
+
+// NotificationApplePaymentSuccess completes a paid Apple order. The summary is
+// retained for source compatibility; verified expiration is supplied by the
+// purchase or notification path through fulfillAppleOrder.
+func (s *Service) NotificationApplePaymentSuccess(ctx context.Context, order *model.VideoOrder, _ *AppleNotificationV2Summary) error {
+	return s.fulfillAppleOrder(ctx, order, nil)
+}
+
+// fulfillAppleOrder grants the order snapshot exactly once and then moves the
+// order from paid to completed. The order row lock is the idempotency boundary
+// for points, counters, and subscription entitlement.
+func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder, appleExpiresAt *time.Time) error {
+	if order == nil || strings.TrimSpace(order.OrderNo) == "" {
+		return errors.New("Apple order is required for fulfillment")
+	}
+	return repository.Transaction(ctx, func(ctx context.Context) error {
+		lockedOrder, err := s.orders.GetByOrderNo(ctx, order.OrderNo, true)
 		if err != nil {
 			return err
 		}
-		user, err := s.users.GetByIDForUpdate(ctx, order.UserID)
+		if lockedOrder.Status == domain.OrderStatusEnd {
+			return nil
+		}
+		if lockedOrder.Status != domain.OrderStatusPaid {
+			return fmt.Errorf("order %s is not paid", lockedOrder.OrderNo)
+		}
+
+		user, err := s.users.GetByIDForUpdate(ctx, lockedOrder.UserID)
 		if err != nil {
 			return err
 		}
 		now := time.Now()
-		//积分记录
-		if order.BonusPoints > 0 {
-			if order.ProductType == domain.OrderProductVIPSubscription {
-				user.VipPoints = user.VipPoints + order.BonusPoints
-			} else {
-				user.PointsBalance = user.PointsBalance + order.BonusPoints
-			}
-			before, after := user.VipPoints+user.PointsBalance-order.BonusPoints, user.VipPoints+user.PointsBalance
+		beforeBalance := user.VipPoints + user.PointsBalance
+		if lockedOrder.ProductType == domain.OrderProductVIPSubscription {
+			user.VipPoints += lockedOrder.BonusPoints
+		} else {
+			user.PointsBalance += lockedOrder.BonusPoints
+		}
+		afterBalance := user.VipPoints + user.PointsBalance
+
+		if lockedOrder.BonusPoints > 0 {
+			sourceType := uint32(domain.PointsSourcePurchase)
+			description := "Purchase bonus points"
 			ledger := &model.VideoUserPointsLedger{
 				UserID: user.ID, Direction: int8(domain.PointsDirectionIncome),
-				PointsChange: int64(order.BonusPoints), BalanceBefore: before, BalanceAfter: after,
-				SourceType: domain.PointsSourcePurchase, OrderCode: order.OrderNo,
-				Description: "Subscription bonus points", OccurredAt: now, CreatedAt: now,
+				PointsChange: int64(lockedOrder.BonusPoints), BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(afterBalance),
+				SourceType: sourceType, OrderCode: lockedOrder.OrderNo,
+				Description: description, OccurredAt: now, CreatedAt: now,
 			}
-			if order.ProductType == domain.OrderProductPointsPackage {
-				ledger.PointsID = order.ProductID
+			if lockedOrder.ProductType == domain.OrderProductVIPSubscription {
+				ledger.SourceType = uint32(domain.PointsSourceSubscriptionGift)
+				ledger.Description = "Subscription bonus points"
+				ledger.VipID = lockedOrder.ProductID
+			} else {
+				ledger.PointsID = lockedOrder.ProductID
 			}
-			if order.ProductType == domain.OrderProductVIPSubscription {
-				ledger.VipID = order.ProductID
-			}
-			if err = s.ledgers.Create(ctx, ledger); err != nil {
+			if err := s.ledgers.Create(ctx, ledger); err != nil {
 				return err
 			}
 		}
-		//用户数据处理
+
+		paidAt := lockedOrder.PayTime
+		if paidAt.IsZero() {
+			paidAt = now
+		}
 		updates := map[string]any{
-			"vip_points":                 user.VipPoints,
-			"points_balance":             user.PointsBalance,
-			"payment_count":              user.PaymentCount + 1,
-			"actual_amount_money":        user.ActualAmountMoney + order.ActualAmountMoney,
-			"last_paid_at":               order.PayAt,
-			"vip_expires_at":             user.VipExpiresAt,
-			"subscription_payment_count": user.SubscriptionPaymentCount + 1,
-			"order_amount_money":         user.OrderAmountMoney + order.PaidAmount,
+			"vip_points":          user.VipPoints,
+			"points_balance":      user.PointsBalance,
+			"payment_count":       user.PaymentCount + 1,
+			"actual_amount_money": user.ActualAmountMoney + lockedOrder.ActualAmountMoney,
+			"last_paid_at":        paidAt,
+			"order_amount_money":  user.OrderAmountMoney + lockedOrder.PaidAmount,
 		}
-		if user.SubscriptionStatus == domain.SubscriptionStatusSubscribed {
-			if order.VipDurationDays > 0 {
-				updates["vip_expires_at"] = user.VipExpiresAt.Add(time.Duration(order.VipDurationDays * 86400))
-			}
+		if user.FirstPaidAt == nil {
+			updates["first_paid_at"] = paidAt
+		}
+		if user.FirstPaymentMet == 0 {
+			updates["first_payment_met"] = 1
+		}
+		if user.PaymentMet == 0 {
+			updates["payment_met"] = 1
+		}
+		if lockedOrder.ProductType == domain.OrderProductVIPSubscription {
+			updates["subscription_payment_count"] = user.SubscriptionPaymentCount + 1
+			applyVIPEntitlement(user, lockedOrder, now, appleExpiresAt, updates)
 		} else {
-			user.SubscriptionStatus = domain.SubscriptionStatusSubscribed
-			user.VIPLevel = order.VipLevel
-			user.UserType = 2
-			if order.VipDurationDays > 0 {
-				updates["vip_started_at"] = now
-				updates["vip_expires_at"] = now.Add(time.Duration(order.VipDurationDays * 86400))
-			}
-			if user.FirstPaymentMet == 0 {
-				updates["first_payment_met"] = 1
-			}
-			if user.PaymentMet == 0 {
-				updates["payment_met"] = 1
-			}
+			updates["one_time_payment_count"] = user.OneTimePaymentCount + 1
 		}
-		if err = s.users.Update(ctx, user.ID, updates); err != nil {
+		if err := s.users.Update(ctx, user.ID, updates); err != nil {
 			return err
 		}
-		// 更新订单状态
-		if err := s.orders.Update(ctx, order.ID, map[string]any{
+		return s.orders.Update(ctx, lockedOrder.ID, map[string]any{
 			"status": domain.OrderStatusEnd, "completed_at": now,
-		}); err != nil {
-			return err
-		}
-		return err
+		})
 	})
-	return err
 }
 
 // CancelOrder cancels a pending order owned by the requested user. Paid,
@@ -352,7 +384,7 @@ func (s *Service) CancelOrder(ctx context.Context, userID uint64, orderNo, reaso
 // ConsumePoints locks the user, deducts VIP points before ordinary points, and
 // writes the corresponding expense ledger in the same database transaction.
 func (s *Service) ConsumePoints(ctx context.Context, req ConsumePointsRequest) (*model.VideoUserPointsLedger, error) {
-	if req.Points > uint64MaxInt64 {
+	if uint64(req.Points) > uint64MaxInt64 {
 		return nil, errors.New("points value exceeds supported range")
 	}
 	var created *model.VideoUserPointsLedger
@@ -365,7 +397,7 @@ func (s *Service) ConsumePoints(ctx context.Context, req ConsumePointsRequest) (
 			return ErrInsufficientPoints
 		}
 		now := time.Now()
-		user.VipPoints = user.VipPoints - req.Points
+		user.VipPoints = user.VipPoints - int64(req.Points)
 		if user.VipPoints < 0 {
 			user.PointsBalance += user.VipPoints
 			user.VipPoints = 0
@@ -373,7 +405,7 @@ func (s *Service) ConsumePoints(ctx context.Context, req ConsumePointsRequest) (
 		ledger := &model.VideoUserPointsLedger{
 			UserID:    user.ID,
 			Direction: int8(domain.PointsDirectionExpense), PointsChange: -int64(req.Points),
-			BalanceBefore: user.PointsBalance, BalanceAfter: user.VipPoints + user.PointsBalance, SourceType: domain.PointsSourceModelConsume,
+			BalanceBefore: uint64(user.PointsBalance), BalanceAfter: uint64(user.VipPoints + user.PointsBalance), SourceType: domain.PointsSourceModelConsume,
 			Description: strings.TrimSpace(req.Description),
 			OccurredAt:  now, CreatedAt: now,
 		}
@@ -414,8 +446,32 @@ func parseVIPLevel(value string) uint {
 }
 
 // applyVIPEntitlement calculates the effective VIP level and expiration. A
-// verified Apple expiration takes precedence over the locally configured days.
+// verified Apple expiration is authoritative, but an older or duplicate
+// transaction must not overwrite a newer entitlement or a later cancellation.
 func applyVIPEntitlement(user *model.VideoUser, order *model.VideoOrder, now time.Time, appleExpiresAt *time.Time, updates map[string]interface{}) {
+	if appleExpiresAt != nil {
+		if user.VipExpiresAt != nil && !appleExpiresAt.After(*user.VipExpiresAt) {
+			return
+		}
+		level := order.VipLevel
+		if level == 0 {
+			level = 1
+		}
+		updates["vip_level"] = level
+		updates["vip_expires_at"] = *appleExpiresAt
+		if user.VIPStartedAt == nil {
+			updates["vip_started_at"] = now
+		}
+		if appleExpiresAt.After(now) {
+			updates["user_type"] = domain.AppUserTypePaid
+			updates["subscription_status"] = domain.AppUserSubscriptionSubscribed
+		} else {
+			updates["user_type"] = domain.AppUserTypeFree
+			updates["subscription_status"] = domain.AppUserSubscriptionExpired
+		}
+		return
+	}
+
 	base := now
 	if user.VipExpiresAt != nil && user.VipExpiresAt.After(now) {
 		base = *user.VipExpiresAt
@@ -429,9 +485,6 @@ func applyVIPEntitlement(user *model.VideoUser, order *model.VideoOrder, now tim
 		level = 1
 	}
 	expiresAt := base.AddDate(0, 0, int(days))
-	if appleExpiresAt != nil && appleExpiresAt.After(now) {
-		expiresAt = *appleExpiresAt
-	}
 	updates["vip_level"], updates["vip_expires_at"] = level, expiresAt
 	updates["user_type"] = domain.AppUserTypePaid
 	updates["subscription_status"] = domain.AppUserSubscriptionSubscribed

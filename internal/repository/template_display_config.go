@@ -168,7 +168,8 @@ func (r *TemplateDisplayConfigRepo) loadRecords(ctx context.Context, items []mod
 		positionKeys = append(positionKeys, items[i].PlacementKey)
 	}
 	q := qFrom(ctx)
-	templateRows, err := q.VideoTemplate.WithContext(ctx).Where(q.VideoTemplate.ID.In(templateIDs...)).Find()
+	templateRows, err := q.VideoTemplate.WithContext(ctx).Preload(q.VideoTemplate.AIModel).
+		Where(q.VideoTemplate.ID.In(templateIDs...)).Find()
 	if err != nil {
 		return nil, err
 	}

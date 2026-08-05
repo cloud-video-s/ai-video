@@ -25,13 +25,13 @@ func NewDashboardService() *DashboardService {
 // DashboardRequest contains filters for the subscription-order table. The
 // monthly statistic cards always retain the current natural-month scope.
 type DashboardRequest struct {
-	UserID        uint64 `form:"user_id"`
-	ProductCode   string `form:"product_code" binding:"max=191"`
-	Status        uint32 `form:"status" binding:"max=20"`
-	PaymentMethod string `form:"payment_method" binding:"max=32"`
-	Keyword       string `form:"keyword" binding:"max=255"`
-	DateFrom      string `form:"date_from" binding:"omitempty,datetime=2006-01-02"`
-	DateTo        string `form:"date_to" binding:"omitempty,datetime=2006-01-02"`
+	UserID      uint64 `form:"user_id"`
+	ProductCode string `form:"product_code" binding:"max=191"`
+	Status      uint32 `form:"status" binding:"max=20"`
+	PayType     uint32 `form:"pay_type" binding:"max=32"`
+	Keyword     string `form:"keyword" binding:"max=255"`
+	DateFrom    string `form:"date_from" binding:"omitempty,datetime=2006-01-02"`
+	DateTo      string `form:"date_to" binding:"omitempty,datetime=2006-01-02"`
 }
 
 type DashboardStatisticsView struct {
@@ -71,7 +71,7 @@ func (s *DashboardService) Get(ctx context.Context, page, pageSize int, req *Das
 	records, total, err := s.orderRepo.PageAdminList(ctx, page, pageSize, &repository.OrderAdminFilter{
 		UserID: req.UserID, ProductType: domain.OrderProductVIPSubscription,
 		ProductCode: strings.TrimSpace(req.ProductCode), Status: req.Status,
-		PaymentMethod: strings.TrimSpace(req.PaymentMethod), Keyword: strings.TrimSpace(req.Keyword),
+		PayType: req.PayType, Keyword: strings.TrimSpace(req.Keyword),
 		CreatedFrom: createdFrom, CreatedTo: createdTo,
 	})
 	if err != nil {

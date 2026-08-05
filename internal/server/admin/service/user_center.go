@@ -66,12 +66,12 @@ type UserCenterOrder struct {
 	PayableAmount   float64    `json:"payable_amount"`
 	PaidAmount      float64    `json:"paid_amount"`
 	RefundedAmount  float64    `json:"refunded_amount"`
-	BonusPoints     uint64     `json:"bonus_points"`
+	BonusPoints     int64      `json:"bonus_points"`
 	VIPLevel        uint       `json:"vip_level"`
 	VIPDurationDays uint       `json:"vip_duration_days"`
 	Status          uint32     `json:"status"`
-	PaymentMethod   string     `json:"payment_method"`
-	PayAt           *time.Time `json:"pay_at"`
+	PayType         uint32     `json:"pay_type"`
+	PayTime         *time.Time `json:"pay_time"`
 	CreatedAt       time.Time  `json:"created_at"`
 }
 
@@ -184,8 +184,8 @@ func userCenterOrders(records []model.VideoOrder) []UserCenterOrder {
 			Currency: order.Currency, PayableAmount: order.PayableAmount, PaidAmount: order.PaidAmount,
 			RefundedAmount: order.RefundedAmount, BonusPoints: order.BonusPoints,
 			VIPLevel: order.VipLevel, VIPDurationDays: order.VipDurationDays,
-			Status: order.Status, PaymentMethod: order.PaymentMethod,
-			PayAt: nonZeroTime(order.PayAt), CreatedAt: order.CreatedAt,
+			Status: order.Status, PayType: order.PayType,
+			PayTime: nonZeroTime(order.PayTime), CreatedAt: order.CreatedAt,
 		})
 	}
 	return items
