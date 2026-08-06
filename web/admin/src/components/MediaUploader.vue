@@ -17,7 +17,7 @@
         :on-change="handleFileChange"
       >
         <el-button :loading="state === 'preparing'" :disabled="busy">
-          <el-icon><Upload /></el-icon>{{ kind === 'image' ? (modelValue ? '重新选择并裁剪' : '选择并裁剪') : (modelValue ? '重新上传' : '选择文件') }}
+          <el-icon><Upload /></el-icon>{{ uploadButtonText }}
         </el-button>
       </el-upload>
       <el-button v-if="modelValue" @click="emit('preview', previewURL)">预览</el-button>
@@ -40,7 +40,7 @@
     </div>
 
     <ImageCropDialog
-      v-if="kind === 'image'"
+      v-if="kind !== 'video'"
       v-model="cropVisible"
       :file="pendingImage"
       @confirm="handleCroppedImage"
@@ -63,9 +63,11 @@ import { useUserStore } from '@/store/user'
 import { toMediaURL } from '@/utils/mediaUrl'
 import ImageCropDialog from '@/components/ImageCropDialog.vue'
 
+type MediaUploaderKind = MediaKind | 'media'
+
 const props = defineProps<{
   modelValue: string
-  kind: MediaKind
+  kind: MediaUploaderKind
   resumeKey: string
   placeholder?: string
 }>()
@@ -89,6 +91,7 @@ const uploadRef = ref<UploadInstance>()
 const file = ref<File>()
 const fileName = ref('')
 const session = ref<UploadSession>()
+const activeKind = ref<MediaKind>(props.kind === 'video' ? 'video' : 'image')
 const progress = ref(0)
 const state = ref<UploadState>('idle')
 const paused = ref(false)
@@ -103,9 +106,17 @@ const videoMIMETypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-m
 const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
 const videoExtensions = ['.mp4', '.mov', '.webm', '.mkv']
 const accept = computed(() => {
-  const mimeTypes = props.kind === 'image' ? imageMIMETypes : videoMIMETypes
-  const extensions = props.kind === 'image' ? imageExtensions : videoExtensions
+  const mimeTypes = props.kind === 'media'
+    ? [...imageMIMETypes, ...videoMIMETypes]
+    : props.kind === 'image' ? imageMIMETypes : videoMIMETypes
+  const extensions = props.kind === 'media'
+    ? [...imageExtensions, ...videoExtensions]
+    : props.kind === 'image' ? imageExtensions : videoExtensions
   return [...mimeTypes, ...extensions].join(',')
+})
+const uploadButtonText = computed(() => {
+  if (props.kind === 'image') return props.modelValue ? '重新选择图片' : '选择图片'
+  return props.modelValue ? '重新上传' : '选择文件'
 })
 const busy = computed(() => ['preparing', 'uploading', 'merging'].includes(state.value))
 const active = computed(() => !['idle', 'done'].includes(state.value))
@@ -122,9 +133,9 @@ const statusText = computed(() => ({
 
 watch(busy, (value) => emit('uploading-change', value), { immediate: true })
 
-function buildStorageKey(selected: File) {
+function buildStorageKey(selected: File, kind: MediaKind) {
   const owner = userStore.userInfo?.id || 'unknown'
-  return `template-media-upload:${owner}:${props.resumeKey}:${props.kind}:${selected.name}:${selected.size}:${selected.lastModified}`
+  return `template-media-upload:${owner}:${props.resumeKey}:${kind}:${selected.name}:${selected.size}:${selected.lastModified}`
 }
 
 function loadResumeRecord(): ResumeRecord | undefined {
@@ -162,34 +173,37 @@ async function handleFileChange(uploadFile: UploadFile) {
   if (!selected) return
   const suffix = selected.name.split('.').pop()?.toLowerCase()
   const extension = suffix ? '.' + suffix : ''
-  if (props.kind === 'image') {
-    const mimeMatches = !selected.type || imageMIMETypes.includes(selected.type)
-    if (!mimeMatches || !imageExtensions.includes(extension)) {
-      ElMessage.warning('仅支持 JPG、PNG、WebP 或 GIF 图片')
-      return
-    }
+  const isImage = imageExtensions.includes(extension) && (!selected.type || imageMIMETypes.includes(selected.type))
+  const isVideo = videoExtensions.includes(extension) && (!selected.type || videoMIMETypes.includes(selected.type))
+  const selectedKind = isImage ? 'image' : isVideo ? 'video' : undefined
+  if (!selectedKind || (props.kind !== 'media' && selectedKind !== props.kind)) {
+    ElMessage.warning(props.kind === 'image'
+      ? '仅支持 JPG、PNG、WebP 或 GIF 图片'
+      : props.kind === 'video'
+        ? '仅支持 MP4、MOV、WebM 或 MKV 视频'
+        : '仅支持 JPG、PNG、WebP、GIF 图片或 MP4、MOV、WebM、MKV 视频')
+    return
+  }
+  activeKind.value = selectedKind
+  if (selectedKind === 'image') {
     pendingImage.value = selected
     cropVisible.value = true
     return
   }
-  const mimeMatches = !selected.type || videoMIMETypes.includes(selected.type)
-  if (!mimeMatches || !videoExtensions.includes(extension)) {
-    ElMessage.warning('仅支持 MP4、MOV、WebM 或 MKV 视频')
-    return
-  }
-  await prepareUpload(selected)
+  await prepareUpload(selected, selectedKind)
 }
 
 function handleCroppedImage(selected: File) {
   pendingImage.value = undefined
-  void prepareUpload(selected)
+  void prepareUpload(selected, 'image')
 }
 
-async function prepareUpload(selected: File) {
+async function prepareUpload(selected: File, kind: MediaKind) {
   controller.value?.abort()
+  activeKind.value = kind
   file.value = selected
   fileName.value = selected.name
-  storageKey.value = buildStorageKey(selected)
+  storageKey.value = buildStorageKey(selected, kind)
   progress.value = 0
   paused.value = false
   state.value = 'preparing'
@@ -199,7 +213,7 @@ async function prepareUpload(selected: File) {
     let current: UploadSession | undefined
     if (record) {
       try {
-        const statusResponse: any = await getUploadStatus(props.kind, record.upload_id)
+        const statusResponse: any = await getUploadStatus(kind, record.upload_id)
         current = statusResponse.data as UploadSession
       } catch (error: any) {
         if (error?.response?.status === 404 || error?.response?.status === 410) {
@@ -210,7 +224,7 @@ async function prepareUpload(selected: File) {
       }
     }
     if (!current) {
-      const response: any = await initiateUpload(props.kind, selected)
+      const response: any = await initiateUpload(kind, selected)
       current = response.data.uploads?.[0] as UploadSession | undefined
     }
     if (disposed) return
@@ -221,7 +235,7 @@ async function prepareUpload(selected: File) {
       // Complete is idempotent. Replay it for a resumed completed session so
       // a previous OSS success followed by a database-recording failure can
       // repair the video_upload row.
-      const response: any = await completeUpload(props.kind, current.upload_id)
+      const response: any = await completeUpload(kind, current.upload_id)
       finishUpload(response.data as UploadSession)
       return
     }
@@ -279,7 +293,7 @@ async function runUpload() {
         return
       }
       controller.value = new AbortController()
-      await uploadChunk(props.kind, current.upload_id, index, chunk, checksum, controller.value.signal, (loaded) => {
+      await uploadChunk(activeKind.value, current.upload_id, index, chunk, checksum, controller.value.signal, (loaded) => {
         setProgress(completedBytes + loaded, current.total_size)
       })
       uploaded.add(index)
@@ -290,7 +304,7 @@ async function runUpload() {
     }
 
     state.value = 'merging'
-    const response: any = await completeUpload(props.kind, current.upload_id)
+    const response: any = await completeUpload(activeKind.value, current.upload_id)
     finishUpload(response.data as UploadSession)
   } catch (error: any) {
     if (error?.code === 'ERR_CANCELED' && paused.value) {

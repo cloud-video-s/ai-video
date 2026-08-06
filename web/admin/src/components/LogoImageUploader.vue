@@ -14,7 +14,7 @@
       @update:model-value="emit('update:modelValue', String($event ?? ''))"
     />
     <input ref="fileInput" class="file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" @change="handleFileChange" />
-    <el-tooltip :content="uploading ? `上传中 ${progress}%` : `选择并裁剪${imageName}`">
+    <el-tooltip :content="uploading ? `上传中 ${progress}%` : `上传${imageName}（默认保留原图原格式）`">
       <el-button :icon="Upload" circle :loading="uploading" :disabled="disabled || uploadDisabled" @click="selectFile" />
     </el-tooltip>
     <el-tooltip :content="`清除${imageName}`">

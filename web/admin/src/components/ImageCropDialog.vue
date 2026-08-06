@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="裁剪图片"
+    title="上传图片"
     width="820px"
     append-to-body
     destroy-on-close
@@ -54,8 +54,8 @@
 
       <div class="crop-meta">
         <span>原图 {{ naturalWidth }} × {{ naturalHeight }} px</span>
-        <span>输出 {{ outputWidth }} × {{ outputHeight }} px</span>
-        <span>输出 PNG · 原始像素 · 不缩放</span>
+        <span>裁剪输出 {{ outputWidth }} × {{ outputHeight }} px</span>
+        <span>原图上传会保留原格式；裁剪后输出 PNG</span>
       </div>
       <el-alert
         v-if="file?.type === 'image/gif'"
@@ -67,9 +67,9 @@
     </div>
 
     <template #footer>
-      <el-button :disabled="processing" @click="useOriginal">使用原图上传</el-button>
       <el-button @click="emit('update:modelValue', false)">取消</el-button>
-      <el-button type="primary" :loading="processing" :disabled="!ready" @click="confirmCrop">确认裁剪</el-button>
+      <el-button :loading="processing" :disabled="!ready" @click="confirmCrop">裁剪后上传</el-button>
+      <el-button type="primary" :disabled="processing" @click="useOriginal">上传原图（推荐）</el-button>
     </template>
   </el-dialog>
 </template>

@@ -2,9 +2,9 @@
   <div class="cover-uploader">
     <input ref="fileInput" class="file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" @change="handleFileChange" />
     <el-button type="primary" plain :loading="uploading" @click="selectFile">
-      {{ uploading ? `上传中 ${uploadProgress}%` : '选择图片并裁剪' }}
+      {{ uploading ? `上传中 ${uploadProgress}%` : '选择图片' }}
     </el-button>
-    <span class="upload-tip">默认比例 {{ ratioLabel }}，按原图像素输出无损 PNG，不缩放</span>
+    <span class="upload-tip">默认上传原图并保留原格式；也可按 {{ ratioLabel }} 比例裁剪后上传</span>
   </div>
 
   <ImageCropDialog

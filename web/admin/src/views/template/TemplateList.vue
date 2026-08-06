@@ -91,9 +91,9 @@
                 v-if="row.thumbnail_url"
                 link
                 type="primary"
-                @click="previewMedia(mediaKind(row.template_type), row.thumbnail_url, `${row.name} · 缩略资源`)"
+                @click="previewMedia(mediaKindFromURL(row.thumbnail_url), row.thumbnail_url, `${row.name} · 缩略资源`)"
               >缩略资源</el-button>
-              <span v-else class="secondary-text">无缩略视频</span>
+              <span v-else class="secondary-text">无缩略资源</span>
             </div>
           </template>
         </el-table-column>
@@ -226,10 +226,10 @@
         <el-form-item label="缩略资源" prop="thumbnail_url">
           <MediaUploader
             v-model="form.thumbnail_url"
-            :kind="mediaKind(form.template_type)"
-            resume-key="template-thumbnail-video"
-            placeholder="输入缩略资源 URL，或选择文件分片上传"
-            @preview="(url) => previewMedia(mediaKind(form.template_type), url, '缩略资源预览')"
+            kind="media"
+            resume-key="template-thumbnail"
+            placeholder="输入缩略资源 URL，或选择图片/视频分片上传"
+            @preview="(url) => previewMedia(mediaKindFromURL(url), url, '缩略资源预览')"
             @uploading-change="(value) => (mediaUploading.thumbnail = value)"
           />
         </el-form-item>
@@ -423,11 +423,8 @@ function validateThumbnailURL(_rule: unknown, value: string, callback: Validatio
     callback(new Error('请输入缩略资源 URL'))
     return
   }
-  const kind = mediaKind(form.template_type)
-  if (!mediaURLMatches(value, kind)) {
-    callback(new Error(kind === 'image'
-      ? '图片模板的缩略资源仅支持 JPG、PNG、WebP 或 GIF 图片'
-      : '视频模板的缩略资源仅支持 MP4、MOV、WebM 或 MKV 视频'))
+  if (!mediaURLMatches(value, 'image') && !mediaURLMatches(value, 'video')) {
+    callback(new Error('缩略资源仅支持 JPG、PNG、WebP、GIF 图片或 MP4、MOV、WebM、MKV 视频'))
     return
   }
   callback()
@@ -462,6 +459,10 @@ function kindLabel(kind: number) {
 
 function mediaKind(kind: number): 'image' | 'video' {
   return kind === 1 ? 'image' : 'video'
+}
+
+function mediaKindFromURL(url: string): 'image' | 'video' {
+  return mediaURLMatches(url, 'image') ? 'image' : 'video'
 }
 
 function modelLabel(item: VideoModel) {
