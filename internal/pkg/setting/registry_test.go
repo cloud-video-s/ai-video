@@ -1,6 +1,8 @@
 package setting
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestUserSingleDeviceLoginDefinition(t *testing.T) {
 	if got := defaultValue(UserSingleDeviceLoginKey); got != "false" {

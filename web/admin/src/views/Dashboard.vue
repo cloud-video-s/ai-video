@@ -98,7 +98,7 @@
         <el-select v-model="query.status" class="filter-item status-filter" clearable placeholder="订单状态">
           <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
-        <el-select v-model="query.payment_method" class="filter-item payment-filter" clearable filterable allow-create placeholder="支付方式">
+        <el-select v-model="query.pay_type" class="filter-item payment-filter" clearable placeholder="支付方式">
           <el-option v-for="item in paymentOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
         <el-input v-model="query.product_code" class="filter-item product-filter" clearable placeholder="套餐编码" @keyup.enter="handleSearch" />
@@ -159,7 +159,7 @@
         </el-table-column>
         <el-table-column label="支付渠道" min-width="130">
           <template #default="{ row }">
-            <div class="payment-method"><span class="payment-mark" />{{ paymentMethodLabel(row.payment_method) }}</div>
+            <div class="payment-method"><span class="payment-mark" />{{ paymentMethodLabel(row.pay_type) }}</div>
           </template>
         </el-table-column>
         <el-table-column label="平台交易号" min-width="190" show-overflow-tooltip>
@@ -168,7 +168,7 @@
         <el-table-column label="下单 / 支付时间" width="190">
           <template #default="{ row }">
             <div class="time-line">{{ formatDate(row.created_at) }}</div>
-            <div class="secondary-text">支付 · {{ formatDate(row.paid_at) }}</div>
+            <div class="secondary-text">支付 · {{ formatDate(row.pay_time) }}</div>
           </template>
         </el-table-column>
       </el-table>
@@ -192,23 +192,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getDashboard, type DashboardData, type DashboardStatistics } from '@/api/dashboard'
 import type { VideoOrder } from '@/api/order'
-
-type TagType = '' | 'success' | 'warning' | 'info' | 'danger' | 'primary'
-
-const statusOptions = [
-  { value: 'pending', label: '待支付' },
-  { value: 'paid', label: '已支付' },
-  { value: 'cancelled', label: '已取消' },
-  { value: 'refunded', label: '已退款' },
-  { value: 'failed', label: '支付失败' },
-  { value: 'expired', label: '已过期' },
-]
-const paymentOptions = [
-  { value: 'apple_iap', label: 'Apple IAP' },
-  { value: 'apple', label: 'Apple' },
-  { value: 'google', label: 'Google Play' },
-  { value: 'stripe', label: 'Stripe' },
-]
+import { orderPaymentLabel as paymentMethodLabel, orderPaymentOptions as paymentOptions } from '@/utils/orderPayment'
+import { orderStatusLabel as statusLabel, orderStatusOptions as statusOptions, orderStatusType as statusType } from '@/utils/orderStatus'
 
 const emptyStatistics = (): DashboardStatistics => ({
   month: '', period_start: '', period_end: '', timezone: '',
@@ -225,7 +210,8 @@ const page = ref(1)
 const pageSize = ref(20)
 const dateRange = ref<string[]>([])
 const query = reactive({
-  keyword: '', user_id: '', status: '', payment_method: '', product_code: '',
+  keyword: '', user_id: '', status: undefined as number | undefined,
+  pay_type: undefined as number | undefined, product_code: '',
 })
 
 const monthLabel = computed(() => {
@@ -253,23 +239,6 @@ function formatDate(value?: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false })
 }
 
-function statusLabel(value: string) {
-  return statusOptions.find((item) => item.value === value)?.label || value || '-'
-}
-
-function statusType(value: string): TagType {
-  if (value === 'paid') return 'success'
-  if (value === 'pending') return 'warning'
-  if (value === 'cancelled' || value === 'expired') return 'info'
-  if (value === 'refunded') return 'primary'
-  if (value === 'failed') return 'danger'
-  return ''
-}
-
-function paymentMethodLabel(value: string) {
-  return paymentOptions.find((item) => item.value === value)?.label || value || '-'
-}
-
 function purchaserName(row: VideoOrder) {
   return row.user?.username || row.user?.email || row.user?.login_account || `用户 #${row.user_id}`
 }
@@ -287,8 +256,9 @@ async function fetchData() {
   try {
     const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
     for (const [key, value] of Object.entries(query)) {
-      const normalized = value.trim()
-      if (normalized) params[key] = normalized
+      if (value === '' || value === undefined) continue
+      const normalized = typeof value === 'string' ? value.trim() : value
+      if (normalized !== '') params[key] = normalized
     }
     if (dateRange.value.length === 2) {
       params.date_from = dateRange.value[0]
@@ -316,7 +286,7 @@ function handlePageSizeChange() {
 }
 
 function handleReset() {
-  Object.assign(query, { keyword: '', user_id: '', status: '', payment_method: '', product_code: '' })
+  Object.assign(query, { keyword: '', user_id: '', status: undefined, pay_type: undefined, product_code: '' })
   dateRange.value = []
   page.value = 1
   fetchData()

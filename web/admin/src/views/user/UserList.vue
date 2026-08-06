@@ -249,14 +249,16 @@
               </el-table-column>
               <el-table-column label="应付金额" width="125"><template #default="{ row }">{{ formatMoney(row.payable_amount, row.currency) }}</template></el-table-column>
               <el-table-column label="实付金额" width="125"><template #default="{ row }">{{ formatMoney(row.paid_amount, row.currency) }}</template></el-table-column>
-              <el-table-column prop="payment_method" label="支付方式" width="120" />
+              <el-table-column label="支付方式" width="120">
+                <template #default="{ row }">{{ paymentMethodLabel(row.pay_type) }}</template>
+              </el-table-column>
               <el-table-column label="权益" min-width="135">
                 <template #default="{ row }">
                   <div>积分 +{{ formatNumber(row.bonus_points) }}</div>
                   <div class="secondary-text">VIP {{ row.vip_level || 0 }} / {{ row.vip_duration_days || 0 }} 天</div>
                 </template>
               </el-table-column>
-              <el-table-column label="支付时间" min-width="175"><template #default="{ row }">{{ formatDate(row.paid_at) }}</template></el-table-column>
+              <el-table-column label="支付时间" min-width="175"><template #default="{ row }">{{ formatDate(row.pay_time) }}</template></el-table-column>
               <el-table-column label="创建时间" min-width="175"><template #default="{ row }">{{ formatDate(row.created_at) }}</template></el-table-column>
             </el-table>
           </el-tab-pane>
@@ -290,6 +292,8 @@ import {
   type AppUser, type UserCenterDetail, type UserPointsLedger,
 } from '@/api/appUser'
 import { useUserStore } from '@/store/user'
+import { orderPaymentLabel as paymentMethodLabel } from '@/utils/orderPayment'
+import { orderStatusLabel, orderStatusType } from '@/utils/orderStatus'
 
 const userStore = useUserStore()
 const canManage = computed(() => userStore.hasPermission('system:app-user:manage'))
@@ -444,20 +448,6 @@ function workStatusType(status: string): StatusTagType {
   if (status === 'success') return 'success'
   if (status === 'failure') return 'danger'
   if (status === 'running' || status === 'downloading') return 'warning'
-  return 'info'
-}
-
-function orderStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    pending: '待支付', paid: '已支付', cancelled: '已取消', failed: '失败', refunded: '已退款',
-  }
-  return labels[status] || status || '-'
-}
-
-function orderStatusType(status: string): StatusTagType {
-  if (status === 'paid') return 'success'
-  if (status === 'pending') return 'warning'
-  if (status === 'failed') return 'danger'
   return 'info'
 }
 

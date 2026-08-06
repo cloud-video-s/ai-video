@@ -90,8 +90,8 @@ func setupStaticFiles(r *gin.Engine, adminDist embed.FS, apiPrefixes []string) {
 
 		// Unmatched API routes must return JSON 404, not the SPA index.html.
 		for _, prefix := range apiPrefixes {
-			if strings.HasPrefix(reqPath, prefix) {
-				response.NotFound(c, "接口不存在")
+			if reqPath == strings.TrimSuffix(prefix, "/") || strings.HasPrefix(reqPath, prefix) {
+				response.NotFound(c, "API endpoint not found.")
 				return
 			}
 		}

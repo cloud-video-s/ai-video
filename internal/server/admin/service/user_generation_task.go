@@ -53,12 +53,13 @@ type UserGenerationTaskView struct {
 	ID               uint64                   `json:"id"`
 	UserID           uint64                   `json:"user_id"`
 	ModelID          uint64                   `json:"model_id"`
-	TemplateID       uint64                   `json:"template_id,omitempty"`
+	TemplateID       uint64                   `json:"template_id"`
 	ClientRequestID  string                   `json:"client_request_id"`
 	TaskCode         string                   `json:"task_code"`
 	ThirdTaskCode    string                   `json:"third_task_code"`
 	Status           int                      `json:"status"`
 	StatusName       string                   `json:"status_name"`
+	TaskType         uint32                   `json:"task_type"`
 	Progress         uint32                   `json:"progress"`
 	MediaType        string                   `json:"media_type"`
 	Prompt           string                   `json:"prompt"`
@@ -71,6 +72,7 @@ type UserGenerationTaskView struct {
 	ResultCount      int                      `json:"result_count"`
 	ErrorMessage     string                   `json:"error_message"`
 	UsageDuration    uint32                   `json:"usage_duration"`
+	Score            uint32                   `json:"score"`
 	SubmittedAt      *time.Time               `json:"submitted_at"`
 	StartedAt        *time.Time               `json:"started_at"`
 	FinishedAt       *time.Time               `json:"finished_at"`
@@ -87,7 +89,7 @@ func (s *UserGenerationTaskService) List(ctx context.Context, page, pageSize int
 		return nil, 0, err
 	}
 	records, total, err := s.repo.PageAdmin(ctx, page, pageSize, &repository.UserGenerationTaskAdminFilter{
-		UserID: req.UserID, ModelID: req.ModelID, ModelType: req.MediaType, Status: req.Status,
+		UserID: req.UserID, ModelID: req.ModelID, TaskType: req.MediaType, Status: req.Status,
 		TaskCode: strings.TrimSpace(req.TaskCode), Keyword: strings.TrimSpace(req.Keyword),
 		CreatedFrom: from, CreatedTo: to,
 	})
@@ -125,11 +127,11 @@ func generationTaskView(record *repository.UserGenerationTaskAdminRecord, detail
 	view := UserGenerationTaskView{
 		ID: task.ID, UserID: task.UserID, ModelID: task.ModelID, TemplateID: task.TemplateID,
 		ClientRequestID: task.ClientRequestID, TaskCode: task.TaskCode, ThirdTaskCode: task.ThirdTaskCode,
-		Status: task.Status, StatusName: generationTaskStatusName(task.Status), Progress: task.Progress,
+		Status: task.Status, StatusName: generationTaskStatusName(task.Status), TaskType: task.TaskType, Progress: task.Progress,
 		MediaType: generationTaskMediaType(record, previewURLs), Prompt: task.Prompt,
 		RemoteURLs: remoteURLs, LocalURLs: localURLs, CoverImageURL: task.CoverImageURL,
 		PreviewURLs: previewURLs, ResultCount: len(previewURLs),
-		ErrorMessage: task.ErrorMessage, UsageDuration: task.UsageDuration,
+		ErrorMessage: task.ErrorMessage, UsageDuration: task.UsageDuration, Score: task.Score,
 		SubmittedAt: generationTaskTimePtr(task.SubmittedAt), StartedAt: generationTaskTimePtr(task.StartedAt),
 		FinishedAt: generationTaskTimePtr(task.FinishedAt), LastPolledAt: generationTaskTimePtr(task.LastPolledAt),
 		CreatedAt: task.CreatedAt, UpdatedAt: task.UpdatedAt,
@@ -175,6 +177,12 @@ func generationTaskStatusName(status int) string {
 }
 
 func generationTaskMediaType(record *repository.UserGenerationTaskAdminRecord, previewURLs []string) string {
+	switch record.Task.TaskType {
+	case 1:
+		return "image"
+	case 2:
+		return "video"
+	}
 	if record.Model != nil {
 		switch record.Model.ModelType {
 		case 1:

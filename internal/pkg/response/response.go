@@ -1,7 +1,9 @@
 package response
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	"ai-video/internal/pkg/i18n"
 
@@ -69,9 +71,16 @@ func NotFound(c *gin.Context, msg string) {
 }
 
 func localizedError(c *gin.Context, code, httpStatus int, fallback string) string {
-	return fallback
 	if !i18n.IsAPI(c) {
 		return fallback
 	}
-	return i18n.ErrorMessage(i18n.Locale(c), code, httpStatus)
+	recordAPIError(c, fallback)
+	return i18n.ErrorMessage(i18n.LocaleEnUS, code, httpStatus)
+}
+
+func recordAPIError(c *gin.Context, original string) {
+	if strings.TrimSpace(original) == "" {
+		return
+	}
+	_ = c.Error(errors.New(original)).SetType(gin.ErrorTypePrivate)
 }

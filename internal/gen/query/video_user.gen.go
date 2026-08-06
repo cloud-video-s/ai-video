@@ -46,6 +46,7 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.VipExpiresAt = field.NewTime(tableName, "vip_expires_at")
 	_videoUser.VipPoints = field.NewInt64(tableName, "vip_points")
 	_videoUser.PointsBalance = field.NewInt64(tableName, "points_balance")
+	_videoUser.FrozenPoints = field.NewUint64(tableName, "frozen_points")
 	_videoUser.FirstOrderCreatedAt = field.NewTime(tableName, "first_order_created_at")
 	_videoUser.FirstPaidAt = field.NewTime(tableName, "first_paid_at")
 	_videoUser.OrderCount = field.NewUint64(tableName, "order_count")
@@ -191,6 +192,7 @@ type videoUser struct {
 	VipExpiresAt             field.Time    // vip 到期时间
 	VipPoints                field.Int64   // vip_积分
 	PointsBalance            field.Int64   // 积分
+	FrozenPoints             field.Uint64  // 冻结积分
 	FirstOrderCreatedAt      field.Time    // 首单创建时间
 	FirstPaidAt              field.Time    // 首单付费时间
 	OrderCount               field.Uint64  // 订单创建次数
@@ -270,6 +272,7 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.VipExpiresAt = field.NewTime(table, "vip_expires_at")
 	v.VipPoints = field.NewInt64(table, "vip_points")
 	v.PointsBalance = field.NewInt64(table, "points_balance")
+	v.FrozenPoints = field.NewUint64(table, "frozen_points")
 	v.FirstOrderCreatedAt = field.NewTime(table, "first_order_created_at")
 	v.FirstPaidAt = field.NewTime(table, "first_paid_at")
 	v.OrderCount = field.NewUint64(table, "order_count")
@@ -334,7 +337,7 @@ func (v *videoUser) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoUser) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 60)
+	v.fieldMap = make(map[string]field.Expr, 61)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["device_code"] = v.DeviceCode
 	v.fieldMap["username"] = v.Username
@@ -353,6 +356,7 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["vip_expires_at"] = v.VipExpiresAt
 	v.fieldMap["vip_points"] = v.VipPoints
 	v.fieldMap["points_balance"] = v.PointsBalance
+	v.fieldMap["frozen_points"] = v.FrozenPoints
 	v.fieldMap["first_order_created_at"] = v.FirstOrderCreatedAt
 	v.fieldMap["first_paid_at"] = v.FirstPaidAt
 	v.fieldMap["order_count"] = v.OrderCount

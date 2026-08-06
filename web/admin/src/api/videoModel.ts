@@ -25,7 +25,7 @@ export interface VideoModel {
   submit_endpoint: string
   status_endpoint: string
   request_method: 'GET' | 'POST'
-  auth_type: 'Bearer' | 'API-Key' | 'None'
+  auth_type: 1 | 2
   api_key: string
   api_key_configured: boolean
   score: number

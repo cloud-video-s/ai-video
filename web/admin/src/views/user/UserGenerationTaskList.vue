@@ -4,8 +4,8 @@
       <template #header>
         <div class="page-heading">
           <div>
-            <div class="page-title">用户生成任务</div>
-            <div class="page-subtitle">查看客户端用户的图片、视频生成记录及生成结果</div>
+            <div class="page-title">任务管理</div>
+            <div class="page-subtitle">查看客户端用户的图片、视频生成任务及完整处理详情</div>
           </div>
           <el-tag effect="plain">共 {{ total.toLocaleString('zh-CN') }} 条</el-tag>
         </div>
@@ -15,7 +15,7 @@
         <el-input
           v-model="query.keyword"
           clearable
-          placeholder="用户、提示词、客户端或第三方任务号"
+          placeholder="用户、模型、提示词、客户端或第三方任务号"
           @keyup.enter="handleSearch"
         >
           <template #prefix><el-icon><Search /></el-icon></template>
@@ -95,6 +95,9 @@
         <el-table-column label="耗时" width="95" align="right">
           <template #default="{ row }">{{ formatDuration(row.usage_duration) }}</template>
         </el-table-column>
+        <el-table-column label="消耗积分" width="100" align="right">
+          <template #default="{ row }">{{ row.score }}</template>
+        </el-table-column>
         <el-table-column label="创建时间" width="180">
           <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
         </el-table-column>
@@ -151,7 +154,7 @@
       <el-empty v-else description="该任务暂无可预览结果" />
     </el-dialog>
 
-    <el-drawer v-model="detailVisible" title="生成任务详情" size="min(900px, 92vw)" destroy-on-close>
+    <el-drawer v-model="detailVisible" title="任务详情" size="min(900px, 92vw)" destroy-on-close>
       <el-skeleton v-if="detailLoading" :rows="12" animated />
       <div v-else-if="detail" class="detail-wrap">
         <el-alert
@@ -174,8 +177,13 @@
           <el-descriptions-item label="客户端请求号" :span="2">{{ detail.client_request_id || '-' }}</el-descriptions-item>
           <el-descriptions-item label="用户">{{ userName(detail) }}（ID {{ detail.user_id }}）</el-descriptions-item>
           <el-descriptions-item label="用户账号">{{ userAccount(detail) }}</el-descriptions-item>
-          <el-descriptions-item label="模型">{{ detail.model?.name || `模型 #${detail.model_id}` }}</el-descriptions-item>
-          <el-descriptions-item label="媒体类型">{{ mediaTypeLabel(detail.media_type) }}</el-descriptions-item>
+          <el-descriptions-item label="模型">
+            {{ detail.model?.name || `模型 #${detail.model_id}` }}
+            <span v-if="detail.model?.code" class="secondary-inline">（{{ detail.model.code }}{{ detail.model.version ? ` · ${detail.model.version}` : '' }}）</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="任务类型">{{ mediaTypeLabel(detail.media_type) }}（{{ detail.task_type }}）</el-descriptions-item>
+          <el-descriptions-item label="模板 ID">{{ detail.template_id || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="消耗积分">{{ detail.score }}</el-descriptions-item>
           <el-descriptions-item label="处理耗时">{{ formatDuration(detail.usage_duration) }}</el-descriptions-item>
           <el-descriptions-item label="结果数量">{{ detail.result_count }}</el-descriptions-item>
           <el-descriptions-item label="提交时间">{{ formatDate(detail.submitted_at) }}</el-descriptions-item>
@@ -185,6 +193,17 @@
           <el-descriptions-item label="创建时间">{{ formatDate(detail.created_at) }}</el-descriptions-item>
           <el-descriptions-item label="更新时间">{{ formatDate(detail.updated_at) }}</el-descriptions-item>
         </el-descriptions>
+
+        <section v-if="detail.cover_image_url" class="detail-section">
+          <div class="section-heading">封面图</div>
+          <el-image
+            :src="toMediaURL(detail.cover_image_url)"
+            :preview-src-list="[toMediaURL(detail.cover_image_url)]"
+            fit="contain"
+            preview-teleported
+            class="cover-image"
+          />
+        </section>
 
         <section class="detail-section">
           <div class="section-heading">
@@ -445,7 +464,9 @@ onMounted(async () => {
 .detail-wrap { padding-bottom: 24px; }
 .detail-wrap > .el-alert { margin-bottom: 16px; }
 .detail-progress { margin-left: 8px; color: #606266; }
+.secondary-inline { color: #909399; font-size: 12px; }
 .detail-section { margin-top: 20px; }
+.cover-image { width: min(360px, 100%); height: 220px; margin-top: 8px; border: 1px solid #ebeef5; border-radius: 6px; background: #f7f8fa; }
 .section-heading { display: flex; min-height: 28px; align-items: center; justify-content: space-between; color: #303133; font-size: 14px; font-weight: 600; }
 .text-block, .json-block { margin: 8px 0 0; padding: 13px 15px; border: 1px solid #ebeef5; border-radius: 6px; background: #f7f8fa; color: #303133; font-size: 13px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .json-block { max-height: 360px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }

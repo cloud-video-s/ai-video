@@ -47,7 +47,7 @@
         <el-select v-model="query.status" clearable placeholder="订单状态">
           <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
-        <el-select v-model="query.payment_method" clearable filterable allow-create placeholder="支付方式">
+        <el-select v-model="query.pay_type" clearable placeholder="支付方式">
           <el-option v-for="item in paymentOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
         <el-input v-model="query.product_code" clearable placeholder="产品编码" @keyup.enter="handleSearch" />
@@ -114,7 +114,7 @@
         <el-table-column label="状态 / 支付" min-width="145">
           <template #default="{ row }">
             <el-tag size="small" :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
-            <div class="secondary-text">{{ paymentMethodLabel(row.payment_method) }}</div>
+            <div class="secondary-text">{{ paymentMethodLabel(row.pay_type) }}</div>
           </template>
         </el-table-column>
         <el-table-column label="交易号" min-width="185" show-overflow-tooltip>
@@ -125,7 +125,7 @@
         <el-table-column label="时间" width="180">
           <template #default="{ row }">
             <div>{{ formatDate(row.created_at) }}</div>
-            <div class="secondary-text">支付 {{ formatDate(row.paid_at) }}</div>
+            <div class="secondary-text">支付 {{ formatDate(row.pay_time) }}</div>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="80" fixed="right" align="center">
@@ -203,7 +203,7 @@
         <section>
           <h3>支付信息</h3>
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="支付方式">{{ paymentMethodLabel(detail.payment_method) }}</el-descriptions-item>
+            <el-descriptions-item label="支付方式">{{ paymentMethodLabel(detail.pay_type) }}</el-descriptions-item>
             <el-descriptions-item label="平台交易 ID"><span class="mono">{{ detail.third_order_no || '-' }}</span></el-descriptions-item>
             <el-descriptions-item label="原始交易 ID" :span="2"><span class="mono">{{ detail.original_transaction_id || '-' }}</span></el-descriptions-item>
             <el-descriptions-item label="失败错误码">{{ detail.failure_code || '-' }}</el-descriptions-item>
@@ -219,7 +219,7 @@
           <el-descriptions :column="2" border>
             <el-descriptions-item label="创建时间">{{ formatDate(detail.created_at) }}</el-descriptions-item>
             <el-descriptions-item label="更新时间">{{ formatDate(detail.updated_at) }}</el-descriptions-item>
-            <el-descriptions-item label="支付完成时间">{{ formatDate(detail.paid_at) }}</el-descriptions-item>
+            <el-descriptions-item label="支付完成时间">{{ formatDate(detail.pay_time) }}</el-descriptions-item>
             <el-descriptions-item label="订单过期时间">{{ formatDate(detail.expires_at) }}</el-descriptions-item>
             <el-descriptions-item label="取消时间">{{ formatDate(detail.cancelled_at) }}</el-descriptions-item>
             <el-descriptions-item label="软删时间">{{ formatDate(detail.deleted_at) }}</el-descriptions-item>
@@ -233,24 +233,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { getOrder, getOrderList, type OrderSummary, type VideoOrder } from '@/api/order'
-
-type TagType = '' | 'success' | 'warning' | 'info' | 'danger' | 'primary'
-
-const statusOptions = [
-  { value: 'pending', label: '待支付' },
-  { value: 'paid', label: '已支付' },
-  { value: 'cancelled', label: '已取消' },
-  { value: 'refunded', label: '已退款' },
-  { value: 'failed', label: '支付失败' },
-  { value: 'expired', label: '已过期' },
-]
-
-const paymentOptions = [
-  { value: 'apple_iap', label: 'Apple IAP' },
-  { value: 'apple', label: 'Apple' },
-  { value: 'google', label: 'Google Play' },
-  { value: 'stripe', label: 'Stripe' },
-]
+import { orderPaymentLabel as paymentMethodLabel, orderPaymentOptions as paymentOptions } from '@/utils/orderPayment'
+import { orderStatusLabel as statusLabel, orderStatusOptions as statusOptions, orderStatusType as statusType } from '@/utils/orderStatus'
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -266,8 +250,8 @@ const query = reactive({
   keyword: '',
   user_id: undefined as number | undefined,
   product_type: undefined as number | undefined,
-  status: '',
-  payment_method: '',
+  status: undefined as number | undefined,
+  pay_type: undefined as number | undefined,
   product_code: '',
 })
 
@@ -275,23 +259,6 @@ function productTypeLabel(value: number) {
   if (value === 1) return 'VIP'
   if (value === 2) return '积分'
   return `类型 ${value}`
-}
-
-function statusLabel(value: string) {
-  return statusOptions.find((item) => item.value === value)?.label || value || '-'
-}
-
-function statusType(value: string): TagType {
-  if (value === 'paid') return 'success'
-  if (value === 'pending') return 'warning'
-  if (value === 'cancelled' || value === 'expired') return 'info'
-  if (value === 'refunded') return 'primary'
-  if (value === 'failed') return 'danger'
-  return ''
-}
-
-function paymentMethodLabel(value: string) {
-  return paymentOptions.find((item) => item.value === value)?.label || value || '-'
 }
 
 function userTypeLabel(value?: number) {
@@ -373,7 +340,7 @@ function handlePageSizeChange() {
 function handleReset() {
   Object.assign(query, {
     keyword: '', user_id: undefined, product_type: undefined,
-    status: '', payment_method: '', product_code: '',
+    status: undefined, pay_type: undefined, product_code: '',
   })
   dateRange.value = []
   page.value = 1

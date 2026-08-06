@@ -77,6 +77,7 @@ func (h *AuthHandler) ThirdBinding(c *gin.Context) {
 	}
 	if req.ThirdCode == "" && req.IDToken == "" {
 		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, "参数异常")
+		return
 	}
 	result, err := h.svc.ThirdPartyLogin(c, &req, c.ClientIP())
 	if err != nil {
@@ -106,7 +107,7 @@ func (h *AuthHandler) UnbindIdentity(c *gin.Context) {
 func (h *AuthHandler) handleIdentityError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, oidc.ErrInvalidToken):
-		response.FailWithStatus(c, http.StatusUnauthorized, errcode.ErrTokenInvalid, "第三方身份凭证无效")
+		response.FailWithStatus(c, http.StatusUnauthorized, errcode.ErrTokenInvalid, err.Error())
 	case errors.Is(err, apiservice.ErrIdentityProviderNotConfigured):
 		response.FailWithStatus(c, http.StatusServiceUnavailable, errcode.ErrServer, err.Error())
 	case errors.Is(err, apiservice.ErrDeviceCodeNotConfigured):

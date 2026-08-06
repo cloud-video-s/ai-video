@@ -31,15 +31,15 @@ export interface VideoOrder {
   bonus_points: number
   vip_level: number
   vip_duration_days: number
-  status: string
-  payment_method: string
+  status: number
+  pay_type: number
   third_order_no: string
   original_transaction_id: string
   payment_evidence?: string
   failure_code: string
   failure_message: string
   cancel_reason: string
-  paid_at: string | null
+  pay_time: string | null
   cancelled_at: string | null
   expires_at: string | null
   created_at: string

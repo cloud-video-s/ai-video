@@ -23,11 +23,13 @@ export interface UserGenerationTask {
   id: number
   user_id: number
   model_id: number
+  template_id: number
   client_request_id: string
   task_code: string
   third_task_code: string
   status: number
   status_name: string
+  task_type: number
   progress: number
   media_type: GenerationTaskMediaType
   prompt: string
@@ -36,9 +38,11 @@ export interface UserGenerationTask {
   remote_urls: string[]
   local_urls: string[]
   preview_urls: string[]
+  cover_image_url: string
   result_count: number
   error_message: string
   usage_duration: number
+  score: number
   submitted_at: string | null
   started_at: string | null
   finished_at: string | null

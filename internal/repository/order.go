@@ -259,6 +259,7 @@ func buildDao(ctx context.Context, filter *OrderAdminFilter) query.IVideoOrderDo
 	}
 	if filter.Keyword != "" {
 		keyword := "%" + filter.Keyword + "%"
+		dao = dao.LeftJoin(user, user.ID.EqCol(order.UserID))
 		conditions := []field.Expr{
 			order.OrderNo.Like(keyword), order.ClientRequestID.Like(keyword),
 			order.ProductCode.Like(keyword), order.ProductName.Like(keyword),

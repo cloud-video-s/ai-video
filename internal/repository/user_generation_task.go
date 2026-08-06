@@ -7,6 +7,7 @@ import (
 	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // UserGenerationTaskRepo manages generation tasks owned by client users.
@@ -25,6 +26,57 @@ func (r *UserGenerationTaskRepo) Create(ctx context.Context, task *model.VideoUs
 	return dbFrom(ctx).Omit(
 		"User", "Template", "ThirdTaskCode", "SubmittedAt", "StartedAt", "FinishedAt", "LastPolledAt",
 	).Create(task).Error
+}
+
+// GenerationTaskPointState is the persisted point allocation for a generation
+// task. VIPScore and PointsScore deliberately live beside the task so a failed
+// mixed-balance reservation can always be returned to its original balances.
+// These fields are kept here until the reviewed schema script is applied and
+// GORM Gen is rerun against the updated schema.
+type GenerationTaskPointState struct {
+	ID          uint64 `gorm:"column:id"`
+	UserID      uint64 `gorm:"column:user_id"`
+	TaskCode    string `gorm:"column:task_code"`
+	Status      int    `gorm:"column:status"`
+	Score       uint32 `gorm:"column:score"`
+	ScoreType   uint32 `gorm:"column:score_type"`
+	VIPScore    uint32 `gorm:"column:vip_score"`
+	PointsScore uint32 `gorm:"column:points_score"`
+}
+
+// SetPointAllocation stores the exact balance split selected while the user
+// row is locked. It must be called in the same transaction that creates the
+// task and updates the user's available and frozen balances.
+func (r *UserGenerationTaskRepo) SetPointAllocation(ctx context.Context, id uint64, scoreType, vipScore, pointsScore uint32) error {
+	result := dbFrom(ctx).Table(model.TableNameVideoUserGenerationTask).
+		Where("id = ?", id).
+		Updates(map[string]any{"score_type": scoreType, "vip_score": vipScore, "points_score": pointsScore})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		var count int64
+		if err := dbFrom(ctx).Table(model.TableNameVideoUserGenerationTask).Where("id = ?", id).Count(&count).Error; err != nil {
+			return err
+		}
+		if count != 1 {
+			return gorm.ErrRecordNotFound
+		}
+	}
+	return nil
+}
+
+// GetPointStateForUpdate serializes success settlement and failure release for
+// one task. The task row is the idempotency guard that prevents a duplicate
+// ledger entry or a second refund.
+func (r *UserGenerationTaskRepo) GetPointStateForUpdate(ctx context.Context, id uint64) (*GenerationTaskPointState, error) {
+	var state GenerationTaskPointState
+	err := dbFrom(ctx).Table(model.TableNameVideoUserGenerationTask).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Select("id", "user_id", "task_code", "status", "score", "score_type", "vip_score", "points_score").
+		Where("id = ? AND deleted_at IS NULL", id).
+		Take(&state).Error
+	return &state, err
 }
 
 func (r *UserGenerationTaskRepo) GetOwned(ctx context.Context, id, userID uint64) (*model.VideoUserGenerationTask, error) {
@@ -71,7 +123,7 @@ func (r *UserGenerationTaskRepo) PageOwned(ctx context.Context, userID uint64, p
 type UserGenerationTaskAdminFilter struct {
 	UserID      uint64
 	ModelID     uint64
-	ModelType   uint32
+	TaskType    uint32
 	Status      int
 	TaskCode    string
 	Keyword     string
@@ -105,8 +157,8 @@ func (r *UserGenerationTaskRepo) PageAdmin(ctx context.Context, page, pageSize i
 		if filter.ModelID != 0 {
 			dao = dao.Where(taskTable+".model_id = ?", filter.ModelID)
 		}
-		if filter.ModelType != 0 {
-			dao = dao.Where(modelTable+".model_type = ?", filter.ModelType)
+		if filter.TaskType != 0 {
+			dao = dao.Where(taskTable+".task_type = ?", filter.TaskType)
 		}
 		if filter.Status != 0 {
 			dao = dao.Where(taskTable+".status = ?", filter.Status)
@@ -125,12 +177,13 @@ func (r *UserGenerationTaskRepo) PageAdmin(ctx context.Context, page, pageSize i
 			dao = dao.Where("("+
 				taskTable+".task_code LIKE ? OR "+taskTable+".client_request_id LIKE ? OR "+
 				taskTable+".third_task_code LIKE ? OR "+taskTable+".prompt LIKE ? OR "+
+				modelTable+".name LIKE ? OR "+modelTable+".code LIKE ? OR "+
 				userTable+".username LIKE ? OR "+userTable+".email LIKE ? OR "+
 				userTable+".login_account LIKE ? OR "+userTable+".imei LIKE ? OR "+
 				"EXISTS (SELECT 1 FROM "+model.TableNameVideoUserIdentity+" identity_row "+
 				"WHERE identity_row.user_id = "+taskTable+".user_id AND identity_row.email LIKE ?)"+
 				")",
-				keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword,
+				keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword,
 			)
 		}
 	}

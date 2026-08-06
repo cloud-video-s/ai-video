@@ -1,13 +1,12 @@
 package generation
 
 import (
-	"ai-video/internal/commerce"
-	"ai-video/internal/domain"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -45,6 +44,7 @@ type Manager struct {
 }
 
 var sharedManager = &Manager{
+	AppUserRepo:           repository.NewAppUserRepo(),
 	modelRepo:             repository.NewModelRepo(),
 	parameterRepo:         repository.NewModelParameterRepo(),
 	taskRepo:              repository.NewUserGenerationTaskRepo(),
@@ -92,10 +92,6 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	if userID == 0 {
 		return nil, errors.New("用户 ID 无效")
 	}
-	user, err := m.GetByID(ctx, userID)
-	if err != nil {
-		return nil, errors.New("user is not exist")
-	}
 	request.ModelCode = strings.TrimSpace(request.ModelCode)
 	request.ClientRequestID = strings.TrimSpace(request.ClientRequestID)
 	if request.ClientRequestID == "" {
@@ -140,8 +136,8 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		}
 		return nil, err
 	}
-	if user.VipPoints < modelConfig.Score {
-		return nil, errors.New("not enough points")
+	if modelConfig.Score < 0 || modelConfig.Score > math.MaxUint32 {
+		return nil, errors.New("model score is outside the supported range")
 	}
 	if modelConfig.ModelType != request.TaskType {
 		return nil, fmt.Errorf("task_type %d does not match model %s type %d", request.TaskType, modelConfig.Code, modelConfig.ModelType)
@@ -170,12 +166,41 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	}
 	prompt, _ := request.Input["prompt"].(string)
 	task := &model.VideoUserGenerationTask{
-		UserID: userID, ModelID: uint64(modelConfig.ID), ClientRequestID: request.ClientRequestID, TaskCode: taskCode, Score: uint32(request.Score),
+		UserID: userID, ModelID: uint64(modelConfig.ID), ClientRequestID: request.ClientRequestID, TaskCode: taskCode, Score: uint32(modelConfig.Score),
 		TemplateID: request.TemplateID, TaskType: request.TaskType, Status: TaskStatusSubmitting, Progress: 0, Prompt: prompt, RequestPayload: string(payload),
 		RemoteUrls: "[]", LocalUrls: "[]",
 	}
-	if err := repository.Transaction(ctx, func(txCtx context.Context) error {
-		if err := m.taskRepo.Create(txCtx, task); err != nil {
+	if err = repository.Transaction(ctx, func(txCtx context.Context) error {
+		user, err := m.GetByIDForUpdate(txCtx, userID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errors.New("user does not exist")
+			}
+			return err
+		}
+		allocation, err := freezeTaskPoints(user, task.Score)
+		if err != nil {
+			return err
+		}
+		scoreType := allocation.scoreType()
+		task.ScoreType = scoreType
+		task.VipScore = allocation.VIPScore
+		task.PointsScore = allocation.PointsScore
+		if err = m.taskRepo.Create(txCtx, task); err != nil {
+			return err
+		}
+		// GORM may populate a generated-model default during Create. Restore and
+		// persist the allocation-derived value explicitly, including type 0 for
+		// free models.
+		//task.ScoreType = scoreType
+		//if err = m.taskRepo.SetPointAllocation(txCtx, task.ID, scoreType, allocation.VIPScore, allocation.PointsScore); err != nil {
+		//	return err
+		//}
+		if err = m.Update(txCtx, user.ID, map[string]any{
+			"vip_points":     user.VipPoints,
+			"points_balance": user.PointsBalance,
+			"frozen_points":  user.FrozenPoints,
+		}); err != nil {
 			return err
 		}
 		if m.uploadRepo != nil {
@@ -517,7 +542,7 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGe
 		return m.failTask(ctx, task, "获取视频封面存储失败: "+err.Error())
 	}
 	storage = recordGeneratedUploads(storage, m.uploadRepo, task, upload.MediaImage)
-	coverSource := strings.TrimSpace(localURLs[0])
+	coverSource := uploadruntime.PublicURL(localURLs[0])
 	coverURL, err := generateAndStoreTaskCover(ctx, storage, task, upload.MediaVideo, coverSource)
 	remoteCoverSource := strings.TrimSpace(remoteURLs[0])
 	if err != nil && remoteCoverSource != coverSource {
@@ -534,70 +559,58 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGe
 	task.Progress = 100
 	task.ErrorMessage = ""
 	task.FinishedAt = now
-	err = repository.Transaction(ctx, func(txCtx context.Context) error {
-		q := repository.QFrom(txCtx)
-		generationTask := q.VideoUserGenerationTask
-		_, err = q.WithContext(ctx).VideoUserGenerationTask.Select(generationTask.LocalUrls, generationTask.CoverImageURL, generationTask.Status,
-			generationTask.Progress,
-			generationTask.ErrorMessage,
-			generationTask.FinishedAt,
-		).Updates(task)
-		if err != nil {
-			return fmt.Errorf("task update error")
-		}
-
-		user, err := m.GetByIDForUpdate(ctx, task.UserID)
-		if err != nil {
-			return err
-		}
-		if user.VipPoints+user.PointsBalance < int64(task.Score) {
-			return commerce.ErrInsufficientPoints
-		}
-		beforeBalance := user.VipPoints + user.PointsBalance
-		user.VipPoints = user.VipPoints - int64(task.Score)
-		if user.VipPoints < 0 {
-			user.PointsBalance += user.VipPoints
-			user.VipPoints = 0
-		}
-		ledger := &model.VideoUserPointsLedger{
-			UserID:    user.ID,
-			Direction: int8(domain.PointsDirectionExpense), PointsChange: -int64(task.Score),
-			BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(user.VipPoints + user.PointsBalance), SourceType: domain.PointsSourceModelConsume,
-			Description: "Spend points",
-			OccurredAt:  now, CreatedAt: now,
-		}
-		if err = q.VideoUserPointsLedger.WithContext(ctx).Create(ledger); err != nil {
-			return fmt.Errorf("create ledger error")
-		}
-		videoUser := q.VideoUser
-		_, err = q.VideoUser.WithContext(ctx).Where(videoUser.ID.Eq(task.UserID)).Updates(map[string]any{"points_balance": user.PointsBalance, "vip_points": user.VipPoints})
-		if err != nil {
-			return fmt.Errorf("consume points error")
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	m.hub.Publish(task)
-	return nil
+	return m.completeTask(ctx, task,
+		"LocalUrls", "CoverImageURL", "Status", "Progress", "ErrorMessage", "FinishedAt",
+	)
 }
 
 func (m *Manager) failTask(ctx context.Context, task *model.VideoUserGenerationTask, message string) error {
 	now := time.Now()
-	task.Status = TaskStatusFailure
-	task.Progress = 100
-	task.ErrorMessage = strings.TrimSpace(message)
-	task.FinishedAt = now
-	err := m.taskRepo.UpdateFields(
-		ctx, task,
-		"Status", "Progress", "ErrorMessage", "FinishedAt", "ProviderResponse", "UsageDuration", "LastPolledAt",
-	)
-	m.hub.Publish(task)
+	failed := *task
+	failed.Status = TaskStatusFailure
+	failed.Progress = 100
+	failed.ErrorMessage = strings.TrimSpace(message)
+	if config.Log != nil {
+		config.Log.Errorw("generation task failed",
+			"task_id", failed.ID,
+			"task_code", failed.TaskCode,
+			"user_id", failed.UserID,
+			"original_error", failed.ErrorMessage,
+		)
+	}
+	failed.FinishedAt = now
+	alreadyFailed := false
+	err := repository.Transaction(ctx, func(txCtx context.Context) error {
+		state, err := m.taskRepo.GetPointStateForUpdate(txCtx, failed.ID)
+		if err != nil {
+			return err
+		}
+		switch state.Status {
+		case TaskStatusSuccess:
+			return errors.New("successful generation task cannot be failed")
+		case TaskStatusFailure:
+			alreadyFailed = true
+			return nil
+		}
+		if err := m.releaseFrozenTaskPoints(txCtx, state); err != nil {
+			return err
+		}
+		return m.taskRepo.UpdateFields(
+			txCtx, &failed,
+			"Status", "Progress", "ErrorMessage", "FinishedAt", "ProviderResponse", "UsageDuration", "LastPolledAt",
+		)
+	})
 	if err != nil {
 		return err
 	}
-	return errors.New(task.ErrorMessage)
+	if !alreadyFailed {
+		*task = failed
+	} else {
+		task.Status = TaskStatusFailure
+		task.Progress = 100
+	}
+	m.hub.Publish(task)
+	return errors.New(failed.ErrorMessage)
 }
 
 func mergeModelParameters(definitions []model.VideoModelParameter, request map[string]any) (map[string]any, error) {

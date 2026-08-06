@@ -30,14 +30,16 @@ func TestParseGenerationTaskURLs(t *testing.T) {
 func TestGenerationTaskViewPrefersLocalResults(t *testing.T) {
 	record := &repository.UserGenerationTaskAdminRecord{
 		Task: model.VideoUserGenerationTask{
-			ID: 1, UserID: 2, ModelID: 3, TaskCode: "task-1", Status: 6, Progress: 100,
+			ID: 1, UserID: 2, ModelID: 3, TemplateID: 4, TaskCode: "task-1", Status: 6, TaskType: 2, Progress: 100,
 			RequestPayload: `{"input":{"prompt":"hello"}}`, ProviderResponse: `not-json`,
 			RemoteUrls:    `["https://remote.example/result.mp4"]`,
 			LocalUrls:     `["/storage/result.mp4"]`,
 			CoverImageURL: "https://cdn.example.com/generated/task-1-cover.jpg",
+			Score:         12,
 		},
-		User:  &model.VideoUser{ID: 2, Username: "Alice"},
-		Model: &model.VideoModel{ID: 3, Name: "Video Model", Code: "video-model", ModelType: 2},
+		User: &model.VideoUser{ID: 2, Username: "Alice"},
+		// The task snapshot is authoritative even if model metadata later changes.
+		Model: &model.VideoModel{ID: 3, Name: "Video Model", Code: "video-model", ModelType: 1},
 	}
 
 	listView := generationTaskView(record, false)
@@ -46,6 +48,9 @@ func TestGenerationTaskViewPrefersLocalResults(t *testing.T) {
 	}
 	if listView.MediaType != "video" || listView.ResultCount != 1 {
 		t.Fatalf("media type/count = %q/%d", listView.MediaType, listView.ResultCount)
+	}
+	if listView.TaskType != 2 || listView.TemplateID != 4 || listView.Score != 12 {
+		t.Fatalf("task fields = type %d, template %d, score %d", listView.TaskType, listView.TemplateID, listView.Score)
 	}
 	if listView.CoverImageURL != record.Task.CoverImageURL {
 		t.Fatalf("CoverImageURL = %q", listView.CoverImageURL)

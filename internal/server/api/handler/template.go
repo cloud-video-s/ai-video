@@ -129,9 +129,9 @@ func (h *TemplateHandler) setFavorite(c *gin.Context, favorited bool) {
 	}
 	switch {
 	case errors.Is(err, apiservice.ErrTemplateFavoriteBusy):
-		response.FailWithStatus(c, http.StatusConflict, errcode.ErrParam, "收藏操作正在处理中")
+		response.FailWithStatus(c, http.StatusConflict, errcode.ErrParam, err.Error())
 	case errors.Is(err, gorm.ErrRecordNotFound):
-		response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, "模板不存在")
+		response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, err.Error())
 	default:
 		response.Fail(c, errcode.ErrServer, err.Error())
 	}

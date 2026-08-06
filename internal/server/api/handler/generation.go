@@ -103,6 +103,7 @@ func (h *GenerationHandler) List(c *gin.Context) {
 	data, err := h.modelService.GenerationList(c, &request)
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
+		return
 	}
 	response.OK(c, data)
 }
@@ -115,7 +116,7 @@ func (h *GenerationHandler) Get(c *gin.Context) {
 	task, err := h.manager.GetTask(c.Request.Context(), middleware.GetAPIUserID(c), taskID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, "生成任务不存在")
+			response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, err.Error())
 			return
 		}
 		response.Fail(c, errcode.ErrServer, err.Error())
@@ -131,7 +132,7 @@ func (h *GenerationHandler) Delete(c *gin.Context) {
 	}
 	if err := h.manager.DeleteTask(c.Request.Context(), middleware.GetAPIUserID(c), taskID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, "生成任务不存在")
+			response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, err.Error())
 			return
 		}
 		response.Fail(c, errcode.ErrParam, err.Error())
@@ -148,7 +149,7 @@ func (h *GenerationHandler) Events(c *gin.Context) {
 	}
 	task, err := h.manager.GetTask(c.Request.Context(), middleware.GetAPIUserID(c), taskID)
 	if err != nil {
-		response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, "生成任务不存在")
+		response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, err.Error())
 		return
 	}
 	c.Header("Content-Type", "text/event-stream; charset=utf-8")

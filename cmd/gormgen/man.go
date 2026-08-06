@@ -529,6 +529,10 @@ func main() {
 	videoUserGenerationTask := g.GenerateModel("video_user_generation_task",
 		gen.FieldType("status", "int"),
 		gen.FieldType("template_id", "uint64"),
+		gen.FieldType("score", "uint32"),
+		gen.FieldType("score_type", "uint32"),
+		gen.FieldType("vip_score", "uint32"),
+		gen.FieldType("points_score", "uint32"),
 		gen.FieldRelate(field.BelongsTo, "Template", videoTemplate,
 			&field.RelateConfig{
 				GORMTag: field.GormTag{
@@ -550,6 +554,7 @@ func main() {
 		gen.FieldType("avg_daily_usage_seconds", "uint64"),
 		gen.FieldType("points_balance", "int64"),
 		gen.FieldType("vip_points", "int64"),
+		gen.FieldType("frozen_points", "uint64"),
 		gen.FieldType("subscription_status", "uint8"),
 		gen.FieldType("order_count", "uint64"),
 		gen.FieldType("payment_count", "uint64"),

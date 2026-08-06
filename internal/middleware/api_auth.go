@@ -71,11 +71,15 @@ func ApiAuth(userRepo UserRepo) gin.HandlerFunc {
 
 		claims, err := jwt.ParseApiToken(tokenString)
 		if err != nil {
-			response.Unauthorized(c, "Token 无效或已过期")
+			response.Unauthorized(c, err.Error())
 			return
 		}
 		deviceCode, version, err := userRepo.GetAuthState(c.Request.Context(), claims.UserID)
-		if err != nil || deviceCode != claims.DeviceCode || version != claims.TokenVersion {
+		if err != nil {
+			response.Unauthorized(c, err.Error())
+			return
+		}
+		if deviceCode != claims.DeviceCode || version != claims.TokenVersion {
 			response.Unauthorized(c, "登录状态已失效，请重新注册或登录")
 			return
 		}

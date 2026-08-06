@@ -113,7 +113,7 @@ export interface UserWork {
 export interface UserOrder {
   id: number
   order_no: string
-  product_type: string
+  product_type: number
   product_id: number
   product_code: string
   product_name: string
@@ -124,9 +124,9 @@ export interface UserOrder {
   bonus_points: number
   vip_level: number
   vip_duration_days: number
-  status: string
-  payment_method: string
-  paid_at: string | null
+  status: number
+  pay_type: number
+  pay_time: string | null
   created_at: string
 }
 

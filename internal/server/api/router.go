@@ -21,7 +21,7 @@ func (m *Module) Name() string {
 }
 
 func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
-	rg.Use(middleware.APILocalization(repository.NewCountryRepo()))
+	rg.Use(middleware.APIErrorSanitizer())
 	healthHandler := handler.NewHealthHandler()
 	configHandler := handler.NewConfigHandler()
 	delayConfigHandler := handler.NewDelayConfigHandler()

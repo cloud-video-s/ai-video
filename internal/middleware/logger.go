@@ -19,8 +19,13 @@ func Logger() gin.HandlerFunc {
 		status := c.Writer.Status()
 		clientIP := c.ClientIP()
 		method := c.Request.Method
+		privateErrors := c.Errors.ByType(gin.ErrorTypePrivate)
 
-		config.Log.Infow("request",
+		logRequest := config.Log.Infow
+		if len(privateErrors) > 0 {
+			logRequest = config.Log.Errorw
+		}
+		logRequest("request",
 			"status", status,
 			"method", method,
 			"path", path,
@@ -28,7 +33,7 @@ func Logger() gin.HandlerFunc {
 			"body", c.Request.Body,
 			"ip", clientIP,
 			"latency", latency.String(),
-			"errors", c.Errors.ByType(gin.ErrorTypePrivate).String(),
+			"errors", privateErrors.String(),
 		)
 	}
 }

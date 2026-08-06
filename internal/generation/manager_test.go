@@ -562,11 +562,42 @@ func newGenerationManagerTestDB(t *testing.T) *gorm.DB {
 			last_polled_at DATETIME NULL,
 			template_id INTEGER NOT NULL DEFAULT 0,
 			cover_image_url TEXT,
+			score INTEGER NOT NULL DEFAULT 0,
+			score_type INTEGER NOT NULL DEFAULT 0,
+			vip_score INTEGER NOT NULL DEFAULT 0,
+			points_score INTEGER NOT NULL DEFAULT 0,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
 			deleted_at DATETIME NULL,
 			UNIQUE (user_id, client_request_id),
 			UNIQUE (third_task_code)
+		)`,
+		`CREATE TABLE video_user (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			vip_points INTEGER NOT NULL DEFAULT 0,
+			points_balance INTEGER NOT NULL DEFAULT 0,
+			frozen_points INTEGER NOT NULL DEFAULT 0,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			deleted_at DATETIME NULL
+		)`,
+		`CREATE TABLE video_user_points_ledger (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			direction INTEGER NOT NULL,
+			points_change INTEGER NOT NULL,
+			balance_before INTEGER NOT NULL,
+			balance_after INTEGER NOT NULL,
+			description TEXT,
+			source_type INTEGER NOT NULL,
+			order_code TEXT,
+			points_id INTEGER NOT NULL DEFAULT 0,
+			vip_id INTEGER NOT NULL DEFAULT 0,
+			occurred_at DATETIME NOT NULL,
+			admin_id INTEGER NOT NULL DEFAULT 0,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			deleted_at DATETIME NULL
 		)`,
 	}
 	for _, schema := range schemas {
@@ -588,6 +619,11 @@ func newGenerationManagerTestDB(t *testing.T) *gorm.DB {
 
 func seedGenerationManagerVideoModel(t *testing.T, db *gorm.DB, hostURL string) {
 	t.Helper()
+	if err := db.Exec(`INSERT INTO video_user
+		(id, vip_points, points_balance, frozen_points, created_at, updated_at)
+		VALUES (19, 100, 100, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).Error; err != nil {
+		t.Fatal(err)
+	}
 	if err := db.Exec(`INSERT INTO video_platform
 		(id, name, code, base_url, status, auth_type, api_key, created_at, updated_at)
 		VALUES (1, 'ModelVerse', 'modelverse', ?, 1, 1, 'platform-key', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, hostURL).Error; err != nil {

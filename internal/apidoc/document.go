@@ -154,7 +154,7 @@ var generationTaskResponseExample = generation.TaskView{
 		"external_task_id": "eafe15f0-780f-4a7f-9c62-7e99484be521", "mode": "std",
 	},
 	LocalURLs:     []string{},
-	ErrorMessage:  "provider task id not found: field=data.task_id, provider_error=Tail image is not supported with video input",
+	ErrorMessage:  generation.TaskFailureMessage,
 	UsageDuration: 10,
 	SubmittedAt:   generationTaskExampleTime(2026, 7, 30, 14, 44, 41, 602),
 	StartedAt:     generationTaskExampleTime(2026, 7, 30, 14, 44, 43, 804),
@@ -181,7 +181,7 @@ var generationTaskListResponseExample = generationTaskListResponse{
 				"external_task_id": "c55e71fc-f2c1-4f8e-aae7-9f380fc0b0ea", "mode": "std",
 			},
 			LocalURLs:     []string{},
-			ErrorMessage:  "provider task id not found: field=data.task_id, provider_error=Tail image is not supported with video input",
+			ErrorMessage:  generation.TaskFailureMessage,
 			UsageDuration: 10,
 			SubmittedAt:   generationTaskExampleTime(2026, 7, 30, 11, 57, 59, 450),
 			StartedAt:     generationTaskExampleTime(2026, 7, 30, 11, 58, 2, 749),
@@ -453,8 +453,8 @@ var operationDescriptions = map[string]string{
 	"GET /api/templates/template_info": "根据必填的 template_id 查询单个模板对象，并设置当前登录用户的 is_favorite。响应使用当前统一模板对象结构。",
 	"POST /api/templates/:id/favorite": "收藏指定模板；重复收藏保持幂等。", "DELETE /api/templates/:id/favorite": "取消收藏指定模板；重复取消保持幂等。",
 	"POST /api/templates/complaint": "提交模板投诉。请求体使用 application/json，template_id 和 complaint_type 必填，content 为可选的补充说明。",
-	"GET /api/generation/models":    "按必填 model_type 查询平台和模型均启用的模型及其参数；同时返回 parameter_type=1 的选项参数和 parameter_type=2 的请求参数，并按 parameter_type、sort_order、id 排序。", "POST /api/generation/tasks": "校验请求并创建待异步处理的生成任务，返回任务订单号。",
-	"POST /api/generation/template-tasks": "按模板创建生成任务。请求体仅展示必填的 template_id 和 input.images；模板提示词和模型设置由服务端补充。",
+	"GET /api/generation/models":    "按必填 model_type 查询平台和模型均启用的模型及其参数；同时返回 parameter_type=1 的选项参数和 parameter_type=2 的请求参数，并按 parameter_type、sort_order、id 排序。", "POST /api/generation/tasks": "校验请求并创建待异步处理的生成任务，返回任务订单号。input.images、input.video、input.first_frame 和 input.end_frame 中的媒体地址同时支持半链接与 HTTP(S) 全链接。",
+	"POST /api/generation/template-tasks": "按模板创建生成任务。请求体仅展示必填的 template_id 和 input.images；图片地址同时支持半链接与 HTTP(S) 全链接，模板提示词和模型设置由服务端补充。",
 	"GET /api/generation/tasks":           "分页查询当前用户的生成任务，列表项返回完整任务快照。", "GET /api/generation/tasks/:id": "查询指定生成任务详情，返回结构与列表中的单个任务一致。",
 	"GET /api/generation/tasks/:id/events": "通过 SSE 实时订阅生成任务状态，任务结束后连接关闭。", "DELETE /api/generation/tasks/:id": "删除指定生成任务。",
 	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
@@ -583,7 +583,7 @@ func Build(routes []gin.RouteInfo) Document {
 		OpenAPI: "3.0.3",
 		Info: map[string]any{
 			"title": "AI Video API", "version": "1.0.0",
-			"description": "根据当前 Gin 路由自动生成，仅包含 /api 客户端接口。接口统一返回 {code, message, data}。",
+			"description": "根据当前 Gin 路由自动生成，仅包含 /api 客户端接口。接口统一返回 {code, message, data}；错误 message 为脱敏后的英文提示。",
 		},
 		Servers: []map[string]any{{"url": "/", "description": "当前服务"}},
 		Paths:   make(map[string]map[string]any),
@@ -1163,7 +1163,6 @@ func clientHeaderParameters() []any {
 		{"Video_Phone_Model", "设备型号", true},
 		{"Video_Channel_Code", "渠道代码，对应渠道配置中的 channel_code", true},
 		{"Video_Device_Country", "ISO 3166-1 alpha-2 国家或地区代码；用于 Banner 等内容的国家范围匹配和语言配置，未传时根据客户端 IP 或用户资料推断", false},
-		{"Accept-Language", "国家未配置语言时的响应语言回退值，例如 zh-CN、en-US；最终语言见响应头 Content-Language", false},
 	}
 	parameters := make([]any, 0, len(headers))
 	for _, header := range headers {

@@ -1,9 +1,6 @@
 package generation
 
 import (
-	"ai-video/internal/commerce"
-	"ai-video/internal/domain"
-	"ai-video/internal/repository"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -58,56 +55,9 @@ func (m *Manager) finishImageTask(ctx context.Context, task *model.VideoUserGene
 	task.Progress = 100
 	task.ErrorMessage = ""
 	task.FinishedAt = now
-	err = repository.Transaction(ctx, func(txCtx context.Context) error {
-		q := repository.QFrom(txCtx)
-		generationTask := q.VideoUserGenerationTask
-		_, err = q.WithContext(ctx).VideoUserGenerationTask.Select(generationTask.LocalUrls, generationTask.CoverImageURL, generationTask.Status,
-			generationTask.Progress,
-			generationTask.ErrorMessage,
-			generationTask.FinishedAt,
-		).Updates(task)
-		if err != nil {
-			return fmt.Errorf("task update error")
-		}
-
-		user, err := m.GetByIDForUpdate(ctx, task.UserID)
-		if err != nil {
-			return err
-		}
-		if user.VipPoints+user.PointsBalance < int64(task.Score) {
-			return commerce.ErrInsufficientPoints
-		}
-		beforeBalance := user.VipPoints + user.PointsBalance
-		user.VipPoints = user.VipPoints - int64(task.Score)
-		if user.VipPoints < 0 {
-			user.PointsBalance += user.VipPoints
-			user.VipPoints = 0
-		}
-		ledger := &model.VideoUserPointsLedger{
-			UserID:    user.ID,
-			Direction: int8(domain.PointsDirectionExpense), PointsChange: -int64(task.Score),
-			BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(user.VipPoints + user.PointsBalance), SourceType: domain.PointsSourceModelConsume,
-			Description: "Spend points",
-			OccurredAt:  now, CreatedAt: now,
-		}
-		if err = q.VideoUserPointsLedger.WithContext(ctx).Create(ledger); err != nil {
-			return fmt.Errorf("create ledger error")
-		}
-		videoUser := q.VideoUser
-		_, err = q.VideoUser.WithContext(ctx).Where(videoUser.ID.Eq(task.UserID)).Updates(map[string]any{"points_balance": user.PointsBalance, "vip_points": user.VipPoints})
-		if err != nil {
-			return fmt.Errorf("consume points error")
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	//if err := m.taskRepo.UpdateFields(ctx, task, "LocalUrls", "CoverImageURL", "Status", "Progress", "ErrorMessage", "FinishedAt"); err != nil {
-	//	return err
-	//}
-	m.hub.Publish(task)
-	return nil
+	return m.completeTask(ctx, task,
+		"LocalUrls", "CoverImageURL", "Status", "Progress", "ErrorMessage", "FinishedAt",
+	)
 }
 
 func downloadImages(ctx context.Context, storage upload.Storage, task *model.VideoUserGenerationTask, remoteURLs []string) ([]string, error) {

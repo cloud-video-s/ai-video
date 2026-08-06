@@ -72,9 +72,10 @@
         </el-table-column>
         <el-table-column label="认证类型" width="125" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.api_key_configured ? 'success' : 'danger'" effect="plain">
-              {{ row.api_key_configured ? row.auth_type : '未配置密钥' }}
+            <el-tag :type="row.api_key_configured ? 'success' : 'warning'" effect="plain">
+              {{ authTypeLabel(row.auth_type) }}
             </el-tag>
+            <div v-if="!row.api_key_configured" class="secondary-text">密钥未配置</div>
           </template>
         </el-table-column>
         <el-table-column label="积分" width="80" align="right">
@@ -164,7 +165,7 @@
             <el-input v-model="form.status_endpoint" maxlength="255" placeholder="/v1/tasks/status" />
           </el-form-item>
           <el-form-item label="认证类型" prop="auth_type">
-            <el-select v-model="form.auth_type" filterable allow-create default-first-option style="width: 100%">
+            <el-select v-model="form.auth_type" style="width: 100%">
               <el-option v-for="item in authTypeOptions" :key="item.value" :label="item.key" :value="item.value" />
             </el-select>
           </el-form-item>
@@ -270,7 +271,7 @@ const defaultForm: ModelForm = {
   submit_endpoint: '',
   status_endpoint: '',
   request_method: 'POST',
-  auth_type: 'Bearer',
+  auth_type: 1,
   api_key: '',
   score: 0,
   icon: '',
@@ -299,6 +300,7 @@ const rules: FormRules = {
     { required: false, message: '请输入查询地址路由', trigger: 'blur' },
     // { pattern: /^\//, message: '路由必须以 / 开头', trigger: 'blur' },
   ],
+  auth_type: [{ required: true, type: 'number', message: '请选择认证类型', trigger: 'change' }],
 }
 
 async function fetchPlatforms() {
@@ -363,7 +365,7 @@ function openEdit(row: VideoModel) {
     submit_endpoint: row.submit_endpoint,
     status_endpoint: row.status_endpoint,
     request_method: row.request_method,
-    auth_type: row.auth_type === 'None' ? 'Bearer' : row.auth_type,
+    auth_type: row.auth_type,
     api_key: '',
     score: row.score,
     icon: row.icon || '',
@@ -438,6 +440,10 @@ function getmodelType(modelType: number){
     }
   }
   return ''
+}
+
+function authTypeLabel(authType: number) {
+  return authTypeOptions.find((item) => item.value === authType)?.key || `未知（${authType}）`
 }
 
 onMounted(async () => {

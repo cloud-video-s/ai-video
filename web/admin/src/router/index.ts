@@ -184,11 +184,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '积分明细' },
       },
       {
-        path: 'user/generation-tasks',
-        name: 'UserGenerationTaskList',
+        path: 'operation/generation-tasks',
+        name: 'GenerationTaskList',
         component: () => import('@/views/user/UserGenerationTaskList.vue'),
-        meta: { title: '生成任务' },
+        meta: { title: '任务管理' },
       },
+      { path: 'user/generation-tasks', redirect: '/operation/generation-tasks' },
       {
         path: 'attribution/list',
         name: 'AttributionList',

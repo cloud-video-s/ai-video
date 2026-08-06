@@ -2,6 +2,7 @@ package generation
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"ai-video/internal/gen/model"
@@ -20,6 +21,11 @@ const (
 	TaskStatusFailure     = 7 // 失败
 )
 
+const (
+	TaskFailureMessage  = "Generation failed. Please try again."
+	TaskRetryingMessage = "The task is temporarily unavailable. Retrying automatically."
+)
+
 // CreateTaskRequest 是客户端通用生成请求。
 // Input 和 Parameters 会与模型默认参数合并后发送给具体 provider。
 type CreateTaskRequest struct {
@@ -28,7 +34,6 @@ type CreateTaskRequest struct {
 	ClientRequestID string         `json:"client_request_id" binding:"omitempty,max=64"`
 	Input           map[string]any `json:"input" binding:"required"`
 	Parameters      map[string]any `json:"parameters,omitempty"`
-	Score           int64          `json:"score"`
 	TemplateID      uint64         `json:"template_id,omitempty"`
 }
 
@@ -44,8 +49,9 @@ type CreateTemplateTaskRequest struct {
 }
 
 // GenerationInput provides the media combinations supported by the UCloud
-// image and video models. The selected model's model_type determines which
-// fields are legal.
+// image and video models. Media fields accept either domain-free half URLs
+// (for example, /uploads/images/a.png) or absolute HTTP(S) URLs. The selected
+// model's model_type determines which fields are legal.
 type GenerationInput struct {
 	Prompt     string   `json:"prompt"`
 	Images     []string `json:"images,omitempty"`
@@ -106,10 +112,16 @@ func ViewOf(item *model.VideoUserGenerationTask) TaskView {
 	view := TaskView{
 		ID: item.ID, TaskCode: item.TaskCode, TemplateID: item.TemplateID, TaskType: item.TaskType,
 		Status: item.Status, Progress: uint8(item.Progress),
-		ErrorMessage: item.ErrorMessage, UsageDuration: item.UsageDuration,
+		UsageDuration: item.UsageDuration,
 		CoverImageURL: item.CoverImageURL,
 		SubmittedAt:   nullableTime(item.SubmittedAt), StartedAt: nullableTime(item.StartedAt), FinishedAt: nullableTime(item.FinishedAt),
 		CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt, LocalURLs: []string{},
+	}
+	if strings.TrimSpace(item.ErrorMessage) != "" {
+		view.ErrorMessage = TaskRetryingMessage
+		if item.Status == TaskStatusFailure {
+			view.ErrorMessage = TaskFailureMessage
+		}
 	}
 	var request remoteSubmitRequest
 	if json.Unmarshal([]byte(item.RequestPayload), &request) == nil {

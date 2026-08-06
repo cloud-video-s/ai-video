@@ -26,6 +26,10 @@ func TestTemplateMediaURLConversion(t *testing.T) {
 	if got := PublicURL(half); got != full {
 		t.Fatalf("PublicURL(%q) = %q, want %q", half, got, full)
 	}
+	halfWithoutLeadingSlash := "uploads/videos/template.mp4"
+	if got := PublicURL(halfWithoutLeadingSlash); got != full {
+		t.Fatalf("PublicURL(%q) = %q, want %q", halfWithoutLeadingSlash, got, full)
+	}
 	if got := PersistedURL(full); got != half {
 		t.Fatalf("PersistedURL(%q) = %q, want %q", full, got, half)
 	}

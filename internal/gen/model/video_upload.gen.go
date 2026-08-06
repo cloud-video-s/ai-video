@@ -15,7 +15,7 @@ const TableNameVideoUpload = "video_upload"
 // VideoUpload 视频上传记录表
 type VideoUpload struct {
 	ID              uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                                                                      // 主键ID
-	UploadID        string         `gorm:"column:upload_id;type:varchar(32);not null;uniqueIndex:idx_video_upload_upload_id,priority:1;comment:上传唯一标识" json:"upload_id"`                             // 上传唯一标识
+	UploadID        string         `gorm:"column:upload_id;type:varchar(32);not null;comment:上传唯一标识" json:"upload_id"`                                                                               // 上传唯一标识
 	UserType        int8           `gorm:"column:user_type;type:tinyint;not null;index:idx_video_upload_owner,priority:1;comment:用户类型 1=admin 2=客户端" json:"user_type"`                               // 用户类型 1=admin 2=客户端
 	UserID          uint64         `gorm:"column:user_id;type:bigint unsigned;not null;index:idx_video_upload_owner,priority:2;comment:用户ID" json:"user_id"`                                         // 用户ID
 	MediaType       string         `gorm:"column:media_type;type:varchar(16);not null;index:idx_video_upload_media_type,priority:1;comment:媒体类型（如video、audio等）" json:"media_type"`                   // 媒体类型（如video、audio等）
