@@ -504,8 +504,8 @@ func validateTemplatePayload(req *TemplatePayload) error {
 	if !templateMediaURLMatches(req.OriginalURL, mediaExtensions) {
 		return errors.New("模板原始资源必须是" + mediaLabel)
 	}
-	if !templateMediaURLMatches(req.ThumbnailURL, mediaExtensions) {
-		return errors.New("模板缩略资源必须是" + mediaLabel)
+	if !templateMediaURLMatches(req.ThumbnailURL, templateImageExtensions) && !templateMediaURLMatches(req.ThumbnailURL, templateVideoExtensions) {
+		return errors.New("模板缩略资源必须是 JPG、PNG、WebP、GIF 图片或 MP4、MOV、WebM、MKV 视频")
 	}
 	return nil
 }
