@@ -42,8 +42,8 @@
             <div class="model-cell">
               <el-image
                 v-if="row.icon"
-                :src="row.icon"
-                :preview-src-list="[row.icon]"
+                :src="toMediaURL(row.icon)"
+                :preview-src-list="[toMediaURL(row.icon)]"
                 preview-teleported
                 fit="contain"
                 class="model-icon"
@@ -215,6 +215,7 @@ import {
   type VideoPlatform,
 } from '@/api/videoModel'
 import { useUserStore } from '@/store/user'
+import { toMediaURL } from '@/utils/mediaUrl'
 import LogoImageUploader from '@/components/LogoImageUploader.vue'
 import ModelParameterDrawer from './ModelParameterDrawer.vue'
 

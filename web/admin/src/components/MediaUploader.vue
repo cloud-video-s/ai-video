@@ -20,7 +20,7 @@
           <el-icon><Upload /></el-icon>{{ kind === 'image' ? (modelValue ? '重新选择并裁剪' : '选择并裁剪') : (modelValue ? '重新上传' : '选择文件') }}
         </el-button>
       </el-upload>
-      <el-button v-if="modelValue" @click="emit('preview', modelValue)">预览</el-button>
+      <el-button v-if="modelValue" @click="emit('preview', previewURL)">预览</el-button>
     </div>
 
     <div v-if="fileName || active" class="upload-status">
@@ -60,6 +60,7 @@ import {
   type UploadSession,
 } from '@/api/upload'
 import { useUserStore } from '@/store/user'
+import { toMediaURL } from '@/utils/mediaUrl'
 import ImageCropDialog from '@/components/ImageCropDialog.vue'
 
 const props = defineProps<{
@@ -108,6 +109,11 @@ const accept = computed(() => {
 })
 const busy = computed(() => ['preparing', 'uploading', 'merging'].includes(state.value))
 const active = computed(() => !['idle', 'done'].includes(state.value))
+const previewURL = computed(() => (
+  toMediaURL(session.value?.file_url === props.modelValue && session.value.preview_url
+    ? session.value.preview_url
+    : props.modelValue)
+))
 const progressStatus = computed(() => state.value === 'done' ? 'success' : state.value === 'error' ? 'exception' : undefined)
 const statusText = computed(() => ({
   idle: '', preparing: '正在检查断点…', uploading: `上传中 ${progress.value}%`, paused: `已暂停 ${progress.value}%`,
@@ -212,7 +218,11 @@ async function prepareUpload(selected: File) {
     session.value = current
     saveResumeRecord(current)
     if (current.completed) {
-      finishUpload(current)
+      // Complete is idempotent. Replay it for a resumed completed session so
+      // a previous OSS success followed by a database-recording failure can
+      // repair the video_upload row.
+      const response: any = await completeUpload(props.kind, current.upload_id)
+      finishUpload(response.data as UploadSession)
       return
     }
     await runUpload()

@@ -138,7 +138,7 @@
           <el-button :type="user.is_blacklisted ? 'success' : 'danger'" plain @click="toggleBlacklisted">
             {{ user.is_blacklisted ? '移出黑名单' : '拉黑用户' }}
           </el-button>
-          <el-button plain @click="bindPhone">绑定手机号</el-button>
+<!--          <el-button plain @click="bindPhone">绑定手机号</el-button>-->
           <el-button plain @click="transferVIP">转移会员</el-button>
           <el-button type="danger" plain @click="terminateVIP">终止会员</el-button>
           <el-button plain @click="extendVIP">延长会员</el-button>
@@ -148,7 +148,7 @@
         <el-tabs v-model="activeTab" class="detail-tabs">
           <el-tab-pane label="账户与设备" name="account">
             <el-descriptions :column="2" border>
-              <el-descriptions-item label="登录账号">{{ user.login_account || user.email || '-' }}</el-descriptions-item>
+<!--              <el-descriptions-item label="登录账号">{{ user.login_account || user.email || '-' }}</el-descriptions-item>-->
               <el-descriptions-item label="登录方式">{{ loginTypeLabel(user.login_type) }}</el-descriptions-item>
               <el-descriptions-item label="设备编号">{{ user.device_code || '-' }}</el-descriptions-item>
               <el-descriptions-item label="IMEI">{{ user.imei || '-' }}</el-descriptions-item>
@@ -157,19 +157,18 @@
               <el-table-column prop="email" label="邮箱" min-width="220" />
               <el-descriptions-item label="最近登录 IP">{{ user.last_login_ip || '-' }}</el-descriptions-item>
               <el-descriptions-item label="最近登录时间">{{ formatDate(user.last_login_at) }}</el-descriptions-item>
-<!--              <el-descriptions-item label="积分余额">{{ formatNumber(user.points_balance) }}</el-descriptions-item>-->
               <el-descriptions-item label="创建时间">{{ formatDate(user.created_at) }}</el-descriptions-item>
             </el-descriptions>
           </el-tab-pane>
 
-          <el-tab-pane :label="`第三方身份 (${detail.identities.length})`" name="identities">
-            <el-table :data="detail.identities" border empty-text="暂无第三方身份">
-              <el-table-column prop="provider" label="平台" width="120" />
-              <el-table-column prop="email" label="邮箱" min-width="220" />
-              <el-table-column prop="display_name" label="显示名称" min-width="150" />
-              <el-table-column label="最后登录" min-width="180"><template #default="{ row }">{{ formatDate(row.last_login_at) }}</template></el-table-column>
-            </el-table>
-          </el-tab-pane>
+<!--          <el-tab-pane :label="`第三方身份 (${detail.identities.length})`" name="identities">-->
+<!--            <el-table :data="detail.identities" border empty-text="暂无第三方身份">-->
+<!--              <el-table-column prop="provider" label="平台" width="120" />-->
+<!--              <el-table-column prop="email" label="邮箱" min-width="220" />-->
+<!--              <el-table-column prop="display_name" label="显示名称" min-width="150" />-->
+<!--              <el-table-column label="最后登录" min-width="180"><template #default="{ row }">{{ formatDate(row.last_login_at) }}</template></el-table-column>-->
+<!--            </el-table>-->
+<!--          </el-tab-pane>-->
 
           <el-tab-pane label="用户归因" name="attribution">
             <el-descriptions v-if="detail.attribution" :column="2" border>
@@ -195,7 +194,9 @@
               </span>
             </div>
             <el-table :data="detail.points_ledgers" border empty-text="暂无积分明细">
-              <el-table-column prop="source_type" label="来源" width="130" />
+              <el-table-column label="来源" width="130">
+                <template #default="{ row }">{{ pointsSourceLabel(row.source_type) }}</template>
+              </el-table-column>
               <el-table-column label="变动" width="110">
                 <template #default="{ row }"><span :class="row.points_change >= 0 ? 'income' : 'expense'">{{ row.points_change > 0 ? '+' : '' }}{{ row.points_change }}</span></template>
               </el-table-column>
@@ -265,7 +266,7 @@
 
     <el-dialog v-model="vipDialogVisible" title="添加 VIP" width="480px">
       <el-form label-width="100px">
-<!--        <el-form-item label="VIP 等级" required><el-input-number v-model="vipForm.level" :min="1" :max="999" /></el-form-item>-->
+        <el-form-item label="VIP 等级" required><el-input-number v-model="vipForm.level" :min="1" :max="999" /></el-form-item>
         <el-form-item label="赠送积分">
           <el-input-number v-model="vipForm.vip_points" :min="0" :max="999999999" :precision="0" style="width:100%" />
         </el-form-item>
@@ -413,11 +414,20 @@ function subscriptionLabel(value: number) { return value === 2 ? '订阅中' : v
 function flagActive(value: boolean | number) { return value === true || Number(value) === 1 }
 function formatNumber(value: number) { return new Intl.NumberFormat('zh-CN').format(value || 0) }
 
+function pointsSourceLabel(value: number) {
+  const labels: Record<number, string> = {
+    1: '订阅赠送', 2: '积分购买', 3: '模型消费', 4: '模型退款',
+    5: '订阅过期扣除', 6: '系统奖励', 7: '管理员操作', 8: '其他',
+  }
+  return labels[Number(value)] || String(value || '-')
+}
+
 function ledgerBusinessLabel(ledger: UserPointsLedger) {
-  if (ledger.order_id) return `订单 #${ledger.order_id}`
-  if (ledger.work_id) return `作品 ${ledger.work_id}`
-  if (ledger.business_id) return ledger.business_id
-  return ledger.mode_key || '-'
+  if (ledger.order_code) return ledger.order_code
+  if (ledger.points_id) return `积分套餐 #${ledger.points_id}`
+  if (ledger.vip_id) return `VIP #${ledger.vip_id}`
+  if (ledger.admin_id) return `管理员 #${ledger.admin_id}`
+  return '-'
 }
 
 type StatusTagType = 'primary' | 'success' | 'info' | 'warning' | 'danger'

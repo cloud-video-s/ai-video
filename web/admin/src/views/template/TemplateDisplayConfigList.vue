@@ -38,8 +38,8 @@
             <div class="template-cell">
               <el-image
                 class="template-cover"
-                :src="row.template?.cover_image_url"
-                :preview-src-list="row.template?.cover_image_url ? [row.template.cover_image_url] : []"
+                :src="toMediaURL(row.template?.cover_image_url)"
+                :preview-src-list="row.template?.cover_image_url ? [toMediaURL(row.template.cover_image_url)] : []"
                 fit="cover"
                 preview-teleported
               >
@@ -57,8 +57,8 @@
             <div class="position-cell">
               <el-image
                 class="position-cover"
-                :src="row.display_position?.cover_image"
-                :preview-src-list="row.display_position?.cover_image ? [row.display_position.cover_image] : []"
+                :src="toMediaURL(row.display_position?.cover_image)"
+                :preview-src-list="row.display_position?.cover_image ? [toMediaURL(row.display_position.cover_image)] : []"
                 fit="cover"
                 preview-teleported
               >
@@ -132,7 +132,7 @@
                 :aria-pressed="form.template_id === item.id"
                 @click="selectTemplate(item.id)"
               >
-                <el-image class="option-card-image" :src="item.cover_image_url" fit="cover">
+                <el-image class="option-card-image" :src="toMediaURL(item.cover_image_url)" fit="cover">
                   <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
                 </el-image>
                 <div class="option-card-name">{{ item.name }}</div>
@@ -156,7 +156,7 @@
                 :aria-pressed="form.position_key === item.position_key"
                 @click="selectPosition(item.position_key)"
               >
-                <el-image class="option-card-image" :src="item.cover_image" fit="cover">
+                <el-image class="option-card-image" :src="toMediaURL(item.cover_image)" fit="cover">
                   <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
                 </el-image>
                 <div class="option-card-name">{{ item.position_name }}</div>
@@ -204,6 +204,7 @@ import {
   type VideoTemplate,
 } from '@/api/template'
 import { useUserStore } from '@/store/user'
+import { toMediaURL } from '@/utils/mediaUrl'
 
 const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('template:display-config:add'))

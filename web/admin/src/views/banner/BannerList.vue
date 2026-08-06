@@ -64,8 +64,8 @@
           <template #default="{ row }">
             <el-image
               class="cover-image"
-              :src="row.cover_image"
-              :preview-src-list="[row.cover_image]"
+              :src="toMediaURL(row.cover_image)"
+              :preview-src-list="[toMediaURL(row.cover_image)]"
               preview-teleported
               fit="cover"
             >
@@ -202,7 +202,7 @@
               <el-checkbox-group v-if="positionOptions.length" v-model="form.display_position_keys" class="position-card-grid">
                 <el-checkbox-button v-for="item in positionOptions" :key="item.placement_key" :value="item.placement_key" class="position-card-option">
                   <div class="position-card-content">
-                    <el-image class="position-card-image" :src="item.cover_image" fit="cover">
+                    <el-image class="position-card-image" :src="toMediaURL(item.cover_image)" fit="cover">
                       <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
                     </el-image>
                     <div class="position-card-name">{{ item.placement_name }}</div>
@@ -250,8 +250,8 @@
             <el-image
               v-if="form.cover_image"
               class="cover-form-preview"
-              :src="form.cover_image"
-              :preview-src-list="[form.cover_image]"
+              :src="toMediaURL(form.cover_image)"
+              :preview-src-list="[toMediaURL(form.cover_image)]"
               preview-teleported
               fit="cover"
             >
@@ -298,6 +298,7 @@ import { getCountryOptions, type Country } from '@/api/country.ts'
 import { getTemplateList, type VideoTemplate } from '@/api/template.ts'
 import { getBannerPlacementOptions, type BannerPlacement } from '@/api/bannerPlacement'
 import { useUserStore } from '@/store/user.ts'
+import { toMediaURL } from '@/utils/mediaUrl'
 import MediaUploader from '@/components/MediaUploader.vue'
 
 interface BannerForm extends VideoBannerPayload { id: number }
@@ -456,7 +457,7 @@ function handleAppModeChange(value: string | number | boolean | undefined) { if 
 function handlePositionModeChange(value: string | number | boolean | undefined) { if (value === 'all') form.display_position_keys = [] }
 function addAppTarget() { form.app_targets.push({ app_code: '', package_code: '', version_codes: [] }) }
 function removeAppTarget(index: number) { form.app_targets.splice(index, 1) }
-function openPreview(url: string, title: string) { preview.url = url; preview.title = title; preview.visible = true }
+function openPreview(url: string, title: string) { preview.url = toMediaURL(url); preview.title = title; preview.visible = true }
 
 async function handleSubmit() {
   await formRef.value?.validate()

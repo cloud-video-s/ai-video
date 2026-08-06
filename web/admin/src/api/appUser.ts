@@ -87,12 +87,11 @@ export interface UserPointsLedger {
   points_change: number
   balance_before: number
   balance_after: number
-  source_type: string
-  business_id: string
-  points_package_id: number | null
-  order_id: number
-  work_id: string
-  mode_key: string
+  source_type: number
+  order_code: string
+  points_id: number
+  vip_id: number
+  admin_id: number
   description: string
   occurred_at: string
 }

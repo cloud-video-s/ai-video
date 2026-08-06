@@ -1,7 +1,7 @@
 <template>
   <div class="logo-uploader">
     <div class="logo-preview">
-      <el-image v-if="modelValue" :src="modelValue" fit="contain" preview-teleported :preview-src-list="[modelValue]">
+      <el-image v-if="modelValue" :src="toMediaURL(modelValue)" fit="contain" preview-teleported :preview-src-list="[toMediaURL(modelValue)]">
         <template #error><el-icon><Picture /></el-icon></template>
       </el-image>
       <el-icon v-else><Picture /></el-icon>
@@ -41,6 +41,7 @@ import { ref } from 'vue'
 import { Delete, Picture, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { uploadImage } from '@/api/upload'
+import { toMediaURL } from '@/utils/mediaUrl'
 import ImageCropDialog from '@/components/ImageCropDialog.vue'
 
 const props = withDefaults(defineProps<{

@@ -31,8 +31,8 @@
           <template #default="{ row }">
             <el-image
               class="cover-image"
-              :src="row.cover_image"
-              :preview-src-list="[row.cover_image]"
+              :src="toMediaURL(row.cover_image)"
+              :preview-src-list="[toMediaURL(row.cover_image)]"
               preview-teleported
               fit="cover"
             >
@@ -137,7 +137,7 @@
 
     <el-dialog v-model="previewVisible" title="封面图预览" width="680px" append-to-body>
       <div class="preview-body">
-        <el-image :src="form.cover_image" fit="contain" class="preview-image" />
+        <el-image :src="toMediaURL(form.cover_image)" fit="contain" class="preview-image" />
       </div>
     </el-dialog>
   </div>
@@ -155,6 +155,7 @@ import {
   type BannerPlacementPayload,
 } from '@/api/bannerPlacement'
 import { useUserStore } from '@/store/user'
+import { toMediaURL } from '@/utils/mediaUrl'
 import CoverImageUploader from '@/components/CoverImageUploader.vue'
 
 const userStore = useUserStore()

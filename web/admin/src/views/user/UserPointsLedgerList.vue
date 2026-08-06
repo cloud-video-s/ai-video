@@ -43,18 +43,18 @@
           <el-option label="收入" value="1" />
           <el-option label="支出" value="2" />
         </el-select>
-        <el-select v-model="query.source_type" clearable filterable allow-create placeholder="来源类型">
+        <el-select v-model="query.source_type" clearable filterable placeholder="来源类型">
           <el-option v-for="item in sourceTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
-        <el-select v-model="query.points_package_id" clearable filterable placeholder="积分套餐">
+        <el-select v-model="query.points_id" clearable filterable placeholder="积分套餐">
           <el-option
             v-for="item in packageOptions"
             :key="item.id"
             :label="`${item.name} · ${item.product_id}`"
-            :value="String(item.id)"
+            :value="Number(item.id)"
           />
         </el-select>
-        <el-input v-model="query.business_id" clearable placeholder="业务单号" @keyup.enter="handleSearch" />
+        <el-input v-model="query.order_code" clearable placeholder="业务单号" @keyup.enter="handleSearch" />
         <el-date-picker
           v-model="dateRange"
           type="daterange"
@@ -94,7 +94,7 @@
         <el-table-column label="来源" min-width="185">
           <template #default="{ row }">
             <el-tag size="small" effect="plain">{{ sourceTypeLabel(row.source_type) }}</el-tag>
-            <div class="secondary-text">{{ row.business_id || '无业务单号' }}</div>
+            <div class="secondary-text">{{ row.order_code || '无业务单号' }}</div>
           </template>
         </el-table-column>
         <el-table-column label="积分套餐" min-width="190">
@@ -143,11 +143,11 @@
         <el-descriptions-item label="变动前余额">{{ formatNumber(detail.balance_before) }}</el-descriptions-item>
         <el-descriptions-item label="变动后余额">{{ formatNumber(detail.balance_after) }}</el-descriptions-item>
         <el-descriptions-item label="来源类型">{{ sourceTypeLabel(detail.source_type) }}</el-descriptions-item>
-        <el-descriptions-item label="业务单号">{{ detail.business_id || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="业务单号">{{ detail.order_code || '-' }}</el-descriptions-item>
         <el-descriptions-item label="积分套餐" :span="2">
           {{ detail.points_package ? `${detail.points_package.name} · ${detail.points_package.product_id}` : '-' }}
         </el-descriptions-item>
-        <el-descriptions-item label="后台操作员">{{ detail.operator_admin_id || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="后台操作员">{{ detail.admin_id || '-' }}</el-descriptions-item>
         <el-descriptions-item label="入库时间">{{ formatDate(detail.created_at) }}</el-descriptions-item>
         <el-descriptions-item label="说明" :span="2">{{ detail.description || '-' }}</el-descriptions-item>
       </el-descriptions>
@@ -166,13 +166,14 @@ import {
 } from '@/api/userPointsLedger'
 
 const sourceTypeOptions = [
-  { value: 'purchase', label: '购买套餐' },
-  { value: 'consume', label: '积分消费' },
-  { value: 'reward', label: '活动奖励' },
-  { value: 'refund', label: '退款返还' },
-  { value: 'subscription', label: '订阅赠送' },
-  { value: 'admin', label: '后台调整' },
-  { value: 'other', label: '其他' },
+  { value: 1, label: '订阅赠送' },
+  { value: 2, label: '积分购买' },
+  { value: 3, label: '模型消费' },
+  { value: 4, label: '模型退款' },
+  { value: 5, label: '订阅过期扣除' },
+  { value: 6, label: '系统奖励' },
+  { value: 7, label: '管理员操作' },
+  { value: 8, label: '其他' },
 ]
 
 const loading = ref(false)
@@ -190,9 +191,9 @@ const query = reactive({
   keyword: '',
   user_id: undefined as number | undefined,
   direction: '',
-  source_type: '',
-  points_package_id: '',
-  business_id: '',
+  source_type: undefined as number | undefined,
+  points_id: undefined as number | undefined,
+  order_code: '',
 })
 
 const netPoints = computed(() => Number(summary.income_total || 0) - Number(summary.expense_total || 0))
@@ -201,8 +202,8 @@ function directionLabel(value: number) {
   return value === 1 ? '收入' : '支出'
 }
 
-function sourceTypeLabel(value: string) {
-  return sourceTypeOptions.find((item) => item.value === value)?.label || value
+function sourceTypeLabel(value: number) {
+  return sourceTypeOptions.find((item) => item.value === Number(value))?.label || String(value || '-')
 }
 
 function userTypeLabel(value?: number) {
@@ -258,9 +259,9 @@ function handleReset() {
     keyword: '',
     user_id: undefined,
     direction: '',
-    source_type: '',
-    points_package_id: '',
-    business_id: '',
+    source_type: undefined,
+    points_id: undefined,
+    order_code: '',
   })
   dateRange.value = []
   page.value = 1

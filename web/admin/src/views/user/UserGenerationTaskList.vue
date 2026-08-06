@@ -145,7 +145,7 @@
           >
             <template #error><div class="media-error">图片加载失败</div></template>
           </el-image>
-          <a :href="item" target="_blank" rel="noopener noreferrer" class="source-link">在新窗口打开</a>
+          <a :href="toMediaURL(item)" target="_blank" rel="noopener noreferrer" class="source-link">在新窗口打开</a>
         </div>
       </div>
       <el-empty v-else description="该任务暂无可预览结果" />
@@ -195,7 +195,7 @@
             <a
               v-for="(item, index) in detail.preview_urls"
               :key="item"
-              :href="item"
+              :href="toMediaURL(item)"
               target="_blank"
               rel="noopener noreferrer"
             >结果 {{ index + 1 }}</a>
@@ -223,12 +223,12 @@
           <div class="url-group">
             <strong>本地地址</strong>
             <span v-if="!detail.local_urls.length" class="secondary-text">无</span>
-            <a v-for="item in detail.local_urls" :key="item" :href="item" target="_blank" rel="noopener noreferrer">{{ item }}</a>
+            <a v-for="item in detail.local_urls" :key="item" :href="toMediaURL(item)" target="_blank" rel="noopener noreferrer">{{ item }}</a>
           </div>
           <div class="url-group">
             <strong>远程地址</strong>
             <span v-if="!detail.remote_urls.length" class="secondary-text">无</span>
-            <a v-for="item in detail.remote_urls" :key="item" :href="item" target="_blank" rel="noopener noreferrer">{{ item }}</a>
+            <a v-for="item in detail.remote_urls" :key="item" :href="toMediaURL(item)" target="_blank" rel="noopener noreferrer">{{ item }}</a>
           </div>
         </section>
       </div>
@@ -245,6 +245,7 @@ import {
   type GenerationTaskMediaType,
   type UserGenerationTask,
 } from '@/api/userGenerationTask'
+import { toMediaURL } from '@/utils/mediaUrl'
 
 const statusOptions = [
   { value: 1, label: '提交中' },
@@ -398,7 +399,7 @@ function handleReset() {
 function openPreview(row: UserGenerationTask) {
   preview.title = `${mediaTypeLabel(row.media_type)}生成结果 · ${row.task_code}`
   preview.mediaType = row.media_type
-  preview.urls = [...(row.preview_urls || [])]
+  preview.urls = (row.preview_urls || []).map(toMediaURL)
   preview.visible = true
 }
 

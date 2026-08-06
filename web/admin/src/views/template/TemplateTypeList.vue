@@ -107,7 +107,7 @@
             <el-checkbox-group v-if="targetModes.positions === 'selected'" v-model="form.display_position_keys" class="position-card-grid">
               <el-checkbox-button v-for="item in positionOptions" :key="item.id" :value="item.position_key" class="position-card-option">
                 <div class="position-card-content">
-                  <el-image class="position-card-image" :src="item.cover_image" fit="cover">
+                  <el-image class="position-card-image" :src="toMediaURL(item.cover_image)" fit="cover">
                     <template #error><div class="image-error"><el-icon><Picture /></el-icon></div></template>
                   </el-image>
                   <div class="position-card-name">{{ item.position_name }}</div>
@@ -206,6 +206,7 @@ import type { VideoApp } from '@/api/videoApp'
 import type { AppPackage } from '@/api/package'
 import type { PackageVersion } from '@/api/packageVersion'
 import { useUserStore } from '@/store/user'
+import { toMediaURL } from '@/utils/mediaUrl'
 
 type TargetMode = 'all' | 'selected'
 interface TemplateTypeForm {

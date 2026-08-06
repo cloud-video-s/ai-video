@@ -60,8 +60,8 @@
           <template #default="{ row }">
             <el-image
               class="cover-image"
-              :src="row.cover_image_url"
-              :preview-src-list="[row.cover_image_url]"
+              :src="toMediaURL(row.cover_image_url)"
+              :preview-src-list="[toMediaURL(row.cover_image_url)]"
               preview-teleported
               fit="cover"
             >
@@ -193,8 +193,8 @@
             />
             <div v-if="form.cover_image_url" class="cover-form-preview">
               <el-image
-                :src="form.cover_image_url"
-                :preview-src-list="[form.cover_image_url]"
+                :src="toMediaURL(form.cover_image_url)"
+                :preview-src-list="[toMediaURL(form.cover_image_url)]"
                 preview-teleported
                 fit="cover"
                 class="cover-preview-image"
@@ -303,6 +303,7 @@ import type { AppPackage } from '@/api/package'
 import type { PackageVersion } from '@/api/packageVersion'
 import type { VideoApp } from '@/api/videoApp'
 import MediaUploader from '@/components/MediaUploader.vue'
+import { toMediaURL } from '@/utils/mediaUrl'
 import TemplateModelParameterDrawer from './TemplateModelParameterDrawer.vue'
 
 const userStore = useUserStore()
@@ -666,7 +667,7 @@ function handleQueryTemplateTypeChange(value: string | number) {
 
 function previewMedia(kind: 'image' | 'video', url: string, title: string) {
   if (!url) return
-  Object.assign(preview, { visible: true, kind, url, title })
+  Object.assign(preview, { visible: true, kind, url: toMediaURL(url), title })
 }
 
 async function handleSubmit() {

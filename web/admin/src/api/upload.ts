@@ -15,6 +15,7 @@ export interface UploadSession {
   completed: boolean
   file_path?: string
   file_url?: string
+  preview_url?: string
   created_at: string
   expires_at: string
 }

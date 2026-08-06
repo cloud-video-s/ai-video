@@ -520,6 +520,7 @@ func main() {
 		gen.FieldType("user_type", "int8"),
 		gen.FieldType("user_id", "uint64"),
 		gen.FieldType("file_size", "uint64"),
+		gen.FieldType("status", "int8"),
 		gen.FieldRename("mime_type", "MIMEType"),
 		gen.FieldRename("sha256", "SHA256"),
 	)
