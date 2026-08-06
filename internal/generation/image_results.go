@@ -119,7 +119,7 @@ func downloadImages(ctx context.Context, storage upload.Storage, task *model.Vid
 	result := make([]string, 0, len(remoteURLs))
 	for index, remoteURL := range remoteURLs {
 		extension := imageURLSuffix(remoteURL)
-		filename := fmt.Sprintf("task-%d-%d%s", task.ID, index+1, extension)
+		filename := fmt.Sprintf("task-%s-%d%s", task.TaskCode, index+1, extension)
 		storedURL, err := downloadAndStoreGeneratedFile(
 			ctx, storage, client, remoteURL, generatedObjectKey(task.UserID, filename), imageContentType(extension), maxSize,
 		)
@@ -148,7 +148,7 @@ func saveBase64Images(
 		if err != nil {
 			return nil, err
 		}
-		filename := fmt.Sprintf("task-%d-%d%s", task.ID, startIndex+index+1, extension)
+		filename := fmt.Sprintf("task-%s-%d%s", task.TaskCode, startIndex+index+1, extension)
 		storedURL, err := storeGeneratedBytes(
 			ctx, storage, generatedObjectKey(task.UserID, filename), contentType, raw,
 		)

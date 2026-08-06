@@ -4,19 +4,26 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/upload"
 
-	"gorm.io/gorm/clause"
+	"gorm.io/gorm"
 )
 
 type UploadRepo struct{}
+
+// The production schema is expected to enforce a unique upload_id. Keep an
+// application-side guard as well so retries remain idempotent while a lagging
+// environment is waiting for the reviewed unique-index migration.
+var uploadRecordMu sync.Mutex
 
 func NewUploadRepo() *UploadRepo { return &UploadRepo{} }
 
@@ -206,25 +213,56 @@ func (r *UploadRepo) record(ctx context.Context, owner upload.UploadOwner, recor
 		"file_url": record.FileURL, "sha256": strings.ToLower(strings.TrimSpace(record.SHA256)),
 		"status": status, "created_at": now, "updated_at": now,
 	}
-	result := dbFrom(ctx).Table(model.TableNameVideoUpload).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "upload_id"}}, DoNothing: true,
-	}).Create(row)
-	if result.Error != nil {
-		return result.Error
+	uploadRecordMu.Lock()
+	defer uploadRecordMu.Unlock()
+
+	existing, err := findUploadOwner(ctx, record.UploadID)
+	if err == nil {
+		return updateExistingUpload(ctx, record.UploadID, userType, owner.ID, existing, row, status)
 	}
-	if result.RowsAffected > 0 {
-		return nil
-	}
-	var existing struct {
-		UserType int8
-		UserID   uint64
-	}
-	if err := dbFrom(ctx).Table(model.TableNameVideoUpload).
-		Select("user_type", "user_id").Where("upload_id = ?", record.UploadID).Take(&existing).Error; err != nil {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
-	if existing.UserType != userType || existing.UserID != owner.ID {
-		return fmt.Errorf("upload %s is already owned by another user", record.UploadID)
+	result := dbFrom(ctx).Table(model.TableNameVideoUpload).Create(row)
+	if result.Error == nil {
+		return nil
+	}
+	// MySQL's GORM conflict builder emits an invalid trailing
+	// "ON DUPLICATE KEY UPDATE" for DoNothing with map inserts. Use a plain
+	// insert and handle the translated duplicate-key error explicitly instead.
+	if !errors.Is(result.Error, gorm.ErrDuplicatedKey) {
+		return result.Error
+	}
+	existing, err = findUploadOwner(ctx, record.UploadID)
+	if err != nil {
+		return err
+	}
+	return updateExistingUpload(ctx, record.UploadID, userType, owner.ID, existing, row, status)
+}
+
+type uploadOwnerRow struct {
+	UserType int8
+	UserID   uint64
+}
+
+func findUploadOwner(ctx context.Context, uploadID string) (uploadOwnerRow, error) {
+	var existing uploadOwnerRow
+	err := dbFrom(ctx).Table(model.TableNameVideoUpload).
+		Select("user_type", "user_id").Where("upload_id = ?", uploadID).Order("id ASC").Take(&existing).Error
+	return existing, err
+}
+
+func updateExistingUpload(
+	ctx context.Context,
+	uploadID string,
+	userType int8,
+	userID uint64,
+	existing uploadOwnerRow,
+	row map[string]any,
+	status int8,
+) error {
+	if existing.UserType != userType || existing.UserID != userID {
+		return fmt.Errorf("upload %s is already owned by another user", uploadID)
 	}
 	if status != domain.UploadStatusCompleted {
 		return nil
@@ -234,7 +272,7 @@ func (r *UploadRepo) record(ctx context.Context, owner upload.UploadOwner, recor
 	delete(row, "user_id")
 	delete(row, "created_at")
 	return dbFrom(ctx).Table(model.TableNameVideoUpload).
-		Where("upload_id = ? AND user_type = ? AND user_id = ?", record.UploadID, userType, owner.ID).
+		Where("upload_id = ? AND user_type = ? AND user_id = ?", uploadID, userType, userID).
 		Updates(row).Error
 }
 

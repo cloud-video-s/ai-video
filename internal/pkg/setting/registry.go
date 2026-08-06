@@ -74,8 +74,9 @@ var registry = []definition{
 	{Group: "文件上传", Key: "upload.oss.access_key_secret", Name: "OSS AccessKey Secret", Type: "password", Value: "", Sensitive: 1, Sort: 112},
 	{Group: "文件上传", Key: "upload.oss.bucket", Name: "OSS Bucket", Type: "string", Value: "", Sort: 113},
 	{Group: "文件上传", Key: "upload.oss.object_prefix", Name: "OSS 对象前缀", Type: "string", Value: "uploads", Remark: "不需要前后斜杠", Sort: 114},
-	{Group: "文件上传", Key: "upload.oss.base_url", Name: "OSS 访问域名", Type: "string", Value: "https://test-cdn.zdrawai.com/", Remark: "前端在文件半链接前拼接的 CDN 域名", Sort: 115},
-	{Group: "文件上传", Key: "upload.oss.signature_ttl_seconds", Name: "OSS 直传签名有效期", Type: "int", Value: "600", Remark: "单位秒，允许 60-3600", Sort: 116},
+	{Group: "文件上传", Key: "upload.oss.base_url", Name: "OSS 源站访问域名", Type: "string", Value: "", Remark: "可选；未配置时按 Bucket 和 Endpoint 生成", Sort: 115},
+	{Group: "文件上传", Key: "upload.proxy_base_url", Name: "文件代理域名", Type: "string", Value: "https://test-cdn.zdrawai.com/", Remark: "用于 preview_url 和模板媒体展示字段的代理/CDN 域名", Sort: 116},
+	{Group: "文件上传", Key: "upload.oss.signature_ttl_seconds", Name: "OSS 直传签名有效期", Type: "int", Value: "600", Remark: "单位秒，允许 60-3600", Sort: 117},
 }
 
 // defaultValue returns the compiled-in default for key, or "" if unknown.

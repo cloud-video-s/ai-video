@@ -52,9 +52,10 @@ Final files are stored in Aliyun OSS. The runtime requires
 falling back to local storage. OSS settings are resolved when a file is
 completed, so credential and CDN changes do not require a service restart. The
 OSS v2 client requires both a region (for example, `cn-hangzhou`) and an
-endpoint. OSS AccessKey values are masked by the admin config API. File URLs
-returned to clients and persisted by business tables are domain-free half
-links; the frontend expands them with `https://test-cdn.zdrawai.com/`.
+endpoint. OSS AccessKey values are masked by the admin config API. Business
+tables and upload response `file_url` values remain domain-free half links.
+Preview fields and template display responses expand those links with
+`upload.proxy_base_url` (by default `https://test-cdn.zdrawai.com/`).
 
 ## Aliyun OSS direct upload
 

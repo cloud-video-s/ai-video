@@ -30,14 +30,15 @@ type DirectUploadRequest struct {
 // DirectUploadCredential contains everything a client needs to PUT the raw
 // file directly to OSS. All returned headers must be present on the PUT.
 type DirectUploadCredential struct {
-	UploadID  string            `json:"upload_id"`
-	Provider  string            `json:"provider"`
-	Method    string            `json:"method"`
-	UploadURL string            `json:"upload_url"`
-	Headers   map[string]string `json:"headers"`
-	ObjectKey string            `json:"object_key"`
-	FileURL   string            `json:"file_url"`
-	ExpiresAt time.Time         `json:"expires_at"`
+	UploadID   string            `json:"upload_id"`
+	Provider   string            `json:"provider"`
+	Method     string            `json:"method"`
+	UploadURL  string            `json:"upload_url"`
+	Headers    map[string]string `json:"headers"`
+	ObjectKey  string            `json:"object_key"`
+	FileURL    string            `json:"file_url"`
+	PreviewURL string            `json:"preview_url,omitempty"`
+	ExpiresAt  time.Time         `json:"expires_at"`
 }
 
 type DirectUploadSigner interface {

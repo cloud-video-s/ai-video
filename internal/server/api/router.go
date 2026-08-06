@@ -37,6 +37,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		nil,
 		upload.WithDirectUploadSigner(uploadruntime.DirectSigner()),
 		upload.WithDirectPreUploadRecording(uploadRepo),
+		upload.WithPublicURLResolver(uploadruntime.PublicURL),
 		upload.WithUploadOwnerResolver(func(c *gin.Context) (upload.UploadOwner, error) {
 			return upload.UploadOwner{Type: upload.UploaderAPIUser, ID: middleware.GetAPIUserID(c)}, nil
 		}),

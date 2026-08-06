@@ -89,6 +89,7 @@ type Session struct {
 	Completed       bool         `json:"completed"`
 	FilePath        string       `json:"file_path,omitempty"`
 	FileURL         string       `json:"file_url,omitempty"`
+	PreviewURL      string       `json:"preview_url,omitempty"`
 	CreatedAt       time.Time    `json:"created_at"`
 	ExpiresAt       time.Time    `json:"expires_at"`
 }

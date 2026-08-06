@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -128,6 +129,7 @@ type UploadConfig struct {
 	OSSBucket              string   `mapstructure:"oss_bucket"`
 	OSSObjectPrefix        string   `mapstructure:"oss_object_prefix"`
 	OSSBaseURL             string   `mapstructure:"oss_base_url"`
+	ProxyBaseURL           string   `mapstructure:"proxy_base_url"`
 	OSSSignatureTTLSeconds int64    `mapstructure:"oss_signature_ttl_seconds"`
 	ChunkSize              int64    `mapstructure:"chunk_size"`
 	MaxBatchFiles          int      `mapstructure:"max_batch_files"`
@@ -211,6 +213,7 @@ func setConfigDefaults() {
 	viper.SetDefault("upload.local_base_url", "/uploads")
 	viper.SetDefault("upload.storage_provider", "aliyun_oss")
 	viper.SetDefault("upload.oss_base_url", "https://test-cdn.zdrawai.com/")
+	viper.SetDefault("upload.proxy_base_url", "https://test-cdn.zdrawai.com/")
 	viper.SetDefault("upload.oss_signature_ttl_seconds", int64(600))
 	viper.SetDefault("upload.chunk_size", int64(5<<20))
 	viper.SetDefault("upload.max_batch_files", 20)
@@ -253,6 +256,9 @@ func validateConfig() error {
 		Cfg.Upload.SessionTTLSeconds <= 0 ||
 		Cfg.Upload.ImageMaxFileSize <= 0 || Cfg.Upload.VideoMaxFileSize <= 0 {
 		return fmt.Errorf("upload config values must be positive")
+	}
+	if filepath.Clean(Cfg.Upload.RootDir) == filepath.Clean(Cfg.Upload.LocalRootDir) {
+		return fmt.Errorf("upload.root_dir must be a temporary directory separate from upload.local_root_dir")
 	}
 	if Cfg.Upload.OSSSignatureTTLSeconds < 60 || Cfg.Upload.OSSSignatureTTLSeconds > 3600 {
 		return fmt.Errorf("upload.oss_signature_ttl_seconds must be between 60 and 3600")

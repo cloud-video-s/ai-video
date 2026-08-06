@@ -41,11 +41,18 @@ type TemplateDisplayConfigPayload struct {
 }
 
 func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize int, req *ListTemplateDisplayConfigRequest) ([]repository.TemplateDisplayConfigRecord, int64, error) {
-	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateDisplayConfigListFilter{
+	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.TemplateDisplayConfigListFilter{
 		TemplateID: req.TemplateID, TemplateTypeID: req.TemplateTypeID,
 		PositionKey: strings.TrimSpace(req.PositionKey), Status: req.Status,
 		Keyword: strings.TrimSpace(req.Keyword),
 	})
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range items {
+		expandTemplateDisplayConfigURLs(&items[i])
+	}
+	return items, total, nil
 }
 
 func (s *TemplateDisplayConfigService) GetByID(ctx context.Context, id uint64) (*repository.TemplateDisplayConfigRecord, error) {
@@ -53,6 +60,7 @@ func (s *TemplateDisplayConfigService) GetByID(ctx context.Context, id uint64) (
 	if err != nil {
 		return nil, notFoundOr(err, "模板展示配置不存在")
 	}
+	expandTemplateDisplayConfigURLs(item)
 	return item, nil
 }
 
@@ -68,7 +76,7 @@ func (s *TemplateDisplayConfigService) Create(ctx context.Context, req *Template
 		}
 		return nil, err
 	}
-	return s.repo.GetDetail(ctx, item.ID)
+	return s.GetByID(ctx, item.ID)
 }
 
 func (s *TemplateDisplayConfigService) Update(ctx context.Context, id uint64, req *TemplateDisplayConfigPayload) (*repository.TemplateDisplayConfigRecord, error) {
@@ -86,7 +94,13 @@ func (s *TemplateDisplayConfigService) Update(ctx context.Context, id uint64, re
 		}
 		return nil, err
 	}
-	return s.repo.GetDetail(ctx, item.ID)
+	return s.GetByID(ctx, item.ID)
+}
+
+func expandTemplateDisplayConfigURLs(item *repository.TemplateDisplayConfigRecord) {
+	if item != nil && item.Template != nil {
+		expandTemplateMediaURLs(&item.Template.VideoTemplate)
+	}
 }
 
 func (s *TemplateDisplayConfigService) Delete(ctx context.Context, id uint64) error {

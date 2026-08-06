@@ -61,9 +61,57 @@ func PublicURL(value string) string {
 		return ""
 	}
 	if parsed, err := url.Parse(value); err == nil && parsed.IsAbs() {
-		return value
+		managed := false
+		for _, baseURL := range []string{publicBaseURL(), storageBaseURL()} {
+			parsedBase, baseErr := url.Parse(baseURL)
+			if baseErr == nil && parsedBase.IsAbs() && strings.EqualFold(parsed.Host, parsedBase.Host) {
+				managed = true
+				break
+			}
+		}
+		if !managed {
+			return value
+		}
 	}
 	half := upload.HalfURL(value)
+	baseURL := publicBaseURL()
+	parsedBase, err := url.Parse(baseURL)
+	if err != nil || !parsedBase.IsAbs() || parsedBase.Host == "" {
+		return half
+	}
+	return parsedBase.Scheme + "://" + parsedBase.Host + half
+}
+
+// PersistedURL converts URLs served by the configured upload proxy/CDN back
+// to half URLs. Other absolute URLs are preserved so externally hosted template
+// media can still be used.
+func PersistedURL(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	parsed, err := url.Parse(value)
+	if err != nil || !parsed.IsAbs() {
+		return upload.HalfURL(value)
+	}
+	for _, baseURL := range []string{publicBaseURL(), storageBaseURL()} {
+		parsedBase, baseErr := url.Parse(baseURL)
+		if baseErr == nil && parsedBase.IsAbs() && strings.EqualFold(parsed.Host, parsedBase.Host) {
+			return upload.HalfURL(value)
+		}
+	}
+	return value
+}
+
+func publicBaseURL() string {
+	cfg := config.Cfg.Upload
+	if baseURL := configured("upload.proxy_base_url", cfg.ProxyBaseURL); baseURL != "" {
+		return baseURL
+	}
+	return storageBaseURL()
+}
+
+func storageBaseURL() string {
 	cfg := config.Cfg.Upload
 	provider := configured("upload.storage_provider", cfg.StorageProvider)
 	baseURL := configured("upload.local_base_url", cfg.LocalBaseURL)
@@ -83,11 +131,7 @@ func PublicURL(value string) string {
 			}
 		}
 	}
-	parsedBase, err := url.Parse(baseURL)
-	if err != nil || !parsedBase.IsAbs() || parsedBase.Host == "" {
-		return half
-	}
-	return parsedBase.Scheme + "://" + parsedBase.Host + half
+	return baseURL
 }
 
 func (f *directSignerFactory) Sign(ctx context.Context, request upload.DirectUploadRequest) (*upload.DirectUploadCredential, error) {
@@ -229,8 +273,10 @@ func (f *storageFactory) resolve() (upload.Storage, error) {
 }
 
 func configured(key, fallback string) string {
-	if value := strings.TrimSpace(setting.GetString(key)); value != "" {
-		return value
+	if config.DB != nil {
+		if value := strings.TrimSpace(setting.GetString(key)); value != "" {
+			return value
+		}
 	}
 	return strings.TrimSpace(fallback)
 }

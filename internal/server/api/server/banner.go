@@ -7,6 +7,7 @@ import (
 
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/uploadruntime"
 	"ai-video/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -89,13 +90,14 @@ func mapClientBanner(item *model.VideoBanner) ClientBanner {
 	result := ClientBanner{
 		ID: item.ID, Name: item.Name, PositionKey: positionKey,
 		Status: item.Status, JumpType: item.JumpType,
-		CoverImage: item.CoverImage, Route: clientBannerRoute(item), TemplateID: item.TemplateID, Sort: item.Sort,
+		CoverImage: uploadruntime.PublicURL(item.CoverImage), Route: clientBannerRoute(item), TemplateID: item.TemplateID, Sort: item.Sort,
 	}
 	if item.Template.ID != 0 {
 		result.TargetTemplate = &ClientBannerTemplate{
 			ID: item.Template.ID, Name: item.Template.Name, TemplateType: item.Template.TemplateType,
-			CoverImageURL: item.Template.CoverImageURL, OriginalURL: item.Template.OriginalURL,
-			ThumbnailURL: item.Template.ThumbnailURL, Status: item.Template.Status,
+			CoverImageURL: uploadruntime.PublicURL(item.Template.CoverImageURL),
+			OriginalURL:   uploadruntime.PublicURL(item.Template.OriginalURL),
+			ThumbnailURL:  uploadruntime.PublicURL(item.Template.ThumbnailURL), Status: item.Template.Status,
 		}
 	}
 	return result

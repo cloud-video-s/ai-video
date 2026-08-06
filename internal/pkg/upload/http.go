@@ -16,6 +16,7 @@ type HTTPHandler struct {
 	directRecorder DirectPreUploadRecorder
 	ownerResolver  func(*gin.Context) (UploadOwner, error)
 	directSigner   DirectUploadSigner
+	publicURL      func(string) string
 }
 
 type HTTPHandlerOption func(*HTTPHandler)
@@ -42,6 +43,14 @@ func WithDirectPreUploadRecording(recorder DirectPreUploadRecorder) HTTPHandlerO
 func WithDirectUploadSigner(signer DirectUploadSigner) HTTPHandlerOption {
 	return func(handler *HTTPHandler) {
 		handler.directSigner = signer
+	}
+}
+
+// WithPublicURLResolver expands persisted half URLs only in HTTP responses.
+// Recorders continue to receive and persist the original half URL.
+func WithPublicURLResolver(resolver func(string) string) HTTPHandlerOption {
+	return func(handler *HTTPHandler) {
+		handler.publicURL = resolver
 	}
 }
 
@@ -90,7 +99,7 @@ func (h *HTTPHandler) directSignature(c *gin.Context) {
 			return
 		}
 	}
-	response.OK(c, credential)
+	response.OK(c, h.responseCredential(credential))
 }
 
 func (h *HTTPHandler) registerMediaRoutes(group *gin.RouterGroup, kind MediaKind) {
@@ -144,7 +153,7 @@ func (h *HTTPHandler) putChunk(kind MediaKind) gin.HandlerFunc {
 			handleHTTPError(c, err)
 			return
 		}
-		response.OK(c, session)
+		response.OK(c, h.responseSession(session))
 	}
 }
 
@@ -155,7 +164,7 @@ func (h *HTTPHandler) status(kind MediaKind) gin.HandlerFunc {
 			handleHTTPError(c, err)
 			return
 		}
-		response.OK(c, session)
+		response.OK(c, h.responseSession(session))
 	}
 }
 
@@ -178,8 +187,26 @@ func (h *HTTPHandler) complete(kind MediaKind) gin.HandlerFunc {
 				return
 			}
 		}
-		response.OK(c, session)
+		response.OK(c, h.responseSession(session))
 	}
+}
+
+func (h *HTTPHandler) responseSession(session *Session) *Session {
+	if session == nil || h.publicURL == nil || session.FileURL == "" {
+		return session
+	}
+	result := *session
+	result.PreviewURL = h.publicURL(result.FileURL)
+	return &result
+}
+
+func (h *HTTPHandler) responseCredential(credential *DirectUploadCredential) *DirectUploadCredential {
+	if credential == nil || h.publicURL == nil || credential.FileURL == "" {
+		return credential
+	}
+	result := *credential
+	result.PreviewURL = h.publicURL(result.FileURL)
+	return &result
 }
 
 func (h *HTTPHandler) requireAccess(c *gin.Context, uploadID string, kind MediaKind) (*Session, UploadOwner, error) {

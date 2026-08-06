@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/uploadruntime"
 	"ai-video/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -219,9 +220,9 @@ func mapClientTemplate(item *model.VideoTemplate) ClientTemplate {
 		TemplateTypeID: item.TemplateTypeID,
 		Name:           item.Name,
 		TemplateType:   item.TemplateType,
-		CoverImageURL:  item.CoverImageURL,
-		OriginalURL:    item.OriginalURL,
-		ThumbnailURL:   item.ThumbnailURL,
+		CoverImageURL:  uploadruntime.PublicURL(item.CoverImageURL),
+		OriginalURL:    uploadruntime.PublicURL(item.OriginalURL),
+		ThumbnailURL:   uploadruntime.PublicURL(item.ThumbnailURL),
 		Prompt:         item.Prompt,
 		Description:    item.Description,
 		Sort:           int(item.Sort),

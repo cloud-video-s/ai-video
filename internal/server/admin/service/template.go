@@ -9,6 +9,7 @@ import (
 
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/uploadruntime"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -322,13 +323,20 @@ func (s *TemplateService) List(ctx context.Context, page, pageSize int, req *Lis
 	if templateTypeID == 0 {
 		templateTypeID = req.LegacyTemplateTypeID
 	}
-	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateListFilter{
+	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.TemplateListFilter{
 		TemplateTypeID: templateTypeID,
 		ModelID:        req.ModelID,
 		PositionKey:    strings.TrimSpace(req.PositionKey),
 		TemplateType:   req.TemplateType, Status: req.Status,
 		Keyword: strings.TrimSpace(req.Keyword),
 	})
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range items {
+		expandTemplateMediaURLs(&items[i].VideoTemplate)
+	}
+	return items, total, nil
 }
 
 func (s *TemplateService) GetByID(ctx context.Context, id uint64) (*repository.TemplateRecord, error) {
@@ -336,11 +344,19 @@ func (s *TemplateService) GetByID(ctx context.Context, id uint64) (*repository.T
 	if err != nil {
 		return nil, notFoundOr(err, "模板不存在")
 	}
+	expandTemplateMediaURLs(&item.VideoTemplate)
 	return item, nil
 }
 
 func (s *TemplateService) ListOptions(ctx context.Context) ([]repository.TemplateRecord, error) {
-	return s.repo.ListOptions(ctx)
+	items, err := s.repo.ListOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		expandTemplateMediaURLs(&items[i].VideoTemplate)
+	}
+	return items, nil
 }
 
 func (s *TemplateService) Create(ctx context.Context, req *TemplatePayload) (*repository.TemplateRecord, error) {
@@ -368,7 +384,7 @@ func (s *TemplateService) Create(ctx context.Context, req *TemplatePayload) (*re
 	}); err != nil {
 		return nil, err
 	}
-	return s.repo.GetWithType(ctx, item.ID)
+	return s.GetByID(ctx, item.ID)
 }
 
 func (s *TemplateService) Update(ctx context.Context, id uint64, req *TemplatePayload) (*repository.TemplateRecord, error) {
@@ -406,7 +422,7 @@ func (s *TemplateService) Update(ctx context.Context, id uint64, req *TemplatePa
 	}); err != nil {
 		return nil, err
 	}
-	return s.repo.GetWithType(ctx, item.ID)
+	return s.GetByID(ctx, item.ID)
 }
 
 func (s *TemplateService) Delete(ctx context.Context, id uint64) error {
@@ -450,11 +466,20 @@ func normalizeTemplatePayload(req *TemplatePayload) {
 		req.TemplateTypeID = req.LegacyTemplateTypeID
 	}
 	req.Name = strings.TrimSpace(req.Name)
-	req.CoverImageURL = strings.TrimSpace(req.CoverImageURL)
-	req.OriginalURL = strings.TrimSpace(req.OriginalURL)
-	req.ThumbnailURL = strings.TrimSpace(req.ThumbnailURL)
+	req.CoverImageURL = uploadruntime.PersistedURL(req.CoverImageURL)
+	req.OriginalURL = uploadruntime.PersistedURL(req.OriginalURL)
+	req.ThumbnailURL = uploadruntime.PersistedURL(req.ThumbnailURL)
 	req.Prompt = strings.TrimSpace(req.Prompt)
 	req.Description = strings.TrimSpace(req.Description)
+}
+
+func expandTemplateMediaURLs(item *model.VideoTemplate) {
+	if item == nil {
+		return
+	}
+	item.CoverImageURL = uploadruntime.PublicURL(item.CoverImageURL)
+	item.OriginalURL = uploadruntime.PublicURL(item.OriginalURL)
+	item.ThumbnailURL = uploadruntime.PublicURL(item.ThumbnailURL)
 }
 
 func validateTemplatePayload(req *TemplatePayload) error {

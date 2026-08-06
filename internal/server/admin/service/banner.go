@@ -9,6 +9,7 @@ import (
 
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/uploadruntime"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -289,7 +290,7 @@ func validBannerLink(value string) bool {
 
 func applyBannerPayload(item *model.VideoBanner, req *BannerPayload) {
 	item.Name = strings.TrimSpace(req.Name)
-	item.CoverImage = strings.TrimSpace(req.CoverImage)
+	item.CoverImage = uploadruntime.PersistedURL(req.CoverImage)
 	item.Remark = strings.TrimSpace(req.Remark)
 	item.Sort = req.Sort
 	item.JumpType = req.JumpType
@@ -332,6 +333,8 @@ func (s *BannerService) withAppTargets(ctx context.Context, items []model.VideoB
 	}
 	result := make([]BannerView, len(items))
 	for i := range items {
+		items[i].CoverImage = uploadruntime.PublicURL(items[i].CoverImage)
+		expandTemplateMediaURLs(&items[i].Template)
 		result[i] = BannerView{
 			VideoBanner: &items[i], DisplayPositions: placements[items[i].ID], AppTargets: targets[items[i].ID],
 		}

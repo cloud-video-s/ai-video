@@ -61,12 +61,16 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		panic(err)
 	}
 	uploadRecordHandler := handler.NewUploadHandler()
-	uploadHandler := upload.NewHTTPHandler(uploadManager, upload.WithCompletionRecording(
-		repository.NewUploadRepo(),
-		func(c *gin.Context) (upload.UploadOwner, error) {
-			return upload.UploadOwner{Type: upload.UploaderAdmin, ID: middleware.GetAdminID(c)}, nil
-		},
-	))
+	uploadHandler := upload.NewHTTPHandler(
+		uploadManager,
+		upload.WithCompletionRecording(
+			repository.NewUploadRepo(),
+			func(c *gin.Context) (upload.UploadOwner, error) {
+				return upload.UploadOwner{Type: upload.UploaderAdmin, ID: middleware.GetAdminID(c)}, nil
+			},
+		),
+		upload.WithPublicURLResolver(uploadruntime.PublicURL),
+	)
 
 	// Public routes (no auth required)
 	rg.POST("/login", authHandler.Login)
