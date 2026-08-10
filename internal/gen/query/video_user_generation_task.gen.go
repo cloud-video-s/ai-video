@@ -94,6 +94,18 @@ func newVideoUserGenerationTask(db *gorm.DB, opts ...gen.DOOption) videoUserGene
 		},
 	}
 
+	_videoUserGenerationTask.User = videoUserGenerationTaskBelongsToUser{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("User", "model.VideoUser"),
+	}
+
+	_videoUserGenerationTask.AIModel = videoUserGenerationTaskBelongsToAIModel{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("AIModel", "model.VideoModel"),
+	}
+
 	_videoUserGenerationTask.fillFieldMap()
 
 	return _videoUserGenerationTask
@@ -133,6 +145,10 @@ type videoUserGenerationTask struct {
 	UpdatedAt        field.Time   // 记录更新时间
 	DeletedAt        field.Field  // 软删除时间（非NULL表示已删除）
 	Template         videoUserGenerationTaskBelongsToTemplate
+
+	User videoUserGenerationTaskBelongsToUser
+
+	AIModel videoUserGenerationTaskBelongsToAIModel
 
 	fieldMap map[string]field.Expr
 }
@@ -206,7 +222,7 @@ func (v *videoUserGenerationTask) GetFieldByName(fieldName string) (field.OrderE
 }
 
 func (v *videoUserGenerationTask) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 30)
+	v.fieldMap = make(map[string]field.Expr, 32)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["model_id"] = v.ModelID
@@ -243,12 +259,18 @@ func (v videoUserGenerationTask) clone(db *gorm.DB) videoUserGenerationTask {
 	v.videoUserGenerationTaskDo.ReplaceConnPool(db.Statement.ConnPool)
 	v.Template.db = db.Session(&gorm.Session{Initialized: true})
 	v.Template.db.Statement.ConnPool = db.Statement.ConnPool
+	v.User.db = db.Session(&gorm.Session{Initialized: true})
+	v.User.db.Statement.ConnPool = db.Statement.ConnPool
+	v.AIModel.db = db.Session(&gorm.Session{Initialized: true})
+	v.AIModel.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoUserGenerationTask) replaceDB(db *gorm.DB) videoUserGenerationTask {
 	v.videoUserGenerationTaskDo.ReplaceDB(db)
 	v.Template.db = db.Session(&gorm.Session{})
+	v.User.db = db.Session(&gorm.Session{})
+	v.AIModel.db = db.Session(&gorm.Session{})
 	return v
 }
 
@@ -345,6 +367,168 @@ func (a videoUserGenerationTaskBelongsToTemplateTx) Count() int64 {
 }
 
 func (a videoUserGenerationTaskBelongsToTemplateTx) Unscoped() *videoUserGenerationTaskBelongsToTemplateTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoUserGenerationTaskBelongsToUser struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoUserGenerationTaskBelongsToUser) Where(conds ...field.Expr) *videoUserGenerationTaskBelongsToUser {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoUserGenerationTaskBelongsToUser) WithContext(ctx context.Context) *videoUserGenerationTaskBelongsToUser {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoUserGenerationTaskBelongsToUser) Session(session *gorm.Session) *videoUserGenerationTaskBelongsToUser {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoUserGenerationTaskBelongsToUser) Model(m *model.VideoUserGenerationTask) *videoUserGenerationTaskBelongsToUserTx {
+	return &videoUserGenerationTaskBelongsToUserTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoUserGenerationTaskBelongsToUser) Unscoped() *videoUserGenerationTaskBelongsToUser {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoUserGenerationTaskBelongsToUserTx struct{ tx *gorm.Association }
+
+func (a videoUserGenerationTaskBelongsToUserTx) Find() (result *model.VideoUser, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoUserGenerationTaskBelongsToUserTx) Append(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoUserGenerationTaskBelongsToUserTx) Replace(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoUserGenerationTaskBelongsToUserTx) Delete(values ...*model.VideoUser) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoUserGenerationTaskBelongsToUserTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoUserGenerationTaskBelongsToUserTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoUserGenerationTaskBelongsToUserTx) Unscoped() *videoUserGenerationTaskBelongsToUserTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type videoUserGenerationTaskBelongsToAIModel struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a videoUserGenerationTaskBelongsToAIModel) Where(conds ...field.Expr) *videoUserGenerationTaskBelongsToAIModel {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoUserGenerationTaskBelongsToAIModel) WithContext(ctx context.Context) *videoUserGenerationTaskBelongsToAIModel {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoUserGenerationTaskBelongsToAIModel) Session(session *gorm.Session) *videoUserGenerationTaskBelongsToAIModel {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoUserGenerationTaskBelongsToAIModel) Model(m *model.VideoUserGenerationTask) *videoUserGenerationTaskBelongsToAIModelTx {
+	return &videoUserGenerationTaskBelongsToAIModelTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoUserGenerationTaskBelongsToAIModel) Unscoped() *videoUserGenerationTaskBelongsToAIModel {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoUserGenerationTaskBelongsToAIModelTx struct{ tx *gorm.Association }
+
+func (a videoUserGenerationTaskBelongsToAIModelTx) Find() (result *model.VideoModel, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoUserGenerationTaskBelongsToAIModelTx) Append(values ...*model.VideoModel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoUserGenerationTaskBelongsToAIModelTx) Replace(values ...*model.VideoModel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoUserGenerationTaskBelongsToAIModelTx) Delete(values ...*model.VideoModel) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoUserGenerationTaskBelongsToAIModelTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoUserGenerationTaskBelongsToAIModelTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoUserGenerationTaskBelongsToAIModelTx) Unscoped() *videoUserGenerationTaskBelongsToAIModelTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }

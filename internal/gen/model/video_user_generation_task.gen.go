@@ -44,6 +44,8 @@ type VideoUserGenerationTask struct {
 	UpdatedAt        time.Time      `gorm:"column:updated_at;type:datetime(3);not null;comment:记录更新时间" json:"updated_at"`                                                                                                                       // 记录更新时间
 	DeletedAt        gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_generation_task_deleted_at,priority:1;comment:软删除时间（非NULL表示已删除）" json:"deleted_at"`                                                               // 软删除时间（非NULL表示已删除）
 	Template         VideoTemplate  `gorm:"foreignKey:TemplateID;references:ID" json:"template"`
+	User             *VideoUser     `gorm:"foreignKey:UserID;references:ID" json:"user"`
+	AIModel          *VideoModel    `gorm:"foreignKey:ModelID;references:ID" json:"ai_model"`
 }
 
 // TableName VideoUserGenerationTask's table name

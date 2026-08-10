@@ -30,7 +30,7 @@ func (d *ApiRepo) GetByID(ctx context.Context, id uint) (*model.VideoAPI, error)
 
 func (d *ApiRepo) Update(ctx context.Context, api *model.VideoAPI) error {
 	q := qFrom(ctx).VideoAPI
-	return q.WithContext(ctx).Where(q.ID.Eq(uint64(api.ID))).UnderlyingDB().Save(api).Error
+	return q.WithContext(ctx).Where(q.ID.Eq(api.ID)).UnderlyingDB().Save(api).Error
 }
 
 func (d *ApiRepo) Delete(ctx context.Context, id uint) error {

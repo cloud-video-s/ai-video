@@ -1,6 +1,7 @@
 package service
 
 import (
+	"ai-video/internal/gen/model"
 	"context"
 	"encoding/json"
 	"errors"
@@ -41,46 +42,63 @@ type GenerationTaskUserView struct {
 	DeviceCode   string `json:"device_code"`
 }
 
+type GenerationTaskTemplateView struct {
+	ID             uint64 `json:"id"`
+	Name           string `json:"name"`
+	TemplateType   int64  `json:"template_type"`
+	TemplateTypeID uint64 `json:"template_type_id"`
+	ModelID        uint64 `json:"model_id"`
+	CoverImageURL  string `json:"cover_image_url"`
+	OriginalURL    string `json:"original_url"`
+	ThumbnailURL   string `json:"thumbnail_url"`
+	Prompt         string `json:"prompt"`
+	Description    string `json:"description"`
+	Status         int32  `json:"status"`
+}
+
 type GenerationTaskModelView struct {
-	ID        uint64 `json:"id"`
-	Name      string `json:"name"`
-	Code      string `json:"code"`
-	ModelType uint32 `json:"model_type"`
-	Version   string `json:"version"`
+	ID         uint64             `json:"id"`
+	PlatformID int64              `json:"platform_id"`
+	Platform   *ModelPlatformView `json:"platform"`
+	Name       string             `json:"name"`
+	Code       string             `json:"code"`
+	ModelType  uint32             `json:"model_type"`
+	Version    string             `json:"version"`
 }
 
 type UserGenerationTaskView struct {
-	ID               uint64                   `json:"id"`
-	UserID           uint64                   `json:"user_id"`
-	ModelID          uint64                   `json:"model_id"`
-	TemplateID       uint64                   `json:"template_id"`
-	ClientRequestID  string                   `json:"client_request_id"`
-	TaskCode         string                   `json:"task_code"`
-	ThirdTaskCode    string                   `json:"third_task_code"`
-	Status           int                      `json:"status"`
-	StatusName       string                   `json:"status_name"`
-	TaskType         uint32                   `json:"task_type"`
-	Progress         uint32                   `json:"progress"`
-	MediaType        string                   `json:"media_type"`
-	Prompt           string                   `json:"prompt"`
-	RequestPayload   interface{}              `json:"request_payload,omitempty"`
-	ProviderResponse interface{}              `json:"provider_response,omitempty"`
-	RemoteURLs       []string                 `json:"remote_urls"`
-	LocalURLs        []string                 `json:"local_urls"`
-	CoverImageURL    string                   `json:"cover_image_url"`
-	PreviewURLs      []string                 `json:"preview_urls"`
-	ResultCount      int                      `json:"result_count"`
-	ErrorMessage     string                   `json:"error_message"`
-	UsageDuration    uint32                   `json:"usage_duration"`
-	Score            uint32                   `json:"score"`
-	SubmittedAt      *time.Time               `json:"submitted_at"`
-	StartedAt        *time.Time               `json:"started_at"`
-	FinishedAt       *time.Time               `json:"finished_at"`
-	LastPolledAt     *time.Time               `json:"last_polled_at"`
-	CreatedAt        time.Time                `json:"created_at"`
-	UpdatedAt        time.Time                `json:"updated_at"`
-	User             *GenerationTaskUserView  `json:"user"`
-	Model            *GenerationTaskModelView `json:"model"`
+	ID               uint64                      `json:"id"`
+	UserID           uint64                      `json:"user_id"`
+	ModelID          uint64                      `json:"model_id"`
+	TemplateID       uint64                      `json:"template_id"`
+	ClientRequestID  string                      `json:"client_request_id"`
+	TaskCode         string                      `json:"task_code"`
+	ThirdTaskCode    string                      `json:"third_task_code"`
+	Status           int                         `json:"status"`
+	StatusName       string                      `json:"status_name"`
+	TaskType         uint32                      `json:"task_type"`
+	Progress         uint32                      `json:"progress"`
+	MediaType        string                      `json:"media_type"`
+	Prompt           string                      `json:"prompt"`
+	RequestPayload   interface{}                 `json:"request_payload,omitempty"`
+	ProviderResponse interface{}                 `json:"provider_response,omitempty"`
+	RemoteURLs       []string                    `json:"remote_urls"`
+	LocalURLs        []string                    `json:"local_urls"`
+	CoverImageURL    string                      `json:"cover_image_url"`
+	PreviewURLs      []string                    `json:"preview_urls"`
+	ResultCount      int                         `json:"result_count"`
+	ErrorMessage     string                      `json:"error_message"`
+	UsageDuration    uint32                      `json:"usage_duration"`
+	Score            uint32                      `json:"score"`
+	SubmittedAt      *time.Time                  `json:"submitted_at"`
+	StartedAt        *time.Time                  `json:"started_at"`
+	FinishedAt       *time.Time                  `json:"finished_at"`
+	LastPolledAt     *time.Time                  `json:"last_polled_at"`
+	CreatedAt        time.Time                   `json:"created_at"`
+	UpdatedAt        time.Time                   `json:"updated_at"`
+	User             *GenerationTaskUserView     `json:"user"`
+	Template         *GenerationTaskTemplateView `json:"template"`
+	Model            *GenerationTaskModelView    `json:"model"`
 }
 
 func (s *UserGenerationTaskService) List(ctx context.Context, page, pageSize int, req *ListUserGenerationTaskRequest) ([]UserGenerationTaskView, int64, error) {
@@ -112,8 +130,7 @@ func (s *UserGenerationTaskService) GetByID(ctx context.Context, id uint64) (*Us
 	return &view, nil
 }
 
-func generationTaskView(record *repository.UserGenerationTaskAdminRecord, detail bool) UserGenerationTaskView {
-	task := record.Task
+func generationTaskView(task *model.VideoUserGenerationTask, detail bool) UserGenerationTaskView {
 	remoteURLs := parseGenerationTaskURLs(task.RemoteUrls)
 	localURLs := parseGenerationTaskURLs(task.LocalUrls)
 	previewURLs := remoteURLs
@@ -128,7 +145,7 @@ func generationTaskView(record *repository.UserGenerationTaskAdminRecord, detail
 		ID: task.ID, UserID: task.UserID, ModelID: task.ModelID, TemplateID: task.TemplateID,
 		ClientRequestID: task.ClientRequestID, TaskCode: task.TaskCode, ThirdTaskCode: task.ThirdTaskCode,
 		Status: task.Status, StatusName: generationTaskStatusName(task.Status), TaskType: task.TaskType, Progress: task.Progress,
-		MediaType: generationTaskMediaType(record, previewURLs), Prompt: task.Prompt,
+		MediaType: generationTaskMediaType(task, previewURLs), Prompt: task.Prompt,
 		RemoteURLs: remoteURLs, LocalURLs: localURLs, CoverImageURL: task.CoverImageURL,
 		PreviewURLs: previewURLs, ResultCount: len(previewURLs),
 		ErrorMessage: task.ErrorMessage, UsageDuration: task.UsageDuration, Score: task.Score,
@@ -140,16 +157,34 @@ func generationTaskView(record *repository.UserGenerationTaskAdminRecord, detail
 		view.RequestPayload = parseGenerationTaskJSON(task.RequestPayload)
 		view.ProviderResponse = parseGenerationTaskJSON(task.ProviderResponse)
 	}
-	if record.User != nil {
+	if task.User != nil {
 		view.User = &GenerationTaskUserView{
-			ID: record.User.ID, Username: record.User.Username, Email: record.User.Email,
-			LoginAccount: record.User.LoginAccount, IMEI: record.User.IMEI, DeviceCode: record.User.DeviceCode,
+			ID: task.User.ID, Username: task.User.Username, Email: task.User.Email,
+			LoginAccount: task.User.LoginAccount, IMEI: task.User.IMEI, DeviceCode: task.User.DeviceCode,
 		}
 	}
-	if record.Model != nil && record.Model.ID > 0 {
+	if task.Template.ID > 0 {
+		template := task.Template
+		expandTemplateMediaURLs(&template)
+		view.Template = &GenerationTaskTemplateView{
+			ID: template.ID, Name: template.Name, TemplateType: template.TemplateType,
+			TemplateTypeID: template.TemplateTypeID, ModelID: template.ModelID,
+			CoverImageURL: template.CoverImageURL, OriginalURL: template.OriginalURL,
+			ThumbnailURL: template.ThumbnailURL, Prompt: template.Prompt,
+			Description: template.Description, Status: template.Status,
+		}
+	}
+	if task.AIModel != nil && task.AIModel.ID > 0 {
 		view.Model = &GenerationTaskModelView{
-			ID: uint64(record.Model.ID), Name: record.Model.Name, Code: record.Model.Code,
-			ModelType: record.Model.ModelType, Version: record.Model.Version,
+			ID: uint64(task.AIModel.ID), PlatformID: task.AIModel.PlatformID,
+			Name: task.AIModel.Name, Code: task.AIModel.Code,
+			ModelType: task.AIModel.ModelType, Version: task.AIModel.Version,
+		}
+		if task.AIModel.Platform.ID > 0 {
+			view.Model.Platform = &ModelPlatformView{
+				ID: task.AIModel.Platform.ID, Name: task.AIModel.Platform.Name,
+				Code: task.AIModel.Platform.Code, BaseURL: task.AIModel.Platform.BaseURL,
+			}
 		}
 	}
 	return view
@@ -176,15 +211,15 @@ func generationTaskStatusName(status int) string {
 	}
 }
 
-func generationTaskMediaType(record *repository.UserGenerationTaskAdminRecord, previewURLs []string) string {
-	switch record.Task.TaskType {
+func generationTaskMediaType(record *model.VideoUserGenerationTask, previewURLs []string) string {
+	switch record.TaskType {
 	case 1:
 		return "image"
 	case 2:
 		return "video"
 	}
-	if record.Model != nil {
-		switch record.Model.ModelType {
+	if record.AIModel != nil {
+		switch record.AIModel.ModelType {
 		case 1:
 			return "image"
 		case 2:

@@ -217,7 +217,7 @@ func (m *Manager) releaseFrozenTaskPoints(ctx context.Context, state *repository
 	user.VipPoints += int64(allocation.VIPScore)
 	user.PointsBalance += int64(allocation.PointsScore)
 	user.FrozenPoints -= uint64(state.Score)
-	if err := m.Update(ctx, user.ID, map[string]any{
+	if err = m.Update(ctx, user.ID, map[string]any{
 		"vip_points":     user.VipPoints,
 		"points_balance": user.PointsBalance,
 		"frozen_points":  user.FrozenPoints,

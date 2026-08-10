@@ -33,6 +33,7 @@ func newVideoModel(db *gorm.DB, opts ...gen.DOOption) videoModel {
 	_videoModel.Name = field.NewString(tableName, "name")
 	_videoModel.Code = field.NewString(tableName, "code")
 	_videoModel.ModelType = field.NewUint32(tableName, "model_type")
+	_videoModel.ModelFeatures = field.NewUint32(tableName, "model_features")
 	_videoModel.Version = field.NewString(tableName, "version")
 	_videoModel.SubmitEndpoint = field.NewString(tableName, "submit_endpoint")
 	_videoModel.StatusEndpoint = field.NewString(tableName, "status_endpoint")
@@ -68,6 +69,7 @@ type videoModel struct {
 	Name           field.String // 模型名称，如 Kling v3
 	Code           field.String // 模型编码，如 kling-v3
 	ModelType      field.Uint32 // 模型类型：1 生成图片 2=生成视频
+	ModelFeatures  field.Uint32 // 模型类型 1通用 2模板 3生成模型 4工具
 	Version        field.String // 模型版本，如 v3.0
 	SubmitEndpoint field.String // 提交任务接口路径，如 /v1/tasks/submit
 	StatusEndpoint field.String // 查询任务状态接口路径，如 /v1/tasks/status
@@ -104,6 +106,7 @@ func (v *videoModel) updateTableName(table string) *videoModel {
 	v.Name = field.NewString(table, "name")
 	v.Code = field.NewString(table, "code")
 	v.ModelType = field.NewUint32(table, "model_type")
+	v.ModelFeatures = field.NewUint32(table, "model_features")
 	v.Version = field.NewString(table, "version")
 	v.SubmitEndpoint = field.NewString(table, "submit_endpoint")
 	v.StatusEndpoint = field.NewString(table, "status_endpoint")
@@ -144,12 +147,13 @@ func (v *videoModel) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoModel) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 20)
+	v.fieldMap = make(map[string]field.Expr, 21)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["platform_id"] = v.PlatformID
 	v.fieldMap["name"] = v.Name
 	v.fieldMap["code"] = v.Code
 	v.fieldMap["model_type"] = v.ModelType
+	v.fieldMap["model_features"] = v.ModelFeatures
 	v.fieldMap["version"] = v.Version
 	v.fieldMap["submit_endpoint"] = v.SubmitEndpoint
 	v.fieldMap["status_endpoint"] = v.StatusEndpoint

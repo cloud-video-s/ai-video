@@ -86,6 +86,12 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 					}
 				}
 			}
+			User struct {
+				field.RelationField
+			}
+			AIModel struct {
+				field.RelationField
+			}
 		}{
 			RelationField: field.NewRelation("User.Works", "model.VideoUserGenerationTask"),
 			Template: struct {
@@ -138,6 +144,16 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 						RelationField: field.NewRelation("User.Works.Template.ModelParameters.Template", "model.VideoTemplate"),
 					},
 				},
+			},
+			User: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("User.Works.User", "model.VideoUser"),
+			},
+			AIModel: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("User.Works.AIModel", "model.VideoModel"),
 			},
 		},
 		Orders: struct {
@@ -339,6 +355,12 @@ type videoUserAttributionBelongsToUser struct {
 					field.RelationField
 				}
 			}
+		}
+		User struct {
+			field.RelationField
+		}
+		AIModel struct {
+			field.RelationField
 		}
 	}
 	Orders struct {

@@ -14,24 +14,25 @@ const TableNameVideoModel = "video_model"
 
 // VideoModel 模型表
 type VideoModel struct {
-	ID             int64          `gorm:"column:id;type:bigint;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                                     // 主键ID
-	PlatformID     int64          `gorm:"column:platform_id;type:bigint;not null;comment:所属平台ID，关联platform表" json:"platform_id"`                          // 所属平台ID，关联platform表
-	Name           string         `gorm:"column:name;type:varchar(64);not null;comment:模型名称，如 Kling v3" json:"name"`                                      // 模型名称，如 Kling v3
-	Code           string         `gorm:"column:code;type:varchar(32);not null;uniqueIndex:code,priority:1;comment:模型编码，如 kling-v3" json:"code"`          // 模型编码，如 kling-v3
-	ModelType      uint32         `gorm:"column:model_type;type:tinyint unsigned;not null;default:1;comment:模型类型：1 生成图片 2=生成视频" json:"model_type"`        // 模型类型：1 生成图片 2=生成视频
-	Version        string         `gorm:"column:version;type:varchar(16);not null;comment:模型版本，如 v3.0" json:"version"`                                    // 模型版本，如 v3.0
-	SubmitEndpoint string         `gorm:"column:submit_endpoint;type:varchar(255);not null;comment:提交任务接口路径，如 /v1/tasks/submit" json:"submit_endpoint"`   // 提交任务接口路径，如 /v1/tasks/submit
-	StatusEndpoint string         `gorm:"column:status_endpoint;type:varchar(255);not null;comment:查询任务状态接口路径，如 /v1/tasks/status" json:"status_endpoint"` // 查询任务状态接口路径，如 /v1/tasks/status
-	RequestMethod  string         `gorm:"column:request_method;type:varchar(8);not null;default:POST;comment:请求方法：POST/GET" json:"request_method"`        // 请求方法：POST/GET
-	AuthType       uint32         `gorm:"column:auth_type;type:tinyint unsigned;not null;default:1;comment:认证类型：1=Bearer 2=API-Key" json:"auth_type"`     // 认证类型：1=Bearer 2=API-Key
-	Description    string         `gorm:"column:description;type:varchar(255);comment:模型描述" json:"description"`                                           // 模型描述
-	Status         uint32         `gorm:"column:status;type:tinyint unsigned;not null;default:1;comment:状态：0-禁用，1-启用" json:"status"`                      // 状态：0-禁用，1-启用
-	HostURL        string         `gorm:"column:host_url;type:varchar(255);not null;comment:API域名" json:"host_url"`                                       // API域名
-	Score          int64          `gorm:"column:score;type:bigint;not null;comment:模型积分" json:"score"`                                                    // 模型积分
-	Icon           string         `gorm:"column:icon;type:varchar(255);comment:图标" json:"icon"`                                                           // 图标
-	APIKey         string         `gorm:"column:api_key;type:varchar(255);comment:密钥" json:"api_key"`                                                     // 密钥
-	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"`              // 创建时间
-	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"`              // 更新时间
+	ID             int64          `gorm:"column:id;type:bigint;primaryKey;autoIncrement:true;comment:主键ID" json:"id"`                                          // 主键ID
+	PlatformID     int64          `gorm:"column:platform_id;type:bigint;not null;comment:所属平台ID，关联platform表" json:"platform_id"`                               // 所属平台ID，关联platform表
+	Name           string         `gorm:"column:name;type:varchar(64);not null;comment:模型名称，如 Kling v3" json:"name"`                                           // 模型名称，如 Kling v3
+	Code           string         `gorm:"column:code;type:varchar(32);not null;uniqueIndex:code,priority:1;comment:模型编码，如 kling-v3" json:"code"`               // 模型编码，如 kling-v3
+	ModelType      uint32         `gorm:"column:model_type;type:tinyint unsigned;not null;default:1;comment:模型类型：1 生成图片 2=生成视频" json:"model_type"`             // 模型类型：1 生成图片 2=生成视频
+	ModelFeatures  uint32         `gorm:"column:model_features;type:tinyint unsigned;not null;default:1;comment:模型类型 1通用 2模板 3生成模型 4工具" json:"model_features"` // 模型类型 1通用 2模板 3生成模型 4工具
+	Version        string         `gorm:"column:version;type:varchar(16);not null;comment:模型版本，如 v3.0" json:"version"`                                         // 模型版本，如 v3.0
+	SubmitEndpoint string         `gorm:"column:submit_endpoint;type:varchar(255);not null;comment:提交任务接口路径，如 /v1/tasks/submit" json:"submit_endpoint"`        // 提交任务接口路径，如 /v1/tasks/submit
+	StatusEndpoint string         `gorm:"column:status_endpoint;type:varchar(255);not null;comment:查询任务状态接口路径，如 /v1/tasks/status" json:"status_endpoint"`      // 查询任务状态接口路径，如 /v1/tasks/status
+	RequestMethod  string         `gorm:"column:request_method;type:varchar(8);not null;default:POST;comment:请求方法：POST/GET" json:"request_method"`             // 请求方法：POST/GET
+	AuthType       uint32         `gorm:"column:auth_type;type:tinyint unsigned;not null;default:1;comment:认证类型：1=Bearer 2=API-Key" json:"auth_type"`          // 认证类型：1=Bearer 2=API-Key
+	Description    string         `gorm:"column:description;type:varchar(255);comment:模型描述" json:"description"`                                                // 模型描述
+	Status         uint32         `gorm:"column:status;type:tinyint unsigned;not null;default:1;comment:状态：0-禁用，1-启用" json:"status"`                           // 状态：0-禁用，1-启用
+	HostURL        string         `gorm:"column:host_url;type:varchar(255);not null;comment:API域名" json:"host_url"`                                            // API域名
+	Score          int64          `gorm:"column:score;type:bigint;not null;comment:模型积分" json:"score"`                                                         // 模型积分
+	Icon           string         `gorm:"column:icon;type:varchar(255);comment:图标" json:"icon"`                                                                // 图标
+	APIKey         string         `gorm:"column:api_key;type:varchar(255);comment:密钥" json:"api_key"`                                                          // 密钥
+	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"`                   // 创建时间
+	UpdatedAt      time.Time      `gorm:"column:updated_at;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"`                   // 更新时间
 	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;type:datetime" json:"deleted_at"`
 	Platform       VideoPlatform  `gorm:"foreignKey:PlatformID;references:ID" json:"platform"`
 }

@@ -152,6 +152,16 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 				},
 			},
 		},
+		User: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Works.User", "model.VideoUser"),
+		},
+		AIModel: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Works.AIModel", "model.VideoModel"),
+		},
 	}
 
 	_videoUser.Orders = videoUserHasManyOrders{
@@ -604,6 +614,12 @@ type videoUserHasManyWorks struct {
 				field.RelationField
 			}
 		}
+	}
+	User struct {
+		field.RelationField
+	}
+	AIModel struct {
+		field.RelationField
 	}
 }
 

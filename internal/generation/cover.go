@@ -35,14 +35,7 @@ func generateAndStoreTaskCover(
 	return generateAndStoreTaskCoverWithOptions(ctx, storage, task, kind, source, options)
 }
 
-func generateAndStoreTaskCoverWithOptions(
-	ctx context.Context,
-	storage upload.Storage,
-	task *model.VideoUserGenerationTask,
-	kind upload.MediaKind,
-	source string,
-	options upload.MediaPreviewOptions,
-) (string, error) {
+func generateAndStoreTaskCoverWithOptions(ctx context.Context, storage upload.Storage, task *model.VideoUserGenerationTask, kind upload.MediaKind, source string, options upload.MediaPreviewOptions) (string, error) {
 	if storage == nil {
 		return "", errors.New("generation task cover storage is not configured")
 	}

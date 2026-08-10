@@ -70,6 +70,12 @@ func newVideoUserTemplateComplaint(db *gorm.DB, opts ...gen.DOOption) videoUserT
 					}
 				}
 			}
+			User struct {
+				field.RelationField
+			}
+			AIModel struct {
+				field.RelationField
+			}
 		}{
 			RelationField: field.NewRelation("User.Works", "model.VideoUserGenerationTask"),
 			Template: struct {
@@ -122,6 +128,16 @@ func newVideoUserTemplateComplaint(db *gorm.DB, opts ...gen.DOOption) videoUserT
 						RelationField: field.NewRelation("User.Works.Template.ModelParameters.Template", "model.VideoTemplate"),
 					},
 				},
+			},
+			User: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("User.Works.User", "model.VideoUser"),
+			},
+			AIModel: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("User.Works.AIModel", "model.VideoModel"),
 			},
 		},
 		Orders: struct {
@@ -308,6 +324,12 @@ type videoUserTemplateComplaintBelongsToUser struct {
 					field.RelationField
 				}
 			}
+		}
+		User struct {
+			field.RelationField
+		}
+		AIModel struct {
+			field.RelationField
 		}
 	}
 	Orders struct {

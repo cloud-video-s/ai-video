@@ -25,7 +25,7 @@ func NewUserGenerationTaskRepo() *UserGenerationTaskRepo {
 // a SQL NULL into MySQL's zero date.
 func (r *UserGenerationTaskRepo) Create(ctx context.Context, task *model.VideoUserGenerationTask) error {
 	return dbFrom(ctx).Omit(
-		"User", "Template", "ThirdTaskCode", "SubmittedAt", "StartedAt", "FinishedAt", "LastPolledAt",
+		"User", "AIModel", "Template", "ThirdTaskCode", "SubmittedAt", "StartedAt", "FinishedAt", "LastPolledAt",
 	).Create(task).Error
 }
 
@@ -152,23 +152,24 @@ type UserGenerationTaskAdminFilter struct {
 	CreatedTo   *time.Time
 }
 
-// UserGenerationTaskAdminRecord keeps related user/model data beside the task
-// without adding hand-written relationships to generated GORM models.
+// UserGenerationTaskAdminRecord keeps the preloaded user/model data beside the
+// task for the existing admin-service response mapping.
 type UserGenerationTaskAdminRecord struct {
 	Task  model.VideoUserGenerationTask
 	User  *model.VideoUser
 	Model *model.VideoModel
 }
 
-// PageAdmin lists generation tasks across all client users. Related rows are
-// loaded in batches so historical tasks still remain readable if a user or
-// model has since been soft-deleted.
-func (r *UserGenerationTaskRepo) PageAdmin(ctx context.Context, page, pageSize int, filter *UserGenerationTaskAdminFilter) ([]UserGenerationTaskAdminRecord, int64, error) {
+// PageAdmin lists generation tasks across all client users. The task's
+// template and user are preloaded, together with the model and its platform.
+// Unscoped relation queries keep historical tasks readable when related rows
+// have since been soft-deleted.
+func (r *UserGenerationTaskRepo) PageAdmin(ctx context.Context, page, pageSize int, filter *UserGenerationTaskAdminFilter) ([]model.VideoUserGenerationTask, int64, error) {
 	taskTable := model.TableNameVideoUserGenerationTask
 	userTable := model.TableNameVideoUser
 	modelTable := model.TableNameVideoModel
 
-	dao := dbFrom(ctx).Model(&model.VideoUserGenerationTask{}).
+	dao := preloadGenerationTaskAdminRelations(dbFrom(ctx).Model(&model.VideoUserGenerationTask{})).
 		Joins("LEFT JOIN " + userTable + " ON " + userTable + ".id = " + taskTable + ".user_id").
 		Joins("LEFT JOIN " + modelTable + " ON " + modelTable + ".id = " + taskTable + ".model_id")
 	if filter != nil {
@@ -200,7 +201,7 @@ func (r *UserGenerationTaskRepo) PageAdmin(ctx context.Context, page, pageSize i
 				taskTable+".third_task_code LIKE ? OR "+taskTable+".prompt LIKE ? OR "+
 				modelTable+".name LIKE ? OR "+modelTable+".code LIKE ? OR "+
 				userTable+".username LIKE ? OR "+userTable+".email LIKE ? OR "+
-				userTable+".login_account LIKE ? OR "+userTable+".imei LIKE ?",
+				userTable+".login_account LIKE ? OR "+userTable+".imei LIKE ?)",
 				keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword,
 			)
 		}
@@ -216,61 +217,24 @@ func (r *UserGenerationTaskRepo) PageAdmin(ctx context.Context, page, pageSize i
 		Offset((page - 1) * pageSize).Limit(pageSize).Find(&tasks).Error; err != nil {
 		return nil, 0, err
 	}
-	records, err := r.loadAdminRecords(ctx, tasks)
-	return records, total, err
+	return tasks, total, nil
 }
 
-func (r *UserGenerationTaskRepo) GetAdminDetail(ctx context.Context, id uint64) (*UserGenerationTaskAdminRecord, error) {
+func (r *UserGenerationTaskRepo) GetAdminDetail(ctx context.Context, id uint64) (*model.VideoUserGenerationTask, error) {
 	var task model.VideoUserGenerationTask
-	if err := dbFrom(ctx).Where("id = ?", id).First(&task).Error; err != nil {
+	if err := preloadGenerationTaskAdminRelations(dbFrom(ctx)).Where("id = ?", id).First(&task).Error; err != nil {
 		return nil, err
 	}
-	records, err := r.loadAdminRecords(ctx, []model.VideoUserGenerationTask{task})
-	if err != nil {
-		return nil, err
-	}
-	return &records[0], nil
+	return &task, nil
 }
 
-func (r *UserGenerationTaskRepo) loadAdminRecords(ctx context.Context, tasks []model.VideoUserGenerationTask) ([]UserGenerationTaskAdminRecord, error) {
-	records := make([]UserGenerationTaskAdminRecord, 0, len(tasks))
-	if len(tasks) == 0 {
-		return records, nil
-	}
-
-	userIDs := make([]uint64, 0, len(tasks))
-	modelIDs := make([]uint64, 0, len(tasks))
-	for i := range tasks {
-		userIDs = append(userIDs, tasks[i].UserID)
-		modelIDs = append(modelIDs, tasks[i].ModelID)
-	}
-
-	var users []model.VideoUser
-	if err := dbFrom(ctx).Unscoped().Where("id IN ?", userIDs).Find(&users).Error; err != nil {
-		return nil, err
-	}
-	userByID := make(map[uint64]*model.VideoUser, len(users))
-	for i := range users {
-		userByID[users[i].ID] = &users[i]
-	}
-
-	var models []model.VideoModel
-	if err := dbFrom(ctx).Unscoped().Where("id IN ?", modelIDs).Find(&models).Error; err != nil {
-		return nil, err
-	}
-	modelByID := make(map[uint64]*model.VideoModel, len(models))
-	for i := range models {
-		if models[i].ID > 0 {
-			modelByID[uint64(models[i].ID)] = &models[i]
-		}
-	}
-
-	for i := range tasks {
-		records = append(records, UserGenerationTaskAdminRecord{
-			Task: tasks[i], User: userByID[tasks[i].UserID], Model: modelByID[tasks[i].ModelID],
-		})
-	}
-	return records, nil
+func preloadGenerationTaskAdminRelations(dao *gorm.DB) *gorm.DB {
+	preloadUnscoped := func(relation *gorm.DB) *gorm.DB { return relation.Unscoped() }
+	return dao.
+		Preload("Template", preloadUnscoped).
+		Preload("User", preloadUnscoped).
+		Preload("AIModel", preloadUnscoped).
+		Preload("AIModel.Platform", preloadUnscoped)
 }
 
 // ListActive returns recoverable tasks that still require polling or local

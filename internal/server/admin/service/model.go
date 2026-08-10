@@ -1,14 +1,13 @@
 package service
 
 import (
+	"ai-video/internal/gen/model"
+	"ai-video/internal/repository"
 	"context"
 	"errors"
 	"net/url"
 	"regexp"
 	"strings"
-
-	"ai-video/internal/gen/model"
-	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
 )
@@ -34,10 +33,11 @@ func NewModelService() *ModelService {
 }
 
 type ListModelRequest struct {
-	Keyword    string  `form:"keyword"`
-	PlatformID *int64  `form:"platform_id" binding:"omitempty,gt=0"`
-	ModelType  uint32  `form:"model_type"`
-	Status     *uint32 `form:"status" binding:"omitempty,oneof=0 1"`
+	Keyword       string   `form:"keyword"`
+	PlatformID    *int64   `form:"platform_id" binding:"omitempty,gt=0"`
+	ModelType     uint32   `form:"model_type"`
+	ModelFeatures []uint32 `form:"model_features" collection_format:"csv" binding:"omitempty,dive,oneof=1 2 3 4"`
+	Status        *uint32  `form:"status" binding:"omitempty,oneof=0 1"`
 }
 
 type ModelPayload struct {
@@ -45,6 +45,7 @@ type ModelPayload struct {
 	Name           string `json:"name" binding:"required,max=64"`
 	Code           string `json:"code" binding:"required,max=32"`
 	ModelType      uint32 `json:"model_type" binding:"required,oneof=1 2"`
+	ModelFeatures  uint32 `json:"model_features" binding:"required,oneof=1 2 3 4"`
 	Version        string `json:"version" binding:"required,max=16"`
 	HostURL        string `json:"host_url" binding:"required,max=255"`
 	SubmitEndpoint string `json:"submit_endpoint" binding:"required,max=255"`
@@ -72,6 +73,7 @@ type ModelView struct {
 	Name             string             `json:"name"`
 	Code             string             `json:"code"`
 	ModelType        uint32             `json:"model_type"`
+	ModelFeatures    uint32             `json:"model_features"`
 	Version          string             `json:"version"`
 	HostURL          string             `json:"host_url"`
 	SubmitEndpoint   string             `json:"submit_endpoint"`
@@ -91,7 +93,7 @@ type ModelView struct {
 func (s *ModelService) List(ctx context.Context, page, pageSize int, req *ListModelRequest) ([]ModelView, int64, error) {
 	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.ModelListFilter{
 		Keyword: strings.TrimSpace(req.Keyword), PlatformID: req.PlatformID,
-		ModelType: req.ModelType, Status: req.Status,
+		ModelType: req.ModelType, ModelFeatures: req.ModelFeatures, Status: req.Status,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -227,8 +229,11 @@ func (s *ModelService) validatePayload(ctx context.Context, req *ModelPayload, c
 	req.APIKey = strings.TrimSpace(req.APIKey)
 	req.Icon = strings.TrimSpace(req.Icon)
 	req.Description = strings.TrimSpace(req.Description)
-	if req.Name == "" || req.ModelType == 0 || req.Version == "" || !modelCodePattern.MatchString(req.Code) {
+	if req.Name == "" || req.ModelType == 0 || req.ModelFeatures == 0 || req.Version == "" || !modelCodePattern.MatchString(req.Code) {
 		return nil, errors.New("模型名称、类型和版本不能为空，模型编码只能包含字母、数字、点、下划线和中划线")
+	}
+	if req.ModelFeatures > 4 {
+		return nil, errors.New("模型类型必须是 1=通用、2=模板、3=生成模型或 4=工具")
 	}
 	parsed, err := url.Parse(req.HostURL)
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.User != nil {
@@ -271,7 +276,7 @@ func modelEndpoints(req *ModelPayload) []string {
 func applyModelPayload(item *model.VideoModel, req *ModelPayload) {
 	item.PlatformID = req.PlatformID
 	item.Name, item.Code = req.Name, req.Code
-	item.ModelType, item.Version = req.ModelType, req.Version
+	item.ModelType, item.ModelFeatures, item.Version = req.ModelType, req.ModelFeatures, req.Version
 	item.HostURL = req.HostURL
 	item.SubmitEndpoint, item.StatusEndpoint = req.SubmitEndpoint, req.StatusEndpoint
 	item.RequestMethod, item.AuthType = req.RequestMethod, req.AuthType
@@ -289,7 +294,7 @@ func modelView(item *model.VideoModel, apiKeyConfigured bool) ModelView {
 	}
 	return ModelView{
 		ID: item.ID, PlatformID: item.PlatformID, Platform: platform,
-		Name: item.Name, Code: item.Code, ModelType: item.ModelType, Version: item.Version,
+		Name: item.Name, Code: item.Code, ModelType: item.ModelType, ModelFeatures: item.ModelFeatures, Version: item.Version,
 		HostURL: item.HostURL, SubmitEndpoint: item.SubmitEndpoint, StatusEndpoint: item.StatusEndpoint,
 		RequestMethod: item.RequestMethod, AuthType: item.AuthType, APIKey: masked,
 		APIKeyConfigured: apiKeyConfigured, Score: item.Score, Icon: item.Icon, Description: item.Description, Status: item.Status,

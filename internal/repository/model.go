@@ -16,10 +16,11 @@ type ModelRepo struct {
 func NewModelRepo() *ModelRepo { return &ModelRepo{} }
 
 type ModelListFilter struct {
-	Keyword    string
-	PlatformID *int64
-	ModelType  uint32
-	Status     *uint32
+	Keyword       string
+	PlatformID    *int64
+	ModelType     uint32
+	ModelFeatures []uint32
+	Status        *uint32
 }
 
 func (r *ModelRepo) PageList(ctx context.Context, page, pageSize int, filter *ModelListFilter) ([]model.VideoModel, int64, error) {
@@ -34,6 +35,9 @@ func (r *ModelRepo) PageList(ctx context.Context, page, pageSize int, filter *Mo
 		}
 		if filter.Status != nil {
 			dao = dao.Where(q.Status.Eq(*filter.Status))
+		}
+		if len(filter.ModelFeatures) > 0 {
+			dao = dao.Where(q.ModelFeatures.In(filter.ModelFeatures...))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
@@ -133,6 +137,8 @@ func (r *ModelRepo) listEnabled(ctx context.Context, modelType uint32) ([]model.
 		Joins("JOIN "+model.TableNameVideoPlatform+" ON "+model.TableNameVideoPlatform+".id = "+model.TableNameVideoModel+".platform_id").
 		Where(model.TableNameVideoModel+".status = ?", 1).
 		Where(model.TableNameVideoPlatform+".status = ?", 1).
+		Where(model.TableNameVideoModel + ".model_features IN (1,3)").
+		Where(model.TableNameVideoModel + ".deleted_at IS NULL").
 		Where(model.TableNameVideoPlatform + ".deleted_at IS NULL")
 	if modelType != 0 {
 		db = db.Where(model.TableNameVideoModel+".model_type = ?", modelType)
@@ -146,7 +152,7 @@ func (r *ModelRepo) listEnabled(ctx context.Context, modelType uint32) ([]model.
 func (r *ModelRepo) UpdateFields(ctx context.Context, item *model.VideoModel) error {
 	q := qFrom(ctx).VideoModel
 	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID)).Select(
-		q.PlatformID, q.Name, q.Code, q.ModelType, q.Version,
+		q.PlatformID, q.Name, q.Code, q.ModelType, q.ModelFeatures, q.Version,
 		q.SubmitEndpoint, q.StatusEndpoint, q.RequestMethod, q.AuthType,
 		q.Description, q.Status, q.HostURL, q.Score, q.Icon,
 	).Updates(item)

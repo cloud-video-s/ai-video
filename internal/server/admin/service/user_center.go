@@ -45,6 +45,8 @@ type UserCenterWork struct {
 	ID              uint64     `json:"id"`
 	ModelID         uint64     `json:"model_id"`
 	ModelName       string     `json:"model_name"`
+	PlatformName    string     `json:"platform_name"`
+	TemplateName    string     `json:"template_name"`
 	ClientRequestID string     `json:"client_request_id"`
 	TaskCode        string     `json:"task_code"`
 	ThirdTaskCode   string     `json:"third_task_code"`
@@ -163,23 +165,31 @@ func userCenterPointsLedgers(records []repository.UserPointsLedgerRecord) []User
 	return items
 }
 
-func userCenterWorks(records []repository.UserGenerationTaskAdminRecord) []UserCenterWork {
+func userCenterWorks(records []model.VideoUserGenerationTask) []UserCenterWork {
 	items := make([]UserCenterWork, 0, len(records))
-	for _, record := range records {
-		work := record.Task
+	for _, work := range records {
 		modelName := ""
+		templateName := ""
+		platformName := ""
 		taskType := work.TaskType
-		if record.Model != nil {
-			modelName = record.Model.Name
+		if work.AIModel != nil {
+			modelName = work.AIModel.Name
 			if taskType == 0 {
-				taskType = record.Model.ModelType
+				taskType = work.AIModel.ModelType
 			}
+			if work.AIModel.Platform.ID != 0 {
+				platformName = work.AIModel.Platform.Name
+			}
+		}
+		if work.Template.ID != 0 {
+			templateName = work.Template.Name
 		}
 		items = append(items, UserCenterWork{
 			ID: work.ID, TaskCode: work.TaskCode, ModelID: work.ModelID, ModelName: modelName,
+			PlatformName:    platformName,
 			ClientRequestID: work.ClientRequestID, ThirdTaskCode: work.ThirdTaskCode,
 			TaskType: taskType, Status: work.Status, Progress: work.Progress,
-			UsageDuration: work.UsageDuration, Score: work.Score,
+			UsageDuration: work.UsageDuration, Score: work.Score, TemplateName: templateName,
 			ErrorMessage: work.ErrorMessage, SubmittedAt: nonZeroTime(work.SubmittedAt),
 			FinishedAt: nonZeroTime(work.FinishedAt), CreatedAt: work.CreatedAt,
 		})
