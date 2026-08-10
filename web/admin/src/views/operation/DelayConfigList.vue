@@ -186,8 +186,8 @@ import {
   batchUpdateDelayConfigValues, createDelayConfig, deleteDelayConfig, getDelayConfigGroups,
   getDelayConfigList, syncDelayConfigs, updateDelayConfig,
   type DelayConfig, type DelayConfigPayload,
-} from '@/api/delayConfig'
-import { useUserStore } from '@/store/user'
+} from '@/api/delayConfig.ts'
+import { useUserStore } from '@/store/user.ts'
 
 const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('system:delay-config:add'))

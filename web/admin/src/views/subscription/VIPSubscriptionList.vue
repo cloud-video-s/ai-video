@@ -329,8 +329,8 @@ type VIPSubscriptionForm = VIPSubscriptionPayload & { id: number }
 const vipTypeOptions = [
   { value: 1, label: 'OB' },
   { value: 2, label: 'OB 拦截' },
-  { value: 3, label: '老用户启动' },
-  { value: 4, label: '老用户返回拦截' },
+  { value: 3, label: '老用户启动付费' },
+  { value: 4, label: '老用户启动付费返回拦截' },
   { value: 5, label: '默认付费页' },
   { value: 6, label: '默认付费页拦截' },
   { value: 7, label: '卸载拦截' },

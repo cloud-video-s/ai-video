@@ -38,6 +38,11 @@ export interface VideoModel {
 
 export type VideoModelPayload = Omit<VideoModel, 'id' | 'platform' | 'api_key_configured' | 'created_at' | 'updated_at'>
 
+export interface ModelParameterOption {
+  value: unknown
+  alias: string
+}
+
 export interface ModelParameter {
   id: number
   model_id: number
@@ -47,16 +52,25 @@ export interface ModelParameter {
   is_required: number
   default_value: unknown
   allowed_values: unknown[]
+  allowed_value_options?: ModelParameterOption[]
   constraints: Record<string, unknown>
   description: string
   sort_order: number
   alias: string
   display_type: 'string' | 'integer' | 'boolean' | 'object' | 'array' | 'select' | 'time'
+  is_display?: 0 | 1
   created_at: string
   updated_at: string
 }
 
-export type ModelParameterPayload = Omit<ModelParameter, 'id' | 'model_id' | 'created_at' | 'updated_at'>
+export type ModelParameterPayload = Omit<
+  ModelParameter,
+  'id' | 'model_id' | 'created_at' | 'updated_at' | 'allowed_values' | 'allowed_value_options' | 'is_display'
+> & {
+  allowed_values?: unknown[]
+  allowed_value_options?: ModelParameterOption[]
+  is_display?: 0 | 1
+}
 
 export function getPlatformList(params: Record<string, unknown>) {
   return request.get('/admin/platforms', { params })

@@ -148,8 +148,8 @@ import {
   updateCountryStatus,
   type Country,
   type CountryPayload,
-} from '@/api/country'
-import { useUserStore } from '@/store/user'
+} from '@/api/country.ts'
+import { useUserStore } from '@/store/user.ts'
 
 const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('system:country:add'))

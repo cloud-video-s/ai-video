@@ -96,14 +96,18 @@ export interface UserPointsLedger {
   occurred_at: string
 }
 
-export interface UserWork {
+export interface UserTask {
   id: number
-  model_config_id: number
+  model_id: number
+  model_name: string
   client_request_id: string
-  external_task_id: string
-  status: string
+  task_code: string
+  third_task_code: string
+  task_type: number
+  status: number
   progress: number
   usage_duration: number
+  score: number
   error_message?: string
   submitted_at: string | null
   finished_at: string | null
@@ -138,7 +142,7 @@ export interface UserCenterDetail {
   points_ledgers: UserPointsLedger[]
   points_ledger_total: number
   points_summary: { income_total: number; expense_total: number }
-  works: UserWork[]
+  works: UserTask[]
   work_total: number
   vip_points: number
   orders: UserOrder[]

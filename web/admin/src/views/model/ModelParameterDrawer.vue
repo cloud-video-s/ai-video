@@ -26,7 +26,7 @@
       <el-table-column label="配置类型" width="115" align="center">
         <template #default="{ row }">
           <el-tag :type="row.parameter_type === 1 ? 'success' : 'warning'" effect="plain">
-            {{ row.parameter_type === 1 ? '选项参数' : '请求参数' }}
+            {{ row.parameter_type === 1 ? '选项参数' : '限制参数' }}
           </el-tag>
         </template>
       </el-table-column>
@@ -35,6 +35,11 @@
       </el-table-column>
       <el-table-column label="展示类型" width="105" align="center">
         <template #default="{ row }"><el-tag effect="plain">{{ row.display_type }}</el-tag></template>
+      </el-table-column>
+      <el-table-column label="展示" width="70" align="center">
+        <template #default="{ row }">
+          <el-tag :type="(row.is_display ?? 1) === 1 ? 'success' : 'info'" effect="plain">{{ (row.is_display ?? 1) === 1 ? '是' : '否' }}</el-tag>
+        </template>
       </el-table-column>
       <el-table-column label="配置内容" min-width="290">
         <template #default="{ row }">
@@ -46,7 +51,7 @@
                 :type="sameValue(value, row.default_value) ? 'primary' : 'info'"
                 :effect="sameValue(value, row.default_value) ? 'dark' : 'plain'"
               >
-                {{ displayValue(value) }}<span v-if="sameValue(value, row.default_value)">（默认）</span>
+                {{ optionLabel(row, index) }}<span v-if="sameValue(value, row.default_value)">（默认）</span>
               </el-tag>
             </div>
           </template>
@@ -82,7 +87,7 @@
         <el-form-item label="配置类型" required>
           <el-radio-group v-model="form.parameter_type" @change="handleParameterTypeChange">
             <el-radio-button :value="1">选项参数</el-radio-button>
-            <el-radio-button :value="2">请求参数</el-radio-button>
+            <el-radio-button :value="2">限制参数</el-radio-button>
           </el-radio-group>
         </el-form-item>
         <div class="form-grid">
@@ -119,24 +124,16 @@
 
         <template v-if="form.parameter_type === 1">
           <el-form-item label="选择值" required>
-            <el-select
-              v-model="form.option_values"
-              multiple
-              filterable
-              allow-create
-              default-first-option
-              :reserve-keyword="false"
-              style="width: 100%"
-              placeholder="输入后回车，可添加多个值"
-            >
-              <el-option v-for="value in form.option_values" :key="value" :label="value" :value="value" />
-            </el-select>
-            <div class="form-help">数值类型请输入数字；boolean 仅支持 true 或 false。</div>
-          </el-form-item>
-          <el-form-item label="默认选择" required>
-            <el-select v-model="form.option_default" style="width: 100%" placeholder="必须从选择值中指定一个">
-              <el-option v-for="value in form.option_values" :key="value" :label="value" :value="value" />
-            </el-select>
+            <div class="option-editor">
+              <div v-for="(item, index) in form.option_items" :key="index" class="option-row">
+                <el-input v-model="item.value" placeholder="模型值，例如 auto" />
+                <el-input v-model="item.alias" maxlength="255" placeholder="展示别名，例如 自动" />
+                <el-radio v-model="form.option_default_index" :value="index">默认</el-radio>
+                <el-button link type="danger" @click="removeOptionItem(index)">删除</el-button>
+              </div>
+              <el-button class="add-option-button" @click="addOptionItem">添加选择值</el-button>
+              <div class="form-help">每个模型值必须配置一个展示别名；数值类型请输入数字，boolean 仅支持 true 或 false。</div>
+            </div>
           </el-form-item>
         </template>
 
@@ -171,6 +168,9 @@
           <el-form-item label="排序">
             <el-input-number v-model="form.sort_order" :min="0" :max="999999" controls-position="right" />
           </el-form-item>
+          <el-form-item label="是否展示">
+            <el-switch v-model="form.is_display" :active-value="1" :inactive-value="0" active-text="是" inactive-text="否" />
+          </el-form-item>
         </div>
         <el-form-item label="参数说明">
           <el-input v-model="form.description" type="textarea" :rows="2" maxlength="255" show-word-limit placeholder="可选" />
@@ -193,12 +193,14 @@ import {
   getModelParameters,
   updateModelParameter,
   type ModelParameter,
+  type ModelParameterOption,
   type ModelParameterPayload,
   type VideoModel,
 } from '@/api/videoModel'
 
 type ValueType = ModelParameter['value_type']
 type DisplayType = ModelParameter['display_type']
+interface OptionItem { value: string; alias: string }
 
 const props = defineProps<{ modelValue: boolean; model: VideoModel | null }>()
 const emit = defineEmits<{ (event: 'update:modelValue', value: boolean): void }>()
@@ -220,8 +222,9 @@ interface ParameterForm {
   display_type: DisplayType
   parameter_type: 1 | 2
   is_required: number
-  option_values: string[]
-  option_default: string
+  is_display: 0 | 1
+  option_items: OptionItem[]
+  option_default_index: number
   has_default: boolean
   default_input: string
   constraints_text: string
@@ -237,15 +240,16 @@ const defaultForm: ParameterForm = {
   display_type: 'string',
   parameter_type: 1,
   is_required: 0,
-  option_values: [],
-  option_default: '',
+  is_display: 1,
+  option_items: [],
+  option_default_index: -1,
   has_default: false,
   default_input: '',
   constraints_text: '{\n  "max_length": 1000\n}',
   description: '',
   sort_order: 0,
 }
-const form = reactive<ParameterForm>({ ...defaultForm, option_values: [] })
+const form = reactive<ParameterForm>({ ...defaultForm, option_items: [] })
 
 const defaultPlaceholder = computed(() => {
   if (form.value_type === 'object') return '{"key":"value"}'
@@ -273,16 +277,24 @@ watch(() => props.model?.id, () => {
 })
 
 function resetForm() {
-  Object.assign(form, { ...defaultForm, option_values: [] })
+  Object.assign(form, { ...defaultForm, option_items: [] })
 }
 
 function openCreate() {
   resetForm()
+  addOptionItem()
   dialogVisible.value = true
 }
 
 function openEdit(row: ModelParameter) {
-  const optionValues = (row.allowed_values || []).map(displayValue)
+  const compatibleOptions = row.allowed_value_options?.length
+    ? row.allowed_value_options
+    : (row.allowed_values || []).map((value) => ({ value, alias: displayValue(value) }))
+  const optionItems = compatibleOptions.map((option) => ({
+    value: displayValue(option.value),
+    alias: option.alias,
+  }))
+  const defaultIndex = (row.allowed_values || []).findIndex((value) => sameValue(value, row.default_value))
   Object.assign(form, {
     id: row.id,
     param_key: row.param_key,
@@ -291,8 +303,9 @@ function openEdit(row: ModelParameter) {
     display_type: row.display_type,
     parameter_type: row.parameter_type,
     is_required: row.is_required,
-    option_values: optionValues,
-    option_default: row.default_value === null ? '' : displayValue(row.default_value),
+    is_display: row.is_display ?? 1,
+    option_items: optionItems,
+    option_default_index: defaultIndex,
     has_default: row.default_value !== null,
     default_input: row.default_value === null ? '' : inputValue(row.default_value, row.value_type),
     constraints_text: JSON.stringify(row.constraints || {}, null, 2),
@@ -309,10 +322,26 @@ function handleParameterTypeChange() {
 }
 
 function handleValueTypeChange() {
-  form.option_values = []
-  form.option_default = ''
+  form.option_items = [{ value: '', alias: '' }]
+  form.option_default_index = 0
   form.default_input = ''
   form.has_default = false
+}
+
+function addOptionItem() {
+  form.option_items.push({ value: '', alias: '' })
+  if (form.option_default_index < 0) form.option_default_index = 0
+}
+
+function removeOptionItem(index: number) {
+  form.option_items.splice(index, 1)
+  if (form.option_items.length === 0) {
+    form.option_default_index = -1
+  } else if (form.option_default_index === index) {
+    form.option_default_index = 0
+  } else if (form.option_default_index > index) {
+    form.option_default_index -= 1
+  }
 }
 
 async function handleSubmit() {
@@ -328,13 +357,20 @@ async function handleSubmit() {
 
   let defaultValue: unknown = null
   let allowedValues: unknown[] = []
+  let allowedValueOptions: ModelParameterOption[] = []
   let constraints: Record<string, unknown> = {}
   try {
     if (form.parameter_type === 1) {
-      if (form.option_values.length === 0) throw new Error('请至少添加一个选择值')
-      if (!form.option_values.includes(form.option_default)) throw new Error('请从选择值中指定一个默认选择')
-      allowedValues = form.option_values.map((value) => parseTypedValue(form.value_type, value))
-      defaultValue = parseTypedValue(form.value_type, form.option_default)
+      if (form.option_items.length === 0) throw new Error('请至少添加一个选择值')
+      if (form.option_default_index < 0 || form.option_default_index >= form.option_items.length) throw new Error('请指定一个默认选择')
+      const aliases = form.option_items.map((item, index) => {
+        const alias = item.alias.trim()
+        if (!alias) throw new Error(`第 ${index + 1} 个选择值的别名不能为空`)
+        return alias
+      })
+      allowedValues = form.option_items.map((item) => parseTypedValue(form.value_type, item.value))
+      allowedValueOptions = allowedValues.map((value, index) => ({ value, alias: aliases[index] }))
+      defaultValue = allowedValues[form.option_default_index]
       const unique = new Set(allowedValues.map((value) => JSON.stringify(value)))
       if (unique.size !== allowedValues.length) throw new Error('转换后的选择值不能重复')
     } else {
@@ -356,8 +392,10 @@ async function handleSubmit() {
     display_type: form.display_type,
     parameter_type: form.parameter_type,
     is_required: form.parameter_type === 2 ? form.is_required : 0,
+    is_display: form.is_display,
     default_value: defaultValue,
     allowed_values: allowedValues,
+    allowed_value_options: allowedValueOptions,
     constraints,
     description: form.description.trim(),
     sort_order: form.sort_order,
@@ -420,6 +458,13 @@ function displayJSON(value: unknown): string {
 function sameValue(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
 }
+
+function optionLabel(parameter: ModelParameter, index: number): string {
+  const option = parameter.allowed_value_options?.[index]
+  const value = displayValue(option?.value ?? parameter.allowed_values[index])
+  const alias = option?.alias || value
+  return `${alias}（${value}）`
+}
 </script>
 
 <style scoped>
@@ -436,7 +481,12 @@ function sameValue(left: unknown, right: unknown): boolean {
 .form-help { margin-top: 5px; color: #909399; font-size: 12px; line-height: 18px; }
 .default-value-row { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; width: 100%; }
 .default-value-row :deep(.el-input), .default-value-row :deep(.el-textarea) { width: 100%; }
+.option-editor { width: 100%; }
+.option-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto; align-items: center; gap: 8px; margin-bottom: 8px; }
+.option-row :deep(.el-radio) { margin-right: 0; }
+.add-option-button { width: 100%; }
 @media (max-width: 720px) {
   .drawer-toolbar, .form-grid { grid-template-columns: 1fr; }
+  .option-row { grid-template-columns: 1fr; }
 }
 </style>

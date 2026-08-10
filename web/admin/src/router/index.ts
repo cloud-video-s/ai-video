@@ -64,15 +64,15 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '系统配置' },
       },
       {
-        path: 'system/delay-config',
-        name: 'SystemDelayConfig',
-        component: () => import('@/views/system/DelayConfigList.vue'),
+        path: 'operation/delay-config',
+        name: 'DelayConfig',
+        component: () => import('@/views/operation/DelayConfigList.vue'),
         meta: { title: 'OB 延迟配置' },
       },
       {
-        path: 'system/country',
-        name: 'SystemCountry',
-        component: () => import('@/views/system/CountryList.vue'),
+        path: 'operation/country',
+        name: 'Country',
+        component: () => import('@/views/operation/CountryList.vue'),
         meta: { title: '国家管理' },
       },
       {

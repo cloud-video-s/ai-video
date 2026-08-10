@@ -44,7 +44,7 @@
                 :type="sameValue(value, row.default_value) ? 'primary' : 'info'"
                 :effect="sameValue(value, row.default_value) ? 'dark' : 'plain'"
               >
-                {{ displayValue(value) }}<span v-if="sameValue(value, row.default_value)">（默认）</span>
+                {{ templateOptionLabel(row.param_key, value) }}<span v-if="sameValue(value, row.default_value)">（默认）</span>
               </el-tag>
             </div>
           </template>
@@ -120,13 +120,13 @@
               style="width: 100%"
               placeholder="请从模型允许值中选择"
             >
-              <el-option v-for="value in baseOptionValues" :key="value" :label="value" :value="value" />
+              <el-option v-for="value in baseOptionValues" :key="value" :label="definitionOptionLabel(value)" :value="value" />
             </el-select>
             <div class="form-help">模板可以收窄模型选项范围，但不能新增模型未定义的值。</div>
           </el-form-item>
           <el-form-item label="默认选择" required>
             <el-select v-model="form.option_default" style="width: 100%" placeholder="必须从选择值中指定一个">
-              <el-option v-for="value in form.option_values" :key="value" :label="value" :value="value" />
+              <el-option v-for="value in form.option_values" :key="value" :label="definitionOptionLabel(value)" :value="value" />
             </el-select>
           </el-form-item>
         </template>
@@ -360,6 +360,23 @@ function rawOptionValue(definition: ModelParameter, display: string): unknown {
   const value = (definition.allowed_values || []).find((item) => displayValue(item) === display)
   if (value === undefined) throw new Error(`选项值 ${display} 不属于模型允许范围`)
   return cloneJSON(value)
+}
+
+function definitionOptionLabel(display: string): string {
+  const definition = currentDefinition.value
+  if (!definition) return display
+  const option = (definition.allowed_value_options || []).find((item) => displayValue(item.value) === display)
+  const alias = option?.alias || ''
+  return alias ? `${alias}（${display}）` : display
+}
+
+function templateOptionLabel(paramKey: string, value: unknown): string {
+  const display = displayValue(value)
+  const definition = props.definitions.find((item) => item.param_key === paramKey)
+  if (!definition) return display
+  const option = (definition.allowed_value_options || []).find((item) => sameValue(item.value, value))
+  const alias = option?.alias || ''
+  return alias ? `${alias}（${display}）` : display
 }
 
 function cloneJSON<T>(value: T): T {

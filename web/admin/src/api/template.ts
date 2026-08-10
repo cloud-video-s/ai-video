@@ -68,7 +68,7 @@ export interface VideoTemplatePayload {
   model_parameters?: TemplateModelParameterPayload[]
 }
 
-export interface TemplateModelParameter extends Omit<ModelParameter, 'alias' | 'display_type'> {
+export interface TemplateModelParameter extends Omit<ModelParameter, 'alias' | 'display_type' | 'is_display' | 'allowed_value_options'> {
   template_id: number
 }
 

@@ -209,21 +209,33 @@
             </el-table>
           </el-tab-pane>
 
-          <el-tab-pane :label="`作品 (${detail.work_total})`" name="works">
+          <el-tab-pane :label="`任务 (${detail.work_total})`" name="tasks">
             <div v-if="detail.work_total > detail.works.length" class="result-hint table-hint">
               显示最近 {{ detail.works.length }} 条
             </div>
-            <el-table :data="detail.works" border empty-text="暂无作品">
-              <el-table-column prop="id" label="作品 ID" width="95" />
-              <el-table-column prop="model_config_id" label="模型 ID" width="95" />
-              <el-table-column prop="external_task_id" label="平台任务 ID" min-width="170" show-overflow-tooltip />
+            <el-table :data="detail.works" border empty-text="暂无任务">
+              <el-table-column prop="id" label="任务 ID" width="95" />
+              <el-table-column label="模型" min-width="160">
+                <template #default="{ row }">
+                  <div class="primary-text">{{ row.model_name || `模型 #${row.model_id}` }}</div>
+                  <div class="secondary-text">ID {{ row.model_id }}</div>
+                </template>
+              </el-table-column>
+              <el-table-column label="生成类型" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="taskTypeTagType(row.task_type)" size="small" effect="plain">{{ taskTypeLabel(row.task_type) }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="task_code" label="任务编码" min-width="180" show-overflow-tooltip />
+              <el-table-column prop="third_task_code" label="第三方任务号" min-width="170" show-overflow-tooltip />
               <el-table-column label="状态" width="110">
                 <template #default="{ row }">
-                  <el-tag :type="workStatusType(row.status)" size="small">{{ workStatusLabel(row.status) }}</el-tag>
+                  <el-tag :type="taskStatusType(row.status)" size="small">{{ taskStatusLabel(row.status) }}</el-tag>
                 </template>
               </el-table-column>
               <el-table-column label="进度" width="90"><template #default="{ row }">{{ row.progress }}%</template></el-table-column>
               <el-table-column label="生成耗时" width="110"><template #default="{ row }">{{ formatDuration(row.usage_duration) }}</template></el-table-column>
+              <el-table-column label="消耗积分" width="100" align="right"><template #default="{ row }">{{ formatNumber(row.score) }}</template></el-table-column>
               <el-table-column label="提交时间" min-width="175"><template #default="{ row }">{{ formatDate(row.submitted_at) }}</template></el-table-column>
               <el-table-column label="完成时间" min-width="175"><template #default="{ row }">{{ formatDate(row.finished_at) }}</template></el-table-column>
               <el-table-column label="创建时间" min-width="175"><template #default="{ row }">{{ formatDate(row.created_at) }}</template></el-table-column>
@@ -436,18 +448,30 @@ function ledgerBusinessLabel(ledger: UserPointsLedger) {
 
 type StatusTagType = 'primary' | 'success' | 'info' | 'warning' | 'danger'
 
-function workStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    submitting: '提交中', submitted: '已提交', pending: '排队中', running: '生成中',
-    downloading: '下载中', success: '成功', failure: '失败',
-  }
-  return labels[status] || status || '-'
+function taskTypeLabel(taskType: number) {
+  if (taskType === 1) return '图片'
+  if (taskType === 2) return '视频'
+  return '未知'
 }
 
-function workStatusType(status: string): StatusTagType {
-  if (status === 'success') return 'success'
-  if (status === 'failure') return 'danger'
-  if (status === 'running' || status === 'downloading') return 'warning'
+function taskTypeTagType(taskType: number): StatusTagType {
+  if (taskType === 1) return 'success'
+  if (taskType === 2) return 'warning'
+  return 'info'
+}
+
+function taskStatusLabel(status: number) {
+  const labels: Record<number, string> = {
+    1: '提交中', 2: '已提交', 3: '排队中', 4: '生成中',
+    5: '下载中', 6: '成功', 7: '失败',
+  }
+  return labels[Number(status)] || `未知（${status}）`
+}
+
+function taskStatusType(status: number): StatusTagType {
+  if (status === 6) return 'success'
+  if (status === 7) return 'danger'
+  if (status === 4 || status === 5) return 'warning'
   return 'info'
 }
 
