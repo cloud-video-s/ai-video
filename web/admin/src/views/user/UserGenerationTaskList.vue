@@ -30,6 +30,7 @@
             :value="String(item.id)"
           />
         </el-select>
+
         <el-select v-model="query.media_type" clearable placeholder="媒体类型">
           <el-option label="图片" value="1" />
           <el-option label="视频" value="2" />
@@ -66,8 +67,9 @@
             <div class="secondary-text">ID {{ row.user_id }} · {{ userAccount(row) }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="模型 / 类型" min-width="170">
+        <el-table-column label="平台 /模型 / 类型" min-width="170">
           <template #default="{ row }">
+            <div class="primary-text">{{ row.model?.platform?.name || `模型 #${row.model_id}` }}</div>
             <div class="primary-text">{{ row.model?.name || `模型 #${row.model_id}` }}</div>
             <div class="secondary-text">{{ row.model?.code || '-' }}</div>
             <el-tag class="media-tag" size="small" effect="plain" :type="row.media_type === 'video' ? 'warning' : 'success'">
@@ -75,23 +77,28 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态 / 进度" width="180">
+        <el-table-column label="模板" min-width="170">
+          <template #default="{ row }">
+            <div class="primary-text">{{ row.template?.name || `--` }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态 " width="180">
           <template #default="{ row }">
             <el-tag size="small" :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
-            <el-progress
-              class="task-progress"
-              :percentage="normalizeProgress(row.progress)"
-              :stroke-width="7"
-              :status="progressStatus(row.status)"
-            />
+<!--            <el-progress-->
+<!--              class="task-progress"-->
+<!--              :percentage="normalizeProgress(row.progress)"-->
+<!--              :stroke-width="7"-->
+<!--              :status="progressStatus(row.status)"-->
+<!--            />-->
           </template>
         </el-table-column>
-        <el-table-column label="生成结果" width="110" align="center">
-          <template #default="{ row }">
-            <strong>{{ row.result_count }}</strong>
-            <div class="secondary-text">{{ row.local_urls.length ? '本地文件' : row.remote_urls.length ? '远程文件' : '暂无结果' }}</div>
-          </template>
-        </el-table-column>
+<!--        <el-table-column label="生成结果" width="110" align="center">-->
+<!--          <template #default="{ row }">-->
+<!--            <strong>{{ row.result_count }}</strong>-->
+<!--            <div class="secondary-text">{{ row.local_urls.length ? '本地文件' : row.remote_urls.length ? '远程文件' : '暂无结果' }}</div>-->
+<!--          </template>-->
+<!--        </el-table-column>-->
         <el-table-column label="耗时" width="95" align="right">
           <template #default="{ row }">{{ formatDuration(row.usage_duration) }}</template>
         </el-table-column>

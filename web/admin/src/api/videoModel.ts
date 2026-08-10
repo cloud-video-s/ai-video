@@ -20,6 +20,7 @@ export interface VideoModel {
   name: string
   code: string
   model_type: number
+  model_features: 1 | 2 | 3 | 4
   version: string
   host_url: string
   submit_endpoint: string

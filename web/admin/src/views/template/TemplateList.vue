@@ -550,7 +550,7 @@ async function fetchTypes() {
 }
 
 async function fetchModels() {
-  const res: any = await getModelList({ page: 1, page_size: 100 })
+  const res: any = await getModelList({ page: 1, page_size: 100, model_features: '1,2' })
   modelOptions.value = arrayValue<VideoModel>(res.data?.list)
 }
 

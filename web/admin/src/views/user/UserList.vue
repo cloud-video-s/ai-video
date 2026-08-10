@@ -221,19 +221,20 @@
                   <div class="secondary-text">ID {{ row.model_id }}</div>
                 </template>
               </el-table-column>
+              <el-table-column prop="platform_name" label="平台" min-width="180" show-overflow-tooltip />
               <el-table-column label="生成类型" width="100">
                 <template #default="{ row }">
                   <el-tag :type="taskTypeTagType(row.task_type)" size="small" effect="plain">{{ taskTypeLabel(row.task_type) }}</el-tag>
                 </template>
               </el-table-column>
               <el-table-column prop="task_code" label="任务编码" min-width="180" show-overflow-tooltip />
-              <el-table-column prop="third_task_code" label="第三方任务号" min-width="170" show-overflow-tooltip />
+              <el-table-column prop="template_name" label="模板名称" min-width="170" show-overflow-tooltip />
               <el-table-column label="状态" width="110">
                 <template #default="{ row }">
                   <el-tag :type="taskStatusType(row.status)" size="small">{{ taskStatusLabel(row.status) }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="进度" width="90"><template #default="{ row }">{{ row.progress }}%</template></el-table-column>
+<!--              <el-table-column label="进度" width="90"><template #default="{ row }">{{ row.progress }}%</template></el-table-column>-->
               <el-table-column label="生成耗时" width="110"><template #default="{ row }">{{ formatDuration(row.usage_duration) }}</template></el-table-column>
               <el-table-column label="消耗积分" width="100" align="right"><template #default="{ row }">{{ formatNumber(row.score) }}</template></el-table-column>
               <el-table-column label="提交时间" min-width="175"><template #default="{ row }">{{ formatDate(row.submitted_at) }}</template></el-table-column>

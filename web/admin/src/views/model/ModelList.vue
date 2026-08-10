@@ -55,11 +55,14 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="平台 / 类型" min-width="160">
+        <el-table-column label="平台 / 生成类型 / 模型类型" min-width="180">
           <template #default="{ row }">
             <div>{{ row.platform?.name || `平台 #${row.platform_id}` }}</div>
             <el-tag class="type-tag" size="small" effect="plain">
               {{ getmodelType(row.model_type) }}
+            </el-tag>
+            <el-tag class="type-tag" size="small" effect="plain">
+              {{ getmodelFeatures(row.model_features) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -135,7 +138,12 @@
           <el-form-item label="模型版本" prop="version">
             <el-input v-model="form.version" maxlength="16" placeholder="例如：v3.0" />
           </el-form-item>
-          <el-form-item label="模型类型" prop="model_type">
+          <el-form-item label="模型类型" prop="model_features">
+            <el-select v-model="form.model_features" style="width: 100%" placeholder="请选择模型类型">
+              <el-option v-for="item in modelFeaturesOptions" :key="item.value" :label="item.key" :value="item.value" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="生成类型" prop="model_type">
             <el-select v-model="form.model_type" filterable allow-create default-first-option style="width: 100%">
               <el-option v-for="item in modelTypeOptions" :key="item.value" :label="item.key" :value="item.value" />
             </el-select>
@@ -246,6 +254,24 @@ const authTypeOptions = [
     value: 2,
   }
 ]
+const modelFeaturesOptions = [
+  {
+    key: "通用",
+    value: 1,
+  },
+  {
+    key: "模板",
+    value: 2,
+  },
+  {
+    key: "生成模型",
+    value: 3,
+  },
+  {
+    key: "工具",
+    value: 4,
+  }
+]
 const loading = ref(false)
 const submitting = ref(false)
 const dialogVisible = ref(false)
@@ -266,6 +292,7 @@ const defaultForm: ModelForm = {
   name: '',
   code: '',
   model_type: 1,
+  model_features: 1,
   version: '',
   host_url: '',
   submit_endpoint: '',
@@ -287,6 +314,7 @@ const rules: FormRules = {
     { pattern: /^[A-Za-z0-9._-]+$/, message: '仅支持字母、数字、点、下划线和中划线', trigger: 'blur' },
   ],
   model_type: [{ required: true, message: '请输入模型类型', trigger: 'change' }],
+  model_features: [{ required: true, message: '请选择模型类型', trigger: 'change' }],
   version: [{ required: true, message: '请输入模型版本', trigger: 'blur' }],
   host_url: [
     { required: true, message: '请输入 API 域名', trigger: 'blur' },
@@ -360,6 +388,7 @@ function openEdit(row: VideoModel) {
     name: row.name,
     code: row.code,
     model_type: row.model_type,
+    model_features: row.model_features,
     version: row.version,
     host_url: row.host_url,
     submit_endpoint: row.submit_endpoint,
@@ -393,6 +422,7 @@ async function handleSubmit() {
       name: form.name.trim(),
       code: form.code.trim(),
       model_type: form.model_type,
+      model_features: form.model_features,
       version: form.version.trim(),
       host_url: form.host_url.trim().replace(/\/+$/, ''),
       submit_endpoint: form.submit_endpoint.trim(),
@@ -440,6 +470,10 @@ function getmodelType(modelType: number){
     }
   }
   return ''
+}
+
+function getmodelFeatures(modelFeatures: number) {
+  return modelFeaturesOptions.find((item) => item.value === modelFeatures)?.key || `未知（${modelFeatures}）`
 }
 
 function authTypeLabel(authType: number) {
