@@ -75,33 +75,58 @@ func (p *ModelVerseProvider) submitUCloud(ctx context.Context, config *model.Vid
 	if err != nil {
 		return nil, err
 	}
+	modelCode := strings.TrimSpace(config.Code)
+	requestModel := strings.TrimSpace(request.Model)
+	if requestModel != "" && modelCode != "" && requestModel != modelCode {
+		return nil, fmt.Errorf("queued model %q does not match configured model %q", requestModel, modelCode)
+	}
+	if modelCode == "" {
+		modelCode = requestModel
+	}
 	client, err := ucloud.NewClient(ucloud.ClientConfig{
-		APIKey: modelAPIKey(config), BaseURL: modelBaseURL(config), SubmitEndpoint: config.SubmitEndpoint,
+		APIKey: modelAPIKey(config), BaseURL: modelBaseURL(config),
+		SubmitEndpoint: config.SubmitEndpoint, StatusEndpoint: config.StatusEndpoint,
 	})
 	if err != nil {
 		return nil, err
 	}
 	parameters := cloneMap(request.Parameters)
 	if input.FirstFrame != "" || input.EndFrame != "" {
-		if _, exists := parameters["image_list"]; exists {
-			return nil, errors.New("parameters.image_list is managed by input.first_frame and input.end_frame")
+		switch modelCode {
+		case ucloud.ModelKlingV3:
+			if _, exists := parameters["image"]; exists {
+				return nil, errors.New("parameters.image is managed by input.first_frame")
+			}
+			if _, exists := parameters["image_tail"]; exists {
+				return nil, errors.New("parameters.image_tail is managed by input.end_frame")
+			}
+			parameters["image"] = input.FirstFrame
+			if input.EndFrame != "" {
+				parameters["image_tail"] = input.EndFrame
+			}
+		case ucloud.ModelKlingO3:
+			if _, exists := parameters["image_list"]; exists {
+				return nil, errors.New("parameters.image_list is managed by input.first_frame and input.end_frame")
+			}
+			images := []ucloud.KlingO3ImageReference{{
+				ImageURL: input.FirstFrame, Type: ucloud.KlingO3ImageTypeFirstFrame,
+			}}
+			if input.EndFrame != "" {
+				images = append(images, ucloud.KlingO3ImageReference{
+					ImageURL: input.EndFrame, Type: ucloud.KlingO3ImageTypeEndFrame,
+				})
+			}
+			parameters["image_list"] = images
+		default:
+			return nil, fmt.Errorf("model %q does not support first/end frame input", modelCode)
 		}
-		images := []ucloud.KlingO3ImageReference{{
-			ImageURL: input.FirstFrame, Type: ucloud.KlingO3ImageTypeFirstFrame,
-		}}
-		if input.EndFrame != "" {
-			images = append(images, ucloud.KlingO3ImageReference{
-				ImageURL: input.EndFrame, Type: ucloud.KlingO3ImageTypeEndFrame,
-			})
-		}
-		parameters["image_list"] = images
 	}
 	generationType := ucloud.GenerationTypeImage
 	if config.ModelType == TaskTypeVideo {
 		generationType = ucloud.GenerationTypeVideo
 	}
 	response, err := client.TaskSubmit(ctx, ucloud.TaskSubmitRequest{
-		GenerationType: generationType, Prompt: input.Prompt,
+		Model: modelCode, GenerationType: generationType, Prompt: input.Prompt,
 		Images: input.Images, Video: input.Video, Parameters: parameters,
 	})
 	if err != nil {

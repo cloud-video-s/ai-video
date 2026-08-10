@@ -37,6 +37,7 @@ type ClientConfig struct {
 	APIKey          string
 	BaseURL         string
 	SubmitEndpoint  string
+	StatusEndpoint  string
 	HTTPClient      HTTPDoer
 	MaxResponseSize int64
 }
@@ -45,6 +46,7 @@ type Client struct {
 	apiKey          string
 	baseURL         *url.URL
 	submitEndpoint  string
+	statusEndpoint  string
 	httpClient      HTTPDoer
 	maxResponseSize int64
 }
@@ -69,15 +71,13 @@ func NewClient(config ClientConfig) (*Client, error) {
 		return nil, errors.New("ucloud base URL must not contain credentials, query, or fragment")
 	}
 	parsed.Path = strings.TrimRight(parsed.Path, "/") + "/"
-	submitEndpoint := strings.TrimSpace(config.SubmitEndpoint)
-	if submitEndpoint != "" {
-		reference, err := url.Parse(submitEndpoint)
-		if err != nil || reference.IsAbs() || reference.Host != "" || reference.RawQuery != "" || reference.Fragment != "" {
-			return nil, errors.New("ucloud submit endpoint must be a relative URL path")
-		}
-		if !strings.HasPrefix(submitEndpoint, "/") {
-			return nil, errors.New("ucloud submit endpoint must start with /")
-		}
+	submitEndpoint, err := validateClientEndpoint("submit", config.SubmitEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	statusEndpoint, err := validateClientEndpoint("status", config.StatusEndpoint)
+	if err != nil {
+		return nil, err
 	}
 
 	httpClient := config.HTTPClient
@@ -92,9 +92,25 @@ func NewClient(config ClientConfig) (*Client, error) {
 		apiKey:          apiKey,
 		baseURL:         parsed,
 		submitEndpoint:  submitEndpoint,
+		statusEndpoint:  statusEndpoint,
 		httpClient:      httpClient,
 		maxResponseSize: maxResponseSize,
 	}, nil
+}
+
+func validateClientEndpoint(name, value string) (string, error) {
+	endpoint := strings.TrimSpace(value)
+	if endpoint == "" {
+		return "", nil
+	}
+	reference, err := url.Parse(endpoint)
+	if err != nil || reference.IsAbs() || reference.Host != "" || reference.RawQuery != "" || reference.Fragment != "" {
+		return "", fmt.Errorf("ucloud %s endpoint must be a relative URL path", name)
+	}
+	if !strings.HasPrefix(endpoint, "/") {
+		return "", fmt.Errorf("ucloud %s endpoint must start with /", name)
+	}
+	return endpoint, nil
 }
 
 func (c *Client) generationEndpoint(defaultPath string) string {
@@ -104,10 +120,18 @@ func (c *Client) generationEndpoint(defaultPath string) string {
 	return defaultPath
 }
 
+func (c *Client) taskStatusEndpoint(defaultPath string) string {
+	if c.statusEndpoint != "" {
+		return c.statusEndpoint
+	}
+	return defaultPath
+}
+
 // TaskSubmitRequest is the application-facing generation request. Parameters
 // are decoded strictly according to the selected model; unknown model options
 // are rejected instead of being silently sent upstream.
 type TaskSubmitRequest struct {
+	Model          string                 `json:"model,omitempty"`
 	GenerationType GenerationType         `json:"generation_type"`
 	Prompt         string                 `json:"prompt"`
 	Images         []string               `json:"images,omitempty"`
@@ -129,6 +153,7 @@ type TaskSubmitResponse struct {
 // Kling v3 and Kling O3 return an asynchronous task ID. Doubao Seedream
 // returns generated image entries directly.
 func (c *Client) TaskSubmit(ctx context.Context, request TaskSubmitRequest) (*TaskSubmitResponse, error) {
+	request.Model = strings.TrimSpace(request.Model)
 	request.Prompt = strings.TrimSpace(request.Prompt)
 	request.Video = strings.TrimSpace(request.Video)
 	for i := range request.Images {
@@ -140,36 +165,41 @@ func (c *Client) TaskSubmit(ctx context.Context, request TaskSubmitRequest) (*Ta
 
 	switch request.GenerationType {
 	case GenerationTypeVideo:
-		//TaskModel, ok := request.Parameters["model"]
-		//if ok {
-		//	TaskModel = strings.TrimSpace(request.Parameters["model"].(string))
-		//} else {
-		//	TaskModel = ""
-		//}
-		//if TaskModel == "" {
-		//	TaskModel = ModelKlingO3
-		//}
-		//switch TaskModel {
-		//case ModelKlingO3:
-		upstream, err := buildKlingO3Request(request)
-		if err != nil {
-			return nil, err
+		model := request.Model
+		if model == "" {
+			model = ModelKlingO3
 		}
-		result, err := c.SubmitKlingO3Task(ctx, upstream)
-		if err != nil {
-			return nil, err
+		switch model {
+		case ModelKlingV3:
+			upstream, err := buildKlingV3Request(request)
+			if err != nil {
+				return nil, err
+			}
+			result, err := c.SubmitKlingV3Task(ctx, upstream)
+			if err != nil {
+				return nil, err
+			}
+			return &TaskSubmitResponse{
+				Model: ModelKlingV3, GenerationType: GenerationTypeVideo,
+				TaskID: result.Output.TaskID, RequestID: result.RequestID,
+			}, nil
+		case ModelKlingO3:
+			upstream, err := buildKlingO3Request(request)
+			if err != nil {
+				return nil, err
+			}
+			result, err := c.SubmitKlingO3Task(ctx, upstream)
+			if err != nil {
+				return nil, err
+			}
+			return &TaskSubmitResponse{
+				Model: ModelKlingO3, GenerationType: GenerationTypeVideo,
+				TaskID: result.Output.TaskID, RequestID: result.RequestID,
+			}, nil
+		default:
+			return nil, fmt.Errorf("model %q does not support video generation", model)
 		}
-		return &TaskSubmitResponse{
-			Model: ModelKlingO3, GenerationType: GenerationTypeVideo,
-			TaskID: result.Output.TaskID, RequestID: result.RequestID,
-		}, nil
-		//default:
-		//	return nil, fmt.Errorf("model %q does not support video generation", TaskModel)
-		//}
 	case GenerationTypeImage:
-		//if !isDoubaoSeedreamModel(request.Model) {
-		//	return nil, fmt.Errorf("model %q does not support image generation", request.Model)
-		//}
 		if request.Video != "" {
 			return nil, errors.New("video is only supported for video generation")
 		}
@@ -233,6 +263,25 @@ func (c *Client) postJSON(ctx context.Context, endpointPath string, request, res
 	return nil
 }
 
+func (c *Client) getJSON(ctx context.Context, endpointPath string, query url.Values, response any) error {
+	httpResponse, err := c.get(ctx, endpointPath, query)
+	if err != nil {
+		return err
+	}
+	defer httpResponse.Body.Close()
+	raw, err := readLimited(httpResponse.Body, c.maxResponseSize)
+	if err != nil {
+		return err
+	}
+	if httpResponse.StatusCode < http.StatusOK || httpResponse.StatusCode >= http.StatusMultipleChoices {
+		return parseAPIError(httpResponse.StatusCode, raw)
+	}
+	if err := json.Unmarshal(raw, response); err != nil {
+		return fmt.Errorf("decode ucloud response: %w", err)
+	}
+	return nil
+}
+
 func (c *Client) post(ctx context.Context, endpointPath string, body io.Reader, accept string) (*http.Response, error) {
 	reference, err := url.Parse(strings.TrimLeft(endpointPath, "/"))
 	if err != nil {
@@ -246,6 +295,26 @@ func (c *Client) post(ctx context.Context, endpointPath string, body io.Reader, 
 	request.Header.Set("Authorization", "Bearer "+c.apiKey)
 	request.Header.Set("Content-Type", "application/json")
 	//request.Header.Set("Accept", accept)
+	response, err := c.httpClient.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("request ucloud API: %w", err)
+	}
+	return response, nil
+}
+
+func (c *Client) get(ctx context.Context, endpointPath string, query url.Values) (*http.Response, error) {
+	reference, err := url.Parse(strings.TrimLeft(endpointPath, "/"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid ucloud endpoint: %w", err)
+	}
+	endpoint := c.baseURL.ResolveReference(reference)
+	endpoint.RawQuery = query.Encode()
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("create ucloud request: %w", err)
+	}
+	request.Header.Set("Authorization", "Bearer "+c.apiKey)
+	request.Header.Set("Accept", "application/json")
 	response, err := c.httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("request ucloud API: %w", err)

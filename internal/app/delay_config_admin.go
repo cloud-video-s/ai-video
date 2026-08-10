@@ -48,18 +48,18 @@ func SeedDelayConfigAdmin() error {
 		}
 
 		var root model.VideoMenu
-		if err := tx.Where("path = ? AND type = ?", "/system", 0).First(&root).Error; err != nil {
+		if err := tx.Where("path = ? AND type = ?", "/operation", 0).First(&root).Error; err != nil {
 			return err
 		}
 		page, err := upsertDelayConfigMenu(tx, model.VideoMenu{
 			ParentID:   root.ID,
 			Name:       "OB延迟配置",
-			Path:       "/system/delay-config",
-			Component:  "system/delay-config/index",
+			Path:       "/operation/delay-config",
+			Component:  "operation/delay-config/index",
 			Icon:       "Timer",
 			Sort:       6,
 			Type:       1,
-			Permission: "system:delay-config:list",
+			Permission: "operation:delay-config:list",
 			Visible:    1,
 			Status:     1,
 		})
@@ -74,10 +74,10 @@ func SeedDelayConfigAdmin() error {
 			menu model.VideoMenu
 			apis []model.VideoAPI
 		}{
-			{menu: model.VideoMenu{ParentID: page.ID, Name: "新增延迟配置", Sort: 1, Type: 2, Permission: "system:delay-config:add", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[3]}},
-			{menu: model.VideoMenu{ParentID: page.ID, Name: "编辑延迟配置", Sort: 2, Type: 2, Permission: "system:delay-config:edit", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[4], apis[5]}},
-			{menu: model.VideoMenu{ParentID: page.ID, Name: "删除延迟配置", Sort: 3, Type: 2, Permission: "system:delay-config:delete", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[6]}},
-			{menu: model.VideoMenu{ParentID: page.ID, Name: "同步延迟配置", Sort: 4, Type: 2, Permission: "system:delay-config:sync", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[7]}},
+			{menu: model.VideoMenu{ParentID: page.ID, Name: "新增延迟配置", Sort: 1, Type: 2, Permission: "operation:delay-config:add", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[3]}},
+			{menu: model.VideoMenu{ParentID: page.ID, Name: "编辑延迟配置", Sort: 2, Type: 2, Permission: "operation:delay-config:edit", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[4], apis[5]}},
+			{menu: model.VideoMenu{ParentID: page.ID, Name: "删除延迟配置", Sort: 3, Type: 2, Permission: "operation:delay-config:delete", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[6]}},
+			{menu: model.VideoMenu{ParentID: page.ID, Name: "同步延迟配置", Sort: 4, Type: 2, Permission: "operation:delay-config:sync", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[7]}},
 		}
 		allMenus := []model.VideoMenu{*page}
 		for _, item := range buttons {

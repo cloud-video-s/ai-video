@@ -59,14 +59,6 @@ func (d *AppUserRepo) GetByLookup(ctx context.Context, value string) (*model.Vid
 		user.LoginAccount.Eq(value), user.Email.Eq(value), user.DeviceCode.Eq(value),
 		user.IMEI.Eq(value), user.Phone.Eq(value), user.ThirdCode.Eq(value),
 	}
-	identity := q.VideoUserIdentity
-	var identityUserIDs []uint64
-	if err := identity.WithContext(ctx).Where(identity.Email.Eq(value)).Pluck(identity.UserID, &identityUserIDs); err != nil {
-		return nil, err
-	}
-	if len(identityUserIDs) > 0 {
-		conditions = append(conditions, user.ID.In(identityUserIDs...))
-	}
 	return user.WithContext(ctx).Where(field.Or(conditions...)).First()
 }
 
@@ -126,27 +118,68 @@ func (d *AppUserRepo) Update(ctx context.Context, id uint64, updates map[string]
 	return err
 }
 
-// ExpireDueSubscriptions atomically expires users whose active subscription
-// has reached its VIP end time. Keeping the eligibility predicates on the
-// update prevents a concurrent renewal committed first from being overwritten.
+// ExpireDueSubscriptions expires users whose active subscription has reached
+// its VIP end time. Each user is locked and rechecked so a concurrent renewal
+// committed first is retained, and every removed available subscription point
+// balance receives a matching ledger entry.
 func (d *AppUserRepo) ExpireDueSubscriptions(ctx context.Context, now time.Time) (int64, error) {
 	q := qFrom(ctx).VideoUser
-	result, err := q.WithContext(ctx).
+	var userIDs []uint64
+	if err := q.WithContext(ctx).
 		Where(
 			q.SubscriptionStatus.Eq(domain.AppUserSubscriptionSubscribed),
 			q.VipExpiresAt.IsNotNull(),
 			q.VipExpiresAt.Lte(now),
 		).
-		Updates(map[string]any{
-			"subscription_status": domain.AppUserSubscriptionCancelled,
-			"vip_points":          uint64(0),
-			"vip_expires_at":      time.Now(),
-			"user_type":           domain.AppUserTypeFree,
-		})
-	if err != nil {
+		Pluck(q.ID, &userIDs); err != nil {
 		return 0, err
 	}
-	return result.RowsAffected, nil
+
+	var expiredUsers int64
+	for _, userID := range userIDs {
+		expired := false
+		err := Transaction(ctx, func(txCtx context.Context) error {
+			user, err := d.GetByIDForUpdate(txCtx, userID)
+			if err != nil {
+				return err
+			}
+			if user.SubscriptionStatus != domain.AppUserSubscriptionSubscribed ||
+				user.VipExpiresAt == nil || user.VipExpiresAt.After(now) {
+				return nil
+			}
+
+			if user.VipPoints > 0 {
+				beforeBalance := user.VipPoints + user.PointsBalance
+				ledger := &model.VideoUserPointsLedger{
+					UserID: user.ID, Direction: int8(domain.PointsDirectionExpense),
+					PointsChange: -user.VipPoints, BalanceBefore: uint64(beforeBalance),
+					BalanceAfter: uint64(user.PointsBalance), SourceType: uint32(domain.PointsSourceExpireDeduct),
+					Description: "subscription expired points deduction",
+					OccurredAt:  *user.VipExpiresAt, CreatedAt: now,
+				}
+				if err := qFrom(txCtx).VideoUserPointsLedger.WithContext(txCtx).Create(ledger); err != nil {
+					return err
+				}
+			}
+			if err := d.Update(txCtx, user.ID, map[string]any{
+				"subscription_status": domain.AppUserSubscriptionExpired,
+				"vip_points":          uint64(0),
+				"vip_expires_at":      nil,
+				"user_type":           domain.AppUserTypeFree,
+			}); err != nil {
+				return err
+			}
+			expired = true
+			return nil
+		})
+		if err != nil {
+			return expiredUsers, err
+		}
+		if expired {
+			expiredUsers++
+		}
+	}
+	return expiredUsers, nil
 }
 
 // IncrementTokenVersion atomically rotates the user's session version. API
@@ -230,14 +263,6 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 			}
 			if id, err := strconv.ParseUint(strings.TrimSpace(filter.Keyword), 10, 64); err == nil {
 				conditions = append(conditions, user.ID.Eq(id))
-			}
-			identity := q.VideoUserIdentity
-			var identityUserIDs []uint64
-			if err := identity.WithContext(ctx).Where(identity.Email.Like(keyword)).Pluck(identity.UserID, &identityUserIDs); err != nil {
-				return nil, 0, err
-			}
-			if len(identityUserIDs) > 0 {
-				conditions = append(conditions, user.ID.In(identityUserIDs...))
 			}
 			dao = dao.Where(field.Or(conditions...))
 		}

@@ -11,6 +11,7 @@ import (
 
 	"ai-video/internal/commerce"
 	"ai-video/internal/generation"
+	"ai-video/internal/modelparameter"
 	apiservice "ai-video/internal/server/api/server"
 
 	"ai-video/internal/gen/model"
@@ -103,7 +104,40 @@ type templateTaskRequest struct {
 	Input      templateTaskInput `json:"input" binding:"required"`
 }
 
+type loginDocRequest struct {
+	DeviceCode           string     `json:"device_code" binding:"required,max=128"`
+	ForceNew             bool       `json:"force_new"`
+	FirstOpenedAt        *time.Time `json:"first_opened_at"`
+	LastOpenedAt         *time.Time `json:"last_opened_at"`
+	AttributionClickedAt *time.Time `json:"attribution_clicked_at"`
+}
+
+type thirdPartyLoginDocRequest struct {
+	ThirdType            string     `json:"third_type" binding:"required,max=50"`
+	ThirdCode            string     `json:"third_code" binding:"omitempty,max=100"`
+	Email                string     `json:"email" binding:"omitempty,max=50"`
+	IDToken              string     `json:"id_token" binding:"omitempty,max=16384"`
+	IdentityToken        string     `json:"identity_token" binding:"omitempty,max=16384"`
+	Nonce                string     `json:"nonce" binding:"omitempty,max=255"`
+	ForceNew             bool       `json:"force_new"`
+	FirstOpenedAt        *time.Time `json:"first_opened_at"`
+	LastOpenedAt         *time.Time `json:"last_opened_at"`
+	AttributionClickedAt *time.Time `json:"attribution_clicked_at"`
+}
+
 var requestBodyExamples = map[string]any{
+	"POST /api/auth/login": map[string]any{
+		"device_code": "device-0123456789abcdef", "force_new": false,
+	},
+	"POST /api/auth/apple_order_login": map[string]any{
+		"order_code": []string{"2000001209105682", "2000001209105683"}, "force_new": false,
+	},
+	"POST /api/third_binding": map[string]any{
+		"third_type": "apple", "identity_token": "provider-signed-jwt", "nonce": "optional-request-nonce",
+	},
+	"POST /api/users/active_reporting": map[string]any{
+		"time_long": uint64(300),
+	},
 	"POST /api/templates/complaint": map[string]any{
 		"template_id": uint64(3), "complaint_type": "Hate speech or discrimination", "content": "测试",
 	},
@@ -229,59 +263,78 @@ func generationTaskExampleTime(year, month, day, hour, minute, second, milliseco
 	return &value
 }
 
+func exampleValueOptions(values []interface{}, aliases []string) []modelparameter.ValueOption {
+	options := make([]modelparameter.ValueOption, len(values))
+	for i := range values {
+		options[i] = modelparameter.ValueOption{Value: values[i], Alias: aliases[i]}
+	}
+	return options
+}
+
 var generationModelResponseExample = []apiservice.GenerationModelView{
 	{
-		Name:      "Kling v3 视频生成",
-		ModelCode: "kling-v3",
+		Name: "Kling v3 视频生成", ModelCode: "kling-v3", Score: 95,
+		Icon: "https://cdn.example.com/models/kling-v3.png", Description: "支持多种画面比例和生成模式的视频模型",
 		Parameters: []apiservice.GenerationModelParameter{
 			{
 				ParamKey: "aspect_ratio", DefaultValue: "16:9",
-				AllowedValues: []interface{}{"16:9", "9:16", "1:1"},
+				AllowedValues: exampleValueOptions([]interface{}{"16:9", "9:16", "1:1"}, []string{"横屏", "竖屏", "方形"}),
 				Description:   "生成视频的宽高比", ParameterType: 1, Constraints: "{}",
+				Alias: "画面比例", DisplayType: "select", IsDisplay: 1,
 			},
 			{
 				ParamKey: "character_orientation", DefaultValue: "video",
-				AllowedValues: []interface{}{"video", "image"},
+				AllowedValues: exampleValueOptions([]interface{}{"video", "image"}, []string{"视频", "图片"}),
 				Description:   "生成类型", ParameterType: 1, Constraints: "{}",
+				Alias: "角色参考类型", DisplayType: "select", IsDisplay: 1,
 			},
 			{
 				ParamKey: "duration", DefaultValue: 15,
-				AllowedValues: []interface{}{3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+				AllowedValues: exampleValueOptions([]interface{}{3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, []string{"3 秒", "4 秒", "5 秒", "6 秒", "7 秒", "8 秒", "9 秒", "10 秒", "11 秒", "12 秒", "13 秒", "14 秒", "15 秒"}),
 				Description:   "生成视频的时长（秒）", ParameterType: 1, Constraints: "{}",
+				Alias: "视频时长", DisplayType: "select", IsDisplay: 1,
 			},
 			{
 				ParamKey: "keep_original_sound", DefaultValue: "no",
-				AllowedValues: []interface{}{"yes", "no"},
+				AllowedValues: exampleValueOptions([]interface{}{"yes", "no"}, []string{"保留", "不保留"}),
 				Description:   "是否保留参考视频中的原始音频", ParameterType: 1, Constraints: "{}",
+				Alias: "保留原声", DisplayType: "radio", IsDisplay: 1,
 			},
 			{
 				ParamKey: "mode", DefaultValue: "std",
-				AllowedValues: []interface{}{"std", "pro"},
+				AllowedValues: exampleValueOptions([]interface{}{"std", "pro"}, []string{"标准", "专业"}),
 				Description:   "生成质量模式。std 为 720P，pro 为 1080P", ParameterType: 1, Constraints: "{}",
+				Alias: "生成质量", DisplayType: "select", IsDisplay: 1,
 			},
 			{
-				ParamKey: "prompt", DefaultValue: nil, AllowedValues: []interface{}{},
+				ParamKey: "prompt", DefaultValue: nil, AllowedValues: []modelparameter.ValueOption{},
 				Description: "生成提示词", ParameterType: 2, Constraints: `{"max_length": 2500}`,
+				Alias: "提示词", DisplayType: "textarea", IsDisplay: 1,
 			},
 			{
-				ParamKey: "first_frame_url", DefaultValue: nil, AllowedValues: []interface{}{},
+				ParamKey: "first_frame_url", DefaultValue: nil, AllowedValues: []modelparameter.ValueOption{},
 				Description: "首帧图像 URL", ParameterType: 2, Constraints: `{"max_length": 1}`,
+				Alias: "首帧图片", DisplayType: "image", IsDisplay: 1,
 			},
 			{
-				ParamKey: "images", DefaultValue: nil, AllowedValues: []interface{}{},
+				ParamKey: "images", DefaultValue: nil, AllowedValues: []modelparameter.ValueOption{},
 				Description: "首帧图像输入", ParameterType: 2, Constraints: `{"max_length": 10}`,
+				Alias: "参考图片", DisplayType: "images", IsDisplay: 1,
 			},
 			{
-				ParamKey: "img_url", DefaultValue: nil, AllowedValues: []interface{}{},
+				ParamKey: "img_url", DefaultValue: nil, AllowedValues: []modelparameter.ValueOption{},
 				Description: "参考图像 URL", ParameterType: 2, Constraints: `{"max_length": 1}`,
+				Alias: "参考图", DisplayType: "image", IsDisplay: 1,
 			},
 			{
-				ParamKey: "negative_prompt", DefaultValue: nil, AllowedValues: []interface{}{},
+				ParamKey: "negative_prompt", DefaultValue: nil, AllowedValues: []modelparameter.ValueOption{},
 				Description: "限制不期望内容的负向提示词", ParameterType: 2, Constraints: `{"max_length": 2500}`,
+				Alias: "负向提示词", DisplayType: "textarea", IsDisplay: 1,
 			},
 			{
-				ParamKey: "video_url", DefaultValue: nil, AllowedValues: []interface{}{},
+				ParamKey: "video_url", DefaultValue: nil, AllowedValues: []modelparameter.ValueOption{},
 				Description: "motion_control 模式的参考视频 URL", ParameterType: 2, Constraints: `{"max_length": 1}`,
+				Alias: "参考视频", DisplayType: "video", IsDisplay: 1,
 			},
 		},
 	},
@@ -314,17 +367,16 @@ var templateListPageResponseExample = clientTemplatePageResponse{
 }
 
 var responseDataExamples = map[string]any{
-	"GET /api/ob_delay":                    delayConfigResponseExample,
-	"GET /api/users/points":                clientPointsListResponseExample,
-	"GET /api/templates/categories":        templateCategoriesResponseExample,
-	"GET /api/templates/list":              templateCategoriesResponseExample,
-	"GET /api/templates/recommend":         clientTemplateListResponseExample,
-	"GET /api/templates/template_list":     templateListPageResponseExample,
-	"GET /api/templates/template_info":     clientTemplateResponseExample,
-	"GET /api/generation/models":           generationModelResponseExample,
-	"GET /api/generation/tasks":            generationTaskListResponseExample,
-	"GET /api/generation/tasks/:id":        generationTaskResponseExample,
-	"GET /api/generation/tasks/:id/events": generationTaskResponseExample,
+	"GET /api/ob_delay":                delayConfigResponseExample,
+	"GET /api/users/points":            clientPointsListResponseExample,
+	"GET /api/templates/categories":    templateCategoriesResponseExample,
+	"GET /api/templates/list":          templateCategoriesResponseExample,
+	"GET /api/templates/recommend":     clientTemplateListResponseExample,
+	"GET /api/templates/template_list": templateListPageResponseExample,
+	"GET /api/templates/template_info": clientTemplateResponseExample,
+	"GET /api/generation/models":       generationModelResponseExample,
+	"GET /api/generation/tasks":        generationTaskListResponseExample,
+	"GET /api/generation/tasks/:id":    generationTaskResponseExample,
 	"POST /api/payments/apple/pay": commerce.ApplePurchaseResponse{
 		OrderNo: "20260728090907cc7d7c1ffd15", Status: 4, ProductType: 1,
 		ProductID: 1, ProductCode: "dolaai18", TransactionID: "2000001209105682",
@@ -394,15 +446,15 @@ var responseDataExamples = map[string]any{
 var endpointTypes = map[string]endpointType{
 	"GET /api/health":                                  {response: typeOf[map[string]string]()},
 	"GET /api/configs/list":                            {response: typeOf[map[string]string]()},
-	"POST /api/auth/login":                             {body: typeOf[apiservice.LoginRequest](), response: typeOf[apiservice.AuthResponse]()},
+	"POST /api/auth/login":                             {body: typeOf[loginDocRequest](), response: typeOf[apiservice.AuthResponse]()},
 	"POST /api/auth/apple_order_login":                 {body: typeOf[apiservice.AppleOrderLoginRequest](), response: typeOf[apiservice.AuthResponse]()},
 	"POST /api/auth/refresh":                           {response: typeOf[apiservice.AuthResponse]()},
-	"POST /api/third_binding":                          {body: typeOf[apiservice.ThirdPartyLoginRequest](), response: typeOf[apiservice.ThirdAuthResponse]()},
+	"POST /api/third_binding":                          {body: typeOf[thirdPartyLoginDocRequest](), response: typeOf[apiservice.AuthResponse]()},
 	"POST /api/auth/logout":                            {},
 	"GET /api/users/me":                                {response: typeOf[apiservice.UserResponse]()},
 	"PUT /api/users/me/country":                        {body: typeOf[apiservice.UpdateCountryRequest](), response: typeOf[apiservice.UserResponse]()},
-	"GET /api/users/me/identities":                     {response: typeOf[[]model.VideoUserIdentity]()},
 	"GET /api/users/points":                            {query: typeOf[apiservice.ClientPointsRequest](), response: typeOf[clientPointsListResponse]()},
+	"POST /api/users/active_reporting":                 {body: typeOf[apiservice.ActiveReportingRequest]()},
 	"GET /api/ob_delay":                                {response: typeOf[map[string]int64]()},
 	"GET /api/banners/list":                            {query: typeOf[apiservice.ClientBannerRequest](), response: typeOf[[]apiservice.ClientBanner]()},
 	"GET /api/templates/recommend":                     {query: typeOf[apiservice.ClientTemplateRecommendRequest](), response: typeOf[[]apiservice.ClientTemplate]()},
@@ -418,7 +470,6 @@ var endpointTypes = map[string]endpointType{
 	"POST /api/generation/template-tasks":              {body: typeOf[templateTaskRequest](), response: typeOf[generation.TaskView]()},
 	"GET /api/generation/tasks":                        {query: typeOf[apiservice.GenerationListRequest](), response: typeOf[generationTaskListResponse]()},
 	"GET /api/generation/tasks/:id":                    {response: typeOf[generation.TaskView]()},
-	"GET /api/generation/tasks/:id/events":             {response: typeOf[generation.TaskView]()},
 	"DELETE /api/generation/tasks/:id":                 {},
 	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[apiservice.VIPRecommendResponse]()},
 	"GET /api/vip/list":                                {query: typeOf[apiservice.VipVipListRequest](), response: typeOf[[]apiservice.VIPRecommendResponse]()},
@@ -440,10 +491,10 @@ var endpointTypes = map[string]endpointType{
 var operationDescriptions = map[string]string{
 	"GET /api/health":       "检查 API 服务是否正常运行。",
 	"GET /api/configs/list": "获取客户端可见的公开应用配置。", "POST /api/auth/login": "使用设备标识登录或创建游客账号。",
-	"POST /api/third_binding": "为当前用户绑定或切换 Google、Apple 等第三方身份。", "POST /api/auth/apple_order_login": "根据请求中的 Apple 订单编号 order_code 查询订单表 original_transaction_id 字段匹配的最新 Apple IAP 订单及其关联用户，并为正常状态的关联用户签发客户端 Token。", "POST /api/auth/refresh": "使用当前未过期的 Bearer Token 签发新 Token，刷新成功后当前 Token 立即失效。", "POST /api/auth/logout": "注销当前 Bearer Token。",
+	"POST /api/third_binding": "为当前用户绑定或切换 Google、Apple 等第三方身份。", "POST /api/auth/apple_order_login": "按 order_code 数组查询 original_transaction_id 命中的最新 VIP 订阅订单及其关联用户，并为正常状态的关联用户签发客户端 Token；force_new 用于确认切换到其他未绑定第三方身份的订单账号。", "POST /api/auth/refresh": "使用当前未过期的 Bearer Token 签发新 Token，刷新成功后当前 Token 立即失效。", "POST /api/auth/logout": "注销当前 Bearer Token。",
 	"GET /api/users/me": "获取当前登录用户资料。", "PUT /api/users/me/country": "更新当前用户的设备国家或地区。",
-	"GET /api/users/me/identities": "查询当前用户已绑定的第三方身份。", "DELETE /api/users/me/identities/:provider": "解绑指定第三方身份。",
 	"GET /api/users/points":            "分页查询当前用户的积分变动明细。可按收入或支出方向筛选；start_time 和 end_time 必须同时提供才会应用时间范围筛选。",
+	"POST /api/users/active_reporting": "上报当前用户本次活跃时长。time_long 必须是大于 0 的整数；成功时响应 data 为 null。",
 	"GET /api/ob_delay":                "获取客户端延迟配置。",
 	"GET /api/banners/list":            "按必填的 position_key 查询当前客户端可见的 Banner。服务端同时使用公共请求头中的 Video_App_Code、Video_App_Package_Code、Video_App_Version、Video_Device_Country，以及登录用户的会员状态进行投放匹配。某个维度没有关联记录时表示该维度支持全部；存在关联记录时必须命中。展示位置、国家、应用、应用包、版本和会员类型之间按 AND 关系组合。",
 	"GET /api/templates/recommend":     "按必填的 position_key 查询当前客户端可见的推荐模板，响应 data 为模板对象数组。每个模板对象返回 id、template_type_id、name、template_type、cover_image_url、original_url、thumbnail_url、prompt、description、sort、usage_count、favorite_count、view_count、is_favorite 和 model_score。",
@@ -453,10 +504,10 @@ var operationDescriptions = map[string]string{
 	"GET /api/templates/template_info": "根据必填的 template_id 查询单个模板对象，并设置当前登录用户的 is_favorite。响应使用当前统一模板对象结构。",
 	"POST /api/templates/:id/favorite": "收藏指定模板；重复收藏保持幂等。", "DELETE /api/templates/:id/favorite": "取消收藏指定模板；重复取消保持幂等。",
 	"POST /api/templates/complaint": "提交模板投诉。请求体使用 application/json，template_id 和 complaint_type 必填，content 为可选的补充说明。",
-	"GET /api/generation/models":    "按必填 model_type 查询平台和模型均启用的模型及其参数；同时返回 parameter_type=1 的选项参数和 parameter_type=2 的请求参数，并按 parameter_type、sort_order、id 排序。", "POST /api/generation/tasks": "校验请求并创建待异步处理的生成任务，返回任务订单号。input.images、input.video、input.first_frame 和 input.end_frame 中的媒体地址同时支持半链接与 HTTP(S) 全链接。",
+	"GET /api/generation/models":    "按必填 model_type 查询平台和模型均启用的模型及其参数；返回全部 parameter_type=2 的请求参数和 is_display=1 的 parameter_type=1 选项参数，并按 parameter_type、sort_order、id 排序。", "POST /api/generation/tasks": "校验请求并创建待异步处理的生成任务，返回任务订单号。input.images、input.video、input.first_frame 和 input.end_frame 中的媒体地址同时支持半链接与 HTTP(S) 全链接。",
 	"POST /api/generation/template-tasks": "按模板创建生成任务。请求体仅展示必填的 template_id 和 input.images；图片地址同时支持半链接与 HTTP(S) 全链接，模板提示词和模型设置由服务端补充。",
 	"GET /api/generation/tasks":           "分页查询当前用户的生成任务，列表项返回完整任务快照。", "GET /api/generation/tasks/:id": "查询指定生成任务详情，返回结构与列表中的单个任务一致。",
-	"GET /api/generation/tasks/:id/events": "通过 SSE 实时订阅生成任务状态，任务结束后连接关闭。", "DELETE /api/generation/tasks/:id": "删除指定生成任务。",
+	"DELETE /api/generation/tasks/:id":      "删除指定生成任务。",
 	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
 	"GET /api/vip/list":                     "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
 	"POST /api/payments/apple/pay":          "校验 StoreKit 交易、创建订单并发放对应商品。标准三段式 JWS 直接验签，其他客户端凭证通过 transactionID 调用 App Store Server API 获取已签名交易后验签。接口按 Apple 交易 ID 幂等处理。请求中的 isActive 是客户端上报值；响应中的 is_active 由已验签交易的撤销时间和到期时间按服务端当前时间计算。",
@@ -469,8 +520,8 @@ var operationSummaries = map[string]string{
 	"GET /api/health": "健康检查", "GET /api/configs/list": "获取客户端配置",
 	"POST /api/auth/login": "游客登录", "POST /api/auth/apple_order_login": "Apple 订单登录", "POST /api/auth/refresh": "刷新 Token", "POST /api/third_binding": "绑定第三方身份",
 	"POST /api/auth/logout": "退出登录", "GET /api/users/me": "获取当前用户",
-	"PUT /api/users/me/country": "更新用户国家", "GET /api/users/me/identities": "查询绑定身份",
-	"DELETE /api/users/me/identities/:provider": "解绑第三方身份", "GET /api/users/points": "查询积分明细", "GET /api/ob_delay": "获取延迟配置",
+	"PUT /api/users/me/country": "更新用户国家", "GET /api/users/points": "查询积分明细",
+	"POST /api/users/active_reporting": "上报活跃时长", "GET /api/ob_delay": "获取延迟配置",
 	"GET /api/banners/list": "查询 Banner", "GET /api/templates/recommend": "查询推荐模板",
 	"GET /api/templates/list": "查询模板列表", "GET /api/templates/categories": "查询模板分类",
 	"GET /api/templates/template_list": "查询分类模板", "GET /api/templates/template_info": "查询模板详情",
@@ -478,8 +529,7 @@ var operationSummaries = map[string]string{
 	"DELETE /api/templates/:id/favorite": "取消收藏模板", "POST /api/templates/complaint": "投诉模板", "GET /api/vip/recommend": "查询推荐 VIP 套餐",
 	"GET /api/vip/list":          "查询 VIP 套餐列表",
 	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务", "POST /api/generation/template-tasks": "按模板创建生成任务",
-	"GET /api/generation/tasks": "查询生成任务", "GET /api/generation/tasks/:id": "获取生成任务",
-	"GET /api/generation/tasks/:id/events": "订阅生成任务事件", "DELETE /api/generation/tasks/:id": "删除生成任务",
+	"GET /api/generation/tasks": "查询生成任务", "GET /api/generation/tasks/:id": "获取生成任务", "DELETE /api/generation/tasks/:id": "删除生成任务",
 	"POST /api/payments/apple/pay": "确认 Apple 支付", "POST /api/payments/apple/notification": "接收 Apple 支付通知",
 	"POST /api/uploads/images/batches": "初始化图片上传", "POST /api/uploads/videos/batches": "初始化视频上传",
 	"GET /api/uploads/images/:upload_id": "查询图片上传进度", "GET /api/uploads/videos/:upload_id": "查询视频上传进度",
@@ -490,7 +540,7 @@ var operationSummaries = map[string]string{
 }
 
 var fieldDescriptions = map[string]string{
-	"imei": "设备唯一标识", "device_code": "设备唯一标识", "force_new": "是否强制创建新账号", "id_token": "Google 等提供方签发的 ID Token",
+	"imei": "设备唯一标识", "device_code": "设备唯一标识", "force_new": "是否确认执行账号选择或切换；具体语义见接口说明", "id_token": "Google 等提供方签发的 ID Token",
 	"identity_token": "Apple 签发的 Identity Token", "nonce": "用于防重放校验的随机值", "display_name": "显示名称",
 	"given_name": "名", "family_name": "姓", "device_country": "设备国家或地区代码", "client_country": "客户端国家或地区代码", "channel_id": "渠道标识",
 	"app_version": "应用版本号", "app_name": "应用名称", "phone_model": "设备型号", "channel_package": "渠道包标识",
@@ -502,7 +552,8 @@ var fieldDescriptions = map[string]string{
 	"id": "记录 ID", "user_id": "客户端用户 ID", "email": "邮箱", "vip_expires_at": "VIP 到期时间（Unix 秒）", "points_balance": "积分余额",
 	"points_type": "积分变动方向：1=收入，2=支出", "start_time": "筛选开始时间（Unix 秒；需与 end_time 同时提供）", "end_time": "筛选结束时间（Unix 秒；需与 start_time 同时提供）",
 	"direction": "积分变动方向：1=收入，2=支出", "points_change": "积分变动量；正数表示增加，负数表示减少", "balance_before": "变动前积分余额", "balance_after": "变动后积分余额",
-	"status": "状态", "last_login_at": "最近登录时间", "last_login_ip": "最近登录 IP", "login_account": "登录账号",
+	"time_long": "本次上报的用户活跃时长，单位秒，必须大于 0",
+	"status":    "状态", "last_login_at": "最近登录时间", "last_login_ip": "最近登录 IP", "login_account": "登录账号",
 	"appid_binding": "是否已绑定 Apple", "google_binding": "是否已绑定 Google", "provider": "提供方标识；身份接口表示身份提供方，OSS 直传接口表示存储提供方",
 	"provider_subject": "身份提供方用户唯一标识", "issuer": "Token 签发方", "audience": "Token 受众",
 	"email_verified": "邮箱是否已验证", "is_private_email": "是否为隐私邮箱", "avatar_url": "头像地址",
@@ -519,7 +570,7 @@ var fieldDescriptions = map[string]string{
 	"images": "参考图片 URL 数组", "video": "参考视频 URL", "first_frame": "首帧图片 URL", "end_frame": "尾帧图片 URL",
 	"complaint_type": "投诉类型", "content": "投诉补充内容",
 	"parameter": "模型参数列表", "param_key": "参数键名", "parameter_type": "参数类型：1=选项参数，2=请求参数",
-	"default_value": "参数默认值", "allowed_values": "参数允许值数组", "constraints": "JSON 字符串格式的参数约束；空约束为 {}",
+	"default_value": "参数默认值", "allowed_values": "兼容保留的参数允许值数组", "allowed_value_options": "选择值配置数组，每项包含成对的 value 和 alias", "constraints": "JSON 字符串格式的参数约束；空约束为 {}", "alias": "客户端展示名称", "display_type": "客户端控件类型", "is_display": "是否展示：1=是，0=否",
 	"model_config_id": "生成模型配置 ID", "external_task_id": "第三方任务 ID", "progress": "任务进度，范围 0-100",
 	"local_urls": "生成结果的持久化访问地址（本地或 OSS）", "error_message": "任务失败原因", "usage_duration": "任务计费用时（秒）",
 	"submitted_at": "任务提交到上游的时间", "started_at": "上游开始处理的时间", "finished_at": "任务结束时间",
@@ -532,7 +583,7 @@ var fieldDescriptions = map[string]string{
 	"product_id": "Apple 商品 ID", "processed": "是否已完成对应业务处理", "affected_user_id": "受影响的用户 ID",
 	"affected_order_no": "受影响的订单号", "action": "本次通知执行的业务动作", "message": "处理结果说明",
 	"purchaseDate": "客户端购买时间，RFC 3339 格式，必须与签名交易一致", "expirationDate": "订阅到期时间，RFC 3339 格式；无到期时间时为 null", "revocationDate": "撤销时间，RFC 3339 格式；未撤销时为 null", "isActive": "客户端上报的订阅状态；服务端不以此值作为最终状态",
-	"source": "购买入口来源，可选", "order_no": "服务端订单号", "order_code": "订单编号；Apple 订单登录时传 Apple 原始交易 ID", "product_type": "订单商品类型",
+	"source": "购买入口来源，可选", "order_no": "服务端订单号", "order_code": "Apple 原始交易 ID 数组；按数组中的编号匹配订单", "product_type": "订单商品类型",
 	"product_code": "Apple 商品 ID", "paid_amount": "实付金额，单位由 currency 指定", "purchase_date": "已验签的购买时间",
 	"expiration_date": "已验签的订阅到期时间", "is_active": "服务端计算的当前状态：交易未撤销，且订阅到期时间晚于服务端当前时间",
 	"evidence_mode": "交易凭证模式，固定为 jws",
@@ -556,21 +607,19 @@ var fieldDescriptions = map[string]string{
 var resourceNames = map[string]string{
 	"health": "健康检查", "configs": "系统配置", "auth": "认证", "users": "用户",
 	"banners": "Banner", "templates": "视频模板", "generation": "内容生成", "payments": "支付", "vip": "VIP",
-	"uploads": "文件上传", "profile": "个人资料", "identities": "第三方账号",
+	"uploads": "文件上传", "profile": "个人资料",
 }
 
 var publicRoutes = map[string]bool{
 	"GET /api/health": true, "POST /api/auth/login": true,
-	"POST /api/payments/apple/notification": true, "POST /api/apy": true,
+	"POST /api/payments/apple/notification": true,
 }
 
 var paginatedRoutes = map[string]bool{
 	"/api/generation/tasks": true,
 }
 
-var sseRoutes = map[string]bool{
-	"GET /api/generation/tasks/:id/events": true,
-}
+var sseRoutes = map[string]bool{}
 
 var operationIDSanitizer = regexp.MustCompile(`[^A-Za-z0-9]+`)
 
@@ -656,9 +705,6 @@ func buildOperation(route gin.RouteInfo, pathParams []string, tag, resource stri
 	if key == "POST /api/uploads/oss/signature" {
 		operation["responses"].(map[string]any)["413"] = errorResponse("文件超过当前媒体类型的上传大小上限")
 		operation["responses"].(map[string]any)["503"] = errorResponse("当前未启用阿里云 OSS，或 OSS 直传配置不可用")
-	}
-	if key == "POST /api/auth/apple_order_login" {
-		operation["responses"].(map[string]any)["404"] = errorResponse("Apple 支付订单或订单关联用户不存在")
 	}
 	if sseRoutes[key] {
 		eventSchema := responseSchemaForType(metadata.response)

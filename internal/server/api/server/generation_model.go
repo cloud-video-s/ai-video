@@ -3,6 +3,7 @@ package service
 import (
 	"ai-video/internal/generation"
 	"ai-video/internal/middleware"
+	"ai-video/internal/modelparameter"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -32,14 +33,15 @@ type GenerationModelRequest struct {
 }
 
 type GenerationModelParameter struct {
-	ParamKey      string        `json:"param_key"`
-	DefaultValue  interface{}   `json:"default_value"`
-	AllowedValues []interface{} `json:"allowed_values"`
-	Description   string        `json:"description"`
-	ParameterType uint32        `json:"parameter_type"`
-	Constraints   string        `json:"constraints"`
-	Alias         string        `json:"alias"`
-	DisplayType   string        `json:"display_type"`
+	ParamKey      string                       `json:"param_key"`
+	DefaultValue  interface{}                  `json:"default_value"`
+	AllowedValues []modelparameter.ValueOption `json:"allowed_values"`
+	Description   string                       `json:"description"`
+	ParameterType uint32                       `json:"parameter_type"`
+	Constraints   string                       `json:"constraints"`
+	Alias         string                       `json:"alias"`
+	DisplayType   string                       `json:"display_type"`
+	IsDisplay     uint32                       `json:"is_display"`
 }
 
 type GenerationModelView struct {
@@ -87,12 +89,14 @@ func (s *GenerationModelService) List(ctx context.Context, modelType uint32) ([]
 		return nil, err
 	}
 	parametersByModel := make(map[int64][]GenerationModelParameter, len(models))
-	for i := range parameters {
-		view, err := generationModelParameterView(&parameters[i])
-		if err != nil {
-			return nil, err
+	for i, item := range parameters {
+		if item.ParameterType == 2 || item.IsDisplay == 1 {
+			view, err := generationModelParameterView(&parameters[i])
+			if err != nil {
+				return nil, err
+			}
+			parametersByModel[parameters[i].ModelID] = append(parametersByModel[parameters[i].ModelID], view)
 		}
-		parametersByModel[parameters[i].ModelID] = append(parametersByModel[parameters[i].ModelID], view)
 	}
 	result := make([]GenerationModelView, 0, len(models))
 	for i := range models {
@@ -126,6 +130,10 @@ func generationModelParameterView(item *model.VideoModelParameter) (GenerationMo
 			allowedValues = make([]interface{}, 0)
 		}
 	}
+	allowedValueOptions, err := modelparameter.ValueOptions(item.AllowedValueOptions, allowedValues)
+	if err != nil {
+		return GenerationModelParameter{}, fmt.Errorf("parameter %s has invalid allowed value options: %w", item.ParamKey, err)
+	}
 	constraints := make(map[string]interface{})
 	if value := strings.TrimSpace(item.Constraints); value != "" {
 		if err := json.Unmarshal([]byte(value), &constraints); err != nil {
@@ -136,12 +144,14 @@ func generationModelParameterView(item *model.VideoModelParameter) (GenerationMo
 		}
 	}
 	return GenerationModelParameter{
-		ParamKey:     item.ParamKey,
-		DefaultValue: defaultValue, AllowedValues: allowedValues,
+		ParamKey:      item.ParamKey,
+		DefaultValue:  defaultValue,
+		AllowedValues: allowedValueOptions,
 		Description:   item.Description,
 		ParameterType: item.ParameterType,
 		Constraints:   item.Constraints,
 		DisplayType:   item.DisplayType,
 		Alias:         item.Alias_,
+		IsDisplay:     item.IsDisplay,
 	}, nil
 }

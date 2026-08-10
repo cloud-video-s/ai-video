@@ -1,11 +1,12 @@
 package middleware
 
 import (
+	"strings"
+
 	"ai-video/internal/pkg/cache"
 	"ai-video/internal/pkg/jwt"
 	"ai-video/internal/pkg/response"
 	"ai-video/internal/pkg/utils"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,6 +22,8 @@ const (
 	HeaderTokenVersion   = "Video_Token_Version"
 	HeaderLoginType      = "Video_Login_Type"
 	HeaderSystemType     = "Video_System_Type"
+
+	apiRequestMetadataGinKey = "api_request_metadata"
 )
 
 func ApiAuth(userRepo UserRepo) gin.HandlerFunc {
@@ -30,31 +33,24 @@ func ApiAuth(userRepo UserRepo) gin.HandlerFunc {
 			response.Unauthorized(c, "缺少 Authorization 头")
 			return
 		}
-		headerAppCode := c.GetHeader(HeaderAPPCode)
-		if headerAppCode == "" {
-			response.Unauthorized(c, "缺少 Video_App_Code 头")
+		headerAppCode, ok := requiredHeader(c, HeaderAPPCode)
+		if !ok {
 			return
 		}
-		headerAppPackageCode := c.GetHeader(HeaderAppPackageCode)
-		if headerAppPackageCode == "" {
-			response.Unauthorized(c, "缺少 Video_App_Package_Code 头")
+		headerAppPackageCode, ok := requiredHeader(c, HeaderAppPackageCode)
+		if !ok {
 			return
 		}
-		headerAppVersion := c.GetHeader(HeaderAppVersion)
-		if headerAppVersion == "" {
-			response.Unauthorized(c, "缺少 Video_App_Version 头")
+		headerAppVersion, ok := requiredHeader(c, HeaderAppVersion)
+		if !ok {
 			return
 		}
-
-		headerPhoneModel := c.GetHeader(HeaderPhoneModel)
-		if headerPhoneModel == "" {
-			response.Unauthorized(c, "缺少 Video_Phone_Model 头")
+		headerPhoneModel, ok := requiredHeader(c, HeaderPhoneModel)
+		if !ok {
 			return
 		}
-
-		headerChannelCode := c.GetHeader(HeaderChannelCode)
-		if headerChannelCode == "" {
-			response.Unauthorized(c, "缺少 Video_Channel_Code 头")
+		headerChannelCode, ok := requiredHeader(c, HeaderChannelCode)
+		if !ok {
 			return
 		}
 
@@ -83,22 +79,124 @@ func ApiAuth(userRepo UserRepo) gin.HandlerFunc {
 			response.Unauthorized(c, "登录状态已失效，请重新注册或登录")
 			return
 		}
-		headerDeviceCountry := c.GetHeader(HeaderDeviceCountry)
+		headerDeviceCountry := strings.TrimSpace(c.GetHeader(HeaderDeviceCountry))
 		if headerDeviceCountry == "" {
 			headerDeviceCountry, _ = utils.GetCountryByIP(c.ClientIP())
 		}
-		c.Set(HeaderUserIDKey, claims.UserID)
-		c.Set(HeaderTokenVersion, claims.TokenVersion)
-		c.Set(HeaderLoginType, claims.LoginType)
-		c.Set(HeaderAPPCode, headerAppCode)
-		c.Set(HeaderAppPackageCode, headerAppPackageCode)
-		c.Set(HeaderAppVersion, headerAppVersion)
-		c.Set(HeaderChannelCode, headerChannelCode)
-		c.Set(HeaderDeviceCountry, headerDeviceCountry)
-		c.Set(HeaderPhoneModel, headerPhoneModel)
-		c.Set(HeaderSystemType, getClientOS(c))
+		setAPIRequestMetadata(c, APIRequestMetadata{
+			UserID:         claims.UserID,
+			TokenVersion:   claims.TokenVersion,
+			LoginType:      claims.LoginType,
+			AppCode:        headerAppCode,
+			AppPackageCode: headerAppPackageCode,
+			AppVersion:     headerAppVersion,
+			ChannelCode:    headerChannelCode,
+			DeviceCountry:  strings.TrimSpace(headerDeviceCountry),
+			PhoneModel:     headerPhoneModel,
+			SystemType:     getClientSystemType(c),
+		})
 		c.Next()
 	}
+}
+
+func ApiHeader() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		headerAppCode, ok := requiredHeader(c, HeaderAPPCode)
+		if !ok {
+			return
+		}
+		headerAppPackageCode, ok := requiredHeader(c, HeaderAppPackageCode)
+		if !ok {
+			return
+		}
+		headerAppVersion, ok := requiredHeader(c, HeaderAppVersion)
+		if !ok {
+			return
+		}
+		headerPhoneModel, ok := requiredHeader(c, HeaderPhoneModel)
+		if !ok {
+			return
+		}
+		headerChannelCode, ok := requiredHeader(c, HeaderChannelCode)
+		if !ok {
+			return
+		}
+
+		headerDeviceCountry := strings.TrimSpace(c.GetHeader(HeaderDeviceCountry))
+		if headerDeviceCountry == "" {
+			headerDeviceCountry, _ = utils.GetCountryByIP(c.ClientIP())
+		}
+		setAPIRequestMetadata(c, APIRequestMetadata{
+			AppCode:        headerAppCode,
+			AppPackageCode: headerAppPackageCode,
+			AppVersion:     headerAppVersion,
+			ChannelCode:    headerChannelCode,
+			DeviceCountry:  strings.TrimSpace(headerDeviceCountry),
+			PhoneModel:     headerPhoneModel,
+			SystemType:     getClientSystemType(c),
+		})
+		c.Next()
+	}
+}
+
+func requiredHeader(c *gin.Context, name string) (string, bool) {
+	value := strings.TrimSpace(c.GetHeader(name))
+	if value == "" {
+		response.Unauthorized(c, "缺少 "+name+" 头")
+		return "", false
+	}
+	return value, true
+}
+
+func setAPIRequestMetadata(c *gin.Context, metadata APIRequestMetadata) {
+	c.Set(apiRequestMetadataGinKey, metadata)
+	c.Set(HeaderUserIDKey, metadata.UserID)
+	c.Set(HeaderTokenVersion, metadata.TokenVersion)
+	c.Set(HeaderLoginType, metadata.LoginType)
+	c.Set(HeaderAPPCode, metadata.AppCode)
+	c.Set(HeaderAppPackageCode, metadata.AppPackageCode)
+	c.Set(HeaderAppVersion, metadata.AppVersion)
+	c.Set(HeaderChannelCode, metadata.ChannelCode)
+	c.Set(HeaderDeviceCountry, metadata.DeviceCountry)
+	c.Set(HeaderPhoneModel, metadata.PhoneModel)
+	c.Set(HeaderSystemType, metadata.SystemType)
+
+	// Gin values do not propagate when handlers pass c.Request.Context() into
+	// lower layers, so install the same metadata on the standard Go context.
+	if c.Request != nil {
+		ctx := withAPIRequestMetadata(c.Request.Context(), metadata)
+		c.Request = c.Request.WithContext(ctx)
+	}
+}
+
+func apiRequestMetadata(c *gin.Context) (APIRequestMetadata, bool) {
+	if c == nil {
+		return APIRequestMetadata{}, false
+	}
+	if value, ok := c.Get(apiRequestMetadataGinKey); ok {
+		if metadata, ok := value.(APIRequestMetadata); ok {
+			return metadata, true
+		}
+	}
+	if c.Request != nil {
+		return APIRequestMetadataFromContext(c.Request.Context())
+	}
+	return APIRequestMetadata{}, false
+}
+
+func ginValue[T any](c *gin.Context, key string) (zero T) {
+	if c == nil {
+		return zero
+	}
+	value, ok := c.Get(key)
+	if !ok {
+		return zero
+	}
+	typed, ok := value.(T)
+	if !ok {
+		return zero
+	}
+	return typed
 }
 
 func extractBearerToken(header string) (string, bool) {
@@ -110,129 +208,93 @@ func extractBearerToken(header string) (string, bool) {
 }
 
 func GetAPIUserID(c *gin.Context) uint64 {
-	value, ok := c.Get(HeaderUserIDKey)
-	if !ok {
-		return 0
+	if metadata, ok := apiRequestMetadata(c); ok {
+		return metadata.UserID
 	}
-	id, ok := value.(uint64)
-	if !ok {
-		return 0
-	}
-	return id
+	return ginValue[uint64](c, HeaderUserIDKey)
 }
 
 func GetAPITokenVersion(c *gin.Context) int64 {
-	value, ok := c.Get(HeaderTokenVersion)
-	if !ok {
-		return 0
+	if metadata, ok := apiRequestMetadata(c); ok {
+		return metadata.TokenVersion
 	}
-	version, ok := value.(int64)
-	if !ok {
-		return 0
-	}
-	return version
+	return ginValue[int64](c, HeaderTokenVersion)
 }
 
 func GetAPIAPPCode(c *gin.Context) string {
-	value, ok := c.Get(HeaderAPPCode)
-	if !ok {
-		return ""
+	if metadata, ok := apiRequestMetadata(c); ok {
+		return metadata.AppCode
 	}
-	aPPCode, ok := value.(string)
-	if !ok {
-		return ""
-	}
-	return aPPCode
+	return ginValue[string](c, HeaderAPPCode)
 }
 
 func GetAPIAppPackageCode(c *gin.Context) string {
-	value, ok := c.Get(HeaderAppPackageCode)
-	if !ok {
-		return ""
+	if metadata, ok := apiRequestMetadata(c); ok {
+		return metadata.AppPackageCode
 	}
-	appPackageCode, ok := value.(string)
-	if !ok {
-		return ""
-	}
-	return appPackageCode
+	return ginValue[string](c, HeaderAppPackageCode)
 }
 
 func GetAPIAppVersion(c *gin.Context) string {
-	value, ok := c.Get(HeaderAppVersion)
-	if !ok {
-		return ""
+	if metadata, ok := apiRequestMetadata(c); ok {
+		return metadata.AppVersion
 	}
-	appVersion, ok := value.(string)
-	if !ok {
-		return ""
-	}
-	return appVersion
+	return ginValue[string](c, HeaderAppVersion)
 }
 
 func GetAPIChannelCode(c *gin.Context) string {
-	value, ok := c.Get(HeaderChannelCode)
-	if !ok {
-		return ""
+	if metadata, ok := apiRequestMetadata(c); ok {
+		return metadata.ChannelCode
 	}
-	channelCode, ok := value.(string)
-	if !ok {
-		return ""
-	}
-	return channelCode
+	return ginValue[string](c, HeaderChannelCode)
 }
 
 func GetAPIDeviceCountry(c *gin.Context) string {
-	value, ok := c.Get(HeaderDeviceCountry)
-	if !ok {
-		return ""
+	if metadata, ok := apiRequestMetadata(c); ok {
+		return metadata.DeviceCountry
 	}
-	deviceCountry, ok := value.(string)
-	if !ok {
-		return ""
-	}
-	return deviceCountry
+	return ginValue[string](c, HeaderDeviceCountry)
 }
 
 func GetAPIPhoneModel(c *gin.Context) string {
-	value, ok := c.Get(HeaderPhoneModel)
-	if !ok {
-		return ""
+	if metadata, ok := apiRequestMetadata(c); ok {
+		return metadata.PhoneModel
 	}
-	phoneModel, ok := value.(string)
-	if !ok {
-		return ""
-	}
-	return phoneModel
+	return ginValue[string](c, HeaderPhoneModel)
 }
 
 func GetAPILoginType(c *gin.Context) uint32 {
-	value, ok := c.Get(HeaderLoginType)
-	if !ok {
-		return 0
+	if metadata, ok := apiRequestMetadata(c); ok {
+		return metadata.LoginType
 	}
-	loginType, ok := value.(uint32)
-	if !ok {
-		return 0
-	}
-	return loginType
+	return ginValue[uint32](c, HeaderLoginType)
 }
 
 func GetAPISystemType(c *gin.Context) int {
-	value, ok := c.Get(HeaderSystemType)
-	if !ok {
-		return 0
+	if metadata, ok := apiRequestMetadata(c); ok {
+		return metadata.SystemType
 	}
-	systemType, ok := value.(string)
-	if !ok {
-		return 0
-	}
-	switch systemType {
-	case "iOS":
+	return ginValue[int](c, HeaderSystemType)
+}
+
+func getClientSystemType(c *gin.Context) int {
+	// Prefer an explicit client header, while accepting both the numeric API
+	// value and its readable name for compatibility.
+	switch strings.ToLower(strings.TrimSpace(c.GetHeader(HeaderSystemType))) {
+	case "1", "ios":
 		return 1
-	case "Android":
+	case "2", "android":
 		return 2
 	}
-	return 0
+
+	switch strings.ToLower(getClientOS(c)) {
+	case "ios":
+		return 1
+	case "android":
+		return 2
+	default:
+		return 0
+	}
 }
 
 func getClientOS(c *gin.Context) string {
@@ -253,16 +315,18 @@ func parseUA(ua string) string {
 	}
 	ua = strings.ToLower(ua)
 	switch {
+	// Mobile user agents also contain Linux or Mac OS, so the more specific
+	// checks must run first.
+	case strings.Contains(ua, "android"):
+		return "Android"
+	case strings.Contains(ua, "iphone") || strings.Contains(ua, "ipad") || strings.Contains(ua, "ipod"):
+		return "iOS"
 	case strings.Contains(ua, "windows"):
 		return "Windows"
 	case strings.Contains(ua, "mac os"):
 		return "macOS"
 	case strings.Contains(ua, "linux"):
 		return "Linux"
-	case strings.Contains(ua, "android"):
-		return "Android"
-	case strings.Contains(ua, "iphone") || strings.Contains(ua, "ipad"):
-		return "iOS"
 	default:
 		return "Other"
 	}

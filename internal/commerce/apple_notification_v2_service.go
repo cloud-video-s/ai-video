@@ -524,13 +524,20 @@ func (s *Service) expireVIPFromAppleNotificationV2(ctx context.Context, order *m
 		if expiresAt.After(now) {
 			return nil
 		}
+		hasNewerGift, err := s.ledgers.HasSubscriptionGiftSince(ctx, user.ID, expiresAt, order.OrderNo)
+		if err != nil {
+			return err
+		}
+		if hasNewerGift {
+			return nil
+		}
 		beforeBalance := user.VipPoints + user.PointsBalance
 		expiredPoints := user.VipPoints
 		updates := map[string]any{
 			"subscription_status": domain.AppUserSubscriptionExpired,
 			"user_type":           domain.AppUserTypeFree,
 			"vip_points":          uint64(0),
-			"vip_expires_at":      expiresAt,
+			"vip_expires_at":      nil,
 		}
 		if expiredPoints > 0 {
 			ledger := &model.VideoUserPointsLedger{

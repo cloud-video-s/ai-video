@@ -42,17 +42,17 @@ func SeedCountryAdmin() error {
 		}
 
 		var root model.VideoMenu
-		if err := tx.Where("path = ? AND type = ?", "/system", 0).First(&root).Error; err != nil {
+		if err := tx.Where("path = ? AND type = ?", "/operation", 0).First(&root).Error; err != nil {
 			return err
 		}
 		page, err := upsertCountryMenu(tx, model.VideoMenu{
 			ParentID: root.ID, Name: "国家管理",
-			Path:       "/system/country",
-			Component:  "system/country/index",
+			Path:       "/operation/country",
+			Component:  "operation/country/index",
 			Icon:       "Location",
 			Sort:       7,
 			Type:       1,
-			Permission: "system:country:list",
+			Permission: "operation:country:list",
 			Visible:    1,
 			Status:     1,
 		})
@@ -67,9 +67,9 @@ func SeedCountryAdmin() error {
 			menu model.VideoMenu
 			apis []model.VideoAPI
 		}{
-			{menu: model.VideoMenu{ParentID: page.ID, Name: "新增国家", Sort: 1, Type: 2, Permission: "system:country:add", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[2]}},
-			{menu: model.VideoMenu{ParentID: page.ID, Name: "编辑国家", Sort: 2, Type: 2, Permission: "system:country:edit", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[3], apis[4]}},
-			{menu: model.VideoMenu{ParentID: page.ID, Name: "删除国家", Sort: 3, Type: 2, Permission: "system:country:delete", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[5]}},
+			{menu: model.VideoMenu{ParentID: page.ID, Name: "新增国家", Sort: 1, Type: 2, Permission: "operation:country:add", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[2]}},
+			{menu: model.VideoMenu{ParentID: page.ID, Name: "编辑国家", Sort: 2, Type: 2, Permission: "operation:country:edit", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[3], apis[4]}},
+			{menu: model.VideoMenu{ParentID: page.ID, Name: "删除国家", Sort: 3, Type: 2, Permission: "operation:country:delete", Visible: 1, Status: 1}, apis: []model.VideoAPI{apis[5]}},
 		}
 		allMenus := []model.VideoMenu{*page}
 		for _, seed := range buttonSeeds {

@@ -632,7 +632,7 @@ func (r *TemplateRepo) GetPageList(ctx context.Context, page, pageSize int, filt
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Preload(q.AIModel).Order(q.Sort.Asc(), q.ID.Desc()).
+	rows, err := dao.Preload(q.AIModel).Order(q.Sort.Desc(), q.UsageCount.Desc(), q.LikeCount.Desc(), q.ViewCount.Desc(), q.ID.Desc()).
 		Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, err

@@ -38,14 +38,19 @@ func (m *Manager) finishImageTask(ctx context.Context, task *model.VideoUserGene
 	if len(storedURLs) == 0 {
 		return errors.New("image generation completed without an output")
 	}
-	coverSource, cleanupCoverSource, err := firstImageCoverSource(remoteURLs, base64Images)
-	if err != nil {
-		return err
+	coverURL := storedURLs[0]
+	coverSource, cleanupCoverSource, coverErr := firstImageCoverSource(remoteURLs, base64Images)
+	if coverErr == nil {
+		defer cleanupCoverSource()
+		coverURL, coverErr = generateImageTaskCoverOrOriginal(ctx, storage, task, coverSource, coverURL)
 	}
-	defer cleanupCoverSource()
-	coverURL, err := generateAndStoreTaskCover(ctx, storage, task, upload.MediaImage, coverSource)
-	if err != nil {
-		return fmt.Errorf("generate image task cover: %w", err)
+	if coverErr != nil && config.Log != nil {
+		config.Log.Warnw("image task cover generation failed; using original image",
+			"task_id", task.ID,
+			"task_code", task.TaskCode,
+			"original_image_url", coverURL,
+			"error", coverErr,
+		)
 	}
 	rawURLs, _ := json.Marshal(storedURLs)
 	now := time.Now()

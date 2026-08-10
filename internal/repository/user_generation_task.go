@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 
 	"gorm.io/gorm"
@@ -77,6 +78,26 @@ func (r *UserGenerationTaskRepo) GetPointStateForUpdate(ctx context.Context, id 
 		Where("id = ? AND deleted_at IS NULL", id).
 		Take(&state).Error
 	return &state, err
+}
+
+// SumActiveVIPScore returns subscription points currently reserved by tasks
+// that have not reached success or failure. Renewal fulfillment uses this to
+// avoid making points from the previous subscription period available twice.
+func (r *UserGenerationTaskRepo) SumActiveVIPScore(ctx context.Context, userID uint64) (uint64, error) {
+	var result struct {
+		Total uint64 `gorm:"column:total"`
+	}
+	err := dbFrom(ctx).Table(model.TableNameVideoUserGenerationTask).
+		Select("COALESCE(SUM(vip_score), 0) AS total").
+		Where("user_id = ? AND deleted_at IS NULL AND status IN ?", userID, []int{
+			domain.GenerationTaskStatusSubmitting,
+			domain.GenerationTaskStatusSubmitted,
+			domain.GenerationTaskStatusPending,
+			domain.GenerationTaskStatusRunning,
+			domain.GenerationTaskStatusDownloading,
+		}).
+		Scan(&result).Error
+	return result.Total, err
 }
 
 func (r *UserGenerationTaskRepo) GetOwned(ctx context.Context, id, userID uint64) (*model.VideoUserGenerationTask, error) {
@@ -179,11 +200,8 @@ func (r *UserGenerationTaskRepo) PageAdmin(ctx context.Context, page, pageSize i
 				taskTable+".third_task_code LIKE ? OR "+taskTable+".prompt LIKE ? OR "+
 				modelTable+".name LIKE ? OR "+modelTable+".code LIKE ? OR "+
 				userTable+".username LIKE ? OR "+userTable+".email LIKE ? OR "+
-				userTable+".login_account LIKE ? OR "+userTable+".imei LIKE ? OR "+
-				"EXISTS (SELECT 1 FROM "+model.TableNameVideoUserIdentity+" identity_row "+
-				"WHERE identity_row.user_id = "+taskTable+".user_id AND identity_row.email LIKE ?)"+
-				")",
-				keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword,
+				userTable+".login_account LIKE ? OR "+userTable+".imei LIKE ?",
+				keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword, keyword,
 			)
 		}
 	}

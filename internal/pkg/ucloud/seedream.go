@@ -147,8 +147,9 @@ func buildDoubaoSeedreamRequest(request TaskSubmitRequest) (DoubaoSeedreamGenera
 	if err := decodeParameters(request.Parameters, &parameters); err != nil {
 		return DoubaoSeedreamGenerationRequest{}, err
 	}
+	model := parameters.Model
 	return DoubaoSeedreamGenerationRequest{
-		Prompt: request.Prompt, Images: request.Images,
+		Model: model, Prompt: request.Prompt, Images: request.Images,
 		Size:                             parameters.Size,
 		SequentialImageGeneration:        parameters.SequentialImageGeneration,
 		SequentialImageGenerationOptions: parameters.SequentialImageGenerationOptions,

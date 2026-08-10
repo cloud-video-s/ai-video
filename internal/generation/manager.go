@@ -1,6 +1,7 @@
 package generation
 
 import (
+	"ai-video/internal/pkg/ucloud"
 	"context"
 	"encoding/json"
 	"errors"
@@ -156,6 +157,21 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		// the queued payload before CreateTask returns. This makes submission
 		// recoverable after a restart and prevents clients from overriding it.
 		parameters["external_task_id"] = taskCode
+		if modelConfig.Code == ucloud.ModelKlingO3 {
+			if video, ok := request.Input["video"].(string); ok && video != "" {
+				parameters["sound"] = "off"
+			}
+		}
+
+		if modelConfig.Code == ucloud.ModelKlingV3 {
+			duration, durationOK := parameters["duration"].(int)
+			klingV3Type, ok := parameters["kling_v3_type"].(string)
+			if ok && klingV3Type == "motion_control" {
+				if durationOK && (duration < 5 || duration > 10) {
+					return nil, errors.New("the value of duration ranges from 5 to 10 seconds")
+				}
+			}
+		}
 	}
 	remoteRequest := remoteSubmitRequest{
 		Model: modelConfig.Code, Input: cloneMap(request.Input), Parameters: parameters,
@@ -543,13 +559,10 @@ func (m *Manager) downloadAndFinish(ctx context.Context, task *model.VideoUserGe
 	}
 	storage = recordGeneratedUploads(storage, m.uploadRepo, task, upload.MediaImage)
 	coverSource := uploadruntime.PublicURL(localURLs[0])
-	coverURL, err := generateAndStoreTaskCover(ctx, storage, task, upload.MediaVideo, coverSource)
 	remoteCoverSource := strings.TrimSpace(remoteURLs[0])
-	if err != nil && remoteCoverSource != coverSource {
-		coverURL, err = generateAndStoreTaskCover(ctx, storage, task, upload.MediaVideo, remoteCoverSource)
-	}
+	coverURL, err := generateOrStoreDefaultVideoTaskCover(ctx, storage, task, coverSource, remoteCoverSource)
 	if err != nil {
-		return m.failTask(ctx, task, "生成视频封面失败: "+err.Error())
+		return m.failTask(ctx, task, "保存视频默认封面失败: "+err.Error())
 	}
 	encoded, _ := json.Marshal(localURLs)
 	now := time.Now()
@@ -631,9 +644,7 @@ func mergeLegacyModelParameters(definitions []model.VideoModelParameter, request
 		}
 		result[key] = value
 	}
-	for key, value := range request {
-		result[key] = value
-	}
+	maps.Copy(result, request)
 	return result, nil
 }
 

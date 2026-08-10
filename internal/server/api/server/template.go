@@ -22,6 +22,7 @@ type ClientTemplateService struct {
 	countryRepo           *repository.CountryRepo
 	TemplateFavoriteRepo  *repository.TemplateFavoriteRepo
 	modelRepo             *repository.ModelRepo
+	modelParameterRepo    *repository.ModelParameterRepo
 	templateParameterRepo *repository.TemplateModelParameterRepo
 }
 
@@ -30,8 +31,9 @@ func NewClientTemplateService() *ClientTemplateService {
 		typeRepo: repository.NewTemplateTypeRepo(), templateRepo: repository.NewTemplateRepo(),
 		displayRepo: repository.NewTemplateDisplayConfigRepo(),
 		userRepo:    repository.NewAppUserRepo(), countryRepo: repository.NewCountryRepo(),
-		modelRepo: repository.NewModelRepo(), templateParameterRepo: repository.NewTemplateModelParameterRepo(),
-		TemplateFavoriteRepo: repository.NewTemplateFavoriteRepo(),
+		modelRepo: repository.NewModelRepo(), modelParameterRepo: repository.NewModelParameterRepo(),
+		templateParameterRepo: repository.NewTemplateModelParameterRepo(),
+		TemplateFavoriteRepo:  repository.NewTemplateFavoriteRepo(),
 	}
 }
 

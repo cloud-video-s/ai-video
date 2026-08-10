@@ -35,12 +35,14 @@ func newVideoModelParameter(db *gorm.DB, opts ...gen.DOOption) videoModelParamet
 	_videoModelParameter.IsRequired = field.NewUint32(tableName, "is_required")
 	_videoModelParameter.DefaultValue = field.NewString(tableName, "default_value")
 	_videoModelParameter.AllowedValues = field.NewString(tableName, "allowed_values")
+	_videoModelParameter.AllowedValueOptions = field.NewString(tableName, "allowed_value_aliases")
 	_videoModelParameter.Description = field.NewString(tableName, "description")
 	_videoModelParameter.SortOrder = field.NewUint32(tableName, "sort_order")
 	_videoModelParameter.ParameterType = field.NewUint32(tableName, "parameter_type")
 	_videoModelParameter.Constraints = field.NewString(tableName, "constraints")
 	_videoModelParameter.Alias_ = field.NewString(tableName, "alias")
 	_videoModelParameter.DisplayType = field.NewString(tableName, "display_type")
+	_videoModelParameter.IsDisplay = field.NewUint32(tableName, "is_display")
 	_videoModelParameter.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoModelParameter.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoModelParameter.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -54,23 +56,25 @@ func newVideoModelParameter(db *gorm.DB, opts ...gen.DOOption) videoModelParamet
 type videoModelParameter struct {
 	videoModelParameterDo videoModelParameterDo
 
-	ALL           field.Asterisk
-	ID            field.Int64  // 主键ID
-	ModelID       field.Int64  // 模型ID，关联model表
-	ParamKey      field.String // 参数键名
-	ParamType     field.String // 参数类型：string / integer / boolean / object / array
-	IsRequired    field.Uint32 // 是否必填：0-否，1-是
-	DefaultValue  field.String // 默认值（JSON格式存储）
-	AllowedValues field.String // 允许的值列表（JSON数组格式）
-	Description   field.String // 参数说明
-	SortOrder     field.Uint32 // 排序权重
-	ParameterType field.Uint32 // 类型 1 选项 2请求参数
-	Constraints   field.String // 字段限制
-	Alias_        field.String // 别名
-	DisplayType   field.String // 展示数据类型 string / integer / boolean / object / array / select / time
-	CreatedAt     field.Time   // 创建时间
-	UpdatedAt     field.Time   // 更新时间
-	DeletedAt     field.Field
+	ALL                 field.Asterisk
+	ID                  field.Int64  // 主键ID
+	ModelID             field.Int64  // 模型ID，关联model表
+	ParamKey            field.String // 参数键名
+	ParamType           field.String // 参数类型：string / integer / boolean / object / array
+	IsRequired          field.Uint32 // 是否必填：0-否，1-是
+	DefaultValue        field.String // 默认值（JSON格式存储）
+	AllowedValues       field.String // 允许的值列表（JSON数组格式）
+	AllowedValueOptions field.String // 选择值配置（value/alias 对象数组）
+	Description         field.String // 参数说明
+	SortOrder           field.Uint32 // 排序权重
+	ParameterType       field.Uint32 // 类型 1 选项 2请求参数
+	Constraints         field.String // 字段限制
+	Alias_              field.String // 别名
+	DisplayType         field.String // 展示数据类型 string / integer / boolean / object / array / select / time
+	IsDisplay           field.Uint32 // 是否展示 1是 0否
+	CreatedAt           field.Time   // 创建时间
+	UpdatedAt           field.Time   // 更新时间
+	DeletedAt           field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -94,12 +98,14 @@ func (v *videoModelParameter) updateTableName(table string) *videoModelParameter
 	v.IsRequired = field.NewUint32(table, "is_required")
 	v.DefaultValue = field.NewString(table, "default_value")
 	v.AllowedValues = field.NewString(table, "allowed_values")
+	v.AllowedValueOptions = field.NewString(table, "allowed_value_aliases")
 	v.Description = field.NewString(table, "description")
 	v.SortOrder = field.NewUint32(table, "sort_order")
 	v.ParameterType = field.NewUint32(table, "parameter_type")
 	v.Constraints = field.NewString(table, "constraints")
 	v.Alias_ = field.NewString(table, "alias")
 	v.DisplayType = field.NewString(table, "display_type")
+	v.IsDisplay = field.NewUint32(table, "is_display")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -131,7 +137,7 @@ func (v *videoModelParameter) GetFieldByName(fieldName string) (field.OrderExpr,
 }
 
 func (v *videoModelParameter) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 16)
+	v.fieldMap = make(map[string]field.Expr, 18)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["model_id"] = v.ModelID
 	v.fieldMap["param_key"] = v.ParamKey
@@ -139,12 +145,14 @@ func (v *videoModelParameter) fillFieldMap() {
 	v.fieldMap["is_required"] = v.IsRequired
 	v.fieldMap["default_value"] = v.DefaultValue
 	v.fieldMap["allowed_values"] = v.AllowedValues
+	v.fieldMap["allowed_value_aliases"] = v.AllowedValueOptions
 	v.fieldMap["description"] = v.Description
 	v.fieldMap["sort_order"] = v.SortOrder
 	v.fieldMap["parameter_type"] = v.ParameterType
 	v.fieldMap["constraints"] = v.Constraints
 	v.fieldMap["alias"] = v.Alias_
 	v.fieldMap["display_type"] = v.DisplayType
+	v.fieldMap["is_display"] = v.IsDisplay
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

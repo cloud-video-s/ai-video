@@ -39,6 +39,7 @@ type Service struct {
 	vipProducts    *repository.VIPSubscriptionRepo
 	pointProducts  *repository.PointsPackageRepo
 	packages       *repository.PackageRepo
+	tasks          *repository.UserGenerationTaskRepo
 	appleRootCAs   *x509.CertPool
 	appleServerAPI appleTransactionInfoProvider
 }
@@ -50,6 +51,7 @@ func NewService() *Service {
 		orders: repository.NewOrderRepo(), users: repository.NewAppUserRepo(),
 		ledgers: repository.NewCommercePointsLedgerRepo(), vipProducts: repository.NewVIPSubscriptionRepo(),
 		pointProducts: repository.NewPointsPackageRepo(), packages: repository.NewPackageRepo(),
+		tasks:          repository.NewUserGenerationTaskRepo(),
 		appleRootCAs:   defaultAppleRootCAs,
 		appleServerAPI: newAppleServerAPIClient(config.Cfg.AppStore),
 	}
@@ -138,10 +140,11 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 				return err
 			}
 
-			price, revenue, bonus := product.SubscriptionPrice, product.SubscriptionRevenue, product.SubscriptionPoints
-			if paidCount == 0 && !req.Renewal {
-				price, revenue, bonus = product.FirstSubscriptionPrice, product.FirstSubscriptionRevenue, product.FirstBonusPoints
-			}
+			// Whether the transaction belongs to an Apple renewal chain controls
+			// the order type, but it does not describe whether this user has ever
+			// paid for a subscription in this service. The local paid-order history
+			// is authoritative for the first-subscription snapshot.
+			price, revenue, bonus := subscriptionOrderTerms(product, paidCount > 0)
 			payableAmount := price
 			if req.PaidAmount > 0 {
 				payableAmount = req.PaidAmount
@@ -197,6 +200,13 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 	return created, nil
 }
 
+func subscriptionOrderTerms(product *model.VideoVipSubscription, hasPaidSubscription bool) (price, revenue float64, bonus uint64) {
+	if !hasPaidSubscription {
+		return product.FirstSubscriptionPrice, product.FirstSubscriptionRevenue, product.FirstBonusPoints
+	}
+	return product.SubscriptionPrice, product.SubscriptionRevenue, product.SubscriptionPoints
+}
+
 // ConfirmApplePayment must be called only after the Apple signed transaction
 // has been verified. Row locks, a conditional status update and the provider
 // transaction unique index jointly prevent duplicate payment or fulfillment.
@@ -243,7 +253,7 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 		if payAt.IsZero() {
 			payAt = time.Now()
 		}
-		if err := s.orders.MarkPaid(ctx, order.ID, map[string]interface{}{
+		if err := s.orders.MarkPaid(ctx, order.ID, map[string]any{
 			"pay_type": domain.PaymentMethodAppleIAP, "third_order_no": result.TransactionID,
 			"original_transaction_id": strings.TrimSpace(result.OriginalTransactionID), "paid_amount": result.PaidAmount,
 			"payment_evidence": result.SignedTransaction, "pay_time": payAt, "order_type": result.OrderType,
@@ -295,11 +305,48 @@ func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder
 			return err
 		}
 		now := time.Now()
+		creditedBonusPoints := lockedOrder.BonusPoints
+		if lockedOrder.ProductType == domain.OrderProductVIPSubscription &&
+			lockedOrder.OrderType == domain.OrderTypeRenewal {
+			// Renewal replaces the previous period's available subscription
+			// points. If expiration already ran, VipPoints is already zero and
+			// no duplicate deduction ledger is written.
+			if user.VipPoints > 0 {
+				beforeClear := user.VipPoints + user.PointsBalance
+				clearLedger := &model.VideoUserPointsLedger{
+					UserID: user.ID, Direction: int8(domain.PointsDirectionExpense),
+					PointsChange: -user.VipPoints, BalanceBefore: uint64(beforeClear),
+					BalanceAfter: uint64(user.PointsBalance), SourceType: uint32(domain.PointsSourceExpireDeduct),
+					OrderCode: lockedOrder.OrderNo, VipID: lockedOrder.ProductID,
+					Description: "subscription renewal old points deduction", OccurredAt: now, CreatedAt: now,
+				}
+				if err := s.ledgers.Create(ctx, clearLedger); err != nil {
+					return err
+				}
+			}
+			user.VipPoints = 0
+
+			frozenVIPPoints, err := s.tasks.SumActiveVIPScore(ctx, user.ID)
+			if err != nil {
+				return err
+			}
+			if creditedBonusPoints > 0 {
+				// Active tasks still own their frozen points. Withholding the same
+				// amount from the new available grant prevents those old-period
+				// reservations from becoming spendable twice.
+				deductedFrozen := frozenVIPPoints
+				if deductedFrozen > uint64(creditedBonusPoints) {
+					deductedFrozen = uint64(creditedBonusPoints)
+				}
+				creditedBonusPoints -= int64(deductedFrozen)
+			}
+		}
+
 		beforeBalance := user.VipPoints + user.PointsBalance
 		if lockedOrder.ProductType == domain.OrderProductVIPSubscription {
-			user.VipPoints += lockedOrder.BonusPoints
+			user.VipPoints += creditedBonusPoints
 		} else {
-			user.PointsBalance += lockedOrder.BonusPoints
+			user.PointsBalance += creditedBonusPoints
 		}
 		afterBalance := user.VipPoints + user.PointsBalance
 
@@ -308,7 +355,10 @@ func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder
 			description := "Purchase bonus points"
 			ledger := &model.VideoUserPointsLedger{
 				UserID: user.ID, Direction: int8(domain.PointsDirectionIncome),
-				PointsChange: int64(lockedOrder.BonusPoints), BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(afterBalance),
+				// PointsChange intentionally records the complete order gift;
+				// balances reflect the amount made available after frozen VIP
+				// reservations are offset.
+				PointsChange: lockedOrder.BonusPoints, BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(afterBalance),
 				SourceType: sourceType, OrderCode: lockedOrder.OrderNo,
 				Description: description, OccurredAt: now, CreatedAt: now,
 			}

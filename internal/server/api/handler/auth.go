@@ -87,23 +87,6 @@ func (h *AuthHandler) ThirdBinding(c *gin.Context) {
 	response.OK(c, result)
 }
 
-func (h *AuthHandler) ListIdentities(c *gin.Context) {
-	list, err := h.svc.ListIdentities(c.Request.Context(), middleware.GetAPIUserID(c))
-	if err != nil {
-		response.Fail(c, errcode.ErrServer, err.Error())
-		return
-	}
-	response.OK(c, list)
-}
-
-func (h *AuthHandler) UnbindIdentity(c *gin.Context) {
-	if err := h.svc.UnbindIdentity(c.Request.Context(), middleware.GetAPIUserID(c), c.Param("provider")); err != nil {
-		response.Fail(c, errcode.ErrParam, err.Error())
-		return
-	}
-	response.OK(c, nil)
-}
-
 func (h *AuthHandler) handleIdentityError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, oidc.ErrInvalidToken):

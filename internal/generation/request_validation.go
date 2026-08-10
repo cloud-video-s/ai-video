@@ -64,7 +64,7 @@ func normalizeGenerationInput(taskType uint32, input *GenerationInput) error {
 	return nil
 }
 
-func mergeConfiguredParameters(definitions []model.VideoModelParameter, request map[string]interface{}) (map[string]interface{}, error) {
+func mergeConfiguredParameters(definitions []model.VideoModelParameter, request map[string]any) (map[string]any, error) {
 	result := make(map[string]any)
 	configured := make(map[string]model.VideoModelParameter)
 	for i := range definitions {

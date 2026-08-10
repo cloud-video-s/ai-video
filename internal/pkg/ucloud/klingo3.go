@@ -28,6 +28,9 @@ type KlingO3VideoReferType string
 const (
 	KlingO3VideoReferTypeFeature KlingO3VideoReferType = "feature"
 	KlingO3VideoReferTypeBase    KlingO3VideoReferType = "base"
+
+	KeepOriginalSoundYes = "yes"
+	KeepOriginalSoundNo  = "no"
 )
 
 type KlingO3SubmitRequest struct {
@@ -117,7 +120,7 @@ func buildKlingO3Request(request TaskSubmitRequest) (KlingO3SubmitRequest, error
 			return KlingO3SubmitRequest{}, errors.New("use either top-level video or parameters.video_list for Kling O3")
 		}
 		parameters.VideoList = []KlingO3VideoReference{{
-			VideoURL: request.Video, ReferType: KlingO3VideoReferTypeBase,
+			VideoURL: request.Video, ReferType: KlingO3VideoReferTypeBase, KeepOriginalSound: KeepOriginalSoundYes,
 		}}
 	}
 	return KlingO3SubmitRequest{

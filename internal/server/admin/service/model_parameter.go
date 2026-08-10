@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"ai-video/internal/gen/model"
+	"ai-video/internal/modelparameter"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -37,35 +38,39 @@ func NewModelParameterService() *ModelParameterService {
 }
 
 type ModelParameterPayload struct {
-	ParamKey      string                 `json:"param_key" binding:"required,max=64"`
-	ValueType     string                 `json:"value_type" binding:"required,oneof=string integer number boolean object array"`
-	ParameterType uint32                 `json:"parameter_type" binding:"required,oneof=1 2"`
-	IsRequired    uint32                 `json:"is_required" binding:"oneof=0 1"`
-	DefaultValue  interface{}            `json:"default_value"`
-	AllowedValues []interface{}          `json:"allowed_values"`
-	Constraints   map[string]interface{} `json:"constraints"`
-	Description   string                 `json:"description" binding:"max=255"`
-	SortOrder     uint32                 `json:"sort_order"`
-	Alias         string                 `json:"alias" binding:"omitempty,max=255"`
-	DisplayType   string                 `json:"display_type" binding:"omitempty,oneof=string integer boolean object array select time"`
+	ParamKey            string                       `json:"param_key" binding:"required,max=64"`
+	ValueType           string                       `json:"value_type" binding:"required,oneof=string integer number boolean object array"`
+	ParameterType       uint32                       `json:"parameter_type" binding:"required,oneof=1 2"`
+	IsRequired          uint32                       `json:"is_required" binding:"oneof=0 1"`
+	DefaultValue        interface{}                  `json:"default_value"`
+	AllowedValues       []interface{}                `json:"allowed_values"`
+	AllowedValueOptions []modelparameter.ValueOption `json:"allowed_value_options"`
+	Constraints         map[string]interface{}       `json:"constraints"`
+	Description         string                       `json:"description" binding:"max=255"`
+	SortOrder           uint32                       `json:"sort_order"`
+	Alias               string                       `json:"alias" binding:"omitempty,max=255"`
+	DisplayType         string                       `json:"display_type" binding:"omitempty,oneof=string integer boolean object array select time"`
+	IsDisplay           *uint32                      `json:"is_display" binding:"omitempty,oneof=0 1"`
 }
 
 type ModelParameterView struct {
-	ID            int64                  `json:"id"`
-	ModelID       int64                  `json:"model_id"`
-	ParamKey      string                 `json:"param_key"`
-	ValueType     string                 `json:"value_type"`
-	ParameterType uint32                 `json:"parameter_type"`
-	IsRequired    uint32                 `json:"is_required"`
-	DefaultValue  interface{}            `json:"default_value"`
-	AllowedValues []interface{}          `json:"allowed_values"`
-	Constraints   map[string]interface{} `json:"constraints"`
-	Description   string                 `json:"description"`
-	SortOrder     uint32                 `json:"sort_order"`
-	Alias         string                 `json:"alias"`
-	DisplayType   string                 `json:"display_type"`
-	CreatedAt     string                 `json:"created_at"`
-	UpdatedAt     string                 `json:"updated_at"`
+	ID                  int64                        `json:"id"`
+	ModelID             int64                        `json:"model_id"`
+	ParamKey            string                       `json:"param_key"`
+	ValueType           string                       `json:"value_type"`
+	ParameterType       uint32                       `json:"parameter_type"`
+	IsRequired          uint32                       `json:"is_required"`
+	DefaultValue        interface{}                  `json:"default_value"`
+	AllowedValues       []interface{}                `json:"allowed_values"`
+	AllowedValueOptions []modelparameter.ValueOption `json:"allowed_value_options"`
+	Constraints         map[string]interface{}       `json:"constraints"`
+	Description         string                       `json:"description"`
+	SortOrder           uint32                       `json:"sort_order"`
+	Alias               string                       `json:"alias"`
+	DisplayType         string                       `json:"display_type"`
+	IsDisplay           uint32                       `json:"is_display"`
+	CreatedAt           string                       `json:"created_at"`
+	UpdatedAt           string                       `json:"updated_at"`
 }
 
 func (s *ModelParameterService) List(ctx context.Context, modelID int64) ([]ModelParameterView, error) {
@@ -95,6 +100,7 @@ func (s *ModelParameterService) Create(ctx context.Context, modelID int64, req *
 	if _, err := s.modelRepo.GetByID(ctx, uint(modelID)); err != nil {
 		return nil, notFoundOr(err, "模型不存在")
 	}
+	setDefaultIsDisplay(req, 1)
 	if err := s.validatePayload(ctx, modelID, req, 0); err != nil {
 		return nil, err
 	}
@@ -119,6 +125,7 @@ func (s *ModelParameterService) Update(ctx context.Context, modelID, id int64, r
 	if err != nil {
 		return nil, notFoundOr(err, "模型配置不存在")
 	}
+	setDefaultIsDisplay(req, item.IsDisplay)
 	if err := s.validatePayload(ctx, modelID, req, id); err != nil {
 		return nil, err
 	}
@@ -204,6 +211,9 @@ func (s *ModelParameterService) validatePayload(ctx context.Context, modelID int
 		if req.ValueType == "object" || req.ValueType == "array" {
 			return errors.New("选项参数的值类型仅支持 string、integer、number 或 boolean")
 		}
+		if err := normalizeSelectionOptions(req); err != nil {
+			return err
+		}
 		if len(req.AllowedValues) == 0 {
 			return errors.New("选项参数至少需要一个选择值")
 		}
@@ -247,6 +257,7 @@ func (s *ModelParameterService) validatePayload(ctx context.Context, modelID int
 			return err
 		}
 		req.AllowedValues = []interface{}{}
+		req.AllowedValueOptions = []modelparameter.ValueOption{}
 	}
 	existing, err := s.repo.GetByKey(ctx, modelID, req.ParamKey)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -257,6 +268,60 @@ func (s *ModelParameterService) validatePayload(ctx context.Context, modelID int
 	}
 	if existing.ID != currentID {
 		return errors.New("该模型下参数字段已存在")
+	}
+	return nil
+}
+
+func setDefaultIsDisplay(req *ModelParameterPayload, value uint32) {
+	if req.IsDisplay == nil {
+		req.IsDisplay = &value
+	}
+}
+
+// normalizeSelectionOptions keeps the original allowed_values request format
+// compatible while making value/alias object pairs the canonical stored form.
+func normalizeSelectionOptions(req *ModelParameterPayload) error {
+	if len(req.AllowedValueOptions) == 0 {
+		if len(req.AllowedValues) == 0 {
+			return errors.New("选项参数至少需要一个选择值配置")
+		}
+		options, err := modelparameter.ValueOptions("", req.AllowedValues)
+		if err != nil {
+			return err
+		}
+		req.AllowedValueOptions = options
+		return nil
+	}
+	if err := normalizeAllowedValueOptions(req.AllowedValueOptions); err != nil {
+		return err
+	}
+	values := modelparameter.Values(req.AllowedValueOptions)
+	if len(req.AllowedValues) > 0 {
+		if len(req.AllowedValues) != len(values) {
+			return errors.New("allowed_values 与 allowed_value_options 数量不一致")
+		}
+		for i := range values {
+			if !parameterValuesEqual(req.AllowedValues[i], values[i]) {
+				return fmt.Errorf("allowed_values 与第 %d 个 allowed_value_options.value 不一致", i+1)
+			}
+		}
+	}
+	req.AllowedValues = values
+	return nil
+}
+
+func normalizeAllowedValueOptions(options []modelparameter.ValueOption) error {
+	if len(options) == 0 {
+		return errors.New("选项参数至少需要一个选择值配置")
+	}
+	for i := range options {
+		options[i].Alias = strings.TrimSpace(options[i].Alias)
+		if options[i].Alias == "" {
+			return fmt.Errorf("第 %d 个选择值的别名不能为空", i+1)
+		}
+		if utf8.RuneCountInString(options[i].Alias) > 255 {
+			return fmt.Errorf("第 %d 个选择值的别名不能超过 255 个字符", i+1)
+		}
 	}
 	return nil
 }
@@ -345,6 +410,10 @@ func buildModelParameter(modelID int64, req *ModelParameterPayload) (*model.Vide
 	if err != nil {
 		return nil, err
 	}
+	allowedOptionsJSON, err := json.Marshal(req.AllowedValueOptions)
+	if err != nil {
+		return nil, err
+	}
 	constraintsJSON := ""
 	if req.Constraints != nil {
 		constraintsStr, err := json.Marshal(req.Constraints)
@@ -353,11 +422,15 @@ func buildModelParameter(modelID int64, req *ModelParameterPayload) (*model.Vide
 		}
 		constraintsJSON = string(constraintsStr)
 	}
+	isDisplay := uint32(1)
+	if req.IsDisplay != nil {
+		isDisplay = *req.IsDisplay
+	}
 	videoModelParameter := &model.VideoModelParameter{
 		ModelID: modelID, ParamKey: req.ParamKey, ParamType: req.ValueType,
-		IsRequired: req.IsRequired, DefaultValue: defaultJSON, AllowedValues: string(allowedJSON),
+		IsRequired: req.IsRequired, DefaultValue: defaultJSON, AllowedValues: string(allowedJSON), AllowedValueOptions: string(allowedOptionsJSON),
 		Description: req.Description, SortOrder: req.SortOrder, ParameterType: req.ParameterType,
-		Constraints: constraintsJSON, Alias_: req.Alias, DisplayType: req.DisplayType,
+		Constraints: constraintsJSON, Alias_: req.Alias, DisplayType: req.DisplayType, IsDisplay: isDisplay,
 	}
 	return videoModelParameter, nil
 }
@@ -375,6 +448,10 @@ func modelParameterView(item *model.VideoModelParameter) (ModelParameterView, er
 			return ModelParameterView{}, fmt.Errorf("参数 %s 的选择值 JSON 无效: %w", item.ParamKey, err)
 		}
 	}
+	allowedValueOptions, err := modelparameter.ValueOptions(item.AllowedValueOptions, allowedValues)
+	if err != nil {
+		return ModelParameterView{}, fmt.Errorf("参数 %s 的选择值别名无效: %w", item.ParamKey, err)
+	}
 	constraints := make(map[string]interface{})
 	if item.Constraints != "" {
 		if err := json.Unmarshal([]byte(item.Constraints), &constraints); err != nil {
@@ -384,8 +461,9 @@ func modelParameterView(item *model.VideoModelParameter) (ModelParameterView, er
 	return ModelParameterView{
 		ID: item.ID, ModelID: item.ModelID, ParamKey: item.ParamKey, ValueType: item.ParamType,
 		ParameterType: item.ParameterType, IsRequired: item.IsRequired, DefaultValue: defaultValue,
-		AllowedValues: allowedValues, Constraints: constraints, Description: item.Description,
-		SortOrder: item.SortOrder, Alias: item.Alias_, DisplayType: item.DisplayType,
+		AllowedValues: allowedValues, AllowedValueOptions: allowedValueOptions,
+		Constraints: constraints, Description: item.Description,
+		SortOrder: item.SortOrder, Alias: item.Alias_, DisplayType: item.DisplayType, IsDisplay: item.IsDisplay,
 		CreatedAt: item.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt: item.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}, nil

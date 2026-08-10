@@ -136,17 +136,13 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 	}
 	isSubscription := isSubscriptionType(verified.Type)
 	if isSubscription {
-		//if !req.IsActive || verified.ExpiresAt == nil || !verified.ExpiresAt.After(time.Now()) {
-		//	return nil, ErrApplePurchaseInactive
-		//}
+		if !req.IsActive || verified.ExpiresAt == nil || !verified.ExpiresAt.After(time.Now()) {
+			return nil, ErrApplePurchaseInactive
+		}
 	}
 	if (req.ShopType == domain.OrderProductVIPSubscription && !isSubscription) ||
 		(req.ShopType == domain.OrderProductPointsPackage && isSubscription) {
 		return nil, ErrPaymentMismatch
-	}
-	shopID, err := s.resolveAppleProduct(ctx, req.ShopType, verified.ProductID, expectedBundle)
-	if err != nil {
-		return nil, err
 	}
 	productType := domain.OrderProductVIPSubscription
 	if req.ShopType == 2 {
@@ -156,6 +152,10 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 		(strings.EqualFold(verified.TransactionReason, "RENEWAL") ||
 			verified.TransactionID != verified.OriginalTransactionID)
 	orderType := orderTypeForRenewal(renewal)
+	shopID, err := s.resolveAppleProduct(ctx, req.ShopType, verified.ProductID, expectedBundle)
+	if err != nil {
+		return nil, err
+	}
 	var order *model.VideoOrder
 	if strings.TrimSpace(req.OrderNo) != "" {
 		order, err = s.orders.GetByOrderNo(ctx, strings.TrimSpace(req.OrderNo), false)
@@ -189,7 +189,7 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 	if err != nil {
 		return nil, err
 	}
-	if err := s.fulfillAppleOrder(ctx, paid, verified.ExpiresAt); err != nil {
+	if err = s.fulfillAppleOrder(ctx, paid, verified.ExpiresAt); err != nil {
 		return nil, err
 	}
 	completed, err := s.orders.GetByOrderNo(ctx, paid.OrderNo, false)
@@ -202,14 +202,14 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 // resolveAppleProduct maps an Apple product identifier to the configured VIP
 // or points product under the authenticated application package.
 func (s *Service) resolveAppleProduct(ctx context.Context, shopType int, sukCode, packageCode string) (shopID uint64, err error) {
-	if shopType == 1 {
+	if shopType == domain.OrderProductVIPSubscription {
 		vip, vipErr := s.vipProducts.GetAppleProduct(ctx, sukCode, packageCode)
 		if vipErr != nil && !errors.Is(vipErr, gorm.ErrRecordNotFound) {
 			return 0, vipErr
 		}
 		return vip.ID, nil
 	}
-	if shopType == 2 {
+	if shopType == domain.OrderProductPointsPackage {
 		points, pointsErr := s.pointProducts.GetAppleProduct(ctx, sukCode, packageCode)
 		if pointsErr != nil && !errors.Is(pointsErr, gorm.ErrRecordNotFound) {
 			return 0, pointsErr
@@ -217,6 +217,14 @@ func (s *Service) resolveAppleProduct(ctx context.Context, shopType int, sukCode
 		return points.ID, nil
 	}
 	return 0, ErrAppleProductNotFound
+}
+
+func (s *Service) resolveAppleVipProduct(ctx context.Context, sukCode, packageCode string) (Product *model.VideoVipSubscription, err error) {
+	return s.vipProducts.GetAppleProduct(ctx, sukCode, packageCode)
+}
+
+func (s *Service) resolveApplePointProduct(ctx context.Context, sukCode, packageCode string) (Product *model.VideoPointsPackage, err error) {
+	return s.pointProducts.GetAppleProduct(ctx, sukCode, packageCode)
 }
 
 // verifyApplePurchase verifies signed StoreKit evidence and checks every

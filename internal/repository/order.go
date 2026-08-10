@@ -267,16 +267,6 @@ func buildDao(ctx context.Context, filter *OrderAdminFilter) query.IVideoOrderDo
 			user.Username.Like(keyword), user.LoginAccount.Like(keyword),
 			user.Email.Like(keyword), user.Phone.Like(keyword), user.IMEI.Like(keyword),
 		}
-		identity := q.VideoUserIdentity
-		var identityUserIDs []uint64
-		if err := identity.WithContext(ctx).Where(field.Or(
-			identity.Email.Like(keyword), identity.DisplayName.Like(keyword),
-		)).Pluck(identity.UserID, &identityUserIDs); err != nil {
-			// 错误处理自行补充，此处忽略
-		}
-		if len(identityUserIDs) > 0 {
-			conditions = append(conditions, order.UserID.In(identityUserIDs...))
-		}
 		dao = dao.Where(field.Or(conditions...))
 	}
 	return dao

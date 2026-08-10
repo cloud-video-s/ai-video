@@ -76,6 +76,16 @@ const (
 	PointsSourceAdminOp          = 7 // 管理员操作
 	PointsSourceOther            = 8 // 其他
 
+	// Generation task lifecycle values are shared with commerce when it
+	// calculates subscription points reserved by in-progress tasks.
+	GenerationTaskStatusSubmitting  = 1
+	GenerationTaskStatusSubmitted   = 2
+	GenerationTaskStatusPending     = 3
+	GenerationTaskStatusRunning     = 4
+	GenerationTaskStatusDownloading = 5
+	GenerationTaskStatusSuccess     = 6
+	GenerationTaskStatusFailure     = 7
+
 	VIPPlanTypeNormal          = "normal"
 	VIPPlanTypeTrial           = "trial"
 	VIPPlanTypePaywall         = "paywall"

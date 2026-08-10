@@ -200,3 +200,33 @@ func TestUserCenterVIPAndAccessOperations(t *testing.T) {
 		t.Fatalf("device-code lookup users=%v total=%d, want user %d", users, total, user.ID)
 	}
 }
+
+func TestUserCenterWorksIncludesModelTypeAndScore(t *testing.T) {
+	records := []repository.UserGenerationTaskAdminRecord{{
+		Task: model.VideoUserGenerationTask{
+			ID: 51, ModelID: 7, TaskCode: "task-51", TaskType: 2, Score: 36,
+		},
+		Model: &model.VideoModel{ID: 7, Name: "Kling O3", ModelType: 1},
+	}}
+
+	items := userCenterWorks(records)
+	if len(items) != 1 {
+		t.Fatalf("len(items) = %d, want 1", len(items))
+	}
+	item := items[0]
+	if item.ModelName != "Kling O3" || item.TaskType != 2 || item.Score != 36 {
+		t.Fatalf("task metadata = %#v", item)
+	}
+}
+
+func TestUserCenterWorksFallsBackToModelType(t *testing.T) {
+	records := []repository.UserGenerationTaskAdminRecord{{
+		Task:  model.VideoUserGenerationTask{ID: 52, ModelID: 8},
+		Model: &model.VideoModel{ID: 8, Name: "Seedream", ModelType: 1},
+	}}
+
+	items := userCenterWorks(records)
+	if len(items) != 1 || items[0].TaskType != 1 {
+		t.Fatalf("items = %#v, want model type fallback", items)
+	}
+}

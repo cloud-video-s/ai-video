@@ -28,7 +28,6 @@ type AuthService struct {
 	userRepo          *repository.AppUserRepo
 	orderRepo         *repository.OrderRepo
 	attributionRepo   *repository.UserAttributionRepo
-	identityRepo      *repository.UserIdentityRepo
 	identityVerifiers map[string]identityTokenVerifier
 }
 
@@ -46,7 +45,6 @@ func NewAuthService() *AuthService {
 	return &AuthService{
 		userRepo: repository.NewAppUserRepo(), orderRepo: repository.NewOrderRepo(),
 		attributionRepo: repository.NewUserAttributionRepo(),
-		identityRepo:    repository.NewUserIdentityRepo(),
 		identityVerifiers: map[string]identityTokenVerifier{
 			domain.IdentityProviderGoogle: oidc.NewVerifier(oidc.Config{Issuers: authConfig.Google.Issuers, Audiences: authConfig.Google.ClientIDs, JWKSURL: authConfig.Google.JWKSURL, HTTPClient: &http.Client{Timeout: timeout}, CacheTTL: cacheTTL}),
 			domain.IdentityProviderApple:  oidc.NewVerifier(oidc.Config{Issuers: authConfig.Apple.Issuers, Audiences: authConfig.Apple.ClientIDs, JWKSURL: authConfig.Apple.JWKSURL, HTTPClient: &http.Client{Timeout: timeout}, CacheTTL: cacheTTL}),
@@ -362,6 +360,7 @@ func blacklistAPIToken(token string, expiresAt time.Time) error {
 func baseTrackingUpdates(ctx context.Context, user *model.VideoUser, loginType int, req *AccountBaseRequest, clientIP string, now time.Time) map[string]any {
 	updates := map[string]any{"last_opened_at": now, "last_login_at": now, "last_login_ip": clientIP,
 		"client_country": req.ClientCountry,
+		"package_code":   req.AppPackage,
 		"app_name":       req.AppName,
 		"phone_model":    req.PhoneModel,
 		"login_type":     loginType,
@@ -371,6 +370,11 @@ func baseTrackingUpdates(ctx context.Context, user *model.VideoUser, loginType i
 	}
 	if config.Redis.Get(ctx, fmt.Sprintf("%s%d", ActiveDayKey, user.ID)).Val() == "" {
 		updates["active_days"] = user.ActiveDays + 1
+	}
+
+	country, err := utils.GetCountryByIP(clientIP)
+	if err == nil {
+		updates["server_country"] = country
 	}
 	return updates
 }

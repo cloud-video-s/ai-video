@@ -62,7 +62,6 @@ var (
 	VideoUser                        *videoUser
 	VideoUserAttribution             *videoUserAttribution
 	VideoUserGenerationTask          *videoUserGenerationTask
-	VideoUserIdentity                *videoUserIdentity
 	VideoUserPointsLedger            *videoUserPointsLedger
 	VideoUserTemplateComplaint       *videoUserTemplateComplaint
 	VideoUserTemplateFavorite        *videoUserTemplateFavorite
@@ -123,7 +122,6 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoUser = &Q.VideoUser
 	VideoUserAttribution = &Q.VideoUserAttribution
 	VideoUserGenerationTask = &Q.VideoUserGenerationTask
-	VideoUserIdentity = &Q.VideoUserIdentity
 	VideoUserPointsLedger = &Q.VideoUserPointsLedger
 	VideoUserTemplateComplaint = &Q.VideoUserTemplateComplaint
 	VideoUserTemplateFavorite = &Q.VideoUserTemplateFavorite
@@ -185,7 +183,6 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoUser:                        newVideoUser(db, opts...),
 		VideoUserAttribution:             newVideoUserAttribution(db, opts...),
 		VideoUserGenerationTask:          newVideoUserGenerationTask(db, opts...),
-		VideoUserIdentity:                newVideoUserIdentity(db, opts...),
 		VideoUserPointsLedger:            newVideoUserPointsLedger(db, opts...),
 		VideoUserTemplateComplaint:       newVideoUserTemplateComplaint(db, opts...),
 		VideoUserTemplateFavorite:        newVideoUserTemplateFavorite(db, opts...),
@@ -248,7 +245,6 @@ type Query struct {
 	VideoUser                        videoUser
 	VideoUserAttribution             videoUserAttribution
 	VideoUserGenerationTask          videoUserGenerationTask
-	VideoUserIdentity                videoUserIdentity
 	VideoUserPointsLedger            videoUserPointsLedger
 	VideoUserTemplateComplaint       videoUserTemplateComplaint
 	VideoUserTemplateFavorite        videoUserTemplateFavorite
@@ -314,7 +310,6 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoUser:                        q.VideoUser.clone(db),
 		VideoUserAttribution:             q.VideoUserAttribution.clone(db),
 		VideoUserGenerationTask:          q.VideoUserGenerationTask.clone(db),
-		VideoUserIdentity:                q.VideoUserIdentity.clone(db),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.clone(db),
 		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.clone(db),
 		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.clone(db),
@@ -385,7 +380,6 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoUser:                        q.VideoUser.replaceDB(db),
 		VideoUserAttribution:             q.VideoUserAttribution.replaceDB(db),
 		VideoUserGenerationTask:          q.VideoUserGenerationTask.replaceDB(db),
-		VideoUserIdentity:                q.VideoUserIdentity.replaceDB(db),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.replaceDB(db),
 		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.replaceDB(db),
 		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.replaceDB(db),
@@ -446,7 +440,6 @@ type queryCtx struct {
 	VideoUser                        IVideoUserDo
 	VideoUserAttribution             IVideoUserAttributionDo
 	VideoUserGenerationTask          IVideoUserGenerationTaskDo
-	VideoUserIdentity                IVideoUserIdentityDo
 	VideoUserPointsLedger            IVideoUserPointsLedgerDo
 	VideoUserTemplateComplaint       IVideoUserTemplateComplaintDo
 	VideoUserTemplateFavorite        IVideoUserTemplateFavoriteDo
@@ -507,7 +500,6 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoUser:                        q.VideoUser.WithContext(ctx),
 		VideoUserAttribution:             q.VideoUserAttribution.WithContext(ctx),
 		VideoUserGenerationTask:          q.VideoUserGenerationTask.WithContext(ctx),
-		VideoUserIdentity:                q.VideoUserIdentity.WithContext(ctx),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.WithContext(ctx),
 		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.WithContext(ctx),
 		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.WithContext(ctx),

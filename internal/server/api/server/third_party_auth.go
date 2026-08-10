@@ -13,7 +13,6 @@ import (
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/oidc"
-	"ai-video/internal/repository"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -126,56 +125,6 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 	return issueToken(user, int(providerLoginType(req.ThirdType)))
 }
 
-func (s *AuthService) ListIdentities(ctx context.Context, userID uint64) ([]model.VideoUserIdentity, error) {
-	return s.identityRepo.ListByUser(ctx, userID)
-}
-
-func (s *AuthService) UnbindIdentity(ctx context.Context, userID uint64, provider string) error {
-	provider, err := normalizeIdentityProvider(provider)
-	if err != nil {
-		return err
-	}
-	return repository.Transaction(ctx, func(ctx context.Context) error {
-		user, err := s.userRepo.GetByIDForUpdate(ctx, userID)
-		if err != nil {
-			return err
-		}
-		identities, err := s.identityRepo.ListByUser(ctx, userID)
-		if err != nil {
-			return err
-		}
-		found := false
-		for _, item := range identities {
-			if item.Provider == provider {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return errors.New("该第三方账号尚未绑定")
-		}
-		if len(identities) <= 1 {
-			return errors.New("至少保留一个第三方登录方式")
-		}
-		if err := s.identityRepo.DeleteByUserProvider(ctx, userID, provider); err != nil {
-			return err
-		}
-		updates := make(map[string]interface{})
-		if user.LoginType == providerLoginType(provider) {
-			for _, item := range identities {
-				if item.Provider != provider {
-					updates["login_type"] = providerLoginType(item.Provider)
-					updates["login_account"] = identityRecordLoginAccount(&item)
-					updates["third_code"] = item.ProviderSubject
-					updates["email"] = item.Email
-					break
-				}
-			}
-		}
-		return s.userRepo.Update(ctx, userID, updates)
-	})
-}
-
 func (s *AuthService) verifyIdentity(ctx context.Context, provider, rawToken, nonce string) (*oidc.Identity, error) {
 	verifier := s.identityVerifiers[provider]
 	if verifier == nil {
@@ -216,13 +165,6 @@ func providerLoginType(provider string) uint8 {
 		return uint8(domain.AppUserLoginGoogle)
 	}
 	return uint8(domain.AppUserLoginAppID)
-}
-
-func identityRecordLoginAccount(identity *model.VideoUserIdentity) string {
-	if identity.Email != "" {
-		return identity.Email
-	}
-	return identity.Provider + ":" + identity.ProviderSubject
 }
 
 func validateIdentityUserColumns(identity *oidc.Identity) error {

@@ -8,18 +8,23 @@ import (
 	"strings"
 
 	"ai-video/internal/gen/model"
+	"ai-video/internal/modelparameter"
 )
 
 type ClientTemplateModelParameter struct {
-	ParamKey      string                 `json:"param_key"`
-	ValueType     string                 `json:"value_type"`
-	ParameterType uint32                 `json:"parameter_type"`
-	IsRequired    uint32                 `json:"is_required"`
-	DefaultValue  interface{}            `json:"default_value"`
-	AllowedValues []interface{}          `json:"allowed_values"`
-	Constraints   map[string]interface{} `json:"constraints"`
-	Description   string                 `json:"description"`
-	SortOrder     uint32                 `json:"sort_order"`
+	ParamKey            string                       `json:"param_key"`
+	ValueType           string                       `json:"value_type"`
+	ParameterType       uint32                       `json:"parameter_type"`
+	IsRequired          uint32                       `json:"is_required"`
+	DefaultValue        interface{}                  `json:"default_value"`
+	AllowedValues       []interface{}                `json:"allowed_values"`
+	AllowedValueOptions []modelparameter.ValueOption `json:"allowed_value_options"`
+	Constraints         map[string]interface{}       `json:"constraints"`
+	Description         string                       `json:"description"`
+	SortOrder           uint32                       `json:"sort_order"`
+	Alias               string                       `json:"alias"`
+	DisplayType         string                       `json:"display_type"`
+	IsDisplay           uint32                       `json:"is_display"`
 }
 
 type clientTemplateModelConfiguration struct {
@@ -63,13 +68,25 @@ func (s *ClientTemplateService) loadTemplateModelConfigurations(ctx context.Cont
 	if err != nil {
 		return nil, err
 	}
+	definitions, err := s.modelParameterRepo.ListByModels(ctx, modelIDs)
+	if err != nil {
+		return nil, err
+	}
+	definitionsByKey := make(map[string]*model.VideoModelParameter, len(definitions))
+	for i := range definitions {
+		definitionsByKey[modelParameterDefinitionKey(definitions[i].ModelID, definitions[i].ParamKey)] = &definitions[i]
+	}
 	parametersByTemplate := make(map[uint64][]ClientTemplateModelParameter, len(templates))
 	for i := range parameters {
 		expectedModelID, exists := modelIDByTemplate[parameters[i].TemplateID]
 		if !exists || parameters[i].ModelID != expectedModelID {
 			return nil, fmt.Errorf("template %d parameter %s has mismatched model_id", parameters[i].TemplateID, parameters[i].ParamKey)
 		}
-		view, err := clientTemplateModelParameterView(&parameters[i])
+		definition := definitionsByKey[modelParameterDefinitionKey(parameters[i].ModelID, parameters[i].ParamKey)]
+		if definition == nil {
+			return nil, fmt.Errorf("template %d parameter %s has no model definition", parameters[i].TemplateID, parameters[i].ParamKey)
+		}
+		view, err := clientTemplateModelParameterView(&parameters[i], definition)
 		if err != nil {
 			return nil, err
 		}
@@ -96,7 +113,7 @@ func (s *ClientTemplateService) loadTemplateModelConfigurations(ctx context.Cont
 	return result, nil
 }
 
-func clientTemplateModelParameterView(item *model.VideoTemplateModelParameter) (ClientTemplateModelParameter, error) {
+func clientTemplateModelParameterView(item *model.VideoTemplateModelParameter, definition *model.VideoModelParameter) (ClientTemplateModelParameter, error) {
 	var defaultValue interface{}
 	if value := strings.TrimSpace(item.DefaultValue); value != "" {
 		if err := json.Unmarshal([]byte(value), &defaultValue); err != nil {
@@ -112,6 +129,10 @@ func clientTemplateModelParameterView(item *model.VideoTemplateModelParameter) (
 			allowedValues = []interface{}{}
 		}
 	}
+	allowedValueOptions, err := templateAllowedValueOptions(definition, allowedValues)
+	if err != nil {
+		return ClientTemplateModelParameter{}, fmt.Errorf("template %d parameter %s has invalid allowed value options: %w", item.TemplateID, item.ParamKey, err)
+	}
 	constraints := make(map[string]interface{})
 	if value := strings.TrimSpace(item.Constraints); value != "" {
 		if err := json.Unmarshal([]byte(value), &constraints); err != nil {
@@ -123,7 +144,43 @@ func clientTemplateModelParameterView(item *model.VideoTemplateModelParameter) (
 	}
 	return ClientTemplateModelParameter{
 		ParamKey: item.ParamKey, ValueType: item.ParamType, ParameterType: item.ParameterType,
-		IsRequired: item.IsRequired, DefaultValue: defaultValue, AllowedValues: allowedValues,
+		IsRequired: item.IsRequired, DefaultValue: defaultValue, AllowedValues: allowedValues, AllowedValueOptions: allowedValueOptions,
 		Constraints: constraints, Description: item.Description, SortOrder: item.SortOrder,
+		Alias: definition.Alias_, DisplayType: definition.DisplayType, IsDisplay: definition.IsDisplay,
 	}, nil
+}
+
+func modelParameterDefinitionKey(modelID int64, paramKey string) string {
+	return fmt.Sprintf("%d\x00%s", modelID, paramKey)
+}
+
+func templateAllowedValueOptions(definition *model.VideoModelParameter, allowedValues []interface{}) ([]modelparameter.ValueOption, error) {
+	if definition == nil {
+		return nil, fmt.Errorf("model parameter definition is required")
+	}
+	var modelAllowedValues []interface{}
+	if value := strings.TrimSpace(definition.AllowedValues); value != "" {
+		if err := json.Unmarshal([]byte(value), &modelAllowedValues); err != nil {
+			return nil, fmt.Errorf("model allowed_values is invalid JSON: %w", err)
+		}
+	}
+	modelOptions, err := modelparameter.ValueOptions(definition.AllowedValueOptions, modelAllowedValues)
+	if err != nil {
+		return nil, err
+	}
+	optionByValue := make(map[string]modelparameter.ValueOption, len(modelOptions))
+	for i := range modelOptions {
+		encoded, _ := json.Marshal(modelOptions[i].Value)
+		optionByValue[string(encoded)] = modelOptions[i]
+	}
+	result := make([]modelparameter.ValueOption, len(allowedValues))
+	for i := range allowedValues {
+		encoded, _ := json.Marshal(allowedValues[i])
+		option, exists := optionByValue[string(encoded)]
+		if !exists {
+			return nil, fmt.Errorf("value %s is not in the model allowed values", string(encoded))
+		}
+		result[i] = option
+	}
+	return result, nil
 }

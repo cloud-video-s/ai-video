@@ -62,12 +62,23 @@ func (r *ModelParameterRepo) GetApiPageTask(ctx context.Context, userID uint64, 
 }
 
 func (r *ModelParameterRepo) UpdateFields(ctx context.Context, item *model.VideoModelParameter) error {
-	q := qFrom(ctx).VideoModelParameter
-	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID), q.ModelID.Eq(item.ModelID)).Select(
-		q.ParamKey, q.ParamType, q.IsRequired, q.DefaultValue, q.AllowedValues,
-		q.Description, q.SortOrder, q.ParameterType, q.Constraints, q.Alias_, q.DisplayType,
-	).Updates(item)
-	return err
+	return dbFrom(ctx).Model(&model.VideoModelParameter{}).
+		Where("id = ? AND model_id = ?", item.ID, item.ModelID).
+		Updates(map[string]interface{}{
+			"param_key":             item.ParamKey,
+			"param_type":            item.ParamType,
+			"is_required":           item.IsRequired,
+			"default_value":         item.DefaultValue,
+			"allowed_values":        item.AllowedValues,
+			"allowed_value_aliases": item.AllowedValueOptions,
+			"description":           item.Description,
+			"sort_order":            item.SortOrder,
+			"parameter_type":        item.ParameterType,
+			"constraints":           item.Constraints,
+			"alias":                 item.Alias_,
+			"display_type":          item.DisplayType,
+			"is_display":            item.IsDisplay,
+		}).Error
 }
 
 func (r *ModelParameterRepo) UpdateConstraints(ctx context.Context, id int64, constraints string) error {

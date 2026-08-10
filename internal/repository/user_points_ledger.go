@@ -73,15 +73,6 @@ func (r *UserPointsLedgerRepo) PageList(ctx context.Context, page, pageSize int,
 				user.Username.Like(keyword), user.IMEI.Like(keyword),
 				user.LoginAccount.Like(keyword), user.Email.Like(keyword),
 			}
-			identity := q.VideoUserIdentity
-			var identityUserIDs []uint64
-			if err := identity.WithContext(ctx).Where(identity.Email.Like(keyword)).
-				Pluck(identity.UserID, &identityUserIDs); err != nil {
-				return nil, 0, UserPointsLedgerSummary{}, err
-			}
-			if len(identityUserIDs) > 0 {
-				conditions = append(conditions, ledger.UserID.In(identityUserIDs...))
-			}
 			dao = dao.Where(field.Or(conditions...))
 		}
 	}

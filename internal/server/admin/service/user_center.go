@@ -16,7 +16,6 @@ import (
 type UserCenterDetail struct {
 	User              *model.VideoUser                   `json:"user"`
 	IsMember          bool                               `json:"is_member"`
-	Identities        []model.VideoUserIdentity          `json:"identities"`
 	Attribution       *model.VideoUserAttribution        `json:"attribution"`
 	PointsLedgers     []UserCenterPointsLedger           `json:"points_ledgers"`
 	PointsLedgerTotal int64                              `json:"points_ledger_total"`
@@ -45,12 +44,15 @@ type UserCenterPointsLedger struct {
 type UserCenterWork struct {
 	ID              uint64     `json:"id"`
 	ModelID         uint64     `json:"model_id"`
+	ModelName       string     `json:"model_name"`
 	ClientRequestID string     `json:"client_request_id"`
 	TaskCode        string     `json:"task_code"`
 	ThirdTaskCode   string     `json:"third_task_code"`
+	TaskType        uint32     `json:"task_type"`
 	Status          int        `json:"status"`
 	Progress        uint32     `json:"progress"`
 	UsageDuration   uint32     `json:"usage_duration"`
+	Score           uint32     `json:"score"`
 	ErrorMessage    string     `json:"error_message,omitempty"`
 	SubmittedAt     *time.Time `json:"submitted_at"`
 	FinishedAt      *time.Time `json:"finished_at"`
@@ -118,10 +120,6 @@ func (s *AppUserService) GetCenter(ctx context.Context, id uint64) (*UserCenterD
 	if err != nil {
 		return nil, err
 	}
-	identities, err := repository.NewUserIdentityRepo().ListByUser(ctx, id)
-	if err != nil {
-		return nil, err
-	}
 	attribution, err := repository.NewUserAttributionRepo().GetByUserID(ctx, id)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		attribution = nil
@@ -132,7 +130,7 @@ func (s *AppUserService) GetCenter(ctx context.Context, id uint64) (*UserCenterD
 	if err != nil {
 		return nil, err
 	}
-	works, workTotal, err := repository.NewUserGenerationTaskRepo().PageOwned(ctx, id, 1, relationPageSize, 0)
+	works, workTotal, err := repository.NewUserGenerationTaskRepo().PageAdmin(ctx, 1, relationPageSize, &repository.UserGenerationTaskAdminFilter{UserID: id})
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +141,7 @@ func (s *AppUserService) GetCenter(ctx context.Context, id uint64) (*UserCenterD
 	now := time.Now()
 	return &UserCenterDetail{
 		User: user, IsMember: user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed && user.VipExpiresAt != nil && user.VipExpiresAt.After(now),
-		Identities: identities, Attribution: attribution,
+		Attribution:   attribution,
 		PointsLedgers: userCenterPointsLedgers(pointRecords), PointsLedgerTotal: pointsTotal, PointsSummary: summary,
 		Works: userCenterWorks(works), WorkTotal: workTotal,
 		Orders: userCenterOrders(orders), OrderTotal: orderTotal,
@@ -165,13 +163,23 @@ func userCenterPointsLedgers(records []repository.UserPointsLedgerRecord) []User
 	return items
 }
 
-func userCenterWorks(records []model.VideoUserGenerationTask) []UserCenterWork {
+func userCenterWorks(records []repository.UserGenerationTaskAdminRecord) []UserCenterWork {
 	items := make([]UserCenterWork, 0, len(records))
-	for _, work := range records {
+	for _, record := range records {
+		work := record.Task
+		modelName := ""
+		taskType := work.TaskType
+		if record.Model != nil {
+			modelName = record.Model.Name
+			if taskType == 0 {
+				taskType = record.Model.ModelType
+			}
+		}
 		items = append(items, UserCenterWork{
-			ID: work.ID, TaskCode: work.TaskCode, ModelID: work.ModelID,
+			ID: work.ID, TaskCode: work.TaskCode, ModelID: work.ModelID, ModelName: modelName,
 			ClientRequestID: work.ClientRequestID, ThirdTaskCode: work.ThirdTaskCode,
-			Status: work.Status, Progress: work.Progress, UsageDuration: work.UsageDuration,
+			TaskType: taskType, Status: work.Status, Progress: work.Progress,
+			UsageDuration: work.UsageDuration, Score: work.Score,
 			ErrorMessage: work.ErrorMessage, SubmittedAt: nonZeroTime(work.SubmittedAt),
 			FinishedAt: nonZeroTime(work.FinishedAt), CreatedAt: work.CreatedAt,
 		})
