@@ -27,7 +27,7 @@ func NewConfigService() *ConfigService {
 
 var allowedConfigTypes = map[string]bool{
 	"string": true, "int": true, "float": true,
-	"bool": true, "text": true, "json": true, "select": true, "password": true, "color": true,
+	"bool": true, "text": true, "json": true, "select": true, "password": true, "color": true, "file": true,
 }
 
 const sensitiveValueMask = "******"
@@ -92,6 +92,10 @@ func validateConfigValue(key, value string) error {
 				return errors.New("官方网站必须是有效的 http 或 https 地址")
 			}
 		}
+	case setting.APPPrivacyPolicyKey, setting.APPTermsKey, setting.APPFAQKey:
+		if value != "" && !isValidConfigFileURL(value) {
+			return errors.New("APP 文件地址必须是有效的 http/https 地址或站内绝对路径")
+		}
 	case setting.APPThemeColorKey:
 		if !appColorPattern.MatchString(value) {
 			return errors.New("主题皮肤颜色必须使用 #RRGGBB 格式")
@@ -125,6 +129,20 @@ func validateConfigValue(key, value string) error {
 		}
 	}
 	return nil
+}
+
+func isValidConfigFileURL(value string) bool {
+	if utf8.RuneCountInString(value) > 2048 || strings.Contains(value, `\`) {
+		return false
+	}
+	parsed, err := url.ParseRequestURI(value)
+	if err != nil {
+		return false
+	}
+	if strings.HasPrefix(value, "/") {
+		return !strings.HasPrefix(value, "//") && parsed.Scheme == "" && parsed.Host == ""
+	}
+	return (parsed.Scheme == "http" || parsed.Scheme == "https") && parsed.Host != ""
 }
 
 func splitConfigExtensions(value string) []string {

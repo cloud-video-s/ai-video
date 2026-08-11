@@ -51,7 +51,7 @@ func generateAndStoreTaskCoverWithOptions(ctx context.Context, storage upload.St
 		return "", err
 	}
 	defer os.Remove(previewPath)
-	if err := upload.GenerateMediaPreview(ctx, kind, source, previewPath, options); err != nil {
+	if err = upload.GenerateMediaPreview(ctx, kind, source, previewPath, options); err != nil {
 		return "", fmt.Errorf("generate task cover preview: %w", err)
 	}
 	filename := fmt.Sprintf("task-%s-cover.jpg", task.TaskCode)

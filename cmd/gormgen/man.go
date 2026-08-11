@@ -541,6 +541,24 @@ func main() {
 				},
 			},
 		),
+		gen.FieldRelate(field.BelongsTo, "User", g.GenerateModel("video_user"),
+			&field.RelateConfig{
+				RelatePointer: true,
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"UserID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+		gen.FieldRelate(field.BelongsTo, "AIModel", g.GenerateModel("video_model"),
+			&field.RelateConfig{
+				RelatePointer: true,
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"ModelID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
 	)
 
 	// ================================================================
@@ -657,26 +675,6 @@ func main() {
 				GORMTag: field.GormTag{
 					"foreignKey": []string{"ChannelCode"},
 					"references": []string{"ChannelCode"},
-				},
-			},
-		),
-	)
-
-	// ================================================================
-	// 35. video_user_identity
-	// ================================================================
-	videoUserIdentity := g.GenerateModel("video_user_identity",
-		gen.FieldType("id", "uint64"),
-		gen.FieldType("user_id", "uint64"),
-		gen.FieldType("email_verified", "int8"),
-		gen.FieldType("is_private_email", "int8"),
-		gen.FieldType("last_login_at", "*time.Time"),
-		gen.FieldType("last_token_issued_at", "*time.Time"),
-		gen.FieldRelate(field.BelongsTo, "User", videoUser,
-			&field.RelateConfig{
-				GORMTag: field.GormTag{
-					"foreignKey": []string{"UserID"},
-					"references": []string{"ID"},
 				},
 			},
 		),
@@ -827,7 +825,26 @@ func main() {
 	)
 
 	videoPlatform := g.GenerateModel("video_platform")
-	videoModelParameter := g.GenerateModel("video_model_parameter")
+	modelParameterOptions := []gen.ModelOpt{
+		gen.FieldRename("allowed_value_aliases", "AllowedValueOptions"),
+		gen.FieldJSONTag("allowed_value_aliases", "allowed_value_options"),
+		gen.FieldComment("allowed_value_aliases", "选择值配置（value/alias 对象数组）"),
+		gen.FieldGORMTag("allowed_value_aliases", func(tag field.GormTag) field.GormTag {
+			tag["comment"] = []string{"选择值配置（value/alias 对象数组）"}
+			return tag
+		}),
+	}
+	if !db.Migrator().HasColumn("video_model_parameter", "allowed_value_aliases") {
+		modelParameterOptions = append(modelParameterOptions, gen.FieldNew(
+			"AllowedValueOptions",
+			"string",
+			field.Tag{
+				field.TagKeyGorm: "column:allowed_value_aliases;type:json;comment:选择值配置（value/alias 对象数组）",
+				field.TagKeyJson: "allowed_value_options",
+			},
+		))
+	}
+	videoModelParameter := g.GenerateModel("video_model_parameter", modelParameterOptions...)
 	videoModel := g.GenerateModel("video_model",
 		gen.FieldRelate(field.BelongsTo, "Platform", videoPlatform,
 			&field.RelateConfig{
@@ -901,7 +918,6 @@ func main() {
 		videoUserGenerationTask,
 		videoUser,
 		videoUserAttribution,
-		videoUserIdentity,
 		videoUserPointsLedger,
 		videoUserTemplateFavorite,
 		videoVipSubscription,

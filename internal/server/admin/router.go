@@ -61,6 +61,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		panic(err)
 	}
 	uploadRecordHandler := handler.NewUploadHandler()
+	configFileHandler := handler.NewConfigFileHandler(uploadConfig.Storage)
 	uploadHandler := upload.NewHTTPHandler(
 		uploadManager,
 		upload.WithCompletionRecording(
@@ -322,8 +323,9 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.PUT("/banner-placements/:id", bannerPlacementHandler.Update)
 		auth.DELETE("/banner-placements/:id", bannerPlacementHandler.Delete)
 
-		// Chunked image/video uploads
+		// Chunked media uploads and small APP/config documents
 		auth.GET("/uploads", uploadRecordHandler.List)
+		auth.POST("/uploads/config-files", configFileHandler.Upload)
 		uploadHandler.RegisterRoutes(auth.Group("/uploads"))
 	}
 }

@@ -19,6 +19,7 @@ func SeedUploadAdmin() error {
 	return config.DB.Transaction(func(tx *gorm.DB) error {
 		seeds := []uploadAPISeed{
 			{Path: "/admin/uploads", Method: "GET", Description: "查询上传记录"},
+			{Path: "/admin/uploads/config-files", Method: "POST", Description: "上传 APP 配置文件"},
 			{Path: "/admin/uploads/images/batches", Method: "POST", Description: "批量初始化图片上传"},
 			{Path: "/admin/uploads/images/:upload_id/chunks/:index", Method: "PUT", Description: "上传图片分片"},
 			{Path: "/admin/uploads/images/:upload_id", Method: "GET", Description: "查询图片上传进度"},

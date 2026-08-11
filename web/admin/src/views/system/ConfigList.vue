@@ -58,6 +58,13 @@
                   :disabled="!canEdit"
                   :upload-disabled="!canUpload"
                 />
+                <ConfigFileUploader
+                  v-else-if="row.type === 'file'"
+                  v-model="row.value"
+                  :config-key="row.key"
+                  :disabled="!canEdit"
+                  :upload-disabled="!canUpload"
+                />
                 <el-switch v-else-if="row.type === 'bool'" v-model="row.value" active-value="true" inactive-value="false" />
                 <el-select v-else-if="row.type === 'select'" v-model="row.value" style="width: 320px" placeholder="请选择">
                   <el-option v-for="opt in parseOptions(row.options)" :key="opt.value" :label="opt.label" :value="opt.value" />
@@ -172,6 +179,13 @@
             :disabled="!canEdit"
             :upload-disabled="!canUpload"
           />
+          <ConfigFileUploader
+            v-else-if="form.type === 'file'"
+            v-model="form.value"
+            :config-key="form.key"
+            :disabled="dialogMode === 'edit' && !canEdit"
+            :upload-disabled="!canUpload"
+          />
           <el-switch v-else-if="form.type === 'bool'" v-model="form.value" active-value="true" inactive-value="false" />
           <el-select v-else-if="form.type === 'select'" v-model="form.value" style="width: 100%" placeholder="默认值（从选项中选）">
             <el-option v-for="(o, i) in validOptionRows" :key="i" :label="o.label || o.value" :value="o.value" />
@@ -209,6 +223,7 @@ import { ElMessage, type FormInstance } from 'element-plus'
 import { getConfigList, batchUpdateConfig, createConfig, updateConfig, deleteConfig, refreshConfig } from '@/api/config'
 import { useUserStore } from '@/store/user'
 import LogoImageUploader from '@/components/LogoImageUploader.vue'
+import ConfigFileUploader from '@/components/ConfigFileUploader.vue'
 
 const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPermission('system:config:edit'))
@@ -223,7 +238,7 @@ const submitLoading = ref(false)
 const configs = ref<any[]>([])
 const activeGroup = ref('')
 
-const types = ['string', 'int', 'float', 'bool', 'text', 'json', 'select', 'password', 'color']
+const types = ['string', 'int', 'float', 'bool', 'text', 'json', 'select', 'password', 'color', 'file']
 const bytesPerMB = 1024 * 1024
 const uploadExtensionKeys = new Set(['upload.image_extensions', 'upload.video_extensions'])
 const uploadSizeKeys = new Set(['upload.image_max_file_size', 'upload.video_max_file_size'])

@@ -122,7 +122,14 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 	if err != nil {
 		return nil, err
 	}
-	return issueToken(user, int(providerLoginType(req.ThirdType)))
+	token, err := issueToken(user, int(providerLoginType(req.ThirdType)))
+	if err != nil {
+		return nil, err
+	}
+	if user.ID != apiUserID {
+		token.DeviceCode = user.DeviceCode
+	}
+	return token, nil
 }
 
 func (s *AuthService) verifyIdentity(ctx context.Context, provider, rawToken, nonce string) (*oidc.Identity, error) {

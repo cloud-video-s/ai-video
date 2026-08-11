@@ -24,7 +24,8 @@ func TestAPPBasicInformationDefinitions(t *testing.T) {
 	want := map[string]string{
 		APPNameKey: "string", APPAboutKey: "text", APPServicePhoneKey: "string",
 		APPServiceEmailKey: "string", APPWebsiteKey: "string", APPThemeColorKey: "color",
-		APPThemeModeKey: "select", APPLanguageKey: "select",
+		APPThemeModeKey: "select", APPLanguageKey: "select", APPPrivacyPolicyKey: "file",
+		APPTermsKey: "file", APPFAQKey: "file",
 	}
 	for _, item := range registry {
 		wantType, exists := want[item.Key]

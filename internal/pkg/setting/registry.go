@@ -13,6 +13,9 @@ const (
 	APPServicePhoneKey       = "app.customer_service_phone"
 	APPServiceEmailKey       = "app.customer_service_email"
 	APPWebsiteKey            = "app.website"
+	APPPrivacyPolicyKey      = "app.privacy_policy"
+	APPTermsKey              = "app.terms"
+	APPFAQKey                = "app.faq"
 	APPThemeColorKey         = "app.theme_color"
 	APPThemeModeKey          = "app.theme_mode"
 	APPLanguageKey           = "app.language"
@@ -25,7 +28,7 @@ type definition struct {
 	Group     string
 	Key       string
 	Name      string
-	Type      string // string | int | bool | float | text | json | select | password
+	Type      string // string | int | bool | float | text | json | select | password | color | file
 	Value     string
 	Options   string
 	Remark    string
@@ -48,9 +51,12 @@ var registry = []definition{
 	{Group: "APP 基础信息", Key: APPServicePhoneKey, Name: "客服电话", Type: "string", Value: "", IsPublic: true, Remark: "用户可拨打的客服号码", Sort: 30},
 	{Group: "APP 基础信息", Key: APPServiceEmailKey, Name: "客服邮箱", Type: "string", Value: "", IsPublic: true, Remark: "用户联系邮箱", Sort: 40},
 	{Group: "APP 基础信息", Key: APPWebsiteKey, Name: "官方网站", Type: "string", Value: "", IsPublic: true, Remark: "必须填写 http:// 或 https:// 地址", Sort: 50},
-	{Group: "APP 基础信息", Key: APPThemeColorKey, Name: "主题皮肤颜色", Type: "color", Value: "#409EFF", IsPublic: true, Remark: "APP 主色，格式为 #RRGGBB", Sort: 60},
-	{Group: "APP 基础信息", Key: APPThemeModeKey, Name: "皮肤模式", Type: "select", Value: "system", Options: `[{"label":"跟随系统","value":"system"},{"label":"浅色","value":"light"},{"label":"深色","value":"dark"}]`, IsPublic: true, Sort: 70},
-	{Group: "APP 基础信息", Key: APPLanguageKey, Name: "默认语言", Type: "select", Value: "zh-CN", Options: `[{"label":"简体中文","value":"zh-CN"},{"label":"English","value":"en-US"},{"label":"日本語","value":"ja-JP"},{"label":"한국어","value":"ko-KR"}]`, IsPublic: true, Remark: "APP 首次启动时的默认语言", Sort: 80},
+	{Group: "APP 基础信息", Key: APPPrivacyPolicyKey, Name: "隐私政策", Type: "file", Value: "", IsPublic: true, Remark: "privacy-policy 页面文件，支持 TXT、HTML、Markdown、JSON、XML 或 PDF", Sort: 60},
+	{Group: "APP 基础信息", Key: APPTermsKey, Name: "用户协议", Type: "file", Value: "", IsPublic: true, Remark: "terms 页面文件，支持 TXT、HTML、Markdown、JSON、XML 或 PDF", Sort: 70},
+	{Group: "APP 基础信息", Key: APPFAQKey, Name: "常见问题", Type: "file", Value: "", IsPublic: true, Remark: "faq 页面文件，支持 TXT、HTML、Markdown、JSON、XML 或 PDF", Sort: 80},
+	{Group: "APP 基础信息", Key: APPThemeColorKey, Name: "主题皮肤颜色", Type: "color", Value: "#409EFF", IsPublic: true, Remark: "APP 主色，格式为 #RRGGBB", Sort: 90},
+	{Group: "APP 基础信息", Key: APPThemeModeKey, Name: "皮肤模式", Type: "select", Value: "system", Options: `[{"label":"跟随系统","value":"system"},{"label":"浅色","value":"light"},{"label":"深色","value":"dark"}]`, IsPublic: true, Sort: 100},
+	{Group: "APP 基础信息", Key: APPLanguageKey, Name: "默认语言", Type: "select", Value: "zh-CN", Options: `[{"label":"简体中文","value":"zh-CN"},{"label":"English","value":"en-US"},{"label":"日本語","value":"ja-JP"},{"label":"한국어","value":"ko-KR"}]`, IsPublic: true, Remark: "APP 首次启动时的默认语言", Sort: 110},
 
 	{Group: "用户", Key: "user.allow_register", Name: "允许注册", Type: "bool", Value: "false", Remark: "是否开放自助注册"},
 	{Group: "用户", Key: "user.default_role", Name: "默认角色编码", Type: "string", Value: "", Remark: "注册用户默认角色"},
@@ -100,10 +106,14 @@ func seedDefaults(ctx context.Context) error {
 		if exists {
 			continue
 		}
+		isPublic := int8(0)
+		if d.IsPublic {
+			isPublic = 1
+		}
 		if err := repo.Create(ctx, &model.VideoConfig{
 			Group: d.Group, Key: d.Key, Name: d.Name, Type: d.Type, Value: d.Value,
 			Options: d.Options, Remark: d.Remark,
-			Sensitive: d.Sensitive, Sort: int64(d.Sort), Editable: 1, Builtin: 1,
+			IsPublic: isPublic, Sensitive: d.Sensitive, Sort: int64(d.Sort), Editable: 1, Builtin: 1,
 		}); err != nil {
 			return err
 		}

@@ -3,6 +3,7 @@ package handler
 import (
 	"ai-video/internal/pkg/errcode"
 	"ai-video/internal/pkg/response"
+	"ai-video/internal/pkg/uploadruntime"
 	"ai-video/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -26,7 +27,11 @@ func (h *ConfigHandler) Public(c *gin.Context) {
 	}
 	out := make(map[string]string, len(list))
 	for i := range list {
-		out[list[i].Key] = list[i].Value
+		value := list[i].Value
+		if list[i].Type == "file" {
+			value = uploadruntime.PublicURL(value)
+		}
+		out[list[i].Key] = value
 	}
 	response.OK(c, out)
 }

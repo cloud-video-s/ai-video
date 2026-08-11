@@ -76,6 +76,7 @@ type AuthResponse struct {
 	LoginType    uint32 `json:"login_type"`
 	ExpireAt     int64  `json:"expire_at"`
 	TokenVersion int64  `json:"token_version"`
+	DeviceCode   string `json:"device_code"`
 }
 
 type ThirdAuthResponse struct {
@@ -212,7 +213,9 @@ func (s *AuthService) LoginByAppleOrder(ctx context.Context, loginUserID uint64,
 			if err != nil {
 				return nil, 0, err
 			}
-			return nil, 1, errors.New(fmt.Sprintf("This membership is linked to %s. Please sign in with that account.", email))
+			if !req.ForceNew {
+				return nil, 1, errors.New(fmt.Sprintf("This membership is linked to %s. Please sign in with that account.", email))
+			}
 		}
 		if !req.ForceNew {
 			return nil, 0, ErrAuthAccountInvalid
@@ -227,6 +230,9 @@ func (s *AuthService) LoginByAppleOrder(ctx context.Context, loginUserID uint64,
 		return nil, 0, err
 	}
 	token, err := issueToken(user, int(user.LoginType))
+	if user.ID != loginUserID {
+		token.DeviceCode = user.DeviceCode
+	}
 	return token, 0, err
 }
 
@@ -316,11 +322,11 @@ func (s *AuthService) UpdateCountry(ctx context.Context, userID uint64, req *Upd
 	if deviceCountry == "" {
 		deviceCountry = ipCountry
 	}
-	updates := map[string]interface{}{"device_country": deviceCountry, "last_login_ip": clientIP}
+	updates := map[string]any{"device_country": deviceCountry, "last_login_ip": clientIP}
 	if err := s.userRepo.Update(ctx, userID, updates); err != nil {
 		return nil, err
 	}
-	if err := s.attributionRepo.UpsertDevice(ctx, userID, map[string]interface{}{"ip": clientIP}); err != nil {
+	if err := s.attributionRepo.UpsertDevice(ctx, userID, map[string]any{"ip": clientIP}); err != nil {
 		return nil, err
 	}
 	return s.GetProfile(ctx, userID)

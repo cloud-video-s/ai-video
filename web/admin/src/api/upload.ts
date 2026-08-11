@@ -2,6 +2,15 @@ import request from '@/utils/request'
 
 export type MediaKind = 'image' | 'video'
 
+export interface ConfigFileUpload {
+  original_name: string
+  content_type: string
+  size: number
+  file_path: string
+  file_url: string
+  preview_url: string
+}
+
 export interface UploadSession {
   upload_id: string
   kind: MediaKind
@@ -56,6 +65,25 @@ export function uploadChunk(
 
 export function completeUpload(kind: MediaKind, uploadID: string) {
   return request.post(`/admin/uploads/${mediaPath(kind)}/${uploadID}/complete`, undefined, { timeout: 0 })
+}
+
+export async function uploadConfigFile(
+  configKey: string,
+  file: File,
+  onProgress?: (percentage: number) => void,
+): Promise<ConfigFileUpload> {
+  const data = new FormData()
+  data.append('config_key', configKey)
+  data.append('file', file)
+  const response: any = await request.post('/admin/uploads/config-files', data, {
+    timeout: 0,
+    onUploadProgress: (event) => {
+      if (!event.total) return
+      onProgress?.(Math.min(99, Math.round(event.loaded * 100 / event.total)))
+    },
+  })
+  onProgress?.(100)
+  return response.data as ConfigFileUpload
 }
 
 async function blobSHA256(blob: Blob) {

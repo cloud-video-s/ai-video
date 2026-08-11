@@ -277,8 +277,8 @@ func validateKlingV3Request(request *KlingV3SubmitRequest) error {
 
 	if parameters.Duration != 0 {
 		if generationType == KlingV3TypeMotionControl {
-			if parameters.Duration != 5 && parameters.Duration != 10 {
-				return errors.New("kling V3 motion_control duration must be 5 or 10 seconds")
+			if parameters.Duration < 5 && parameters.Duration > 15 {
+				return errors.New("kling V3 motion_control duration must be 5 or 15 seconds")
 			}
 		} else if parameters.Duration < 3 || parameters.Duration > 15 {
 			return errors.New("kling V3 duration must be between 3 and 15 seconds")
