@@ -162,7 +162,7 @@ func (d *AppUserRepo) ExpireDueSubscriptions(ctx context.Context, now time.Time)
 				}
 			}
 			if err := d.Update(txCtx, user.ID, map[string]any{
-				"subscription_status": domain.AppUserSubscriptionExpired,
+				"subscription_status": domain.AppUserSubscriptionCancelled,
 				"vip_points":          uint64(0),
 				"vip_expires_at":      nil,
 				"user_type":           domain.AppUserTypeFree,

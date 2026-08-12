@@ -39,6 +39,9 @@ type Manager struct {
 	templateParameterRepo *repository.TemplateModelParameterRepo
 	hub                   *Hub
 
+	downloadMu sync.Mutex
+	downloads  *generatedDownloadController
+
 	mu     sync.Mutex
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -205,17 +208,10 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		if err = m.taskRepo.Create(txCtx, task); err != nil {
 			return err
 		}
-		// GORM may populate a generated-model default during Create. Restore and
-		// persist the allocation-derived value explicitly, including type 0 for
-		// free models.
-		//task.ScoreType = scoreType
-		//if err = m.taskRepo.SetPointAllocation(txCtx, task.ID, scoreType, allocation.VIPScore, allocation.PointsScore); err != nil {
-		//	return err
-		//}
 		if err = m.Update(txCtx, user.ID, map[string]any{
-			"vip_points":     user.VipPoints,
-			"points_balance": user.PointsBalance,
-			"frozen_points":  user.FrozenPoints,
+			"vip_points":     gorm.Expr("vip_points - ?", allocation.VIPScore),
+			"points_balance": gorm.Expr("points_balance - ?", allocation.PointsScore),
+			"frozen_points":  gorm.Expr("frozen_points + ?", task.Score),
 		}); err != nil {
 			return err
 		}
@@ -426,7 +422,7 @@ func (m *Manager) pollBatch(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		if err := m.processTask(ctx, &tasks[i]); err != nil {
+		if err = m.processTask(ctx, &tasks[i]); err != nil {
 			config.Log.Warnf("process generation task %d: %v", tasks[i].ID, err)
 		}
 	}
@@ -437,7 +433,9 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoUserGenerati
 	if err != nil {
 		return m.failTask(ctx, task, "模型配置不存在")
 	}
-	if task.Status == TaskStatusSubmitting {
+
+	switch task.Status {
+	case TaskStatusSubmitting:
 		claimedAt := time.Now()
 		claimed, err := m.taskRepo.TryClaimSubmitting(
 			ctx, task.ID, TaskStatusSubmitting, claimedAt, claimedAt.Add(-submitClaimLease),
@@ -457,106 +455,106 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoUserGenerati
 			return m.failTask(ctx, task, err.Error())
 		}
 		return nil
-	}
-	if task.Status == TaskStatusDownloading {
+
+	case TaskStatusDownloading:
+		//claimed, err := m.tryClaimTaskProcessing(ctx, task)
+		//if err != nil || !claimed {
+		//	return err
+		//}
 		switch modelConfig.ModelType {
 		case TaskTypeImage:
 			urls, encoded, err := imageResultPayloads(task.ProviderResponse)
 			if err != nil {
 				return m.failTask(ctx, task, err.Error())
 			}
-			return m.finishImageTask(ctx, task, urls, encoded)
+			return m.finishImageTaskOrFail(ctx, task, urls, encoded)
 		case TaskTypeVideo:
-			claimed, err := m.tryClaimTaskProcessing(ctx, task)
-			if err != nil || !claimed {
-				return err
-			}
 			return m.processVideoTaskResult(ctx, task)
 		default:
 			return m.failTask(ctx, task, fmt.Sprintf("unsupported generation task type: %d", modelConfig.ModelType))
 		}
-	}
-	thirdTaskCode := strings.TrimSpace(task.ThirdTaskCode)
-	if thirdTaskCode == "" {
-		return m.failTask(ctx, task, "已提交任务缺少 third_task_code")
-	}
-	claimed, err := m.tryClaimTaskProcessing(ctx, task)
-	if err != nil || !claimed {
-		return err
-	}
-	now := task.LastPolledAt
-	provider := &ModelVerseProvider{}
-	status, err := provider.Status(ctx, modelConfig, thirdTaskCode)
-	if err != nil {
-		task.ErrorMessage = "轮询失败，将自动重试: " + err.Error()
-		if updateErr := m.taskRepo.UpdateFields(ctx, task, "ErrorMessage", "LastPolledAt"); updateErr != nil {
-			return updateErr
+	default:
+		thirdTaskCode := strings.TrimSpace(task.ThirdTaskCode)
+		if thirdTaskCode == "" {
+			return m.failTask(ctx, task, "已提交任务缺少 third_task_code")
 		}
-		m.hub.Publish(task)
-		return err
-	}
-	task.ProviderResponse = status.RawResponse
-	task.UsageDuration = status.UsageDuration
-	task.ErrorMessage = ""
-	switch strings.ToLower(status.Status) {
-	case "pending":
-		task.Status, task.Progress = TaskStatusPending, 10
-	case "running":
-		task.Status, task.Progress = TaskStatusRunning, 50
-		if task.StartedAt.IsZero() {
-			task.StartedAt = now
+		//claimed, err := m.tryClaimTaskProcessing(ctx, task)
+		//if err != nil || !claimed {
+		//	return err
+		//}
+		now := task.LastPolledAt
+		provider := &ModelVerseProvider{}
+		status, err := provider.Status(ctx, modelConfig, thirdTaskCode)
+		if err != nil {
+			task.ErrorMessage = "轮询失败，将自动重试: " + err.Error()
+			if updateErr := m.taskRepo.UpdateFields(ctx, task, "ErrorMessage", "LastPolledAt"); updateErr != nil {
+				return updateErr
+			}
+			return m.failTask(ctx, task, task.ErrorMessage)
 		}
-	case "success":
-		if len(status.URLs) == 0 {
-			return m.failTask(ctx, task, "上游任务成功但未返回视频 URL")
+		task.ProviderResponse = status.RawResponse
+		task.UsageDuration = status.UsageDuration
+		task.ErrorMessage = ""
+		switch strings.ToLower(status.Status) {
+		case "pending":
+			task.Status, task.Progress = TaskStatusPending, 10
+		case "running":
+			task.Status, task.Progress = TaskStatusRunning, 50
+			if task.StartedAt.IsZero() {
+				task.StartedAt = now
+			}
+		case "success":
+			if len(status.URLs) == 0 {
+				return m.failTask(ctx, task, "上游任务成功但未返回视频 URL")
+			}
+			encodedURLs, _ := json.Marshal(status.URLs)
+			task.RemoteUrls = string(encodedURLs)
+			task.Status, task.Progress = TaskStatusDownloading, 90
+			if err = m.taskRepo.UpdateFields(ctx, task,
+				"ProviderResponse", "UsageDuration", "ErrorMessage", "RemoteUrls", "Status", "Progress", "LastPolledAt",
+			); err != nil {
+				return err
+			}
+			m.hub.Publish(task)
+			// Downloading the video and generating its cover are recoverable local
+			// stages. Leave them to later worker passes so the provider polling
+			// request only records the remote result.
+			if modelConfig.ModelType == TaskTypeVideo {
+				return nil
+			}
+			return m.finishImageTaskOrFail(ctx, task, status.URLs, nil)
+		case "failure":
+			message := strings.TrimSpace(status.ErrorMessage)
+			if message == "" {
+				message = "上游生成任务失败"
+			}
+			return m.failTask(ctx, task, message)
+		default:
+			return fmt.Errorf("未知上游任务状态: %s", status.Status)
 		}
-		encodedURLs, _ := json.Marshal(status.URLs)
-		task.RemoteUrls = string(encodedURLs)
-		task.Status, task.Progress = TaskStatusDownloading, 90
-		if err := m.taskRepo.UpdateFields(ctx, task,
-			"ProviderResponse", "UsageDuration", "ErrorMessage", "RemoteUrls", "Status", "Progress", "LastPolledAt",
+		if err = m.taskRepo.UpdateFields(ctx, task,
+			"ProviderResponse", "UsageDuration", "ErrorMessage", "Status", "Progress", "StartedAt", "LastPolledAt",
 		); err != nil {
 			return err
 		}
 		m.hub.Publish(task)
-		// Downloading the video and generating its cover are recoverable local
-		// stages. Leave them to later worker passes so the provider polling
-		// request only records the remote result.
-		if modelConfig.ModelType == TaskTypeVideo {
-			return nil
-		}
-		return m.finishImageTask(ctx, task, status.URLs, nil)
-	case "failure":
-		message := strings.TrimSpace(status.ErrorMessage)
-		if message == "" {
-			message = "上游生成任务失败"
-		}
-		return m.failTask(ctx, task, message)
-	default:
-		return fmt.Errorf("未知上游任务状态: %s", status.Status)
 	}
-	if err := m.taskRepo.UpdateFields(ctx, task,
-		"ProviderResponse", "UsageDuration", "ErrorMessage", "Status", "Progress", "StartedAt", "LastPolledAt",
-	); err != nil {
-		return err
-	}
-	m.hub.Publish(task)
+
 	return nil
 }
 
 func (m *Manager) tryClaimTaskProcessing(ctx context.Context, task *model.VideoUserGenerationTask) (bool, error) {
-	const pollInterval = 3 * time.Second
+	const pollInterval = 10 * time.Second
 	if !task.LastPolledAt.IsZero() && time.Since(task.LastPolledAt) < pollInterval {
 		return false, nil
 	}
-	now := time.Now()
-	claimed, err := m.taskRepo.TryClaimPolling(
-		ctx, task.ID, task.Status, now, now.Add(-pollInterval),
-	)
-	if err != nil || !claimed {
-		return claimed, err
-	}
-	task.LastPolledAt = now
+	//claimed, err := m.taskRepo.TryClaimPolling(
+	//	ctx, task.ID, task.Status, now, now.Add(-pollInterval),
+	//)
+	//if err != nil || !claimed {
+	//	return claimed, err
+	//}
+	task.LastPolledAt = time.Now()
 	return true, nil
 }
 

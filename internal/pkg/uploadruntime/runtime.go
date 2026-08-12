@@ -82,6 +82,23 @@ func PublicURL(value string) string {
 	return parsedBase.Scheme + "://" + parsedBase.Host + half
 }
 
+// OSSOriginURL expands a managed half URL with the configured Aliyun OSS
+// endpoint instead of the public proxy/CDN. Aliyun's virtual-hosted addressing
+// requires the bucket before the endpoint hostname.
+func OSSOriginURL(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	half := upload.HalfURL(value)
+	baseURL := ossEndpointBaseURL()
+	parsedBase, err := url.Parse(baseURL)
+	if err != nil || !parsedBase.IsAbs() || parsedBase.Host == "" {
+		return PublicURL(value)
+	}
+	return parsedBase.Scheme + "://" + parsedBase.Host + half
+}
+
 // PersistedURL converts URLs served by the configured upload proxy/CDN back
 // to half URLs. Other absolute URLs are preserved so externally hosted template
 // media can still be used.
@@ -118,20 +135,40 @@ func storageBaseURL() string {
 	if provider == upload.StorageAliyunOSS {
 		baseURL = configured("upload.oss.base_url", cfg.OSSBaseURL)
 		if baseURL == "" {
-			endpoint := configured("upload.oss.endpoint", cfg.OSSEndpoint)
-			bucket := configured("upload.oss.bucket", cfg.OSSBucket)
-			if endpoint != "" && bucket != "" {
-				if !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
-					endpoint = "https://" + endpoint
-				}
-				if parsedEndpoint, err := url.Parse(endpoint); err == nil && parsedEndpoint.Host != "" {
-					parsedEndpoint.Host = bucket + "." + parsedEndpoint.Host
-					baseURL = parsedEndpoint.String()
-				}
-			}
+			baseURL = ossEndpointBaseURL()
 		}
 	}
 	return baseURL
+}
+
+func ossEndpointBaseURL() string {
+	cfg := config.Cfg.Upload
+	endpoint := configured("upload.oss.endpoint", cfg.OSSEndpoint)
+	bucket := configured("upload.oss.bucket", cfg.OSSBucket)
+	if endpoint == "" || bucket == "" {
+		return ""
+	}
+	if !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
+		endpoint = "https://" + endpoint
+	}
+	parsedEndpoint, err := url.Parse(endpoint)
+	if err != nil || parsedEndpoint.Hostname() == "" {
+		return ""
+	}
+	hostname := parsedEndpoint.Hostname()
+	port := parsedEndpoint.Port()
+	if !strings.HasPrefix(strings.ToLower(hostname), strings.ToLower(bucket)+".") {
+		hostname = bucket + "." + hostname
+	}
+	parsedEndpoint.Host = hostname
+	if port != "" {
+		parsedEndpoint.Host += ":" + port
+	}
+	parsedEndpoint.Path = ""
+	parsedEndpoint.RawPath = ""
+	parsedEndpoint.RawQuery = ""
+	parsedEndpoint.Fragment = ""
+	return parsedEndpoint.String()
 }
 
 func (f *directSignerFactory) Sign(ctx context.Context, request upload.DirectUploadRequest) (*upload.DirectUploadCredential, error) {

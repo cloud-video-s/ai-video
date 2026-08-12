@@ -32,6 +32,7 @@ func newVideoTemplateType(db *gorm.DB, opts ...gen.DOOption) videoTemplateType {
 	_videoTemplateType.CategoryName = field.NewString(tableName, "category_name")
 	_videoTemplateType.Sort = field.NewInt64(tableName, "sort")
 	_videoTemplateType.Status = field.NewInt8(tableName, "status")
+	_videoTemplateType.Icon = field.NewString(tableName, "icon")
 	_videoTemplateType.Description = field.NewString(tableName, "description")
 	_videoTemplateType.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoTemplateType.UpdatedAt = field.NewTime(tableName, "updated_at")
@@ -97,6 +98,7 @@ type videoTemplateType struct {
 	CategoryName    field.String // 分类名称
 	Sort            field.Int64  // sort order
 	Status          field.Int8   // status: 0 disabled, 1 enabled
+	Icon            field.String // 图标
 	Description     field.String // description
 	CreatedAt       field.Time
 	UpdatedAt       field.Time
@@ -130,6 +132,7 @@ func (v *videoTemplateType) updateTableName(table string) *videoTemplateType {
 	v.CategoryName = field.NewString(table, "category_name")
 	v.Sort = field.NewInt64(table, "sort")
 	v.Status = field.NewInt8(table, "status")
+	v.Icon = field.NewString(table, "icon")
 	v.Description = field.NewString(table, "description")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
@@ -162,11 +165,12 @@ func (v *videoTemplateType) GetFieldByName(fieldName string) (field.OrderExpr, b
 }
 
 func (v *videoTemplateType) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 13)
+	v.fieldMap = make(map[string]field.Expr, 14)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["category_name"] = v.CategoryName
 	v.fieldMap["sort"] = v.Sort
 	v.fieldMap["status"] = v.Status
+	v.fieldMap["icon"] = v.Icon
 	v.fieldMap["description"] = v.Description
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt

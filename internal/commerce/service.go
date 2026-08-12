@@ -518,7 +518,7 @@ func applyVIPEntitlement(user *model.VideoUser, order *model.VideoOrder, now tim
 			updates["subscription_status"] = domain.AppUserSubscriptionSubscribed
 		} else {
 			updates["user_type"] = domain.AppUserTypeFree
-			updates["subscription_status"] = domain.AppUserSubscriptionExpired
+			updates["subscription_status"] = domain.AppUserSubscriptionCancelled
 		}
 		return
 	}

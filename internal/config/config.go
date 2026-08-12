@@ -27,6 +27,8 @@ type Config struct {
 
 type TaskConfig struct {
 	Concurrency                int      `mapstructure:"concurrency"`
+	DownloadConcurrency        int      `mapstructure:"download_concurrency"`
+	DownloadRetryCount         int      `mapstructure:"download_retry_count"`
 	Queues                     []string `mapstructure:"queues"`
 	SubscriptionExpirationCron string   `mapstructure:"subscription_expiration_cron"`
 }
@@ -71,6 +73,7 @@ func (d *DatabaseConfig) DSN(timezone string) string {
 type RedisConfig struct {
 	Host      string `mapstructure:"host"`
 	Port      int    `mapstructure:"port"`
+	Username  string `mapstructure:"username"`
 	Password  string `mapstructure:"password"`
 	DB        int    `mapstructure:"db"`
 	KeyPrefix string `mapstructure:"key_prefix"`
@@ -212,7 +215,7 @@ func setConfigDefaults() {
 	viper.SetDefault("upload.local_root_dir", "storage/uploads/files")
 	viper.SetDefault("upload.local_base_url", "/uploads")
 	viper.SetDefault("upload.storage_provider", "aliyun_oss")
-	viper.SetDefault("upload.oss_base_url", "https://test-cdn.zdrawai.com/")
+	viper.SetDefault("upload.oss_base_url", "https://balaaitest.oss-ap-southeast-1.aliyuncs.com/")
 	viper.SetDefault("upload.proxy_base_url", "https://test-cdn.zdrawai.com/")
 	viper.SetDefault("upload.oss_signature_ttl_seconds", int64(600))
 	viper.SetDefault("upload.chunk_size", int64(5<<20))
@@ -225,6 +228,8 @@ func setConfigDefaults() {
 	viper.SetDefault("upload.image_mime_types", []string{"image/jpeg", "image/png", "image/gif", "image/webp"})
 	viper.SetDefault("upload.video_mime_types", []string{"video/mp4", "video/quicktime", "video/webm", "video/x-matroska"})
 	viper.SetDefault("task.concurrency", 10)
+	viper.SetDefault("task.download_concurrency", 1)
+	viper.SetDefault("task.download_retry_count", 3)
 	viper.SetDefault("task.subscription_expiration_cron", "@every 1m")
 }
 
@@ -265,6 +270,12 @@ func validateConfig() error {
 	}
 	if strings.TrimSpace(Cfg.Task.SubscriptionExpirationCron) == "" {
 		return fmt.Errorf("task.subscription_expiration_cron is required")
+	}
+	if Cfg.Task.DownloadConcurrency <= 0 {
+		return fmt.Errorf("task.download_concurrency must be positive")
+	}
+	if Cfg.Task.DownloadRetryCount < 0 {
+		return fmt.Errorf("task.download_retry_count cannot be negative")
 	}
 	if Cfg.Server.Mode == "release" {
 		if Cfg.JWT.Secret == defaultJWTSecret {

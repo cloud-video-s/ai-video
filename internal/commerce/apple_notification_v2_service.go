@@ -534,7 +534,7 @@ func (s *Service) expireVIPFromAppleNotificationV2(ctx context.Context, order *m
 		beforeBalance := user.VipPoints + user.PointsBalance
 		expiredPoints := user.VipPoints
 		updates := map[string]any{
-			"subscription_status": domain.AppUserSubscriptionExpired,
+			"subscription_status": domain.AppUserSubscriptionCancelled,
 			"user_type":           domain.AppUserTypeFree,
 			"vip_points":          uint64(0),
 			"vip_expires_at":      nil,

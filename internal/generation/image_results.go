@@ -21,12 +21,34 @@ import (
 )
 
 func (m *Manager) finishImageTask(ctx context.Context, task *model.VideoUserGenerationTask, remoteURLs, base64Images []string) error {
+	return m.downloadController().run(ctx, func(retryCount int) error {
+		return m.finishImageTaskWithinDownloadSlot(ctx, task, remoteURLs, base64Images, retryCount)
+	})
+}
+
+func (m *Manager) finishImageTaskOrFail(ctx context.Context, task *model.VideoUserGenerationTask, remoteURLs, base64Images []string) error {
+	err := m.finishImageTask(ctx, task, remoteURLs, base64Images)
+	if err == nil || ctx.Err() != nil {
+		return err
+	}
+	if isDownloadRetryExhausted(err) {
+		return m.failTask(ctx, task, "保存生成图片失败: "+err.Error())
+	}
+	return err
+}
+
+func (m *Manager) finishImageTaskWithinDownloadSlot(
+	ctx context.Context,
+	task *model.VideoUserGenerationTask,
+	remoteURLs, base64Images []string,
+	retryCount int,
+) error {
 	storage, err := uploadruntime.Storage()
 	if err != nil {
 		return err
 	}
 	storage = recordGeneratedUploads(storage, m.uploadRepo, task, upload.MediaImage)
-	storedURLs, err := downloadImages(ctx, storage, task, remoteURLs)
+	storedURLs, err := downloadImages(ctx, storage, task, remoteURLs, retryCount)
 	if err != nil {
 		return err
 	}
@@ -39,10 +61,16 @@ func (m *Manager) finishImageTask(ctx context.Context, task *model.VideoUserGene
 		return errors.New("image generation completed without an output")
 	}
 	coverURL := storedURLs[0]
-	coverSource, cleanupCoverSource, coverErr := firstImageCoverSource(remoteURLs, base64Images)
+	coverRemoteURLs := remoteURLs
+	if len(remoteURLs) > 0 {
+		coverRemoteURLs = []string{uploadruntime.OSSOriginURL(storedURLs[0])}
+	}
+	coverSource, cleanupCoverSource, coverErr := firstImageCoverSource(coverRemoteURLs, base64Images)
 	if coverErr == nil {
 		defer cleanupCoverSource()
-		coverURL, coverErr = generateImageTaskCoverOrOriginal(ctx, storage, task, coverSource, coverURL)
+		coverURL, coverErr = generateImageTaskCoverOrOriginalWithRetry(
+			ctx, storage, task, coverSource, coverURL, retryCount,
+		)
 	}
 	if coverErr != nil && config.Log != nil {
 		config.Log.Warnw("image task cover generation failed; using original image",
@@ -60,12 +88,19 @@ func (m *Manager) finishImageTask(ctx context.Context, task *model.VideoUserGene
 	task.Progress = 100
 	task.ErrorMessage = ""
 	task.FinishedAt = now
+	task.UsageDuration = uint32(task.FinishedAt.Unix() - task.StartedAt.Unix())
 	return m.completeTask(ctx, task,
-		"LocalUrls", "CoverImageURL", "Status", "Progress", "ErrorMessage", "FinishedAt",
+		"LocalUrls", "CoverImageURL", "Status", "Progress", "ErrorMessage", "FinishedAt", "UsageDuration",
 	)
 }
 
-func downloadImages(ctx context.Context, storage upload.Storage, task *model.VideoUserGenerationTask, remoteURLs []string) ([]string, error) {
+func downloadImages(
+	ctx context.Context,
+	storage upload.Storage,
+	task *model.VideoUserGenerationTask,
+	remoteURLs []string,
+	retryCount int,
+) ([]string, error) {
 	maxSize := config.Cfg.Upload.ImageMaxFileSize
 	if maxSize <= 0 {
 		maxSize = 20 << 20
@@ -76,7 +111,7 @@ func downloadImages(ctx context.Context, storage upload.Storage, task *model.Vid
 		extension := imageURLSuffix(remoteURL)
 		filename := fmt.Sprintf("task-%s-%d%s", task.TaskCode, index+1, extension)
 		storedURL, err := downloadAndStoreGeneratedFile(
-			ctx, storage, client, remoteURL, generatedObjectKey(task.UserID, filename), imageContentType(extension), maxSize,
+			ctx, storage, client, remoteURL, generatedObjectKey(task.UserID, filename), imageContentType(extension), maxSize, retryCount,
 		)
 		if err != nil {
 			return nil, err

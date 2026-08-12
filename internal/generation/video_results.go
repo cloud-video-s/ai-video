@@ -35,8 +35,11 @@ func (m *Manager) processVideoTaskResult(ctx context.Context, task *model.VideoU
 // durable checkpoint that lets the next worker pass skip downloading and move
 // on to cover generation.
 func (m *Manager) downloadVideoTaskResult(ctx context.Context, task *model.VideoUserGenerationTask, remoteURLs []string) error {
-	localURLs, err := downloadVideos(ctx, task, remoteURLs, m.uploadRepo)
+	localURLs, err := m.downloadVideos(ctx, task, remoteURLs, m.uploadRepo)
 	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		return m.failTask(ctx, task, "保存生成视频失败: "+err.Error())
 	}
 	if err := m.saveDownloadedVideoURLs(ctx, task, localURLs); err != nil {
@@ -65,7 +68,8 @@ func (m *Manager) saveDownloadedVideoURLs(ctx context.Context, task *model.Video
 func (m *Manager) generateVideoTaskCoverAndFinish(
 	ctx context.Context,
 	task *model.VideoUserGenerationTask,
-	remoteURLs, localURLs []string,
+	_ []string,
+	localURLs []string,
 ) error {
 	if len(localURLs) == 0 || strings.TrimSpace(localURLs[0]) == "" {
 		return m.failTask(ctx, task, "生成视频封面前缺少已下载的视频地址")
@@ -75,13 +79,18 @@ func (m *Manager) generateVideoTaskCoverAndFinish(
 		return m.failTask(ctx, task, "获取视频封面存储失败: "+err.Error())
 	}
 	storage = recordGeneratedUploads(storage, m.uploadRepo, task, upload.MediaImage)
-	coverSource := uploadruntime.PublicURL(localURLs[0])
-	remoteCoverSource := ""
-	if len(remoteURLs) > 0 {
-		remoteCoverSource = strings.TrimSpace(remoteURLs[0])
-	}
-	coverURL, err := generateOrStoreDefaultVideoTaskCover(ctx, storage, task, coverSource, remoteCoverSource)
+	coverSource := uploadruntime.OSSOriginURL(localURLs[0])
+	var coverURL string
+	err = m.downloadController().run(ctx, func(retryCount int) error {
+		coverURL, err = generateOrStoreDefaultVideoTaskCoverWithRetry(
+			ctx, storage, task, retryCount, coverSource,
+		)
+		return err
+	})
 	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		return m.failTask(ctx, task, "保存视频默认封面失败: "+err.Error())
 	}
 	task.CoverImageURL = coverURL
@@ -89,8 +98,9 @@ func (m *Manager) generateVideoTaskCoverAndFinish(
 	task.Progress = 100
 	task.ErrorMessage = ""
 	task.FinishedAt = time.Now()
+	task.UsageDuration = uint32(task.FinishedAt.Unix() - task.StartedAt.Unix())
 	return m.completeTask(ctx, task,
-		"CoverImageURL", "Status", "Progress", "ErrorMessage", "FinishedAt",
+		"CoverImageURL", "Status", "Progress", "ErrorMessage", "FinishedAt", "UsageDuration",
 	)
 }
 

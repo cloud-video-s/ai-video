@@ -18,6 +18,7 @@ type VideoTemplateType struct {
 	CategoryName    string                  `gorm:"column:category_name;type:varchar(128);not null;index:idx_video_template_type_category_name,priority:1;comment:分类名称" json:"category_name"`          // 分类名称
 	Sort            int64                   `gorm:"column:sort;type:bigint;not null;index:idx_video_template_type_sort,priority:1;comment:sort order" json:"sort"`                                     // sort order
 	Status          int8                    `gorm:"column:status;type:tinyint;not null;index:idx_video_template_type_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"` // status: 0 disabled, 1 enabled
+	Icon            string                  `gorm:"column:icon;type:varchar(255);comment:图标" json:"icon"`                                                                                              // 图标
 	Description     string                  `gorm:"column:description;type:varchar(500);comment:description" json:"description"`                                                                       // description
 	CreatedAt       time.Time               `gorm:"column:created_at;type:datetime(3);index:idx_video_template_type_created_at,priority:1" json:"created_at"`
 	UpdatedAt       time.Time               `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`

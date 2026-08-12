@@ -19,6 +19,7 @@ func downloadVideosToStorage(
 	client *http.Client,
 	task *model.VideoUserGenerationTask,
 	remoteURLs []string,
+	retryCount int,
 ) ([]string, error) {
 	maxSize := config.Cfg.Upload.VideoMaxFileSize
 	if maxSize <= 0 {
@@ -28,7 +29,7 @@ func downloadVideosToStorage(
 	for index, remoteURL := range remoteURLs {
 		filename := fmt.Sprintf("task-%s-%d.mp4", task.TaskCode, index+1)
 		storedURL, err := downloadAndStoreGeneratedFile(
-			ctx, storage, client, remoteURL, generatedObjectKey(task.UserID, filename), "video/mp4", maxSize,
+			ctx, storage, client, remoteURL, generatedObjectKey(task.UserID, filename), "video/mp4", maxSize, retryCount,
 		)
 		if err != nil {
 			return nil, err
@@ -44,13 +45,16 @@ func downloadAndStoreGeneratedFile(
 	client *http.Client,
 	remoteURL, objectKey, contentType string,
 	maxSize int64,
+	retryCount int,
 ) (string, error) {
 	temporary, err := newGeneratedTemporaryFile()
 	if err != nil {
 		return "", err
 	}
 	defer os.Remove(temporary)
-	if err := downloadOne(ctx, client, remoteURL, temporary, maxSize); err != nil {
+	if err := retryDownload(ctx, retryCount, func() error {
+		return downloadOne(ctx, client, remoteURL, temporary, maxSize)
+	}); err != nil {
 		return "", err
 	}
 	return storeGeneratedFile(ctx, storage, objectKey, temporary, contentType)

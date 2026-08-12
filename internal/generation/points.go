@@ -11,6 +11,8 @@ import (
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
+
+	"gorm.io/gorm"
 )
 
 const (
@@ -101,7 +103,7 @@ func (m *Manager) completeTask(ctx context.Context, task *model.VideoUserGenerat
 			return errors.New("failed generation task cannot be completed")
 		}
 
-		if err := m.consumeFrozenTaskPoints(txCtx, state); err != nil {
+		if err = m.consumeFrozenTaskPoints(txCtx, state); err != nil {
 			return err
 		}
 		return m.taskRepo.UpdateFields(txCtx, task, fields...)
@@ -214,14 +216,13 @@ func (m *Manager) releaseFrozenTaskPoints(ctx context.Context, state *repository
 		user.PointsBalance > math.MaxInt64-int64(allocation.PointsScore) {
 		return errors.New("points balance overflow while releasing reservation")
 	}
-	user.VipPoints += int64(allocation.VIPScore)
-	user.PointsBalance += int64(allocation.PointsScore)
-	user.FrozenPoints -= uint64(state.Score)
-	if err = m.Update(ctx, user.ID, map[string]any{
-		"vip_points":     user.VipPoints,
-		"points_balance": user.PointsBalance,
-		"frozen_points":  user.FrozenPoints,
-	}); err != nil {
+	update := map[string]any{}
+	if user.SubscriptionStatus == 2 {
+		update["vip_points"] = gorm.Expr("vip_points + ?", allocation.VIPScore)
+	}
+	update["frozen_points"] = gorm.Expr("points_balance + ?", allocation.PointsScore)
+	update["points_balance"] = gorm.Expr("frozen_points - ?", state.Score)
+	if err = m.Update(ctx, user.ID, update); err != nil {
 		return fmt.Errorf("release generation task points: %w", err)
 	}
 	return nil

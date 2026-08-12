@@ -54,6 +54,7 @@ func newVideoUserGenerationTask(db *gorm.DB, opts ...gen.DOOption) videoUserGene
 	_videoUserGenerationTask.VipScore = field.NewUint32(tableName, "vip_score")
 	_videoUserGenerationTask.PointsScore = field.NewUint32(tableName, "points_score")
 	_videoUserGenerationTask.ScoreType = field.NewUint32(tableName, "score_type")
+	_videoUserGenerationTask.RetryCount = field.NewUint32(tableName, "retry_count")
 	_videoUserGenerationTask.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUserGenerationTask.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUserGenerationTask.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -141,6 +142,7 @@ type videoUserGenerationTask struct {
 	VipScore         field.Uint32 // 冻结订阅积分
 	PointsScore      field.Uint32 // 冻结普通积分
 	ScoreType        field.Uint32 // 积分类型：0=免费，1=订阅积分，2=普通积分，3=混合积分
+	RetryCount       field.Uint32 // 重试次数
 	CreatedAt        field.Time   // 记录创建时间
 	UpdatedAt        field.Time   // 记录更新时间
 	DeletedAt        field.Field  // 软删除时间（非NULL表示已删除）
@@ -191,6 +193,7 @@ func (v *videoUserGenerationTask) updateTableName(table string) *videoUserGenera
 	v.VipScore = field.NewUint32(table, "vip_score")
 	v.PointsScore = field.NewUint32(table, "points_score")
 	v.ScoreType = field.NewUint32(table, "score_type")
+	v.RetryCount = field.NewUint32(table, "retry_count")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -222,7 +225,7 @@ func (v *videoUserGenerationTask) GetFieldByName(fieldName string) (field.OrderE
 }
 
 func (v *videoUserGenerationTask) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 32)
+	v.fieldMap = make(map[string]field.Expr, 33)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["model_id"] = v.ModelID
@@ -249,6 +252,7 @@ func (v *videoUserGenerationTask) fillFieldMap() {
 	v.fieldMap["vip_score"] = v.VipScore
 	v.fieldMap["points_score"] = v.PointsScore
 	v.fieldMap["score_type"] = v.ScoreType
+	v.fieldMap["retry_count"] = v.RetryCount
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

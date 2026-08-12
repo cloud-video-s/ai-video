@@ -8,11 +8,16 @@ import (
 	"ai-video/internal/pkg/uploadruntime"
 )
 
-func downloadVideos(ctx context.Context, task *model.VideoUserGenerationTask, remoteURLs []string, recorder upload.StoredUploadRecorder) ([]string, error) {
+func (m *Manager) downloadVideos(ctx context.Context, task *model.VideoUserGenerationTask, remoteURLs []string, recorder upload.StoredUploadRecorder) ([]string, error) {
 	storage, err := uploadruntime.Storage()
 	if err != nil {
 		return nil, err
 	}
 	storage = recordGeneratedUploads(storage, recorder, task, upload.MediaVideo)
-	return downloadVideosToStorage(ctx, storage, secureDownloadClient(), task, remoteURLs)
+	var result []string
+	err = m.downloadController().run(ctx, func(retryCount int) error {
+		result, err = downloadVideosToStorage(ctx, storage, secureDownloadClient(), task, remoteURLs, retryCount)
+		return err
+	})
+	return result, err
 }

@@ -85,7 +85,7 @@ func storeGeneratedBytes(
 		return "", err
 	}
 	defer os.Remove(temporary)
-	if err := os.WriteFile(temporary, contents, 0o600); err != nil {
+	if err = os.WriteFile(temporary, contents, 0o600); err != nil {
 		return "", err
 	}
 	return storeGeneratedFile(ctx, storage, objectKey, temporary, contentType)

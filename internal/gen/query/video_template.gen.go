@@ -39,6 +39,7 @@ func newVideoTemplate(db *gorm.DB, opts ...gen.DOOption) videoTemplate {
 	_videoTemplate.ThumbnailURL = field.NewString(tableName, "thumbnail_url")
 	_videoTemplate.Prompt = field.NewString(tableName, "prompt")
 	_videoTemplate.Status = field.NewInt32(tableName, "status")
+	_videoTemplate.Icon = field.NewString(tableName, "icon")
 	_videoTemplate.Description = field.NewString(tableName, "description")
 	_videoTemplate.UsageCount = field.NewUint64(tableName, "usage_count")
 	_videoTemplate.LikeCount = field.NewUint64(tableName, "like_count")
@@ -95,6 +96,7 @@ type videoTemplate struct {
 	ThumbnailURL      field.String // 缩略图视频URL
 	Prompt            field.String // 模板对应的提示词
 	Status            field.Int32  // 状态：0-禁用，1-启用
+	Icon              field.String // 图标
 	Description       field.String // 模板描述信息
 	UsageCount        field.Uint64 // 模板被使用的总次数
 	LikeCount         field.Uint64 // 模板点赞数
@@ -134,6 +136,7 @@ func (v *videoTemplate) updateTableName(table string) *videoTemplate {
 	v.ThumbnailURL = field.NewString(table, "thumbnail_url")
 	v.Prompt = field.NewString(table, "prompt")
 	v.Status = field.NewInt32(table, "status")
+	v.Icon = field.NewString(table, "icon")
 	v.Description = field.NewString(table, "description")
 	v.UsageCount = field.NewUint64(table, "usage_count")
 	v.LikeCount = field.NewUint64(table, "like_count")
@@ -169,7 +172,7 @@ func (v *videoTemplate) GetFieldByName(fieldName string) (field.OrderExpr, bool)
 }
 
 func (v *videoTemplate) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 21)
+	v.fieldMap = make(map[string]field.Expr, 22)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["name"] = v.Name
 	v.fieldMap["template_type"] = v.TemplateType
@@ -181,6 +184,7 @@ func (v *videoTemplate) fillFieldMap() {
 	v.fieldMap["thumbnail_url"] = v.ThumbnailURL
 	v.fieldMap["prompt"] = v.Prompt
 	v.fieldMap["status"] = v.Status
+	v.fieldMap["icon"] = v.Icon
 	v.fieldMap["description"] = v.Description
 	v.fieldMap["usage_count"] = v.UsageCount
 	v.fieldMap["like_count"] = v.LikeCount

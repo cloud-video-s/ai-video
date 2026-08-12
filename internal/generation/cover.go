@@ -75,7 +75,20 @@ func generateImageTaskCoverOrOriginal(
 	source string,
 	originalURL string,
 ) (string, error) {
-	coverURL, err := generateAndStoreTaskCover(ctx, storage, task, upload.MediaImage, source)
+	return generateImageTaskCoverOrOriginalWithRetry(ctx, storage, task, source, originalURL, 0)
+}
+
+func generateImageTaskCoverOrOriginalWithRetry(
+	ctx context.Context,
+	storage upload.Storage,
+	task *model.VideoUserGenerationTask,
+	source string,
+	originalURL string,
+	retryCount int,
+) (string, error) {
+	coverURL, err := retryGeneratedTaskCover(ctx, retryCount, func() (string, error) {
+		return generateAndStoreTaskCover(ctx, storage, task, upload.MediaImage, source)
+	})
 	if err != nil {
 		return originalURL, err
 	}
@@ -88,8 +101,38 @@ func generateOrStoreDefaultVideoTaskCover(
 	task *model.VideoUserGenerationTask,
 	sources ...string,
 ) (string, error) {
+	return generateOrStoreDefaultVideoTaskCoverWithRetry(ctx, storage, task, 0, sources...)
+}
+
+func generateOrStoreDefaultVideoTaskCoverWithRetry(
+	ctx context.Context,
+	storage upload.Storage,
+	task *model.VideoUserGenerationTask,
+	retryCount int,
+	sources ...string,
+) (string, error) {
+	return generateOrStoreDefaultVideoTaskCoverWithGenerator(
+		ctx, storage, task, retryCount,
+		func(source string) (string, error) {
+			return generateAndStoreTaskCover(ctx, storage, task, upload.MediaVideo, source)
+		},
+		sources...,
+	)
+}
+
+func generateOrStoreDefaultVideoTaskCoverWithGenerator(
+	ctx context.Context,
+	storage upload.Storage,
+	task *model.VideoUserGenerationTask,
+	retryCount int,
+	generate func(source string) (string, error),
+	sources ...string,
+) (string, error) {
 	if task == nil || task.ID == 0 || task.UserID == 0 {
 		return "", errors.New("video task cover requires a persisted task")
+	}
+	if generate == nil {
+		return "", errors.New("video task cover generator is not configured")
 	}
 	seen := make(map[string]struct{}, len(sources))
 	var coverErr error
@@ -103,9 +146,14 @@ func generateOrStoreDefaultVideoTaskCover(
 		}
 		seen[source] = struct{}{}
 
-		coverURL, err := generateAndStoreTaskCover(ctx, storage, task, upload.MediaVideo, source)
+		coverURL, err := retryGeneratedTaskCover(ctx, retryCount, func() (string, error) {
+			return generate(source)
+		})
 		if err == nil {
 			return coverURL, nil
+		}
+		if ctx.Err() != nil {
+			return "", ctx.Err()
 		}
 		coverErr = err
 	}
@@ -117,6 +165,20 @@ func generateOrStoreDefaultVideoTaskCover(
 		)
 	}
 	return storeDefaultVideoTaskCover(ctx, storage, task)
+}
+
+func retryGeneratedTaskCover(
+	ctx context.Context,
+	retryCount int,
+	generate func() (string, error),
+) (string, error) {
+	var coverURL string
+	err := retryDownload(ctx, retryCount, func() error {
+		var err error
+		coverURL, err = generate()
+		return err
+	})
+	return coverURL, err
 }
 
 func storeDefaultVideoTaskCover(
@@ -132,7 +194,7 @@ func storeDefaultVideoTaskCover(
 		return "", err
 	}
 	defer os.Remove(temporary)
-	if err := writeDefaultVideoCover(temporary); err != nil {
+	if err = writeDefaultVideoCover(temporary); err != nil {
 		return "", fmt.Errorf("write default video task cover: %w", err)
 	}
 	filename := fmt.Sprintf("task-%s-cover.jpg", task.TaskCode)
