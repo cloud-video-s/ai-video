@@ -19,7 +19,7 @@ func Cors() gin.HandlerFunc {
 		AllowOrigins:  origins,
 		AllowMethods:  []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowHeaders:  []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Chunk-SHA256"},
-		ExposeHeaders: []string{"Content-Length"},
+		ExposeHeaders: []string{"Content-Length", HeaderRefreshedToken},
 		MaxAge:        12 * time.Hour,
 	})
 }

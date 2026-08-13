@@ -53,6 +53,7 @@ type TemplateTypeAppRulePayload struct {
 
 type TemplateTypePayload struct {
 	CategoryName        string                       `json:"category_name" binding:"required,max=128"`
+	Icon                string                       `json:"icon" binding:"max=255"`
 	DisplayPositionKeys []string                     `json:"display_position_keys" binding:"max=100,dive,required,max=64"`
 	CountryCodes        []string                     `json:"country_codes" binding:"max=100,dive,gt=0"`
 	AppRules            []TemplateTypeAppRulePayload `json:"app_rules" binding:"max=100,dive"`
@@ -64,16 +65,24 @@ type TemplateTypePayload struct {
 }
 
 func (s *TemplateTypeService) List(ctx context.Context, page, pageSize int, req *ListTemplateTypeRequest) ([]repository.TemplateTypeRecord, int64, error) {
-	return s.repo.PageList(ctx, page, pageSize, &repository.TemplateTypeListFilter{
+	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.TemplateTypeListFilter{
 		Status: req.Status, PositionKey: strings.TrimSpace(req.PositionKey),
 		CountryID: req.CountryID, AppCode: strings.TrimSpace(req.AppCode),
 		PackageCode: strings.TrimSpace(req.PackageCode), VersionCode: strings.TrimSpace(req.VersionCode),
 		Keyword: strings.TrimSpace(req.Keyword),
 	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
 }
 
 func (s *TemplateTypeService) ListOptions(ctx context.Context) ([]repository.TemplateTypeRecord, error) {
-	return s.repo.ListOptions(ctx)
+	items, err := s.repo.ListOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 func (s *TemplateTypeService) GetByID(ctx context.Context, id uint64) (*repository.TemplateTypeRecord, error) {
@@ -98,7 +107,8 @@ func (s *TemplateTypeService) Create(ctx context.Context, req *TemplateTypePaylo
 	}); err != nil {
 		return nil, err
 	}
-	return s.repo.GetDetail(ctx, item.ID)
+	created, err := s.repo.GetDetail(ctx, item.ID)
+	return created, err
 }
 
 func (s *TemplateTypeService) Update(ctx context.Context, id uint64, req *TemplateTypePayload) (*repository.TemplateTypeRecord, error) {
@@ -118,7 +128,8 @@ func (s *TemplateTypeService) Update(ctx context.Context, id uint64, req *Templa
 	}); err != nil {
 		return nil, err
 	}
-	return s.repo.GetDetail(ctx, item.ID)
+	updated, err := s.repo.GetDetail(ctx, item.ID)
+	return updated, err
 }
 
 func (s *TemplateTypeService) Delete(ctx context.Context, id uint64) error {
@@ -137,6 +148,7 @@ func (s *TemplateTypeService) Delete(ctx context.Context, id uint64) error {
 
 func applyTemplateTypePayload(item *model.VideoTemplateType, req *TemplateTypePayload) {
 	item.CategoryName = strings.TrimSpace(req.CategoryName)
+	item.Icon = req.Icon
 	item.Sort = req.Sort
 	item.Status = req.Status
 	item.Description = strings.TrimSpace(req.Description)
@@ -309,6 +321,7 @@ type TemplatePayload struct {
 	Name                 string                  `json:"name" binding:"required,max=128"`
 	TemplateType         int64                   `json:"template_type" binding:"required,oneof=1 2"`
 	Sort                 int                     `json:"sort"`
+	Icon                 string                  `json:"icon" binding:"max=255"`
 	CoverImageURL        string                  `json:"cover_image_url" binding:"required,max=1024"`
 	OriginalURL          string                  `json:"original_url" binding:"required,max=1024"`
 	ThumbnailURL         string                  `json:"thumbnail_url" binding:"required,max=1024"`
@@ -333,9 +346,6 @@ func (s *TemplateService) List(ctx context.Context, page, pageSize int, req *Lis
 	if err != nil {
 		return nil, 0, err
 	}
-	for i := range items {
-		expandTemplateMediaURLs(&items[i].VideoTemplate)
-	}
 	return items, total, nil
 }
 
@@ -344,7 +354,6 @@ func (s *TemplateService) GetByID(ctx context.Context, id uint64) (*repository.T
 	if err != nil {
 		return nil, notFoundOr(err, "模板不存在")
 	}
-	expandTemplateMediaURLs(&item.VideoTemplate)
 	return item, nil
 }
 
@@ -352,9 +361,6 @@ func (s *TemplateService) ListOptions(ctx context.Context) ([]repository.Templat
 	items, err := s.repo.ListOptions(ctx)
 	if err != nil {
 		return nil, err
-	}
-	for i := range items {
-		expandTemplateMediaURLs(&items[i].VideoTemplate)
 	}
 	return items, nil
 }
@@ -466,20 +472,12 @@ func normalizeTemplatePayload(req *TemplatePayload) {
 		req.TemplateTypeID = req.LegacyTemplateTypeID
 	}
 	req.Name = strings.TrimSpace(req.Name)
+	req.Icon = uploadruntime.PersistedURL(req.Icon)
 	req.CoverImageURL = uploadruntime.PersistedURL(req.CoverImageURL)
 	req.OriginalURL = uploadruntime.PersistedURL(req.OriginalURL)
 	req.ThumbnailURL = uploadruntime.PersistedURL(req.ThumbnailURL)
 	req.Prompt = strings.TrimSpace(req.Prompt)
 	req.Description = strings.TrimSpace(req.Description)
-}
-
-func expandTemplateMediaURLs(item *model.VideoTemplate) {
-	if item == nil {
-		return
-	}
-	item.CoverImageURL = uploadruntime.PublicURL(item.CoverImageURL)
-	item.OriginalURL = uploadruntime.PublicURL(item.OriginalURL)
-	item.ThumbnailURL = uploadruntime.PublicURL(item.ThumbnailURL)
 }
 
 func validateTemplatePayload(req *TemplatePayload) error {
@@ -529,6 +527,7 @@ func applyTemplatePayload(item *model.VideoTemplate, req *TemplatePayload) {
 	item.Name = strings.TrimSpace(req.Name)
 	item.TemplateType = req.TemplateType
 	item.Sort = int64(req.Sort)
+	item.Icon = strings.TrimSpace(req.Icon)
 	item.CoverImageURL = strings.TrimSpace(req.CoverImageURL)
 	item.OriginalURL = strings.TrimSpace(req.OriginalURL)
 	item.ThumbnailURL = strings.TrimSpace(req.ThumbnailURL)

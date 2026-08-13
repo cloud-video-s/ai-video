@@ -334,7 +334,6 @@ func (s *BannerService) withAppTargets(ctx context.Context, items []model.VideoB
 	result := make([]BannerView, len(items))
 	for i := range items {
 		items[i].CoverImage = uploadruntime.PublicURL(items[i].CoverImage)
-		expandTemplateMediaURLs(&items[i].Template)
 		result[i] = BannerView{
 			VideoBanner: &items[i], DisplayPositions: placements[items[i].ID], AppTargets: targets[items[i].ID],
 		}

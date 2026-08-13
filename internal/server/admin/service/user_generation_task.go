@@ -165,7 +165,6 @@ func generationTaskView(task *model.VideoUserGenerationTask, detail bool) UserGe
 	}
 	if task.Template.ID > 0 {
 		template := task.Template
-		expandTemplateMediaURLs(&template)
 		view.Template = &GenerationTaskTemplateView{
 			ID: template.ID, Name: template.Name, TemplateType: template.TemplateType,
 			TemplateTypeID: template.TemplateTypeID, ModelID: template.ModelID,

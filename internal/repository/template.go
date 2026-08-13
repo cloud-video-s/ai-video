@@ -121,7 +121,7 @@ func (r *TemplateTypeRepo) PageList(ctx context.Context, page, pageSize int, fil
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(templateType.Sort.Asc(), templateType.ID.Desc()).
+	rows, err := dao.Order(templateType.ID.Desc()).
 		Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, err
@@ -154,7 +154,7 @@ func (r *TemplateTypeRepo) GetDetail(ctx context.Context, id uint64) (*TemplateT
 
 func (r *TemplateTypeRepo) UpdateFields(ctx context.Context, item *model.VideoTemplateType) error {
 	return r.BaseRepo.Update(ctx, item,
-		"CategoryName", "Sort", "Status", "Description",
+		"CategoryName", "Icon", "Sort", "Status", "Description",
 	)
 }
 
@@ -590,7 +590,7 @@ func (r *TemplateRepo) PageList(ctx context.Context, page, pageSize int, filter 
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).
+	rows, err := dao.Order(q.ID.Desc()).
 		Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, err
@@ -763,7 +763,7 @@ func templateValues(rows []*model.VideoTemplate) []model.VideoTemplate {
 func (r *TemplateRepo) UpdateFields(ctx context.Context, item *model.VideoTemplate) error {
 	return r.BaseRepo.Update(ctx, item,
 		"TemplateTypeID", "ModelID", "Name", "TemplateType", "Sort",
-		"CoverImageURL", "OriginalURL", "ThumbnailURL", "Prompt", "Status", "Description",
+		"Icon", "CoverImageURL", "OriginalURL", "ThumbnailURL", "Prompt", "Status", "Description",
 	)
 }
 

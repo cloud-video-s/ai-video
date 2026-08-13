@@ -342,6 +342,7 @@ var generationModelResponseExample = []apiservice.GenerationModelView{
 
 var clientTemplateResponseExample = apiservice.ClientTemplate{
 	ID: 101, TemplateTypeID: 1, Name: "动漫视频", TemplateType: 2,
+	Icon:          "https://cdn.example.com/templates/101-icon.png",
 	CoverImageURL: "https://cdn.example.com/templates/101-cover.jpg",
 	OriginalURL:   "https://cdn.example.com/templates/101.mp4",
 	ThumbnailURL:  "https://cdn.example.com/templates/101-thumbnail.mp4",
@@ -353,7 +354,7 @@ var clientTemplateListResponseExample = []apiservice.ClientTemplate{clientTempla
 
 var templateCategoryListResponseExample = []apiservice.ClientTemplateType{
 	{
-		ID: 1, CategoryName: "热门模板", Description: "当前客户端可用的热门模板", Sort: 100,
+		ID: 1, CategoryName: "热门模板", Icon: "https://cdn.example.com/template-types/hot.png", Description: "当前客户端可用的热门模板", Sort: 100,
 		Templates: clientTemplateListResponseExample,
 	},
 }
@@ -497,7 +498,7 @@ var operationDescriptions = map[string]string{
 	"POST /api/users/active_reporting": "上报当前用户本次活跃时长。time_long 必须是大于 0 的整数；成功时响应 data 为 null。",
 	"GET /api/ob_delay":                "获取客户端延迟配置。",
 	"GET /api/banners/list":            "按必填的 position_key 查询当前客户端可见的 Banner。服务端同时使用公共请求头中的 Video_App_Code、Video_App_Package_Code、Video_App_Version、Video_Device_Country，以及登录用户的会员状态进行投放匹配。某个维度没有关联记录时表示该维度支持全部；存在关联记录时必须命中。展示位置、国家、应用、应用包、版本和会员类型之间按 AND 关系组合。",
-	"GET /api/templates/recommend":     "按必填的 position_key 查询当前客户端可见的推荐模板，响应 data 为模板对象数组。每个模板对象返回 id、template_type_id、name、template_type、cover_image_url、original_url、thumbnail_url、prompt、description、sort、usage_count、favorite_count、view_count、is_favorite 和 model_score。",
+	"GET /api/templates/recommend":     "按必填的 position_key 查询当前客户端可见的推荐模板，响应 data 为模板对象数组。每个模板对象返回 id、template_type_id、name、template_type、icon、cover_image_url、original_url、thumbnail_url、prompt、description、sort、usage_count、favorite_count、view_count、is_favorite 和 model_score。",
 	"GET /api/templates/list":          "按可选的 position_key 分页查询当前客户端可见的分类及其模板。page 默认 1，page_size 默认 5；响应 data 包含 page、pageSize、total、totalPages 和 list，每个分类的 templates 使用当前统一模板对象结构。",
 	"GET /api/templates/categories":    "分页查询 homeCategory 展示位置下当前客户端可见的模板分类及其模板。page 默认 1，page_size 默认 5；响应 data 包含 page、pageSize、total、totalPages 和 list，每个分类最多返回 10 个启用且未删除的模板。分类必须处于启用状态并至少关联一个启用且未删除的模板；没有可用模板、仅有关联禁用模板或已删除模板的分类不会进入分页结果。分类同时按国家、应用、应用包和版本投放范围匹配，未配置某个范围表示该维度支持全部。",
 	"GET /api/templates/template_list": "按 page、page_size、template_type_id 和可选 position_key 分页查询模板。page 默认 1，page_size 默认 10；响应 data 包含 page、pageSize、total、totalPages 和 list，list 中每项使用当前统一模板对象结构。",

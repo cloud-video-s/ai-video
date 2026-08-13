@@ -253,7 +253,7 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 		if payAt.IsZero() {
 			payAt = time.Now()
 		}
-		if err := s.orders.MarkPaid(ctx, order.ID, map[string]any{
+		if err = s.orders.MarkPaid(ctx, order.ID, map[string]any{
 			"pay_type": domain.PaymentMethodAppleIAP, "third_order_no": result.TransactionID,
 			"original_transaction_id": strings.TrimSpace(result.OriginalTransactionID), "paid_amount": result.PaidAmount,
 			"payment_evidence": result.SignedTransaction, "pay_time": payAt, "order_type": result.OrderType,
@@ -320,7 +320,7 @@ func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder
 					OrderCode: lockedOrder.OrderNo, VipID: lockedOrder.ProductID,
 					Description: "subscription renewal old points deduction", OccurredAt: now, CreatedAt: now,
 				}
-				if err := s.ledgers.Create(ctx, clearLedger); err != nil {
+				if err = s.ledgers.Create(ctx, clearLedger); err != nil {
 					return err
 				}
 			}

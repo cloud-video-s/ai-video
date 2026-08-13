@@ -18,8 +18,11 @@ type AdminClaims struct {
 	jwt.RegisteredClaims
 }
 
+const AdminTokenRenewalWindow = 30 * time.Minute
+
 func GenerateToken(userID uint64, username string, roleCodes []string, tokenVersion int64) (string, error) {
 	cfg := config.Cfg.JWT
+	now := time.Now()
 	claims := AdminClaims{
 		UserID:       userID,
 		Username:     username,
@@ -27,14 +30,24 @@ func GenerateToken(userID uint64, username string, roleCodes []string, tokenVers
 		TokenVersion: tokenVersion,
 		TokenType:    "admin",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(cfg.Expire) * time.Second)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(cfg.Expire) * time.Second)),
+			IssuedAt:  jwt.NewNumericDate(now),
 			Issuer:    cfg.Issuer,
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(cfg.Secret))
+}
+
+// NeedsAdminTokenRenewal reports whether a valid admin token has entered the
+// sliding renewal window. Expired tokens are never eligible for renewal.
+func NeedsAdminTokenRenewal(claims *AdminClaims, now time.Time) bool {
+	if claims == nil || claims.ExpiresAt == nil {
+		return false
+	}
+	remaining := claims.ExpiresAt.Time.Sub(now)
+	return remaining > 0 && remaining <= AdminTokenRenewalWindow
 }
 
 func ParseToken(tokenString string) (*AdminClaims, error) {

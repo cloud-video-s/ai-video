@@ -66,6 +66,7 @@ var ErrClientTemplateAudienceMismatch = errors.New("模板受众条件与当前�
 type ClientTemplateType struct {
 	ID           uint64           `json:"id"`
 	CategoryName string           `json:"category_name"`
+	Icon         string           `json:"icon"`
 	Description  string           `json:"description"`
 	Sort         int64            `json:"sort"`
 	Templates    []ClientTemplate `json:"templates"`
@@ -76,6 +77,7 @@ type ClientTemplate struct {
 	TemplateTypeID uint64 `json:"template_type_id"`
 	Name           string `json:"name"`
 	TemplateType   int64  `json:"template_type"`
+	Icon           string `json:"icon"`
 	CoverImageURL  string `json:"cover_image_url"`
 	OriginalURL    string `json:"original_url"`
 	ThumbnailURL   string `json:"thumbnail_url"`
@@ -167,6 +169,7 @@ func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplate
 		data = append(data, ClientTemplateType{
 			ID:           item.ID,
 			CategoryName: item.CategoryName,
+			Icon:         uploadruntime.PublicURL(item.Icon),
 			Description:  item.Description,
 			Sort:         item.Sort,
 			Templates:    templates,
@@ -208,7 +211,7 @@ func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.Vid
 			continue
 		}
 		result = append(result, ClientTemplateType{
-			ID: item.ID, CategoryName: item.CategoryName, Description: item.Description,
+			ID: item.ID, CategoryName: item.CategoryName, Icon: uploadruntime.PublicURL(item.Icon), Description: item.Description,
 			Sort:      item.Sort,
 			Templates: templates,
 		})
@@ -222,6 +225,7 @@ func mapClientTemplate(item *model.VideoTemplate) ClientTemplate {
 		TemplateTypeID: item.TemplateTypeID,
 		Name:           item.Name,
 		TemplateType:   item.TemplateType,
+		Icon:           uploadruntime.PublicURL(item.Icon),
 		CoverImageURL:  uploadruntime.PublicURL(item.CoverImageURL),
 		OriginalURL:    uploadruntime.PublicURL(item.OriginalURL),
 		ThumbnailURL:   uploadruntime.PublicURL(item.ThumbnailURL),

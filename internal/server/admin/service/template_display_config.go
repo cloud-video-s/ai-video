@@ -49,9 +49,6 @@ func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize 
 	if err != nil {
 		return nil, 0, err
 	}
-	for i := range items {
-		expandTemplateDisplayConfigURLs(&items[i])
-	}
 	return items, total, nil
 }
 
@@ -60,7 +57,6 @@ func (s *TemplateDisplayConfigService) GetByID(ctx context.Context, id uint64) (
 	if err != nil {
 		return nil, notFoundOr(err, "模板展示配置不存在")
 	}
-	expandTemplateDisplayConfigURLs(item)
 	return item, nil
 }
 
@@ -95,12 +91,6 @@ func (s *TemplateDisplayConfigService) Update(ctx context.Context, id uint64, re
 		return nil, err
 	}
 	return s.GetByID(ctx, item.ID)
-}
-
-func expandTemplateDisplayConfigURLs(item *repository.TemplateDisplayConfigRecord) {
-	if item != nil && item.Template != nil {
-		expandTemplateMediaURLs(&item.Template.VideoTemplate)
-	}
 }
 
 func (s *TemplateDisplayConfigService) Delete(ctx context.Context, id uint64) error {

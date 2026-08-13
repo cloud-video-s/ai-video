@@ -5,19 +5,34 @@ import (
 	"ai-video/internal/pkg/jwt"
 	"ai-video/internal/pkg/response"
 	"ai-video/internal/repository"
+	"context"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 const (
-	CtxAdminIDKey   = "admin_id"
-	CtxAdminnameKey = "username"
-	CtxRoleCodesKey = "role_codes"
+	CtxAdminIDKey        = "admin_id"
+	CtxAdminnameKey      = "username"
+	CtxRoleCodesKey      = "role_codes"
+	HeaderRefreshedToken = "X-Refreshed-Token"
 )
 
+type adminTokenVersionReader interface {
+	GetTokenVersion(ctx context.Context, id uint64) (int64, error)
+}
+
 func AdminAuth() gin.HandlerFunc {
-	userRepo := repository.NewAdminRepo()
+	return adminAuth(repository.NewAdminRepo(), cache.IsTokenBlacklisted, time.Now)
+}
+
+func adminAuth(
+	userRepo adminTokenVersionReader,
+	isTokenBlacklisted func(string) bool,
+	now func() time.Time,
+) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -32,7 +47,7 @@ func AdminAuth() gin.HandlerFunc {
 		}
 
 		tokenString := parts[1]
-		if cache.IsTokenBlacklisted(tokenString) {
+		if isTokenBlacklisted(tokenString) {
 			response.Unauthorized(c, "Token 已失效，请重新登录")
 			return
 		}
@@ -54,8 +69,22 @@ func AdminAuth() gin.HandlerFunc {
 		c.Set(CtxAdminIDKey, claims.UserID)
 		c.Set(CtxAdminnameKey, claims.Username)
 		c.Set(CtxRoleCodesKey, claims.RoleCodes)
+
+		// 登出接口只注销请求携带的 Token，不能在同一响应中再签发一个有效 Token。
+		if !isAdminLogoutRequest(c) && jwt.NeedsAdminTokenRenewal(claims, now()) {
+			refreshedToken, err := jwt.GenerateToken(
+				claims.UserID, claims.Username, claims.RoleCodes, claims.TokenVersion,
+			)
+			if err == nil {
+				c.Header(HeaderRefreshedToken, refreshedToken)
+			}
+		}
 		c.Next()
 	}
+}
+
+func isAdminLogoutRequest(c *gin.Context) bool {
+	return c.Request.Method == http.MethodPost && strings.HasSuffix(c.FullPath(), "/logout")
 }
 
 func GetAdminID(c *gin.Context) uint64 {
