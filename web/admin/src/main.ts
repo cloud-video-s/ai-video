@@ -6,15 +6,22 @@ import 'element-plus/dist/index.css'
 import './styles/admin-theme.css'
 import router from './router'
 import App from './App.vue'
+import { loadMediaBaseURL } from './utils/mediaUrl'
 
-const app = createApp(App)
-const pinia = createPinia()
+async function bootstrap() {
+  await loadMediaBaseURL()
 
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(key, component)
+  const app = createApp(App)
+  const pinia = createPinia()
+
+  for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+    app.component(key, component)
+  }
+
+  app.use(pinia)
+  app.use(router)
+  app.use(ElementPlus, { size: 'default' })
+  app.mount('#app')
 }
 
-app.use(pinia)
-app.use(router)
-app.use(ElementPlus, { size: 'default' })
-app.mount('#app')
+void bootstrap()

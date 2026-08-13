@@ -1,8 +1,32 @@
-const defaultMediaBaseURL = 'https://test-cdn.zdrawai.com/'
+interface AppConfig {
+  mediaBaseURL?: string
+}
+
+let defaultMediaBaseURL = ''
+
+export async function loadMediaBaseURL(): Promise<void> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 3000)
+
+  try {
+    const response = await fetch(`${import.meta.env.BASE_URL}app-config.json`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+    if (!response.ok) return
+
+    const appConfig = await response.json() as AppConfig
+    defaultMediaBaseURL = String(appConfig.mediaBaseURL || '').trim()
+  } catch {
+    // VITE_MEDIA_BASE_URL or the current origin remains available as a fallback.
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
 
 function configuredMediaBaseURL() {
   const configured = String(import.meta.env.VITE_MEDIA_BASE_URL || '').trim()
-  const value = configured || defaultMediaBaseURL
+  const value = configured || defaultMediaBaseURL || window.location.origin
   return value.endsWith('/') ? value : `${value}/`
 }
 

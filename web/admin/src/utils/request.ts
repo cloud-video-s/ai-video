@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 import { useUserStore } from '@/store/user'
@@ -28,8 +28,17 @@ function handleUnauthorized() {
   }
 }
 
+function syncRefreshedToken(response?: AxiosResponse) {
+  const refreshedToken = response?.headers['x-refreshed-token']
+  if (typeof refreshedToken === 'string' && refreshedToken) {
+    useUserStore().setToken(refreshedToken)
+  }
+}
+
 request.interceptors.response.use(
   (response) => {
+    syncRefreshedToken(response)
+
     const res = response.data
     if (res.code !== 0) {
       if (!(response.config as any).silentError) {
@@ -46,6 +55,7 @@ request.interceptors.response.use(
     if (axios.isCancel(error)) {
       return Promise.reject(error)
     }
+    syncRefreshedToken(error.response)
     if (error.response?.status === 401) {
       handleUnauthorized()
     }

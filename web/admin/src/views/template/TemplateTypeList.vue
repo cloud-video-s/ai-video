@@ -97,6 +97,14 @@
           </el-form-item>
         </div>
 
+        <el-form-item label="分类图标" prop="icon">
+          <LogoImageUploader
+            v-model="form.icon"
+            image-name="分类图标"
+            placeholder="上传或输入图标 URL"
+            :crop-aspect-ratio="1"
+          />
+        </el-form-item>
         <el-divider content-position="left">投放范围</el-divider>
         <el-form-item label="展示位置">
           <div class="scope-field">
@@ -207,11 +215,13 @@ import type { AppPackage } from '@/api/package'
 import type { PackageVersion } from '@/api/packageVersion'
 import { useUserStore } from '@/store/user'
 import { toMediaURL } from '@/utils/mediaUrl'
+import LogoImageUploader from '@/components/LogoImageUploader.vue'
 
 type TargetMode = 'all' | 'selected'
 interface TemplateTypeForm {
   id: number
   category_name: string
+  icon: string
   display_position_keys: string[]
   country_codes: string[]
   app_codes: string[]
@@ -244,7 +254,7 @@ const targetModes = reactive<Record<'positions' | 'countries' | 'apps' | 'packag
 
 function createDefaultForm(): TemplateTypeForm {
   return {
-    id: 0, category_name: '', display_position_keys: [], country_codes: [], app_codes: [], package_codes: [],
+    id: 0, category_name: '', icon: '', display_position_keys: [], country_codes: [], app_codes: [], package_codes: [],
     version_codes: [], sort: 0, status: 1, description: '',
   }
 }
@@ -325,6 +335,7 @@ function openEdit(row: VideoTemplateType) {
   Object.assign(form, {
     id: row.id,
     category_name: row.category_name,
+    icon: row.icon || '',
     display_position_keys: arrayValue(row.display_positions).map((item) => item.position_key),
     country_codes: arrayValue(row.countries).map((item) => item.code),
     app_codes: arrayValue(row.apps).map((item) => item.app_code),
@@ -378,6 +389,7 @@ async function handleSubmit() {
   try {
     const payload: VideoTemplateTypePayload = {
       category_name: form.category_name.trim(),
+      icon: form.icon.trim(),
       display_position_keys: targetModes.positions === 'all' ? [] : [...form.display_position_keys],
       country_codes: targetModes.countries === 'all' ? [] : [...form.country_codes],
       app_rules: targetModes.apps === 'all' ? [] : form.app_codes.map((app_code) => ({ app_code })),

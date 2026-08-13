@@ -181,6 +181,14 @@
           </el-form-item>
         </div>
 
+        <el-form-item label="模板图标" prop="icon">
+          <LogoImageUploader
+            v-model="form.icon"
+            image-name="模板图标"
+            placeholder="上传或输入图标 URL"
+            :crop-aspect-ratio="1"
+          />
+        </el-form-item>
         <el-form-item label="封面图" prop="cover_image_url">
           <div class="cover-field">
             <MediaUploader
@@ -303,6 +311,7 @@ import type { AppPackage } from '@/api/package'
 import type { PackageVersion } from '@/api/packageVersion'
 import type { VideoApp } from '@/api/videoApp'
 import MediaUploader from '@/components/MediaUploader.vue'
+import LogoImageUploader from '@/components/LogoImageUploader.vue'
 import { toMediaURL } from '@/utils/mediaUrl'
 import TemplateModelParameterDrawer from './TemplateModelParameterDrawer.vue'
 
@@ -343,6 +352,7 @@ interface TemplateForm {
   name: string
   template_type: 1 | 2
   sort: number
+  icon: string
   cover_image_url: string
   original_url: string
   thumbnail_url: string
@@ -360,6 +370,7 @@ const defaultForm: TemplateForm = {
   name: '',
   template_type: 2,
   sort: 0,
+  icon: '',
   cover_image_url: '',
   original_url: '',
   thumbnail_url: '',
@@ -499,6 +510,7 @@ function normalizeTemplate(item: any): VideoTemplate {
 		template_type_id: Number(item?.template_type_id ?? item?.video_template_type_id) || 0,
 		model_id: Number(item?.model_id) || 0,
 		template_type: Number(item?.template_type) as 1 | 2,
+		icon: item?.icon ?? '',
 		cover_image_url: item?.cover_image_url ?? item?.cover_image ?? '',
 		original_url: item?.original_url ?? item?.template_video ?? '',
 		thumbnail_url: item?.thumbnail_url ?? item?.thumbnail_video ?? '',
@@ -606,6 +618,7 @@ function openEdit(row: VideoTemplate) {
     name: row.name,
     template_type: row.template_type,
     sort: row.sort,
+    icon: row.icon || '',
     cover_image_url: row.cover_image_url,
     original_url: row.original_url,
     thumbnail_url: row.thumbnail_url || '',
@@ -685,6 +698,7 @@ async function handleSubmit() {
       name: form.name.trim(),
       template_type: form.template_type,
       sort: form.sort,
+      icon: form.icon.trim(),
       cover_image_url: form.cover_image_url.trim(),
       original_url: form.original_url.trim(),
       thumbnail_url: form.thumbnail_url.trim(),

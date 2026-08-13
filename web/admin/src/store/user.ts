@@ -27,10 +27,14 @@ export const useUserStore = defineStore('user', () => {
   const menuTree = ref<MenuNode[]>([])
   const permissions = ref<string[]>([])
 
+  function setToken(value: string) {
+    token.value = value
+    localStorage.setItem('token', value)
+  }
+
   async function login(username: string, password: string) {
     const res: any = await loginApi({ username, password })
-    token.value = res.data.token
-    localStorage.setItem('token', res.data.token)
+    setToken(res.data.token)
     return res.data
   }
 
@@ -73,5 +77,5 @@ export const useUserStore = defineStore('user', () => {
     clearAuth()
   }
 
-  return { token, userInfo, menuTree, permissions, login, fetchProfile, fetchMenus, fetchPermissions, hasPermission, clearAuth, logout }
+  return { token, userInfo, menuTree, permissions, setToken, login, fetchProfile, fetchMenus, fetchPermissions, hasPermission, clearAuth, logout }
 })

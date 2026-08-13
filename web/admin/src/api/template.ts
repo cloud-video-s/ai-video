@@ -9,6 +9,7 @@ import type { ModelParameter, VideoModel } from '@/api/videoModel'
 export interface VideoTemplateType {
   id: number
   category_name: string
+  icon: string
   display_positions: DisplayPosition[]
   countries: Country[]
   apps: VideoApp[]
@@ -23,6 +24,7 @@ export interface VideoTemplateType {
 
 export interface VideoTemplateTypePayload {
   category_name: string
+  icon: string
   display_position_keys: string[]
   country_codes: string[]
   app_rules: Array<{ app_code: string }>
@@ -40,6 +42,7 @@ export interface VideoTemplate {
   name: string
   template_type: 1 | 2
   sort: number
+  icon: string
   cover_image_url: string
   original_url: string
   thumbnail_url: string
@@ -59,6 +62,7 @@ export interface VideoTemplatePayload {
   name: string
   template_type: 1 | 2
   sort: number
+  icon: string
   cover_image_url: string
   original_url: string
   thumbnail_url: string
