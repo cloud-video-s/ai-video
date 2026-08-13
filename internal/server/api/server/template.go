@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"ai-video/internal/gen/model"
-	"ai-video/internal/pkg/uploadruntime"
 	"ai-video/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -168,8 +167,8 @@ func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplate
 		}
 		data = append(data, ClientTemplateType{
 			ID:           item.ID,
+			Icon:         item.Icon,
 			CategoryName: item.CategoryName,
-			Icon:         uploadruntime.PublicURL(item.Icon),
 			Description:  item.Description,
 			Sort:         item.Sort,
 			Templates:    templates,
@@ -211,9 +210,11 @@ func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.Vid
 			continue
 		}
 		result = append(result, ClientTemplateType{
-			ID: item.ID, CategoryName: item.CategoryName, Icon: uploadruntime.PublicURL(item.Icon), Description: item.Description,
-			Sort:      item.Sort,
-			Templates: templates,
+			ID: item.ID, CategoryName: item.CategoryName,
+			Icon:        item.Icon,
+			Description: item.Description,
+			Sort:        item.Sort,
+			Templates:   templates,
 		})
 	}
 	return result
@@ -225,10 +226,10 @@ func mapClientTemplate(item *model.VideoTemplate) ClientTemplate {
 		TemplateTypeID: item.TemplateTypeID,
 		Name:           item.Name,
 		TemplateType:   item.TemplateType,
-		Icon:           uploadruntime.PublicURL(item.Icon),
-		CoverImageURL:  uploadruntime.PublicURL(item.CoverImageURL),
-		OriginalURL:    uploadruntime.PublicURL(item.OriginalURL),
-		ThumbnailURL:   uploadruntime.PublicURL(item.ThumbnailURL),
+		Icon:           item.Icon,
+		CoverImageURL:  item.CoverImageURL,
+		OriginalURL:    item.OriginalURL,
+		ThumbnailURL:   item.ThumbnailURL,
 		Prompt:         item.Prompt,
 		Description:    item.Description,
 		Sort:           int(item.Sort),

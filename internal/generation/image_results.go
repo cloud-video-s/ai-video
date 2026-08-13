@@ -88,7 +88,11 @@ func (m *Manager) finishImageTaskWithinDownloadSlot(
 	task.Progress = 100
 	task.ErrorMessage = ""
 	task.FinishedAt = now
-	task.UsageDuration = uint32(task.FinishedAt.Unix() - task.StartedAt.Unix())
+	if task.FinishedAt.IsZero() {
+		task.UsageDuration = uint32(task.FinishedAt.Unix() - task.CreatedAt.Unix())
+	} else {
+		task.UsageDuration = uint32(task.FinishedAt.Unix() - task.StartedAt.Unix())
+	}
 	return m.completeTask(ctx, task,
 		"LocalUrls", "CoverImageURL", "Status", "Progress", "ErrorMessage", "FinishedAt", "UsageDuration",
 	)
