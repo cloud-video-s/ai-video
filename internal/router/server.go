@@ -24,9 +24,10 @@ func NewRouter(adminDist embed.FS, modules ...Module) *gin.Engine {
 	gin.SetMode(config.Cfg.Server.Mode)
 
 	r := gin.New()
-	r.Use(gin.Recovery())
-	r.Use(middleware.Cors())
+	r.Use(middleware.Tracing())
 	r.Use(middleware.Logger())
+	r.Use(middleware.Recovery())
+	r.Use(middleware.Cors())
 
 	apiPrefixes := make([]string, 0, len(modules))
 	for _, m := range modules {

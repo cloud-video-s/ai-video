@@ -1,18 +1,18 @@
 package service
 
 import (
-	"ai-video/internal/middleware"
-	"ai-video/internal/pkg/utils"
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
+	"ai-video/internal/config"
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/middleware"
 	"ai-video/internal/pkg/oidc"
+	"ai-video/internal/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -105,7 +105,7 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 		updates["third_code"] = req.ThirdCode
 		updates["email"] = req.Email
 		if err := s.userRepo.Update(ctx, user.ID, updates); err != nil {
-			log.Printf("failed to update third party login info: %v", err)
+			config.Logger(ctx.Request.Context()).Errorw("failed to update third party login info", "err", err)
 			return nil, errors.New("failed to update third party login info")
 		}
 	}

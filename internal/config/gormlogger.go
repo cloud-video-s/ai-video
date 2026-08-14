@@ -28,36 +28,37 @@ func (l *zapGormLogger) LogMode(level gormlogger.LogLevel) gormlogger.Interface 
 	return &nl
 }
 
-func (l *zapGormLogger) Info(_ context.Context, msg string, args ...interface{}) {
+func (l *zapGormLogger) Info(ctx context.Context, msg string, args ...interface{}) {
 	if l.level >= gormlogger.Info {
-		Log.Infof(msg, args...)
+		Logger(ctx).Infof(msg, args...)
 	}
 }
 
-func (l *zapGormLogger) Warn(_ context.Context, msg string, args ...interface{}) {
+func (l *zapGormLogger) Warn(ctx context.Context, msg string, args ...interface{}) {
 	if l.level >= gormlogger.Warn {
-		Log.Warnf(msg, args...)
+		Logger(ctx).Warnf(msg, args...)
 	}
 }
 
-func (l *zapGormLogger) Error(_ context.Context, msg string, args ...interface{}) {
+func (l *zapGormLogger) Error(ctx context.Context, msg string, args ...interface{}) {
 	if l.level >= gormlogger.Error {
-		Log.Errorf(msg, args...)
+		Logger(ctx).Errorf(msg, args...)
 	}
 }
 
-func (l *zapGormLogger) Trace(_ context.Context, begin time.Time, fc func() (string, int64), err error) {
+func (l *zapGormLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
 	if l.level <= gormlogger.Silent {
 		return
 	}
 	elapsed := time.Since(begin)
 	sql, rows := fc()
+	logger := Logger(ctx)
 	switch {
 	case err != nil && l.level >= gormlogger.Error && !errors.Is(err, gorm.ErrRecordNotFound):
-		Log.Errorw("gorm sql error", "elapsed", elapsed.String(), "rows", rows, "sql", sql, "err", err)
+		logger.Errorw("gorm sql error", "elapsed", elapsed.String(), "rows", rows, "sql", sql, "err", err)
 	case l.slowThreshold > 0 && elapsed > l.slowThreshold && l.level >= gormlogger.Warn:
-		Log.Warnw("gorm slow sql", "elapsed", elapsed.String(), "rows", rows, "sql", sql)
+		logger.Warnw("gorm slow sql", "elapsed", elapsed.String(), "rows", rows, "sql", sql)
 	case l.level >= gormlogger.Info:
-		Log.Infow("gorm sql", "elapsed", elapsed.String(), "rows", rows, "sql", sql)
+		logger.Infow("gorm sql", "elapsed", elapsed.String(), "rows", rows, "sql", sql)
 	}
 }

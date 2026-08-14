@@ -1,7 +1,6 @@
 package generation
 
 import (
-	"ai-video/internal/pkg/ucloud"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,6 +15,8 @@ import (
 
 	"ai-video/internal/config"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/tracing"
+	"ai-video/internal/pkg/ucloud"
 	"ai-video/internal/pkg/upload"
 	"ai-video/internal/pkg/uploadruntime"
 	"ai-video/internal/repository"
@@ -411,19 +412,21 @@ func (m *Manager) worker(ctx context.Context) {
 }
 
 func (m *Manager) pollBatch(ctx context.Context) {
-	tasks, err := m.taskRepo.ListActive(ctx, 100,
+	batchCtx, _ := tracing.NewContext(ctx)
+	tasks, err := m.taskRepo.ListActive(batchCtx, 100,
 		TaskStatusSubmitting, TaskStatusSubmitted, TaskStatusPending, TaskStatusRunning, TaskStatusDownloading,
 	)
 	if err != nil {
-		config.Log.Warnf("list generation tasks: %v", err)
+		config.Logger(batchCtx).Warnf("list generation tasks: %v", err)
 		return
 	}
 	for i := range tasks {
 		if ctx.Err() != nil {
 			return
 		}
-		if err = m.processTask(ctx, &tasks[i]); err != nil {
-			config.Log.Warnf("process generation task %d: %v", tasks[i].ID, err)
+		taskCtx, _ := tracing.NewContext(ctx)
+		if err = m.processTask(taskCtx, &tasks[i]); err != nil {
+			config.Logger(taskCtx).Warnf("process generation task %d: %v", tasks[i].ID, err)
 		}
 	}
 }
@@ -565,7 +568,7 @@ func (m *Manager) failTask(ctx context.Context, task *model.VideoUserGenerationT
 	failed.Progress = 100
 	failed.ErrorMessage = strings.TrimSpace(message)
 	if config.Log != nil {
-		config.Log.Errorw("generation task failed",
+		config.Logger(ctx).Errorw("generation task failed",
 			"task_id", failed.ID,
 			"task_code", failed.TaskCode,
 			"user_id", failed.UserID,

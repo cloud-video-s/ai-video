@@ -12,6 +12,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"ai-video/internal/pkg/tracing"
 )
 
 const (
@@ -288,7 +290,7 @@ func (c *Client) post(ctx context.Context, endpointPath string, body io.Reader, 
 		return nil, fmt.Errorf("invalid ucloud endpoint: %w", err)
 	}
 	endpoint := c.baseURL.ResolveReference(reference)
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), body)
+	request, err := tracing.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), body)
 	if err != nil {
 		return nil, fmt.Errorf("create ucloud request: %w", err)
 	}
@@ -309,7 +311,7 @@ func (c *Client) get(ctx context.Context, endpointPath string, query url.Values)
 	}
 	endpoint := c.baseURL.ResolveReference(reference)
 	endpoint.RawQuery = query.Encode()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	request, err := tracing.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("create ucloud request: %w", err)
 	}

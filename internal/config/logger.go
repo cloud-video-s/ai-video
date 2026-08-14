@@ -1,7 +1,10 @@
 package config
 
 import (
+	"context"
 	"os"
+
+	"ai-video/internal/pkg/tracing"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -9,6 +12,21 @@ import (
 )
 
 var Log *zap.SugaredLogger
+
+// Logger returns the application logger enriched with the trace identity stored
+// in ctx. Startup/background callers without a trace continue using the base
+// logger unchanged.
+func Logger(ctx context.Context) *zap.SugaredLogger {
+	logger := Log
+	if logger == nil {
+		logger = zap.NewNop().Sugar()
+	}
+	span, ok := tracing.SpanFromContext(ctx)
+	if !ok {
+		return logger
+	}
+	return logger.With("trace_id", span.TraceID, "span_id", span.SpanID)
+}
 
 func InitLogger() {
 	cfg := Cfg.Log

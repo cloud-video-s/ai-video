@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"ai-video/internal/pkg/tracing"
 )
 
 const (
@@ -297,7 +299,7 @@ func downloadPreviewSource(
 	if client == nil || remoteURL == nil || maxBytes <= 0 {
 		return "", func() {}, uploadError(ErrInvalidRequest, "remote preview client, URL and positive size limit are required")
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, remoteURL.String(), nil)
+	request, err := tracing.NewRequestWithContext(ctx, http.MethodGet, remoteURL.String(), nil)
 	if err != nil {
 		return "", func() {}, fmt.Errorf("create remote preview request: %w", err)
 	}

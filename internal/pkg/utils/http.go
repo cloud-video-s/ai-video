@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"ai-video/internal/pkg/tracing"
 )
 
 // HTTPClient 封装 http.Client，提供便捷的请求方法
@@ -49,7 +51,7 @@ func (c *HTTPClient) Request(ctx context.Context, method, url string, headers ma
 	}
 
 	// 创建请求
-	req, err := http.NewRequestWithContext(ctx, method, fullURL, body)
+	req, err := tracing.NewRequestWithContext(ctx, method, fullURL, body)
 	if err != nil {
 		return nil, fmt.Errorf("创建请求失败: %w", err)
 	}

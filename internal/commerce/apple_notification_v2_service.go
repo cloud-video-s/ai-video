@@ -29,7 +29,7 @@ func (s *Service) HandleAppleServerNotificationV2(ctx context.Context, signedPay
 	if err != nil {
 		return nil, err
 	}
-	config.Log.Debug("Apple server notification",
+	config.Logger(ctx).Debugw("Apple server notification",
 		"summary", decoded,
 		"notification_type", decoded.NotificationType,
 		"subtype", decoded.Subtype,

@@ -26,11 +26,39 @@ type Config struct {
 }
 
 type TaskConfig struct {
-	Concurrency                int      `mapstructure:"concurrency"`
-	DownloadConcurrency        int      `mapstructure:"download_concurrency"`
-	DownloadRetryCount         int      `mapstructure:"download_retry_count"`
-	Queues                     []string `mapstructure:"queues"`
-	SubscriptionExpirationCron string   `mapstructure:"subscription_expiration_cron"`
+	Concurrency              int      `mapstructure:"concurrency"`
+	DownloadConcurrency      int      `mapstructure:"download_concurrency"`
+	DownloadRetryCount       int      `mapstructure:"download_retry_count"`
+	Queues                   []string `mapstructure:"queues"`
+	SubscriptionExpirationAt string   `mapstructure:"subscription_expiration_at"`
+}
+
+const TaskExecuteAtLayout = "2006-01-02 15:04:05"
+
+// SubscriptionExpirationTime parses the configured one-time execution time.
+// A timestamp without an explicit offset is interpreted in loc. An empty value
+// disables scheduling while still allowing workers to process an already
+// queued task after a restart.
+func (c TaskConfig) SubscriptionExpirationTime(loc *time.Location) (time.Time, bool, error) {
+	value := strings.TrimSpace(c.SubscriptionExpirationAt)
+	if value == "" {
+		return time.Time{}, false, nil
+	}
+	if executeAt, err := time.Parse(time.RFC3339, value); err == nil {
+		return executeAt, true, nil
+	}
+	if loc == nil {
+		loc = time.Local
+	}
+	executeAt, err := time.ParseInLocation(TaskExecuteAtLayout, value, loc)
+	if err != nil {
+		return time.Time{}, false, fmt.Errorf(
+			"task.subscription_expiration_at must use %q or RFC3339: %w",
+			TaskExecuteAtLayout,
+			err,
+		)
+	}
+	return executeAt, true, nil
 }
 
 type ServerConfig struct {
@@ -230,7 +258,7 @@ func setConfigDefaults() {
 	viper.SetDefault("task.concurrency", 10)
 	viper.SetDefault("task.download_concurrency", 1)
 	viper.SetDefault("task.download_retry_count", 3)
-	viper.SetDefault("task.subscription_expiration_cron", "@every 1m")
+	viper.SetDefault("task.subscription_expiration_at", "")
 }
 
 // InitTimezone sets the process-wide time.Local from config so that every
@@ -268,8 +296,14 @@ func validateConfig() error {
 	if Cfg.Upload.OSSSignatureTTLSeconds < 60 || Cfg.Upload.OSSSignatureTTLSeconds > 3600 {
 		return fmt.Errorf("upload.oss_signature_ttl_seconds must be between 60 and 3600")
 	}
-	if strings.TrimSpace(Cfg.Task.SubscriptionExpirationCron) == "" {
-		return fmt.Errorf("task.subscription_expiration_cron is required")
+	if strings.TrimSpace(Cfg.Task.SubscriptionExpirationAt) != "" {
+		loc, err := time.LoadLocation(Cfg.Timezone)
+		if err != nil {
+			return fmt.Errorf("load timezone %q for task.subscription_expiration_at: %w", Cfg.Timezone, err)
+		}
+		if _, _, err := Cfg.Task.SubscriptionExpirationTime(loc); err != nil {
+			return err
+		}
 	}
 	if Cfg.Task.DownloadConcurrency <= 0 {
 		return fmt.Errorf("task.download_concurrency must be positive")

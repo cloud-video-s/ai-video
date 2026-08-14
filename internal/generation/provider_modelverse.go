@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/tracing"
 	"ai-video/internal/pkg/ucloud"
 )
 
@@ -38,7 +39,7 @@ func (p *ModelVerseProvider) submitLegacy(ctx context.Context, config *model.Vid
 	if err != nil {
 		return nil, err
 	}
-	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	httpRequest, err := tracing.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +179,7 @@ func (p *ModelVerseProvider) Status(ctx context.Context, config *model.VideoMode
 	query := parsed.Query()
 	query.Set("task_id", taskID)
 	parsed.RawQuery = query.Encode()
-	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
+	httpRequest, err := tracing.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
 	if err != nil {
 		return nil, err
 	}

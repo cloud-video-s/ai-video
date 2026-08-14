@@ -86,12 +86,13 @@ type ThirdAuthResponse struct {
 
 type UserResponse struct {
 	ID                 uint64 `json:"id"`
+	UUID               string `json:"uuid"`
 	Email              string `json:"email"`
 	DeviceCountry      string `json:"device_country"`      // 国家
 	ChannelID          string `json:"channel_id"`          // 渠道id
 	LoginType          uint32 `json:"login_type"`          // 登录方式 1=未登录 2=google 3=appid
 	UserType           uint32 `json:"user_type"`           // 用户类型 1=免费 2=付费
-	SubscriptionStatus uint32 `json:"subscription_status"` // 订阅状态 1未订阅 2订阅中 3=已取消 4=已过期
+	SubscriptionStatus uint32 `json:"subscription_status"` // 订阅状态 1未订阅 2订阅中 3=已过期
 	VipExpiresAt       int64  `json:"vip_expires_at"`      // vip 到期时间
 	PointsBalance      uint64 `json:"points_balance"`      // 积分
 	Status             int32  `json:"status"`
@@ -290,6 +291,7 @@ func (s *AuthService) GetProfile(ctx context.Context, userID uint64) (*UserRespo
 	}
 	data := &UserResponse{
 		ID:                 user.ID,
+		UUID:               user.Username,
 		Email:              user.Email,
 		DeviceCountry:      user.ClientCountry,
 		ChannelID:          user.ChannelID,
@@ -388,9 +390,9 @@ func baseTrackingUpdates(ctx context.Context, user *model.VideoUser, loginType i
 func newGuestUsername() string {
 	randomBytes := make([]byte, 8)
 	if _, err := rand.Read(randomBytes); err == nil {
-		return "guest_" + hex.EncodeToString(randomBytes)
+		return hex.EncodeToString(randomBytes)
 	}
-	return fmt.Sprintf("guest_%d", time.Now().UnixNano())
+	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
 func thirdPartyLoginBinding(provider string, clientIP, serverCountry string, now time.Time) map[string]any {

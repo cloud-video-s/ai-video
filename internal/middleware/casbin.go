@@ -27,7 +27,7 @@ func CasbinRBAC() gin.HandlerFunc {
 			}
 			ok, err := config.Enforcer.Enforce(rc, obj, act)
 			if err != nil {
-				config.Log.Errorw("casbin enforce error", "error", err)
+				config.Logger(c.Request.Context()).Errorw("casbin enforce error", "error", err)
 				response.Forbidden(c, "权限校验异常")
 				return
 			}

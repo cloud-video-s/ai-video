@@ -21,9 +21,10 @@ func Logger() gin.HandlerFunc {
 		method := c.Request.Method
 		privateErrors := c.Errors.ByType(gin.ErrorTypePrivate)
 
-		logRequest := config.Log.Infow
+		logger := config.Logger(c.Request.Context())
+		logRequest := logger.Infow
 		if len(privateErrors) > 0 {
-			logRequest = config.Log.Errorw
+			logRequest = logger.Errorw
 		}
 		logRequest("request",
 			"status", status,

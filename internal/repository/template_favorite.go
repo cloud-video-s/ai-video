@@ -1,12 +1,11 @@
 package repository
 
 import (
-	"ai-video/internal/config"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/cache"
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -66,20 +65,24 @@ func (r *TemplateFavoriteRepo) SetFavorite(ctx context.Context, userID, template
 	if err != nil {
 		return nil, err
 	}
+	if err := cache.SetTemplateFavorite(userID, templateID, state.Favorited); err != nil {
+		return nil, fmt.Errorf("sync template favorite cache: %w", err)
+	}
 	return state, nil
 }
 
 func (r *TemplateFavoriteRepo) GetUserFavorite(ctx context.Context, userID, templateID uint64) bool {
-	key := fmt.Sprintf("user_favorite_key_%d_%d", userID, templateID)
-	val, _ := config.Redis.Get(ctx, key).Bool()
-	if val {
-		return true
+	if favorited, found := cache.GetTemplateFavorite(userID, templateID); found {
+		return favorited
 	}
+
 	q := qFrom(ctx).VideoUserTemplateFavorite
-	count, _ := q.WithContext(ctx).Where(q.UserID.Eq(userID)).Where(q.TemplateID.Eq(templateID)).Count()
-	if count > 0 {
-		config.Redis.Set(ctx, key, "1", 60*time.Second)
-		return true
+	count, err := q.WithContext(ctx).Where(q.UserID.Eq(userID)).Where(q.TemplateID.Eq(templateID)).Count()
+	if err != nil {
+		return false
 	}
-	return false
+
+	favorited := count > 0
+	_ = cache.SetTemplateFavorite(userID, templateID, favorited)
+	return favorited
 }

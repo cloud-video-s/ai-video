@@ -73,7 +73,7 @@ func (m *Manager) finishImageTaskWithinDownloadSlot(
 		)
 	}
 	if coverErr != nil && config.Log != nil {
-		config.Log.Warnw("image task cover generation failed; using original image",
+		config.Logger(ctx).Warnw("image task cover generation failed; using original image",
 			"task_id", task.ID,
 			"task_code", task.TaskCode,
 			"original_image_url", coverURL,

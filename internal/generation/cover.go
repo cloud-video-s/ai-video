@@ -158,7 +158,7 @@ func generateOrStoreDefaultVideoTaskCoverWithGenerator(
 		coverErr = err
 	}
 	if coverErr != nil && config.Log != nil {
-		config.Log.Warnw("video task cover generation failed; using default cover",
+		config.Logger(ctx).Warnw("video task cover generation failed; using default cover",
 			"task_id", task.ID,
 			"task_code", task.TaskCode,
 			"error", coverErr,

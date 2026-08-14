@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"ai-video/internal/pkg/tracing"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -157,7 +159,7 @@ type jwk struct {
 }
 
 func (v *Verifier) refreshKeys(ctx context.Context) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, v.config.JWKSURL, nil)
+	req, err := tracing.NewRequestWithContext(ctx, http.MethodGet, v.config.JWKSURL, nil)
 	if err != nil {
 		return err
 	}

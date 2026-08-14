@@ -1,7 +1,6 @@
 package service
 
 import (
-	"ai-video/internal/config"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +11,9 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"ai-video/internal/config"
+	"ai-video/internal/pkg/tracing"
 )
 
 func ResolveCountry(ctx context.Context, clientIP, countryHeader string) (string, error) {
@@ -38,7 +40,7 @@ func ResolveCountry(ctx context.Context, clientIP, countryHeader string) (string
 	if timeout <= 0 {
 		timeout = 3 * time.Second
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, lookupURL, nil)
+	req, err := tracing.NewRequestWithContext(ctx, http.MethodGet, lookupURL, nil)
 	if err != nil {
 		return "", err
 	}

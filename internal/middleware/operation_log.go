@@ -80,7 +80,7 @@ func OperationLog() gin.HandlerFunc {
 			success = 1
 		}
 		entry := &model.VideoOperationLog{
-			TraceID:    c.GetString("trace_id"),
+			TraceID:    GetTraceID(c),
 			Admin:      GetAdminID(c),
 			Username:   GetUsername(c),
 			RoleCodes:  strings.Join(GetRoleCodes(c), ","),
@@ -105,10 +105,10 @@ func OperationLog() gin.HandlerFunc {
 
 		// Decoupled from the request context (which may already be cancelled)
 		// and bounded by its own timeout — logging must not block the response.
-		ctx, cancel := context.WithTimeout(context.Background(), writeLogTimeout)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), writeLogTimeout)
 		defer cancel()
 		if err := repo.Create(ctx, entry); err != nil {
-			config.Log.Errorw("write operation log failed", "path", entry.Path, "err", err)
+			config.Logger(ctx).Errorw("write operation log failed", "path", entry.Path, "err", err)
 		}
 	}
 }
@@ -118,7 +118,7 @@ func OperationLog() gin.HandlerFunc {
 // no authenticated user — so auth handlers record it directly. Best-effort.
 func RecordLogin(c *gin.Context, action string, userID uint64, username string, success int8, errMsg string) {
 	entry := &model.VideoOperationLog{
-		TraceID:   c.GetString("trace_id"),
+		TraceID:   GetTraceID(c),
 		Admin:     userID,
 		Username:  username,
 		Module:    "认证",
@@ -132,10 +132,10 @@ func RecordLogin(c *gin.Context, action string, userID uint64, username string, 
 		ClientIP:  c.ClientIP(),
 		UserAgent: c.Request.UserAgent(),
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), writeLogTimeout)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), writeLogTimeout)
 	defer cancel()
 	if err := repository.NewOperationLogRepo().Create(ctx, entry); err != nil {
-		config.Log.Errorw("write login log failed", "username", username, "err", err)
+		config.Logger(ctx).Errorw("write login log failed", "username", username, "err", err)
 	}
 }
 

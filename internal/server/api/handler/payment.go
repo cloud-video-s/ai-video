@@ -89,7 +89,7 @@ func (h *PaymentHandler) AppleServerNotification(c *gin.Context) {
 		response.FailWithStatus(c, 500, errcode.ErrServer, err.Error())
 		return
 	}
-	config.Log.Infow("Apple server notification acknowledged",
+	config.Logger(c.Request.Context()).Infow("Apple server notification acknowledged",
 		"notification_type", summary.NotificationType,
 		"subtype", summary.Subtype,
 		"notification_uuid", summary.NotificationUUID,

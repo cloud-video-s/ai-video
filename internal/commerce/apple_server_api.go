@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"ai-video/internal/config"
+	"ai-video/internal/pkg/tracing"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -137,7 +138,7 @@ func (c *appleServerAPIClient) lookupAt(
 	token string,
 ) (string, error) {
 	endpoint := strings.TrimRight(baseURL, "/") + "/inApps/v1/transactions/" + url.PathEscape(transactionID)
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	request, err := tracing.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return "", fmt.Errorf("%w: create request", ErrAppleServerAPIRequest)
 	}

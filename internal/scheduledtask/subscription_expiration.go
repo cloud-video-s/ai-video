@@ -2,11 +2,14 @@ package scheduledtask
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"ai-video/internal/pkg/task"
 	"ai-video/internal/repository"
+
+	"github.com/hibiken/asynq"
 )
 
 const TypeExpireUserSubscriptions = "user:subscription:expire"
@@ -18,7 +21,7 @@ type subscriptionExpirationRepository interface {
 type subscriptionExpirationHandler struct {
 	users       subscriptionExpirationRepository
 	now         func() time.Time
-	onCompleted func(expiredUsers int64)
+	onCompleted func(ctx context.Context, expiredUsers int64)
 }
 
 func (h *subscriptionExpirationHandler) Handle(ctx context.Context, _ []byte) error {
@@ -27,15 +30,16 @@ func (h *subscriptionExpirationHandler) Handle(ctx context.Context, _ []byte) er
 		return fmt.Errorf("expire due user subscriptions: %w", err)
 	}
 	if h.onCompleted != nil {
-		h.onCompleted(expiredUsers)
+		h.onCompleted(ctx, expiredUsers)
 	}
 	return nil
 }
 
-// RegisterSubscriptionExpiration wires the handler and its recurring schedule
-// into the shared task manager. The update itself is idempotent; Unique also
-// suppresses duplicate enqueue attempts when multiple app instances overlap.
-func RegisterSubscriptionExpiration(manager *task.Manager, cronExpr string, onCompleted func(expiredUsers int64)) error {
+// RegisterSubscriptionExpiration wires the handler into the shared task
+// manager and enqueues one execution at executeAt. A deterministic task ID
+// prevents duplicate enqueues when multiple app instances start before the
+// execution time. Past and zero times are intentionally not enqueued.
+func RegisterSubscriptionExpiration(manager *task.Manager, executeAt time.Time, onCompleted func(context.Context, int64)) error {
 	handler := &subscriptionExpirationHandler{
 		users:       repository.NewAppUserRepo(),
 		now:         time.Now,
@@ -43,12 +47,25 @@ func RegisterSubscriptionExpiration(manager *task.Manager, cronExpr string, onCo
 	}
 	manager.Worker.Handle(TypeExpireUserSubscriptions, handler.Handle)
 
-	_, err := manager.Scheduler.Register(task.CronTask{
-		Cron:     cronExpr,
-		TypeName: TypeExpireUserSubscriptions,
-		Payload:  struct{}{},
-		Queue:    "default",
-		Unique:   50 * time.Second,
-	})
-	return err
+	if executeAt.IsZero() || !executeAt.After(time.Now()) {
+		return nil
+	}
+	_, err := manager.Client.EnqueueAt(
+		TypeExpireUserSubscriptions,
+		struct{}{},
+		executeAt,
+		asynq.Queue("default"),
+		asynq.TaskID(subscriptionExpirationTaskID(executeAt)),
+	)
+	if errors.Is(err, asynq.ErrTaskIDConflict) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("enqueue subscription expiration task at %s: %w", executeAt.Format(time.RFC3339), err)
+	}
+	return nil
+}
+
+func subscriptionExpirationTaskID(executeAt time.Time) string {
+	return fmt.Sprintf("subscription-expiration-%d", executeAt.UTC().UnixNano())
 }

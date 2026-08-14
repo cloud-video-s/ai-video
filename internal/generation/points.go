@@ -144,11 +144,15 @@ func (m *Manager) consumeFrozenTaskPoints(ctx context.Context, state *repository
 			return errors.New("frozen points are less than the task reservation")
 		}
 		available := uint64(user.VipPoints) + uint64(user.PointsBalance)
-		if available > math.MaxUint64-uint64(state.Score) {
+		// Every active task has already moved its cost out of the available
+		// balances. Include the complete frozen balance so settlements for
+		// concurrent reservations form one continuous ledger sequence instead
+		// of all reusing available+this task's score as the same before value.
+		if available > math.MaxUint64-user.FrozenPoints {
 			return errors.New("points ledger balance overflow")
 		}
-		beforeBalance = available + uint64(state.Score)
-		afterBalance = available
+		beforeBalance = available + user.FrozenPoints
+		afterBalance = beforeBalance - uint64(state.Score)
 		user.FrozenPoints -= uint64(state.Score)
 	} else {
 		// Tasks created before point reservations were introduced have no split
@@ -177,15 +181,16 @@ func (m *Manager) consumeFrozenTaskPoints(ctx context.Context, state *repository
 		CreatedAt:     now,
 	}
 	q := repository.QFrom(ctx)
-	if err := q.VideoUserPointsLedger.WithContext(ctx).Create(ledger); err != nil {
+	if err = q.VideoUserPointsLedger.WithContext(ctx).Create(ledger); err != nil {
 		return fmt.Errorf("create generation points ledger: %w", err)
 	}
-	updates := map[string]any{"frozen_points": user.FrozenPoints}
+	updates := map[string]any{"frozen_points": gorm.Expr("frozen_points - ?", state.Score)}
 	if !reserved {
+		updates["frozen_points"] = user.FrozenPoints
 		updates["vip_points"] = user.VipPoints
 		updates["points_balance"] = user.PointsBalance
 	}
-	if err := m.Update(ctx, user.ID, updates); err != nil {
+	if err = m.Update(ctx, user.ID, updates); err != nil {
 		return fmt.Errorf("settle generation task points: %w", err)
 	}
 	return nil
@@ -217,11 +222,11 @@ func (m *Manager) releaseFrozenTaskPoints(ctx context.Context, state *repository
 		return errors.New("points balance overflow while releasing reservation")
 	}
 	update := map[string]any{}
-	if user.SubscriptionStatus == 2 {
+	if user.SubscriptionStatus == domain.AppUserSubscriptionSubscribed {
 		update["vip_points"] = gorm.Expr("vip_points + ?", allocation.VIPScore)
 	}
-	update["frozen_points"] = gorm.Expr("points_balance + ?", allocation.PointsScore)
-	update["points_balance"] = gorm.Expr("frozen_points - ?", state.Score)
+	update["points_balance"] = gorm.Expr("points_balance + ?", allocation.PointsScore)
+	update["frozen_points"] = gorm.Expr("frozen_points - ?", state.Score)
 	if err = m.Update(ctx, user.ID, update); err != nil {
 		return fmt.Errorf("release generation task points: %w", err)
 	}

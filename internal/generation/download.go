@@ -10,6 +10,7 @@ import (
 
 	"ai-video/internal/config"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/tracing"
 	"ai-video/internal/pkg/upload"
 )
 
@@ -64,7 +65,7 @@ func downloadOne(ctx context.Context, client *http.Client, remoteURL, destinatio
 	if err := validatePublicHTTPURL(remoteURL); err != nil {
 		return err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, remoteURL, nil)
+	request, err := tracing.NewRequestWithContext(ctx, http.MethodGet, remoteURL, nil)
 	if err != nil {
 		return err
 	}
