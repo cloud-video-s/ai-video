@@ -370,6 +370,10 @@ func (m *Manager) GetTask(ctx context.Context, userID, taskID uint64) (*model.Vi
 	return m.taskRepo.GetOwned(ctx, taskID, userID)
 }
 
+func (m *Manager) GetOngoingTask(ctx context.Context, userID uint64) ([]*model.VideoUserGenerationTask, error) {
+	return m.taskRepo.OngoingTask(ctx, userID)
+}
+
 func (m *Manager) ListTasks(ctx context.Context, userID uint64, page, pageSize int, status string) ([]model.VideoUserGenerationTask, int64, error) {
 	status = strings.TrimSpace(status)
 	if status == "" {
@@ -451,10 +455,10 @@ func (m *Manager) processTask(ctx context.Context, task *model.VideoUserGenerati
 		}
 		task.LastPolledAt = claimedAt
 		var request remoteSubmitRequest
-		if err := json.Unmarshal([]byte(task.RequestPayload), &request); err != nil {
+		if err = json.Unmarshal([]byte(task.RequestPayload), &request); err != nil {
 			return m.failTask(ctx, task, "生成任务请求数据无效")
 		}
-		if err := m.submitTask(ctx, task, modelConfig, request); err != nil {
+		if err = m.submitTask(ctx, task, modelConfig, request); err != nil {
 			return m.failTask(ctx, task, err.Error())
 		}
 		return nil

@@ -28,7 +28,7 @@ export default defineConfig({
     proxy: {
       '/admin': process.env.VITE_PROXY_TARGET || 'http://localhost:8080',
       '/api': process.env.VITE_PROXY_TARGET || 'http://localhost:8080',
-      '/uploads': process.env.VITE_MEDIA_BASE_URL || 'https://test-cdn.zdrawai.com',
+      '/uploads': process.env.VITE_MEDIA_BASE_URL || 'https://balaai-cdn.zdrawai.com',
     },
   },
   build: {

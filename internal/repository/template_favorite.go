@@ -28,34 +28,42 @@ func (r *TemplateFavoriteRepo) SetFavorite(ctx context.Context, userID, template
 	err := Transaction(ctx, func(txCtx context.Context) error {
 		q := qFrom(txCtx)
 		template := q.VideoTemplate
-		templateDAO := template.WithContext(txCtx).Select(template.ID).Where(template.ID.Eq(templateID))
+		templateDAO := template.WithContext(txCtx).Where(template.ID.Eq(templateID))
 		if favorited {
 			templateDAO = templateDAO.Where(template.Status.Eq(1))
 		}
-		if _, err := templateDAO.First(); err != nil {
-			return err
+		count, err := templateDAO.Count()
+		if count == 0 || err != nil {
+			return fmt.Errorf("template is empty")
 		}
-
 		favorite := q.VideoUserTemplateFavorite
 		favoriteDAO := favorite.WithContext(txCtx).Where(
 			favorite.UserID.Eq(userID), favorite.TemplateID.Eq(templateID),
 		)
 		if favorited {
-			if _, err := favoriteDAO.First(); errors.Is(err, gorm.ErrRecordNotFound) {
-				if err := favorite.WithContext(txCtx).Create(&model.VideoUserTemplateFavorite{
+			if _, err = favoriteDAO.First(); errors.Is(err, gorm.ErrRecordNotFound) {
+				if err = favorite.WithContext(txCtx).Create(&model.VideoUserTemplateFavorite{
 					UserID: userID, TemplateID: templateID,
 				}); err != nil {
+					return err
+				}
+				_, err = templateDAO.UpdateColumn(template.LikeCount, gorm.Expr("like_count + ?", 1))
+				if err != nil {
 					return err
 				}
 			} else if err != nil {
 				return err
 			}
 		} else {
-			if _, err := favoriteDAO.Delete(); err != nil {
+			if _, err = favoriteDAO.Delete(); err != nil {
+				return err
+			}
+			_, err = templateDAO.UpdateColumn(template.LikeCount, gorm.Expr("like_count - ?", 1))
+			if err != nil {
 				return err
 			}
 		}
-		count, err := favorite.WithContext(txCtx).Where(favorite.TemplateID.Eq(templateID)).Count()
+		count, err = favorite.WithContext(txCtx).Where(favorite.TemplateID.Eq(templateID)).Count()
 		if err != nil {
 			return err
 		}
@@ -65,7 +73,7 @@ func (r *TemplateFavoriteRepo) SetFavorite(ctx context.Context, userID, template
 	if err != nil {
 		return nil, err
 	}
-	if err := cache.SetTemplateFavorite(userID, templateID, state.Favorited); err != nil {
+	if err = cache.SetTemplateFavorite(userID, templateID, state.Favorited); err != nil {
 		return nil, fmt.Errorf("sync template favorite cache: %w", err)
 	}
 	return state, nil

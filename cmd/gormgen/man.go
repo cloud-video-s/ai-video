@@ -386,6 +386,7 @@ func main() {
 		),
 	)
 	videoTemplate := g.GenerateModel("video_template",
+		gen.FieldType("icon", "string"),
 		gen.FieldRelate(field.BelongsTo, "TemplateTypeModel", g.GenerateModel("video_template_type"),
 			&field.RelateConfig{
 				GORMTag: field.GormTag{
@@ -437,6 +438,7 @@ func main() {
 
 	videoTemplateType := g.GenerateModel("video_template_type",
 		gen.FieldType("id", "uint64"),
+		gen.FieldType("icon", "string"),
 		gen.FieldType("sort", "int64"),
 		gen.FieldType("status", "int8"),
 		gen.FieldRelate(field.Many2Many, "DisplayPosition", videoDisplayPosition,

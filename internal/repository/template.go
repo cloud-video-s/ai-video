@@ -695,9 +695,9 @@ func (r *TemplateRepo) ListForClient(ctx context.Context, targets ClientTemplate
 	return templateValues(rows), nil
 }
 
-func (r *TemplateRepo) GetListForClient(ctx context.Context, targets ClientTemplateTargets) ([]model.VideoTemplate, error) {
+func (r *TemplateRepo) GetListForClient(ctx context.Context, targets ClientTemplateTargets) ([]*model.VideoTemplate, error) {
 	if targets.TemplateTypeID == 0 {
-		return []model.VideoTemplate{}, nil
+		return []*model.VideoTemplate{}, nil
 	}
 	q := qFrom(ctx).VideoTemplate
 	rows, err := q.WithContext(ctx).Preload(q.AIModel).
@@ -707,7 +707,7 @@ func (r *TemplateRepo) GetListForClient(ctx context.Context, targets ClientTempl
 	if err != nil {
 		return nil, err
 	}
-	return templateValues(rows), nil
+	return rows, nil
 }
 
 func (r *TemplateRepo) loadRecords(ctx context.Context, items []model.VideoTemplate) ([]TemplateRecord, error) {

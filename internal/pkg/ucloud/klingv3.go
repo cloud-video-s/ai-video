@@ -158,6 +158,9 @@ func buildKlingV3Request(request TaskSubmitRequest) (KlingV3SubmitRequest, error
 	if err := decodeParameters(request.Parameters, &parameters); err != nil {
 		return KlingV3SubmitRequest{}, err
 	}
+	if parameters.KlingV3Type == "motion_control" {
+
+	}
 	imgURL := ""
 	if len(request.Images) > 0 {
 		imgURL = request.Images[0]
@@ -178,21 +181,30 @@ func validateKlingV3Request(request *KlingV3SubmitRequest) error {
 	input := &request.Input
 	parameters := &request.Parameters
 	input.FirstFrameURL = strings.TrimSpace(input.FirstFrameURL)
-	input.ImgURL = strings.TrimSpace(input.ImgURL)
 	input.NegativePrompt = strings.TrimSpace(input.NegativePrompt)
 	input.Prompt = strings.TrimSpace(input.Prompt)
-	input.VideoURL = strings.TrimSpace(input.VideoURL)
+
 	parameters.AspectRatio = strings.TrimSpace(parameters.AspectRatio)
 	parameters.CharacterOrientation = strings.TrimSpace(parameters.CharacterOrientation)
 	externalTaskID := parameters.ExternalTaskID
 	parameters.ExternalTaskID = strings.TrimSpace(parameters.ExternalTaskID)
-	parameters.Image = strings.TrimSpace(parameters.Image)
-	parameters.ImageTail = strings.TrimSpace(parameters.ImageTail)
+
 	parameters.KeepOriginalSound = strings.TrimSpace(parameters.KeepOriginalSound)
 	parameters.KlingV3Type = KlingV3GenerationType(strings.TrimSpace(string(parameters.KlingV3Type)))
 	parameters.Mode = strings.TrimSpace(parameters.Mode)
-	parameters.ShotType = strings.TrimSpace(parameters.ShotType)
-	parameters.Sound = strings.TrimSpace(parameters.Sound)
+
+	if parameters.KlingV3Type != KlingV3TypeMotionControl {
+		parameters.Sound = strings.TrimSpace(parameters.Sound)
+		input.VideoURL = strings.TrimSpace(input.VideoURL)
+		input.ImgURL = strings.TrimSpace(input.ImgURL)
+	}
+	if parameters.KlingV3Type != KlingV3TypeI2V {
+		parameters.Image = strings.TrimSpace(parameters.Image)
+		parameters.ImageTail = strings.TrimSpace(parameters.ImageTail)
+	}
+	if parameters.MultiShot == true {
+		parameters.ShotType = "customize"
+	}
 
 	if utf8.RuneCountInString(input.Prompt) > 2500 {
 		return errors.New("kling V3 prompt must not exceed 2500 characters")

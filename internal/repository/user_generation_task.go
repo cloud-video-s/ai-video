@@ -105,6 +105,11 @@ func (r *UserGenerationTaskRepo) GetOwned(ctx context.Context, id, userID uint64
 	return q.WithContext(ctx).Where(q.ID.Eq(id), q.UserID.Eq(userID)).First()
 }
 
+func (r *UserGenerationTaskRepo) OngoingTask(ctx context.Context, userID uint64) ([]*model.VideoUserGenerationTask, error) {
+	q := qFrom(ctx).VideoUserGenerationTask
+	return q.WithContext(ctx).Where(q.UserID.Eq(userID), q.Status.Lt(6)).Find()
+}
+
 func (r *UserGenerationTaskRepo) GetOwnedByTaskCode(ctx context.Context, taskCode string, userID uint64) (*model.VideoUserGenerationTask, error) {
 	q := qFrom(ctx).VideoUserGenerationTask
 	return q.WithContext(ctx).Where(q.TaskCode.Eq(taskCode), q.UserID.Eq(userID)).First()

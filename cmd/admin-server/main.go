@@ -36,22 +36,35 @@ func main() {
 	taskManager := task.NewManager(task.ManagerConfig{
 		RedisAddr: config.Cfg.Redis.Addr(), RedisPassword: config.Cfg.Redis.Password, RedisDB: config.Cfg.Redis.DB,
 		Concurrency: config.Cfg.Task.Concurrency, Queues: config.Cfg.Task.Queues,
-		ErrorHandler: func(taskType string, err error) {
-			config.Log.Errorf("task failed: type=%s err=%v", taskType, err)
+		ErrorHandler: func(ctx context.Context, taskType string, err error) {
+			config.Logger(ctx).Errorf("task failed: type=%s err=%v", taskType, err)
 		},
 	})
-	if err := scheduledtask.RegisterSubscriptionExpiration(
+	subscriptionExpirationAt, subscriptionExpirationEnabled, err := config.Cfg.Task.SubscriptionExpirationTime(time.Local)
+	if err != nil {
+		taskManager.Close()
+		config.Close()
+		panic(fmt.Sprintf("parse subscription expiration execution time failed: %v", err))
+	}
+	if err = scheduledtask.RegisterSubscriptionExpiration(
 		taskManager,
-		config.Cfg.Task.SubscriptionExpirationCron,
-		func(expiredUsers int64) {
+		subscriptionExpirationAt,
+		func(ctx context.Context, expiredUsers int64) {
 			if expiredUsers > 0 {
-				config.Log.Infof("subscription expiration task completed: expired_users=%d", expiredUsers)
+				config.Logger(ctx).Infof("subscription expiration task completed: expired_users=%d", expiredUsers)
 			}
 		},
 	); err != nil {
 		taskManager.Close()
 		config.Close()
 		panic(fmt.Sprintf("register scheduled tasks failed: %v", err))
+	}
+	if !subscriptionExpirationEnabled {
+		config.Log.Info("subscription expiration task is not scheduled: task.subscription_expiration_at is empty")
+	} else if subscriptionExpirationAt.After(time.Now()) {
+		config.Log.Infof("subscription expiration task scheduled once at %s", subscriptionExpirationAt.Format(time.RFC3339))
+	} else {
+		config.Log.Infof("subscription expiration task is not scheduled: configured time %s has passed", subscriptionExpirationAt.Format(time.RFC3339))
 	}
 
 	engine := router.NewRouter(
@@ -63,41 +76,34 @@ func main() {
 	addr := fmt.Sprintf(":%d", config.Cfg.Server.Port)
 	srv := &http.Server{Addr: addr, Handler: engine}
 	generation.Start()
-	runtimeErr := make(chan error, 3)
+	runtimeErr := make(chan error, 2)
 
 	go func() {
 		config.Log.Infof("server starting at %s", addr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			runtimeErr <- fmt.Errorf("server run failed: %w", err)
 		}
 	}()
 	go func() {
-		if err := taskManager.Worker.Start(); err != nil {
+		if err = taskManager.Worker.Start(); err != nil {
 			runtimeErr <- fmt.Errorf("task worker stopped: %w", err)
 		}
 	}()
-	go func() {
-		if err := taskManager.Scheduler.Start(); err != nil {
-			runtimeErr <- fmt.Errorf("task scheduler stopped: %w", err)
-		}
-	}()
-
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-quit:
-	case err := <-runtimeErr:
+	case err = <-runtimeErr:
 		config.Log.Errorf("service component stopped unexpectedly: %v", err)
 	}
 
 	config.Log.Info("shutting down server...")
-	taskManager.Scheduler.Stop()
 	taskManager.Worker.Stop()
 	taskManager.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err = srv.Shutdown(ctx); err != nil {
 		config.Log.Errorf("server forced to shutdown: %v", err)
 	}
 	config.Close()

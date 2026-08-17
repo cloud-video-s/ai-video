@@ -128,7 +128,7 @@ func (s *ClientTemplateService) List(ctx *gin.Context, req *ClientTemplateReques
 	if err != nil {
 		return nil, err
 	}
-	return buildClientTemplateGroups(types, rows, configurations), nil
+	return buildClientTemplateGroups(ctx, types, rows, configurations), nil
 }
 
 func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplateRequest) (interface{}, error) {
@@ -163,7 +163,7 @@ func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplate
 		})
 		var templates []ClientTemplate
 		for _, val := range rows {
-			templates = append(templates, mapClientTemplate(&val))
+			templates = append(templates, mapClientTemplate(ctx, user.ID, val))
 		}
 		data = append(data, ClientTemplateType{
 			ID:           item.ID,
@@ -177,7 +177,7 @@ func (s *ClientTemplateService) Categories(ctx *gin.Context, req *ClientTemplate
 	return GetPageResponse(int64(req.Page), int64(req.PageSize), count, data)
 }
 
-func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.VideoTemplate, configurationArgs ...map[uint64]clientTemplateModelConfiguration) []ClientTemplateType {
+func buildClientTemplateGroups(ctx *gin.Context, types []model.VideoTemplateType, rows []model.VideoTemplate, configurationArgs ...map[uint64]clientTemplateModelConfiguration) []ClientTemplateType {
 	types = append([]model.VideoTemplateType(nil), types...)
 	rows = append([]model.VideoTemplate(nil), rows...)
 	sort.SliceStable(types, func(i, j int) bool {
@@ -200,7 +200,7 @@ func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.Vid
 	})
 	templatesByType := make(map[uint64][]ClientTemplate, len(types))
 	for i := range rows {
-		templatesByType[rows[i].TemplateTypeID] = append(templatesByType[rows[i].TemplateTypeID], mapClientTemplate(&rows[i]))
+		templatesByType[rows[i].TemplateTypeID] = append(templatesByType[rows[i].TemplateTypeID], mapClientTemplate(ctx, middleware.GetAPIUserID(ctx), &rows[i]))
 	}
 	result := make([]ClientTemplateType, 0, len(types))
 	for i := range types {
@@ -220,7 +220,12 @@ func buildClientTemplateGroups(types []model.VideoTemplateType, rows []model.Vid
 	return result
 }
 
-func mapClientTemplate(item *model.VideoTemplate) ClientTemplate {
+func mapClientTemplate(ctx *gin.Context, userID uint64, item *model.VideoTemplate) ClientTemplate {
+	favorite := NewClientTemplateService().TemplateFavoriteRepo.GetUserFavorite(ctx, userID, item.ID)
+	isFavorite := 0
+	if favorite {
+		isFavorite = 1
+	}
 	result := ClientTemplate{
 		ID:             item.ID,
 		TemplateTypeID: item.TemplateTypeID,
@@ -234,8 +239,10 @@ func mapClientTemplate(item *model.VideoTemplate) ClientTemplate {
 		Description:    item.Description,
 		Sort:           int(item.Sort),
 		UsageCount:     item.UsageCount,
+		FavoriteCount:  item.LikeCount,
 		ViewCount:      item.ViewCount,
 		ModelScore:     item.AIModel.Score,
+		IsFavorite:     isFavorite,
 	}
 	return result
 }
@@ -276,7 +283,7 @@ func (s *ClientTemplateService) Recommend(ctx *gin.Context, req *ClientTemplateR
 	for i := range rows {
 		if rows[i].Template != nil {
 			template := &rows[i].Template.VideoTemplate
-			result = append(result, mapClientTemplate(template))
+			result = append(result, mapClientTemplate(ctx, user.ID, template))
 		}
 	}
 	return result, nil
@@ -328,7 +335,7 @@ func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *Temp
 	}
 	result := make([]ClientTemplate, 0, len(templates))
 	for i := range templates {
-		result = append(result, mapClientTemplate(templates[i]))
+		result = append(result, mapClientTemplate(ctx, user.ID, templates[i]))
 	}
 	return GetPageResponse(int64(req.Page), int64(req.PageSize), total, result)
 }
@@ -338,11 +345,7 @@ func (s *ClientTemplateService) ClientTemplateInfo(ctx *gin.Context, req *Templa
 	if err != nil {
 		return ClientTemplate{}, err
 	}
-	resp := mapClientTemplate(template)
-	if s.TemplateFavoriteRepo.GetUserFavorite(ctx, middleware.GetAPIUserID(ctx), template.ID) {
-		resp.IsFavorite = 1
-	}
-	return resp, nil
+	return mapClientTemplate(ctx, middleware.GetAPIUserID(ctx), template), nil
 }
 
 func (s *ClientTemplateService) Complaint(ctx *gin.Context, req *ClientCategoriesRequest) (interface{}, error) {

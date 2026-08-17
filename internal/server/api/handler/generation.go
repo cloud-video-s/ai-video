@@ -143,11 +143,7 @@ func (h *GenerationHandler) Delete(c *gin.Context) {
 
 // Events 建立 SSE 长连接并实时推送任务状态，任务终止后服务端主动结束连接。
 func (h *GenerationHandler) Events(c *gin.Context) {
-	taskID, ok := generationTaskID(c)
-	if !ok {
-		return
-	}
-	task, err := h.manager.GetTask(c.Request.Context(), middleware.GetAPIUserID(c), taskID)
+	task, err := h.manager.GetOngoingTask(c.Request.Context(), middleware.GetAPIUserID(c))
 	if err != nil {
 		response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, err.Error())
 		return
@@ -157,14 +153,17 @@ func (h *GenerationHandler) Events(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no")
 	c.Status(http.StatusOK)
-	c.SSEvent("task", generation.ViewOf(task))
+	//var data []generation.TaskView
+	//for _, item := range task {
+	//	data = append(data, generation.ViewOf(item))
+	//	h.manager.Publish()
+	//
+	//}
+	c.SSEvent("task", task)
 	c.Writer.Flush()
-	if generation.IsTerminal(task.Status) {
-		return
-	}
-	events, unsubscribe := h.manager.Subscribe(taskID)
+	events, unsubscribe := h.manager.Subscribe(task[0].ID)
 	defer unsubscribe()
-	heartbeat := time.NewTicker(15 * time.Second)
+	heartbeat := time.NewTicker(30 * time.Second)
 	defer heartbeat.Stop()
 	for {
 		select {
