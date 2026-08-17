@@ -8,6 +8,7 @@ import (
 	"maps"
 	"math"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,6 +16,7 @@ import (
 
 	"ai-video/internal/config"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/monitor"
 	"ai-video/internal/pkg/tracing"
 	"ai-video/internal/pkg/ucloud"
 	"ai-video/internal/pkg/upload"
@@ -403,6 +405,12 @@ func (m *Manager) DeleteTask(ctx context.Context, userID, taskID uint64) error {
 
 func (m *Manager) worker(ctx context.Context) {
 	defer m.wg.Done()
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			monitor.ReportPanic(config.Logger(ctx), "generation_worker", recovered, debug.Stack())
+			panic(recovered)
+		}
+	}()
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
@@ -572,11 +580,10 @@ func (m *Manager) failTask(ctx context.Context, task *model.VideoUserGenerationT
 	failed.Progress = 100
 	failed.ErrorMessage = strings.TrimSpace(message)
 	if config.Log != nil {
-		config.Logger(ctx).Errorw("generation task failed",
+		monitor.Report(config.Logger(ctx), monitor.KindTaskFailure, "generation_worker", errors.New(failed.ErrorMessage),
 			"task_id", failed.ID,
 			"task_code", failed.TaskCode,
 			"user_id", failed.UserID,
-			"original_error", failed.ErrorMessage,
 		)
 	}
 	failed.FinishedAt = now

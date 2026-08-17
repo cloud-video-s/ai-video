@@ -8,6 +8,7 @@ import (
 
 	"ai-video/internal/pkg/errcode"
 	"ai-video/internal/pkg/i18n"
+	"ai-video/internal/pkg/monitor"
 
 	"github.com/gin-gonic/gin"
 )
@@ -55,5 +56,37 @@ func TestNonAPIFailureKeepsExistingMessage(t *testing.T) {
 	}
 	if result.Message != "existing admin message" {
 		t.Fatalf("message = %q", result.Message)
+	}
+}
+
+func TestAdminServerFailureIsMarkedForMonitoring(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/admin/users", nil)
+
+	original := "query users: database connection refused"
+	Fail(c, errcode.ErrServer, original)
+
+	monitoredErr, ok := monitor.HTTPError(c)
+	if !ok || monitoredErr.Error() != original {
+		t.Fatalf("monitored error = %v, %v", monitoredErr, ok)
+	}
+	privateErrors := c.Errors.ByType(gin.ErrorTypePrivate)
+	if len(privateErrors) != 1 || privateErrors[0].Error() != original {
+		t.Fatalf("private errors = %v", privateErrors)
+	}
+}
+
+func TestAdminParameterFailureIsNotMarkedForMonitoring(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/admin/users", nil)
+
+	Fail(c, errcode.ErrParam, "invalid page")
+
+	if monitoredErr, ok := monitor.HTTPError(c); ok {
+		t.Fatalf("parameter error was monitored: %v", monitoredErr)
 	}
 }

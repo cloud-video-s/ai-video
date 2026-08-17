@@ -11,6 +11,7 @@ import (
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 	"ai-video/internal/middleware"
+	"ai-video/internal/pkg/monitor"
 	"ai-video/internal/pkg/oidc"
 	"ai-video/internal/pkg/utils"
 
@@ -105,7 +106,9 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 		updates["third_code"] = req.ThirdCode
 		updates["email"] = req.Email
 		if err := s.userRepo.Update(ctx, user.ID, updates); err != nil {
-			config.Logger(ctx.Request.Context()).Errorw("failed to update third party login info", "err", err)
+			monitor.Report(config.Logger(ctx.Request.Context()), monitor.KindError, "third_party_auth", err,
+				"user_id", user.ID,
+			)
 			return nil, errors.New("failed to update third party login info")
 		}
 	}

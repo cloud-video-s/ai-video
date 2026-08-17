@@ -3,6 +3,7 @@ package middleware
 import (
 	"ai-video/internal/config"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/monitor"
 	"ai-video/internal/repository"
 	"bytes"
 	"context"
@@ -108,7 +109,7 @@ func OperationLog() gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), writeLogTimeout)
 		defer cancel()
 		if err := repo.Create(ctx, entry); err != nil {
-			config.Logger(ctx).Errorw("write operation log failed", "path", entry.Path, "err", err)
+			monitor.Report(config.Logger(ctx), monitor.KindError, "operation_log", err, "path", entry.Path)
 		}
 	}
 }
@@ -135,7 +136,7 @@ func RecordLogin(c *gin.Context, action string, userID uint64, username string, 
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), writeLogTimeout)
 	defer cancel()
 	if err := repository.NewOperationLogRepo().Create(ctx, entry); err != nil {
-		config.Logger(ctx).Errorw("write login log failed", "username", username, "err", err)
+		monitor.Report(config.Logger(ctx), monitor.KindError, "login_log", err, "username", username)
 	}
 }
 

@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"ai-video/internal/pkg/errcode"
 	"ai-video/internal/pkg/i18n"
+	"ai-video/internal/pkg/monitor"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,6 +35,7 @@ func OKWithMessage(c *gin.Context, msg string, data interface{}) {
 }
 
 func Fail(c *gin.Context, code int, msg string) {
+	recordServerError(c, code, http.StatusOK, msg)
 	c.JSON(http.StatusOK, Response{
 		Code:    code,
 		Message: localizedError(c, code, http.StatusOK, msg),
@@ -40,6 +43,7 @@ func Fail(c *gin.Context, code int, msg string) {
 }
 
 func FailWithStatus(c *gin.Context, httpStatus int, code int, msg string) {
+	recordServerError(c, code, httpStatus, msg)
 	c.JSON(httpStatus, Response{
 		Code:    code,
 		Message: localizedError(c, code, httpStatus, msg),
@@ -76,6 +80,18 @@ func localizedError(c *gin.Context, code, httpStatus int, fallback string) strin
 	}
 	recordAPIError(c, fallback)
 	return i18n.ErrorMessage(i18n.LocaleEnUS, code, httpStatus)
+}
+
+func recordServerError(c *gin.Context, code, httpStatus int, original string) {
+	if strings.TrimSpace(original) == "" || (code != errcode.ErrServer && httpStatus < http.StatusInternalServerError) {
+		return
+	}
+	monitor.MarkHTTPError(c, errors.New(original))
+	// The API sanitizer records the same private error below. Admin requests do
+	// not pass through it, so attach the error here for their request logs.
+	if !i18n.IsAPI(c) {
+		recordAPIError(c, original)
+	}
 }
 
 func recordAPIError(c *gin.Context, original string) {

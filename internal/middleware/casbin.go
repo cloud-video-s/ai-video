@@ -3,6 +3,7 @@ package middleware
 import (
 	"ai-video/internal/config"
 	"ai-video/internal/domain"
+	"ai-video/internal/pkg/monitor"
 	"ai-video/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -27,7 +28,9 @@ func CasbinRBAC() gin.HandlerFunc {
 			}
 			ok, err := config.Enforcer.Enforce(rc, obj, act)
 			if err != nil {
-				config.Logger(c.Request.Context()).Errorw("casbin enforce error", "error", err)
+				monitor.Report(config.Logger(c.Request.Context()), monitor.KindError, "rbac", err,
+					"role_code", rc, "object", obj, "action", act,
+				)
 				response.Forbidden(c, "权限校验异常")
 				return
 			}

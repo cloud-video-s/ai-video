@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"ai-video/internal/pkg/tracing"
 
@@ -15,9 +16,17 @@ type HandlerFunc func(ctx context.Context, payload []byte) error
 
 // Worker wraps asynq.Server as the task consumer.
 type Worker struct {
-	server   *asynq.Server
+	server   workerServer
 	mux      *asynq.ServeMux
 	handlers map[string]HandlerFunc
+	done     chan struct{}
+	stopOnce sync.Once
+}
+
+type workerServer interface {
+	Start(handler asynq.Handler) error
+	Stop()
+	Shutdown()
 }
 
 func NewWorker(redisAddr, password string, db int, concurrency int, queues map[string]int, errHandler func(context.Context, string, error)) *Worker {
@@ -57,6 +66,7 @@ func NewWorker(redisAddr, password string, db int, concurrency int, queues map[s
 		server:   srv,
 		mux:      asynq.NewServeMux(),
 		handlers: make(map[string]HandlerFunc),
+		done:     make(chan struct{}),
 	}
 }
 
@@ -82,11 +92,21 @@ func (e *tracedTaskError) Unwrap() error { return e.err }
 
 // Start starts the worker (blocking).
 func (w *Worker) Start() error {
-	return w.server.Start(w.mux)
+	// asynq.Server.Start is intentionally non-blocking. Keep this application
+	// wrapper alive until Stop finishes; Server.Run is not used because it
+	// installs its own OS signal handler while admin-server owns shutdown.
+	if err := w.server.Start(w.mux); err != nil {
+		return err
+	}
+	<-w.done
+	return nil
 }
 
 // Stop gracefully shuts down the worker.
 func (w *Worker) Stop() {
-	w.server.Stop()
-	w.server.Shutdown()
+	w.stopOnce.Do(func() {
+		w.server.Stop()
+		w.server.Shutdown()
+		close(w.done)
+	})
 }

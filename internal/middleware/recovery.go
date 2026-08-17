@@ -5,6 +5,7 @@ import (
 	"runtime/debug"
 
 	"ai-video/internal/config"
+	"ai-video/internal/pkg/monitor"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,11 +15,7 @@ import (
 // request log.
 func Recovery() gin.HandlerFunc {
 	return gin.CustomRecoveryWithWriter(nil, func(c *gin.Context, recovered any) {
-		config.Logger(c.Request.Context()).Errorw(
-			"panic recovered",
-			"panic", recovered,
-			"stack", string(debug.Stack()),
-		)
+		monitor.ReportPanic(config.Logger(c.Request.Context()), "http", recovered, debug.Stack())
 		c.AbortWithStatus(http.StatusInternalServerError)
 	})
 }
