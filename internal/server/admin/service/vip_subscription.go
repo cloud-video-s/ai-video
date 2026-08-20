@@ -21,6 +21,7 @@ func NewVIPSubscriptionService() *VIPSubscriptionService {
 }
 
 type ListVIPSubscriptionRequest struct {
+	ListSortRequest
 	AppCode        string `form:"app_code" binding:"omitempty,max=60"`
 	PackageCode    string `form:"package_code" binding:"omitempty,max=128"`
 	VersionCode    string `form:"version_code" binding:"omitempty,max=50"`
@@ -103,7 +104,8 @@ type CloneVIPSubscriptionRequest struct {
 
 func (s *VIPSubscriptionService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionRequest) ([]VIPSubscriptionResponse, int64, error) {
 	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.VIPSubscriptionListFilter{
-		AppCode: strings.TrimSpace(req.AppCode), PackageCode: strings.TrimSpace(req.PackageCode),
+		ListSort: req.listSort(),
+		AppCode:  strings.TrimSpace(req.AppCode), PackageCode: strings.TrimSpace(req.PackageCode),
 		VersionCode: strings.TrimSpace(req.VersionCode), CountryCode: strings.ToUpper(strings.TrimSpace(req.CountryCode)),
 		ChannelCode: strings.TrimSpace(req.ChannelCode), LevelID: req.LevelID, VipType: req.VipType,
 		DisplayMode: req.DisplayMode, Status: req.Status, IsSubscription: req.IsSubscription,

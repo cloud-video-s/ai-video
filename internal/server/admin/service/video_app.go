@@ -19,6 +19,7 @@ func NewVideoAppService() *VideoAppService {
 }
 
 type ListVideoAppRequest struct {
+	ListSortRequest
 	Keyword string  `form:"keyword" binding:"max=255"`
 	AppCode string  `form:"app_code" binding:"max=60"`
 	Status  *uint32 `form:"status" binding:"omitempty,oneof=0 1"`
@@ -36,7 +37,8 @@ var videoAppCodePattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
 func (s *VideoAppService) List(ctx context.Context, page, pageSize int, req *ListVideoAppRequest) ([]model.VideoApp, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.VideoAppListFilter{
-		Keyword: strings.TrimSpace(req.Keyword), AppCode: strings.TrimSpace(req.AppCode), Status: req.Status,
+		ListSort: req.listSort(),
+		Keyword:  strings.TrimSpace(req.Keyword), AppCode: strings.TrimSpace(req.AppCode), Status: req.Status,
 	})
 }
 

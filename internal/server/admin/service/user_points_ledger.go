@@ -17,6 +17,7 @@ func NewUserPointsLedgerService() *UserPointsLedgerService {
 }
 
 type ListUserPointsLedgerRequest struct {
+	ListSortRequest
 	UserID          uint64 `form:"user_id"`
 	Direction       int8   `form:"direction" binding:"omitempty,oneof=1 2"`
 	SourceType      uint32 `form:"source_type" binding:"omitempty,oneof=1 2 3 4 5 6 7 8"`
@@ -43,6 +44,7 @@ func (s *UserPointsLedgerService) List(ctx context.Context, page, pageSize int, 
 		orderCode = strings.TrimSpace(req.BusinessID)
 	}
 	return s.repo.PageList(ctx, page, pageSize, &repository.UserPointsLedgerFilter{
+		ListSort:     req.listSort(),
 		UserID:       req.UserID,
 		Direction:    req.Direction,
 		SourceType:   req.SourceType,

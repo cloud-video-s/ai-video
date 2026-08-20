@@ -23,6 +23,7 @@ func NewDisplayPositionService() *DisplayPositionService {
 }
 
 type ListDisplayPositionRequest struct {
+	ListSortRequest
 	Status  *int8  `form:"status" binding:"omitempty,oneof=0 1"`
 	Keyword string `form:"keyword"`
 }
@@ -38,7 +39,8 @@ type DisplayPositionPayload struct {
 
 func (s *DisplayPositionService) List(ctx context.Context, page, pageSize int, req *ListDisplayPositionRequest) ([]model.VideoDisplayPosition, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.DisplayPositionListFilter{
-		Status: req.Status, Keyword: strings.TrimSpace(req.Keyword),
+		ListSort: req.listSort(),
+		Status:   req.Status, Keyword: strings.TrimSpace(req.Keyword),
 	})
 }
 

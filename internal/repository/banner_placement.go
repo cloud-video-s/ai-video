@@ -15,8 +15,9 @@ type BannerPlacementRepo struct {
 func NewBannerPlacementRepo() *BannerPlacementRepo { return &BannerPlacementRepo{} }
 
 type BannerPlacementListFilter struct {
-	Status  *int8
-	Keyword string
+	ListSort ListSort
+	Status   *int8
+	Keyword  string
 }
 
 func (r *BannerPlacementRepo) PageList(ctx context.Context, page, pageSize int, filter *BannerPlacementListFilter) ([]model.VideoBannerPlacement, int64, error) {
@@ -35,7 +36,12 @@ func (r *BannerPlacementRepo) PageList(ctx context.Context, page, pageSize int, 
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID, "sort": q.Sort}, q.ID, q.Sort.Asc(), q.ID.Desc())
+	rows, err := dao.Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
 }
 

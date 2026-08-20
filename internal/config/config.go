@@ -18,6 +18,7 @@ type Config struct {
 	ApiJwt         JWTConfig            `mapstructure:"api_jwt"`
 	GeoIP          GeoIPConfig          `mapstructure:"geoip"`
 	ThirdPartyAuth ThirdPartyAuthConfig `mapstructure:"third_party_auth"`
+	Adjust         AdjustConfig         `mapstructure:"adjust"`
 	AppStore       AppStoreConfig       `mapstructure:"app_store"`
 	Upload         UploadConfig         `mapstructure:"upload"`
 	Casbin         CasbinConfig         `mapstructure:"casbin"`
@@ -137,6 +138,16 @@ type OIDCProviderConfig struct {
 	JWKSURL   string   `mapstructure:"jwks_url"`
 }
 
+// AdjustConfig controls the public Adjust attribution callback. The callback
+// stays disabled until both enabled and callback_token are configured. Tracker
+// channel keys may be Adjust tracker tokens or tracker names; token matches win.
+type AdjustConfig struct {
+	Enabled         bool              `mapstructure:"enabled"`
+	CallbackToken   string            `mapstructure:"callback_token"`
+	MaxBodyBytes    int64             `mapstructure:"max_body_bytes"`
+	TrackerChannels map[string]string `mapstructure:"tracker_channels"`
+}
+
 // AppStoreConfig contains the App Store Connect API key metadata used to call
 // the App Store Server API. The private key signs outbound API JWTs only; Apple
 // transaction and notification JWS values are verified with Apple's x5c chain.
@@ -234,6 +245,10 @@ func setConfigDefaults() {
 	viper.SetDefault("third_party_auth.google.jwks_url", "https://www.googleapis.com/oauth2/v3/certs")
 	viper.SetDefault("third_party_auth.apple.issuers", []string{"https://appleid.apple.com"})
 	viper.SetDefault("third_party_auth.apple.jwks_url", "https://appleid.apple.com/auth/keys")
+	viper.SetDefault("adjust.enabled", true)
+	viper.SetDefault("adjust.callback_token", "")
+	viper.SetDefault("adjust.max_body_bytes", int64(65536))
+	viper.SetDefault("adjust.tracker_channels", map[string]string{})
 	viper.SetDefault("app_store.bundle_id", "")
 	viper.SetDefault("app_store.issuer_id", "")
 	viper.SetDefault("app_store.key_id", "")
@@ -310,6 +325,24 @@ func validateConfig() error {
 	}
 	if Cfg.Task.DownloadRetryCount < 0 {
 		return fmt.Errorf("task.download_retry_count cannot be negative")
+	}
+	if Cfg.Adjust.Enabled {
+		if len(strings.TrimSpace(Cfg.Adjust.CallbackToken)) < 16 {
+			return fmt.Errorf("adjust.callback_token must be at least 16 bytes when Adjust callbacks are enabled")
+		}
+		if Cfg.Adjust.MaxBodyBytes <= 0 || Cfg.Adjust.MaxBodyBytes > 1<<20 {
+			return fmt.Errorf("adjust.max_body_bytes must be between 1 and 1048576")
+		}
+		for tracker, channel := range Cfg.Adjust.TrackerChannels {
+			tracker = strings.TrimSpace(tracker)
+			channel = strings.TrimSpace(channel)
+			if tracker == "" || channel == "" {
+				return fmt.Errorf("adjust.tracker_channels cannot contain empty tracker or channel codes")
+			}
+			if len(tracker) > 255 || len(channel) > 64 {
+				return fmt.Errorf("adjust.tracker_channels tracker names must be at most 255 bytes and channel codes at most 64 bytes")
+			}
+		}
 	}
 	if Cfg.Server.Mode == "release" {
 		if Cfg.JWT.Secret == defaultJWTSecret {

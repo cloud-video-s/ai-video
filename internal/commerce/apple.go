@@ -79,6 +79,7 @@ type verifiedAppleTransaction struct {
 	PaidAmount        float64
 	EvidenceMode      string
 	SignedTransaction string
+	payChannel        int
 }
 
 // ApplePurchaseResponse reports the fulfilled local order together with the
@@ -174,6 +175,7 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 			ClientRequestID: appleClientRequestID(verified.TransactionID),
 			Renewal:         renewal,
 			PaidAmount:      verified.PaidAmount,
+			PayChannel:      verified.payChannel,
 		})
 		if err != nil {
 			return nil, err
@@ -210,7 +212,7 @@ func (s *Service) resolveAppleProduct(ctx context.Context, shopType int, sukCode
 		return vip.ID, nil
 	}
 	if shopType == domain.OrderProductPointsPackage {
-		points, pointsErr := s.pointProducts.GetAppleProduct(ctx, sukCode, packageCode)
+		points, pointsErr := s.points.GetAppleProduct(ctx, sukCode, packageCode)
 		if pointsErr != nil && !errors.Is(pointsErr, gorm.ErrRecordNotFound) {
 			return 0, pointsErr
 		}
@@ -223,8 +225,8 @@ func (s *Service) resolveAppleVipProduct(ctx context.Context, sukCode, packageCo
 	return s.vipProducts.GetAppleProduct(ctx, sukCode, packageCode)
 }
 
-func (s *Service) resolveApplePointProduct(ctx context.Context, sukCode, packageCode string) (Product *model.VideoPointsPackage, err error) {
-	return s.pointProducts.GetAppleProduct(ctx, sukCode, packageCode)
+func (s *Service) resolveApplePointProduct(ctx context.Context, sukCode, packageCode string) (Product *model.VideoPoint, err error) {
+	return s.points.GetAppleProduct(ctx, sukCode, packageCode)
 }
 
 // verifyApplePurchase verifies signed StoreKit evidence and checks every

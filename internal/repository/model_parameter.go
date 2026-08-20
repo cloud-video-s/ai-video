@@ -82,8 +82,9 @@ func (r *ModelParameterRepo) UpdateFields(ctx context.Context, item *model.Video
 }
 
 func (r *ModelParameterRepo) UpdateConstraints(ctx context.Context, id int64, constraints string) error {
-	return dbFrom(ctx).Table(model.TableNameVideoModelParameter).
-		Where("id = ?", id).Update("constraints", constraints).Error
+	q := qFrom(ctx).VideoModelParameter
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(id)).Update(q.Constraints, constraints)
+	return err
 }
 
 func (r *ModelParameterRepo) ConstraintsByIDs(ctx context.Context, ids []int64) (map[int64]string, error) {
@@ -91,12 +92,9 @@ func (r *ModelParameterRepo) ConstraintsByIDs(ctx context.Context, ids []int64) 
 	if len(ids) == 0 {
 		return result, nil
 	}
-	var rows []struct {
-		ID          int64
-		Constraints string
-	}
-	if err := dbFrom(ctx).Table(model.TableNameVideoModelParameter).
-		Select("id, constraints").Where("id IN ?", ids).Scan(&rows).Error; err != nil {
+	q := qFrom(ctx).VideoModelParameter
+	rows, err := q.WithContext(ctx).Select(q.ID, q.Constraints).Where(q.ID.In(ids...)).Find()
+	if err != nil {
 		return nil, err
 	}
 	for _, row := range rows {

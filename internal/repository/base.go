@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"strings"
 
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
 
@@ -14,6 +16,7 @@ import (
 // SQL (GORM does not parameterize identifiers). Build them only from trusted
 // server-side code, never directly from client input, to avoid SQL injection.
 type QueryOptions struct {
+	ListSort ListSort
 	Where    map[string]any    // equality conditions (ANDed)
 	Search   map[string]string // field -> keyword, rendered as "field LIKE %kw%"
 	Conds    []Cond            // raw conditions for ranges/ORs Where/Search can't express
@@ -22,6 +25,54 @@ type QueryOptions struct {
 	Select   []string          // projection columns
 	Group    string
 	Having   map[string]any
+}
+
+// ListSort is the normalized, client-requested ordering for a paginated admin
+// list. Field names are resolved through repository-owned allowlists before
+// they are used in SQL.
+type ListSort struct {
+	Field string
+	Order string
+}
+
+// orderForList builds a GORM Gen order clause from a repository-owned field
+// allowlist. A non-ID sort receives ID as a deterministic tie breaker.
+func orderForList(sort ListSort, fields map[string]field.OrderExpr, id field.OrderExpr, defaults ...field.Expr) []field.Expr {
+	name := strings.ToLower(strings.TrimSpace(sort.Field))
+	direction := strings.ToLower(strings.TrimSpace(sort.Order))
+	selected, ok := fields[name]
+	if !ok || (direction != "asc" && direction != "desc") {
+		return defaults
+	}
+	order := make([]field.Expr, 0, 2)
+	if direction == "desc" {
+		order = append(order, selected.Desc())
+		if name != "id" && id != nil {
+			order = append(order, id.Desc())
+		}
+		return order
+	}
+	order = append(order, selected.Asc())
+	if name != "id" && id != nil {
+		order = append(order, id.Asc())
+	}
+	return order
+}
+
+// orderSQLForList is the raw-GORM counterpart of orderForList. Column names
+// always come from the repository-owned fields map, never from client input.
+func orderSQLForList(sort ListSort, fields map[string]string, idColumn, defaultOrder string) string {
+	name := strings.ToLower(strings.TrimSpace(sort.Field))
+	direction := strings.ToLower(strings.TrimSpace(sort.Order))
+	column, ok := fields[name]
+	if !ok || (direction != "asc" && direction != "desc") {
+		return defaultOrder
+	}
+	result := column + " " + strings.ToUpper(direction)
+	if name != "id" && idColumn != "" {
+		result += ", " + idColumn + " " + strings.ToUpper(direction)
+	}
+	return result
 }
 
 // Cond is a raw query fragment for predicates that Where (equality) and Search

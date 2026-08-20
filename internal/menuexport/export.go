@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"ai-video/internal/gen/model"
+	"ai-video/internal/gen/query"
 
 	"gorm.io/gorm"
 )
@@ -51,12 +52,15 @@ func Generate(ctx context.Context, db *gorm.DB, writer io.Writer, includeDeleted
 	}
 
 	rows := make([]MenuItem, 0)
-	query := db.WithContext(ctx).Table(model.TableNameVideoMenu).
-		Select("id", "parent_id", "name", "path", "component", "icon", "sort", "type", "permission", "visible", "status", "created_at", "updated_at", "deleted_at")
-	if !includeDeleted {
-		query = query.Where("deleted_at IS NULL")
+	menu := query.Use(db).VideoMenu
+	dao := menu.WithContext(ctx)
+	if includeDeleted {
+		dao = dao.Unscoped()
 	}
-	if err := query.Order("parent_id ASC").Order("sort ASC").Order("id ASC").Scan(&rows).Error; err != nil {
+	if err := dao.Select(
+		menu.ID, menu.ParentID, menu.Name, menu.Path, menu.Component, menu.Icon, menu.Sort,
+		menu.Type, menu.Permission, menu.Visible, menu.Status, menu.CreatedAt, menu.UpdatedAt, menu.DeletedAt,
+	).Order(menu.ParentID.Asc(), menu.Sort.Asc(), menu.ID.Asc()).Scan(&rows); err != nil {
 		return 0, fmt.Errorf("read video_menu: %w", err)
 	}
 

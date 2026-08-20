@@ -18,6 +18,7 @@ func NewVIPSubscriptionLevelService() *VIPSubscriptionLevelService {
 }
 
 type ListVIPSubscriptionLevelRequest struct {
+	ListSortRequest
 	Status  *uint32 `form:"status" binding:"omitempty,oneof=0 1"`
 	Keyword string  `form:"keyword" binding:"max=255"`
 }
@@ -35,7 +36,8 @@ type VIPSubscriptionLevelStatusPayload struct {
 
 func (s *VIPSubscriptionLevelService) List(ctx context.Context, page, pageSize int, req *ListVIPSubscriptionLevelRequest) ([]model.VideoVipSubscriptionLevel, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.VIPSubscriptionLevelListFilter{
-		Status: req.Status, Keyword: strings.TrimSpace(req.Keyword),
+		ListSort: req.listSort(),
+		Status:   req.Status, Keyword: strings.TrimSpace(req.Keyword),
 	})
 }
 

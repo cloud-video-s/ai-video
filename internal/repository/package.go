@@ -14,6 +14,7 @@ type PackageRepo struct{ BaseRepo[model.VideoPackage] }
 func NewPackageRepo() *PackageRepo { return &PackageRepo{} }
 
 type PackageListFilter struct {
+	ListSort    ListSort
 	AppCode     string
 	PackageCode string
 	SystemType  *uint32
@@ -46,7 +47,12 @@ func (r *PackageRepo) PageList(ctx context.Context, page, pageSize int, filter *
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID, "sort": q.Sort}, q.ID, q.Sort.Asc(), q.ID.Desc())
+	rows, err := dao.Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
 }
 
@@ -125,6 +131,6 @@ func (r *PackageRepo) PointsPackageCount(ctx context.Context, packageID uint64) 
 	if err != nil {
 		return 0, err
 	}
-	relation := q.VideoPointsPackagePackage
+	relation := q.VideoPointsPackage
 	return relation.WithContext(ctx).Where(relation.PackageCode.Eq(item.PackageCode)).Count()
 }

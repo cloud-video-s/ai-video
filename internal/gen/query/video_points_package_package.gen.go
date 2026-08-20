@@ -37,7 +37,7 @@ func newVideoPointsPackagePackage(db *gorm.DB, opts ...gen.DOOption) videoPoints
 	_videoPointsPackagePackage.PointsPackage = videoPointsPackagePackageBelongsToPointsPackage{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("PointsPackage", "model.VideoPointsPackage"),
+		RelationField: field.NewRelation("PointsPackage", "model.VideoPoint"),
 	}
 
 	_videoPointsPackagePackage.fillFieldMap()
@@ -171,11 +171,11 @@ func (a videoPointsPackagePackageBelongsToPointsPackage) Unscoped() *videoPoints
 
 type videoPointsPackagePackageBelongsToPointsPackageTx struct{ tx *gorm.Association }
 
-func (a videoPointsPackagePackageBelongsToPointsPackageTx) Find() (result *model.VideoPointsPackage, err error) {
+func (a videoPointsPackagePackageBelongsToPointsPackageTx) Find() (result *model.VideoPoint, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a videoPointsPackagePackageBelongsToPointsPackageTx) Append(values ...*model.VideoPointsPackage) (err error) {
+func (a videoPointsPackagePackageBelongsToPointsPackageTx) Append(values ...*model.VideoPoint) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -183,7 +183,7 @@ func (a videoPointsPackagePackageBelongsToPointsPackageTx) Append(values ...*mod
 	return a.tx.Append(targetValues...)
 }
 
-func (a videoPointsPackagePackageBelongsToPointsPackageTx) Replace(values ...*model.VideoPointsPackage) (err error) {
+func (a videoPointsPackagePackageBelongsToPointsPackageTx) Replace(values ...*model.VideoPoint) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -191,7 +191,7 @@ func (a videoPointsPackagePackageBelongsToPointsPackageTx) Replace(values ...*mo
 	return a.tx.Replace(targetValues...)
 }
 
-func (a videoPointsPackagePackageBelongsToPointsPackageTx) Delete(values ...*model.VideoPointsPackage) (err error) {
+func (a videoPointsPackagePackageBelongsToPointsPackageTx) Delete(values ...*model.VideoPoint) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v

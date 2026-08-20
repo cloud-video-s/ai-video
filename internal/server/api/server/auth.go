@@ -27,7 +27,6 @@ import (
 type AuthService struct {
 	userRepo          *repository.AppUserRepo
 	orderRepo         *repository.OrderRepo
-	attributionRepo   *repository.UserAttributionRepo
 	identityVerifiers map[string]identityTokenVerifier
 }
 
@@ -44,7 +43,6 @@ func NewAuthService() *AuthService {
 	cacheTTL := time.Duration(authConfig.JWKSCacheSeconds) * time.Second
 	return &AuthService{
 		userRepo: repository.NewAppUserRepo(), orderRepo: repository.NewOrderRepo(),
-		attributionRepo: repository.NewUserAttributionRepo(),
 		identityVerifiers: map[string]identityTokenVerifier{
 			domain.IdentityProviderGoogle: oidc.NewVerifier(oidc.Config{Issuers: authConfig.Google.Issuers, Audiences: authConfig.Google.ClientIDs, JWKSURL: authConfig.Google.JWKSURL, HTTPClient: &http.Client{Timeout: timeout}, CacheTTL: cacheTTL}),
 			domain.IdentityProviderApple:  oidc.NewVerifier(oidc.Config{Issuers: authConfig.Apple.Issuers, Audiences: authConfig.Apple.ClientIDs, JWKSURL: authConfig.Apple.JWKSURL, HTTPClient: &http.Client{Timeout: timeout}, CacheTTL: cacheTTL}),
@@ -63,7 +61,6 @@ type AppleOrderLoginRequest struct {
 	ForceNew  bool     `json:"force_new"`
 }
 
-var ErrAuthSignInvalid = errors.New("This membership is linked to testXXX@gamial.com. Please sign in with that account.")
 var ErrAuthAccountInvalid = errors.New("This membership is linked to another account. Would you like to switch accounts?")
 var ErrAuthStateInvalid = errors.New("Your login status has expired. Please sign in again.")
 var ErrAppleOrderNotFound = errors.New("Apple Pay order not found.")
@@ -231,7 +228,7 @@ func (s *AuthService) LoginByAppleOrder(ctx context.Context, loginUserID uint64,
 		return nil, 0, err
 	}
 	token, err := issueToken(user, int(user.LoginType))
-	if user.ID != loginUserID {
+	if token != nil && user.ID != loginUserID {
 		token.DeviceCode = user.DeviceCode
 	}
 	return token, 0, err
@@ -326,9 +323,6 @@ func (s *AuthService) UpdateCountry(ctx context.Context, userID uint64, req *Upd
 	}
 	updates := map[string]any{"device_country": deviceCountry, "last_login_ip": clientIP}
 	if err := s.userRepo.Update(ctx, userID, updates); err != nil {
-		return nil, err
-	}
-	if err := s.attributionRepo.UpsertDevice(ctx, userID, map[string]any{"ip": clientIP}); err != nil {
 		return nil, err
 	}
 	return s.GetProfile(ctx, userID)

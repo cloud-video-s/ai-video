@@ -49,6 +49,7 @@ func newVideoOrder(db *gorm.DB, opts ...gen.DOOption) videoOrder {
 	_videoOrder.Status = field.NewUint32(tableName, "status")
 	_videoOrder.PayType = field.NewUint32(tableName, "pay_type")
 	_videoOrder.PayTime = field.NewTime(tableName, "pay_time")
+	_videoOrder.PayChannel = field.NewUint32(tableName, "pay_channel")
 	_videoOrder.ThirdOrderNo = field.NewString(tableName, "third_order_no")
 	_videoOrder.OriginalTransactionID = field.NewString(tableName, "original_transaction_id")
 	_videoOrder.PaymentEvidence = field.NewString(tableName, "payment_evidence")
@@ -99,6 +100,7 @@ type videoOrder struct {
 	Status                field.Uint32  // 订单状态 1=待支付 2=支付中 3=支付成功 4=订单完成5=订单取消 6=支付失败 7=已退款
 	PayType               field.Uint32  // 支付方式 1=apple,2=google等）
 	PayTime               field.Time    // 支付完成时间
+	PayChannel            field.Uint32  // 支付渠道 1=沙盒 2=正式
 	ThirdOrderNo          field.String  // 支付平台返回的交易ID
 	OriginalTransactionID field.String  // 原始交易凭证ID（如苹果收据的原始交易ID）
 	PaymentEvidence       field.String  // 支付凭证原始数据（JSON格式的收据或回调内容）
@@ -150,6 +152,7 @@ func (v *videoOrder) updateTableName(table string) *videoOrder {
 	v.Status = field.NewUint32(table, "status")
 	v.PayType = field.NewUint32(table, "pay_type")
 	v.PayTime = field.NewTime(table, "pay_time")
+	v.PayChannel = field.NewUint32(table, "pay_channel")
 	v.ThirdOrderNo = field.NewString(table, "third_order_no")
 	v.OriginalTransactionID = field.NewString(table, "original_transaction_id")
 	v.PaymentEvidence = field.NewString(table, "payment_evidence")
@@ -189,7 +192,7 @@ func (v *videoOrder) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoOrder) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 35)
+	v.fieldMap = make(map[string]field.Expr, 36)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["order_no"] = v.OrderNo
 	v.fieldMap["client_request_id"] = v.ClientRequestID
@@ -211,6 +214,7 @@ func (v *videoOrder) fillFieldMap() {
 	v.fieldMap["status"] = v.Status
 	v.fieldMap["pay_type"] = v.PayType
 	v.fieldMap["pay_time"] = v.PayTime
+	v.fieldMap["pay_channel"] = v.PayChannel
 	v.fieldMap["third_order_no"] = v.ThirdOrderNo
 	v.fieldMap["original_transaction_id"] = v.OriginalTransactionID
 	v.fieldMap["payment_evidence"] = v.PaymentEvidence

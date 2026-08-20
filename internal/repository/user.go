@@ -19,6 +19,7 @@ type AppUserRepo struct{}
 func NewAppUserRepo() *AppUserRepo { return &AppUserRepo{} }
 
 type AppUserListFilter struct {
+	ListSort           ListSort
 	Keyword            string
 	ClientCountry      string
 	ServerCountry      string
@@ -272,7 +273,12 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(user.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": user.ID}, user.ID, user.ID.Desc())
+	rows, err := dao.Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
 }
 

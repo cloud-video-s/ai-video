@@ -156,8 +156,12 @@ func (s *UserService) Delete(ctx context.Context, id, currentUserID uint64) erro
 	return nil
 }
 
-func (s *UserService) List(ctx context.Context, page, pageSize int) ([]repository.AdminRecord, int64, error) {
-	return s.userRepo.PageList(ctx, page, pageSize, nil)
+func (s *UserService) List(ctx context.Context, page, pageSize int, req *ListSortRequest) ([]repository.AdminRecord, int64, error) {
+	return s.userRepo.PageList(ctx, page, pageSize, &repository.QueryOptions{ListSort: req.listSort()})
+}
+
+func (s *UserService) ListOptions(ctx context.Context) ([]repository.AdminOption, error) {
+	return s.userRepo.ListOptions(ctx)
 }
 
 func (s *UserService) GetProfile(ctx context.Context, id uint64) (*repository.AdminRecord, error) {

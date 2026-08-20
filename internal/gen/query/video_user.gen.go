@@ -78,10 +78,10 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.PackageCode = field.NewString(tableName, "package_code")
 	_videoUser.IMEI = field.NewString(tableName, "imei")
 	_videoUser.ServerCountry = field.NewString(tableName, "server_country")
-	_videoUser.Phone = field.NewString(tableName, "phone")
-	_videoUser.IsFrozen = field.NewInt8(tableName, "is_frozen")
-	_videoUser.IsBlacklisted = field.NewInt8(tableName, "is_blacklisted")
 	_videoUser.VIPLevel = field.NewUint(tableName, "vip_level")
+	_videoUser.Phone = field.NewString(tableName, "phone")
+	_videoUser.IsBlacklisted = field.NewInt8(tableName, "is_blacklisted")
+	_videoUser.IsFrozen = field.NewInt8(tableName, "is_frozen")
 	_videoUser.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUser.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUser.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -89,6 +89,72 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("Channel", "model.VideoChannel"),
+		Owner: struct {
+			field.RelationField
+			Roles struct {
+				field.RelationField
+				Menus struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Channel.Owner", "model.VideoAdmin"),
+			Roles: struct {
+				field.RelationField
+				Menus struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}
+			}{
+				RelationField: field.NewRelation("Channel.Owner.Roles", "model.VideoRole"),
+				Menus: struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}{
+					RelationField: field.NewRelation("Channel.Owner.Roles.Menus", "model.VideoMenu"),
+					ParentMenu: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Channel.Owner.Roles.Menus.ParentMenu", "model.VideoMenu"),
+					},
+					ChildMenus: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Channel.Owner.Roles.Menus.ChildMenus", "model.VideoMenu"),
+					},
+					APIs: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Channel.Owner.Roles.Menus.APIs", "model.VideoAPI"),
+					},
+				},
+			},
+		},
 	}
 
 	_videoUser.PointsLedgers = videoUserHasManyPointsLedgers{
@@ -234,10 +300,10 @@ type videoUser struct {
 	PackageCode              field.String // package identifier
 	IMEI                     field.String // imei
 	ServerCountry            field.String // ip获取国家
-	Phone                    field.String // 手机号
-	IsFrozen                 field.Int8   // 是否冻结 1是 0否
-	IsBlacklisted            field.Int8   // 是否拉黑 1是 0否
 	VIPLevel                 field.Uint   // VIP等级
+	Phone                    field.String // 手机号
+	IsBlacklisted            field.Int8   // 是否拉黑 1是 0否
+	IsFrozen                 field.Int8   // 是否冻结 1是 0否
 	CreatedAt                field.Time
 	UpdatedAt                field.Time
 	DeletedAt                field.Field
@@ -314,10 +380,10 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.PackageCode = field.NewString(table, "package_code")
 	v.IMEI = field.NewString(table, "imei")
 	v.ServerCountry = field.NewString(table, "server_country")
-	v.Phone = field.NewString(table, "phone")
-	v.IsFrozen = field.NewInt8(table, "is_frozen")
-	v.IsBlacklisted = field.NewInt8(table, "is_blacklisted")
 	v.VIPLevel = field.NewUint(table, "vip_level")
+	v.Phone = field.NewString(table, "phone")
+	v.IsBlacklisted = field.NewInt8(table, "is_blacklisted")
+	v.IsFrozen = field.NewInt8(table, "is_frozen")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -398,10 +464,10 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["package_code"] = v.PackageCode
 	v.fieldMap["imei"] = v.IMEI
 	v.fieldMap["server_country"] = v.ServerCountry
-	v.fieldMap["phone"] = v.Phone
-	v.fieldMap["is_frozen"] = v.IsFrozen
-	v.fieldMap["is_blacklisted"] = v.IsBlacklisted
 	v.fieldMap["vip_level"] = v.VIPLevel
+	v.fieldMap["phone"] = v.Phone
+	v.fieldMap["is_blacklisted"] = v.IsBlacklisted
+	v.fieldMap["is_frozen"] = v.IsFrozen
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
@@ -434,6 +500,25 @@ type videoUserBelongsToChannel struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	Owner struct {
+		field.RelationField
+		Roles struct {
+			field.RelationField
+			Menus struct {
+				field.RelationField
+				ParentMenu struct {
+					field.RelationField
+				}
+				ChildMenus struct {
+					field.RelationField
+				}
+				APIs struct {
+					field.RelationField
+				}
+			}
+		}
+	}
 }
 
 func (a videoUserBelongsToChannel) Where(conds ...field.Expr) *videoUserBelongsToChannel {

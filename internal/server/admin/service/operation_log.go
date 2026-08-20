@@ -16,6 +16,7 @@ func NewOperationLogService() *OperationLogService {
 }
 
 type ListOperationLogRequest struct {
+	ListSortRequest
 	Username  string
 	Module    string
 	ClientIP  string
@@ -30,8 +31,9 @@ type ListOperationLogRequest struct {
 // Search can't express) go in Conds.
 func (s *OperationLogService) List(ctx context.Context, page, pageSize int, req *ListOperationLogRequest) ([]model.VideoOperationLog, int64, error) {
 	q := &repository.QueryOptions{
-		Where: map[string]interface{}{},
-		Order: []string{"id DESC"},
+		ListSort: req.listSort(),
+		Where:    map[string]interface{}{},
+		Order:    []string{"id DESC"},
 	}
 	if req.Username != "" {
 		q.Where["username"] = req.Username

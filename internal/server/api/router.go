@@ -31,6 +31,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	generationHandler := handler.NewGenerationHandler()
 	vipHandler := handler.NewVipHandler()
 	paymentHandler := handler.NewPaymentHandler()
+	adjustAttributionHandler := handler.NewAdjustAttributionHandler()
 	uploadRepo := repository.NewUploadRepo()
 	uploadRecordHandler := handler.NewUploadHandler()
 	directUploadHandler := upload.NewHTTPHandler(
@@ -51,6 +52,11 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	// App Store Server Notifications V2 Webhook（公开端点，Apple 服务器调用，无需鉴权）
 	// 该 URL 必须在 App Store Connect → App → 服务中配置为版本 2 的通知地址。
 	rg.POST("/payments/apple/notification", paymentHandler.AppleServerNotification)
+
+	// Public Adjust server callback. It is authenticated with the dedicated
+	// callback token rather than an app user's Bearer token.
+	rg.GET("/attributions/adjust/callback", adjustAttributionHandler.Callback)
+	rg.POST("/attributions/adjust/callback", adjustAttributionHandler.Callback)
 
 	authenticated := rg.Group("", middleware.ApiAuth(repository.NewAppUserRepo()))
 	{
@@ -119,6 +125,11 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		conf := authenticated.Group("/configs")
 		{
 			conf.GET("/list", configHandler.Public)
+		}
+
+		attributions := authenticated.Group("/attributions")
+		{
+			attributions.POST("/adjust/report", adjustAttributionHandler.ReportApp)
 		}
 
 	}

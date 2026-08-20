@@ -36,6 +36,7 @@ func NewTemplateTypeService() *TemplateTypeService {
 }
 
 type ListTemplateTypeRequest struct {
+	ListSortRequest
 	Status      *int8  `form:"status" binding:"omitempty,oneof=0 1"`
 	PositionKey string `form:"position_key" binding:"omitempty,max=255"`
 	CountryID   uint64 `form:"country_id"`
@@ -66,7 +67,8 @@ type TemplateTypePayload struct {
 
 func (s *TemplateTypeService) List(ctx context.Context, page, pageSize int, req *ListTemplateTypeRequest) ([]repository.TemplateTypeRecord, int64, error) {
 	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.TemplateTypeListFilter{
-		Status: req.Status, PositionKey: strings.TrimSpace(req.PositionKey),
+		ListSort: req.listSort(),
+		Status:   req.Status, PositionKey: strings.TrimSpace(req.PositionKey),
 		CountryID: req.CountryID, AppCode: strings.TrimSpace(req.AppCode),
 		PackageCode: strings.TrimSpace(req.PackageCode), VersionCode: strings.TrimSpace(req.VersionCode),
 		Keyword: strings.TrimSpace(req.Keyword),
@@ -305,6 +307,7 @@ func NewTemplateService() *TemplateService {
 }
 
 type ListTemplateRequest struct {
+	ListSortRequest
 	TemplateTypeID       uint64 `form:"template_type_id"`
 	LegacyTemplateTypeID uint64 `form:"video_template_type_id"`
 	ModelID              uint64 `form:"model_id"`
@@ -337,6 +340,7 @@ func (s *TemplateService) List(ctx context.Context, page, pageSize int, req *Lis
 		templateTypeID = req.LegacyTemplateTypeID
 	}
 	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.TemplateListFilter{
+		ListSort:       req.listSort(),
 		TemplateTypeID: templateTypeID,
 		ModelID:        req.ModelID,
 		PositionKey:    strings.TrimSpace(req.PositionKey),

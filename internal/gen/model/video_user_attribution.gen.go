@@ -12,34 +12,48 @@ import (
 
 const TableNameVideoUserAttribution = "video_user_attribution"
 
-// VideoUserAttribution mapped from table <video_user_attribution>
+// VideoUserAttribution 用户归因表
 type VideoUserAttribution struct {
-	ID                        uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:attribution ID" json:"id"`                                                            // attribution ID
-	UserID                    uint64         `gorm:"column:user_id;type:bigint unsigned;not null;uniqueIndex:idx_video_user_attribution_user_id,priority:1;comment:client user ID" json:"user_id"`             // client user ID
-	ChannelCode               string         `gorm:"column:channel_code;type:varchar(64);not null;index:idx_video_user_attribution_channel_code,priority:1;comment:channel code snapshot" json:"channel_code"` // channel code snapshot
-	OAID                      string         `gorm:"column:oaid;type:varchar(128);not null;index:idx_video_user_attribution_oa_id,priority:1;comment:OAID" json:"oaid"`                                        // OAID
-	IMEI                      string         `gorm:"column:imei;type:varchar(128);not null;index:idx_video_user_attribution_imei,priority:1;comment:IMEI" json:"imei"`                                         // IMEI
-	AndroidID                 string         `gorm:"column:android_id;type:varchar(128);not null;index:idx_video_user_attribution_android_id,priority:1;comment:Android ID" json:"android_id"`                 // Android ID
-	IP                        string         `gorm:"column:ip;type:varchar(64);not null;index:idx_video_user_attribution_ip,priority:1;comment:attribution IP" json:"ip"`                                      // attribution IP
-	UserAgent                 string         `gorm:"column:user_agent;type:varchar(1024);not null;comment:user agent" json:"user_agent"`                                                                       // user agent
-	ActivationCallbackCount   uint64         `gorm:"column:activation_callback_count;type:bigint unsigned;not null" json:"activation_callback_count"`
-	ActivationDeductCount     uint64         `gorm:"column:activation_deduct_count;type:bigint unsigned;not null" json:"activation_deduct_count"`
-	KeyBehaviorCallbackCount  uint64         `gorm:"column:key_behavior_callback_count;type:bigint unsigned;not null" json:"key_behavior_callback_count"`
-	KeyBehaviorDeductCount    uint64         `gorm:"column:key_behavior_deduct_count;type:bigint unsigned;not null" json:"key_behavior_deduct_count"`
-	PaymentCallbackCount      uint64         `gorm:"column:payment_callback_count;type:bigint unsigned;not null" json:"payment_callback_count"`
-	PaymentDeductCount        uint64         `gorm:"column:payment_deduct_count;type:bigint unsigned;not null" json:"payment_deduct_count"`
-	FirstPaymentCallbackCount uint64         `gorm:"column:first_payment_callback_count;type:bigint unsigned;not null" json:"first_payment_callback_count"`
-	FirstPaymentDeductCount   uint64         `gorm:"column:first_payment_deduct_count;type:bigint unsigned;not null" json:"first_payment_deduct_count"`
-	RegistrationCallbackCount uint64         `gorm:"column:registration_callback_count;type:bigint unsigned;not null" json:"registration_callback_count"`
-	RegistrationDeductCount   uint64         `gorm:"column:registration_deduct_count;type:bigint unsigned;not null" json:"registration_deduct_count"`
-	AttributedAt              *time.Time     `gorm:"column:attributed_at;type:datetime(3);index:idx_video_user_attribution_attributed_at,priority:1;comment:attribution time" json:"attributed_at"`                      // attribution time
-	LastOperatedAt            *time.Time     `gorm:"column:last_operated_at;type:datetime(3);index:idx_video_user_attribution_last_operated_at,priority:1;comment:last callback or deduct time" json:"last_operated_at"` // last callback or deduct time
-	Remark                    string         `gorm:"column:remark;type:varchar(255);not null" json:"remark"`
-	CreatedAt                 time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_video_user_attribution_created_at,priority:1" json:"created_at"`
-	UpdatedAt                 time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt                 gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_user_attribution_deleted_at,priority:1" json:"deleted_at"`
+	ID                        uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:自增主键ID" json:"id"`                                                 // 自增主键ID
+	AppCode                   string         `gorm:"column:app_code;type:varchar(100);not null;comment:appcode" json:"app_code"`                                                            // appcode
+	UserID                    uint64         `gorm:"column:user_id;type:bigint unsigned;uniqueIndex:uk_user_id,priority:1;comment:客户端用户ID（关联用户表；可为空，非空时唯一）" json:"user_id"`                 // 客户端用户ID（关联用户表；可为空，非空时唯一）
+	AdjustAdid                string         `gorm:"column:adjust_adid;type:varchar(64);not null;uniqueIndex:uk_adjust_adid,priority:1;comment:Adjust设备ID（唯一标识，用于融合匹配）" json:"adjust_adid"` // Adjust设备ID（唯一标识，用于融合匹配）
+	ChannelID                 uint64         `gorm:"column:channel_id;type:bigint unsigned;not null;comment:渠道ID" json:"channel_id"`                                                        // 渠道ID
+	MediaID                   uint64         `gorm:"column:media_id;type:bigint unsigned;not null;comment:媒体ID" json:"media_id"`                                                            // 媒体ID
+	AttributedAdID            uint64         `gorm:"column:attributed_ad_id;type:bigint unsigned;not null;comment:归因广告点ID，未归因到为0" json:"attributed_ad_id"`                                  // 归因广告点ID，未归因到为0
+	AttributedPointID         uint64         `gorm:"column:attributed_point_id;type:bigint unsigned;not null;comment:归因点ID，未归因到为0" json:"attributed_point_id"`                              // 归因点ID，未归因到为0
+	OAID                      string         `gorm:"column:oaid;type:varchar(128);not null;index:idx_oaid,priority:1;comment:OAID（Android设备匿名标识）" json:"oaid"`                              // OAID（Android设备匿名标识）
+	IMEI                      string         `gorm:"column:imei;type:varchar(128);not null;index:idx_imei,priority:1;comment:IMEI（国际移动设备识别码）" json:"imei"`                                  // IMEI（国际移动设备识别码）
+	AndroidID                 string         `gorm:"column:android_id;type:varchar(128);not null;comment:Android ID" json:"android_id"`                                                     // Android ID
+	GoogleAdID                string         `gorm:"column:google_ad_id;type:varchar(128);not null;index:idx_google_ad_id,priority:1;comment:Google广告ID（GAID）" json:"google_ad_id"`         // Google广告ID（GAID）
+	ActivityKind              string         `gorm:"column:activity_kind;type:varchar(64);not null;comment:活动类型（如click/install/reattribution）" json:"activity_kind"`                        // 活动类型（如click/install/reattribution）
+	AttributionType           string         `gorm:"column:attribution_type;type:varchar(32);not null;comment:归因类型（如click/impression）" json:"attribution_type"`                             // 归因类型（如click/impression）
+	IsOrganic                 uint32         `gorm:"column:is_organic;type:tinyint unsigned;not null;comment:是否自然量（0-否，1-是）" json:"is_organic"`                                             // 是否自然量（0-否，1-是）
+	Reattributed              uint32         `gorm:"column:reattributed;type:tinyint unsigned;not null;comment:是否重归因（0-否，1-是）" json:"reattributed"`                                         // 是否重归因（0-否，1-是）
+	IsRedownload              uint32         `gorm:"column:is_redownload;type:tinyint unsigned;not null;comment:是否重新下载（0-否，1-是）" json:"is_redownload"`                                      // 是否重新下载（0-否，1-是）
+	ClickTime                 time.Time      `gorm:"column:click_time;type:datetime(3);comment:点击时间（毫秒精度）" json:"click_time"`                                                               // 点击时间（毫秒精度）
+	InstallTime               time.Time      `gorm:"column:install_time;type:datetime(3);index:idx_install_time,priority:1;comment:安装时间（毫秒精度）" json:"install_time"`                         // 安装时间（毫秒精度）
+	AttributedAt              *time.Time     `gorm:"column:attributed_at;type:datetime(3);comment:首次归因时间（用户归因锁定时间）" json:"attributed_at"`                                                   // 首次归因时间（用户归因锁定时间）
+	ReattributedAt            time.Time      `gorm:"column:reattributed_at;type:datetime(3);comment:重归因时间" json:"reattributed_at"`                                                          // 重归因时间
+	AttributionUpdatedAt      time.Time      `gorm:"column:attribution_updated_at;type:datetime(3);comment:归因信息最后更新时间" json:"attribution_updated_at"`                                       // 归因信息最后更新时间
+	LastOperatedAt            *time.Time     `gorm:"column:last_operated_at;type:datetime(3);comment:最后操作时间（最近一次回调或扣费）" json:"last_operated_at"`                                            // 最后操作时间（最近一次回调或扣费）
+	AdjustCreatedAt           time.Time      `gorm:"column:adjust_created_at;type:datetime(3);comment:Adjust侧原始记录创建时间" json:"adjust_created_at"`                                            // Adjust侧原始记录创建时间
+	ActivationCallbackCount   uint64         `gorm:"column:activation_callback_count;type:bigint unsigned;not null;comment:激活回调累计次数" json:"activation_callback_count"`                      // 激活回调累计次数
+	ActivationDeductCount     uint64         `gorm:"column:activation_deduct_count;type:bigint unsigned;not null;comment:激活扣费累计次数" json:"activation_deduct_count"`                          // 激活扣费累计次数
+	KeyBehaviorCallbackCount  uint64         `gorm:"column:key_behavior_callback_count;type:bigint unsigned;not null;comment:关键行为回调累计次数" json:"key_behavior_callback_count"`                // 关键行为回调累计次数
+	KeyBehaviorDeductCount    uint64         `gorm:"column:key_behavior_deduct_count;type:bigint unsigned;not null;comment:关键行为扣费累计次数" json:"key_behavior_deduct_count"`                    // 关键行为扣费累计次数
+	PaymentCallbackCount      uint64         `gorm:"column:payment_callback_count;type:bigint unsigned;not null;comment:付费回调累计次数" json:"payment_callback_count"`                            // 付费回调累计次数
+	PaymentDeductCount        uint64         `gorm:"column:payment_deduct_count;type:bigint unsigned;not null;comment:付费扣费累计次数" json:"payment_deduct_count"`                                // 付费扣费累计次数
+	FirstPaymentCallbackCount uint64         `gorm:"column:first_payment_callback_count;type:bigint unsigned;not null;comment:首次付费回调累计次数" json:"first_payment_callback_count"`              // 首次付费回调累计次数
+	FirstPaymentDeductCount   uint64         `gorm:"column:first_payment_deduct_count;type:bigint unsigned;not null;comment:首次付费扣费累计次数" json:"first_payment_deduct_count"`                  // 首次付费扣费累计次数
+	RegistrationCallbackCount uint64         `gorm:"column:registration_callback_count;type:bigint unsigned;not null;comment:注册回调累计次数" json:"registration_callback_count"`                  // 注册回调累计次数
+	RegistrationDeductCount   uint64         `gorm:"column:registration_deduct_count;type:bigint unsigned;not null;comment:注册扣费累计次数" json:"registration_deduct_count"`                      // 注册扣费累计次数
+	Remark                    string         `gorm:"column:remark;type:varchar(255);not null;comment:备注信息" json:"remark"`                                                                   // 备注信息
+	CreatedAt                 time.Time      `gorm:"column:created_at;type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);comment:记录创建时间" json:"created_at"`                             // 记录创建时间
+	UpdatedAt                 time.Time      `gorm:"column:updated_at;type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);comment:记录更新时间" json:"updated_at"`                             // 记录更新时间
+	DeletedAt                 gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_deleted_at,priority:1;comment:删除时间（软删除）" json:"deleted_at"`                                // 删除时间（软删除）
 	User                      VideoUser      `gorm:"foreignKey:UserID;references:ID" json:"user"`
-	Channel                   VideoChannel   `gorm:"foreignKey:ChannelCode;references:ChannelCode" json:"channel"`
+	Channel                   VideoChannel   `gorm:"foreignKey:ChannelID;references:ID" json:"channel"`
 }
 
 // TableName VideoUserAttribution's table name

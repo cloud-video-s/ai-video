@@ -14,6 +14,7 @@ type UserPointsLedgerRepo struct{}
 func NewUserPointsLedgerRepo() *UserPointsLedgerRepo { return &UserPointsLedgerRepo{} }
 
 type UserPointsLedgerFilter struct {
+	ListSort     ListSort
 	UserID       uint64
 	Direction    int8
 	SourceType   uint32
@@ -31,8 +32,8 @@ type UserPointsLedgerSummary struct {
 
 type UserPointsLedgerRecord struct {
 	model.VideoUserPointsLedger
-	User          model.VideoUser           `json:"user"`
-	PointsPackage *model.VideoPointsPackage `json:"points_package,omitempty"`
+	User          model.VideoUser   `json:"user"`
+	PointsPackage *model.VideoPoint `json:"points_package,omitempty"`
 }
 
 func (r *UserPointsLedgerRepo) Create(ctx context.Context, item *model.VideoUserPointsLedger) error {
@@ -88,7 +89,12 @@ func (r *UserPointsLedgerRepo) PageList(ctx context.Context, page, pageSize int,
 	).Scan(&summary); err != nil {
 		return nil, 0, UserPointsLedgerSummary{}, err
 	}
-	rows, err := dao.Select(ledger.ALL).Order(ledger.OccurredAt.Desc(), ledger.ID.Desc()).
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": ledger.ID}, ledger.ID, ledger.OccurredAt.Desc(), ledger.ID.Desc())
+	rows, err := dao.Select(ledger.ALL).Order(order...).
 		Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, UserPointsLedgerSummary{}, err
@@ -134,9 +140,9 @@ func (r *UserPointsLedgerRepo) loadRecords(ctx context.Context, items []model.Vi
 			userByID[user.ID] = *user
 		}
 	}
-	packageByID := make(map[uint64]*model.VideoPointsPackage, len(packageIDs))
+	packageByID := make(map[uint64]*model.VideoPoint, len(packageIDs))
 	if len(packageIDs) > 0 {
-		packages, err := q.VideoPointsPackage.WithContext(ctx).Where(q.VideoPointsPackage.ID.In(packageIDs...)).Find()
+		packages, err := q.VideoPoint.WithContext(ctx).Where(q.VideoPoint.ID.In(packageIDs...)).Find()
 		if err != nil {
 			return nil, err
 		}

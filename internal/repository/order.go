@@ -30,6 +30,7 @@ type OrderAdminFilter struct {
 	Status      uint32
 	PayType     uint32
 	Keyword     string
+	PayChannel  uint32
 	CreatedFrom *time.Time
 	CreatedTo   *time.Time
 }
@@ -190,7 +191,7 @@ func (r *OrderRepo) PageAdmin(ctx context.Context, page, pageSize int, filter *O
 	order := qFrom(ctx).VideoOrder
 	// 3. 按货币分组汇总（仅分组列 + 聚合函数，符合 ONLY_FULL_GROUP_BY）
 	amounts := make([]OrderAdminCurrencySummary, 0)
-	if err := buildDao(ctx, filter).Select(
+	if err = buildDao(ctx, filter).Select(
 		order.Currency,
 		field.NewUnsafeFieldRaw("COALESCE(SUM(video_order.payable_amount), 0)").As("payable_total"),
 		field.NewUnsafeFieldRaw("COALESCE(SUM(video_order.paid_amount), 0)").As("paid_total"),
@@ -250,6 +251,9 @@ func buildDao(ctx context.Context, filter *OrderAdminFilter) query.IVideoOrderDo
 	}
 	if filter.PayType > 0 {
 		dao = dao.Where(order.PayType.Eq(filter.PayType))
+	}
+	if filter.PayChannel > 0 {
+		dao = dao.Where(order.PayChannel.Eq(filter.PayChannel))
 	}
 	if filter.CreatedFrom != nil {
 		dao = dao.Where(order.CreatedAt.Gte(*filter.CreatedFrom))

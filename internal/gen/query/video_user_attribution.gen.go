@@ -29,13 +29,29 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 	tableName := _videoUserAttribution.videoUserAttributionDo.TableName()
 	_videoUserAttribution.ALL = field.NewAsterisk(tableName)
 	_videoUserAttribution.ID = field.NewUint64(tableName, "id")
+	_videoUserAttribution.AppCode = field.NewString(tableName, "app_code")
 	_videoUserAttribution.UserID = field.NewUint64(tableName, "user_id")
-	_videoUserAttribution.ChannelCode = field.NewString(tableName, "channel_code")
+	_videoUserAttribution.AdjustAdid = field.NewString(tableName, "adjust_adid")
+	_videoUserAttribution.ChannelID = field.NewUint64(tableName, "channel_id")
+	_videoUserAttribution.MediaID = field.NewUint64(tableName, "media_id")
+	_videoUserAttribution.AttributedAdID = field.NewUint64(tableName, "attributed_ad_id")
+	_videoUserAttribution.AttributedPointID = field.NewUint64(tableName, "attributed_point_id")
 	_videoUserAttribution.OAID = field.NewString(tableName, "oaid")
 	_videoUserAttribution.IMEI = field.NewString(tableName, "imei")
 	_videoUserAttribution.AndroidID = field.NewString(tableName, "android_id")
-	_videoUserAttribution.IP = field.NewString(tableName, "ip")
-	_videoUserAttribution.UserAgent = field.NewString(tableName, "user_agent")
+	_videoUserAttribution.GoogleAdID = field.NewString(tableName, "google_ad_id")
+	_videoUserAttribution.ActivityKind = field.NewString(tableName, "activity_kind")
+	_videoUserAttribution.AttributionType = field.NewString(tableName, "attribution_type")
+	_videoUserAttribution.IsOrganic = field.NewUint32(tableName, "is_organic")
+	_videoUserAttribution.Reattributed = field.NewUint32(tableName, "reattributed")
+	_videoUserAttribution.IsRedownload = field.NewUint32(tableName, "is_redownload")
+	_videoUserAttribution.ClickTime = field.NewTime(tableName, "click_time")
+	_videoUserAttribution.InstallTime = field.NewTime(tableName, "install_time")
+	_videoUserAttribution.AttributedAt = field.NewTime(tableName, "attributed_at")
+	_videoUserAttribution.ReattributedAt = field.NewTime(tableName, "reattributed_at")
+	_videoUserAttribution.AttributionUpdatedAt = field.NewTime(tableName, "attribution_updated_at")
+	_videoUserAttribution.LastOperatedAt = field.NewTime(tableName, "last_operated_at")
+	_videoUserAttribution.AdjustCreatedAt = field.NewTime(tableName, "adjust_created_at")
 	_videoUserAttribution.ActivationCallbackCount = field.NewUint64(tableName, "activation_callback_count")
 	_videoUserAttribution.ActivationDeductCount = field.NewUint64(tableName, "activation_deduct_count")
 	_videoUserAttribution.KeyBehaviorCallbackCount = field.NewUint64(tableName, "key_behavior_callback_count")
@@ -46,8 +62,6 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 	_videoUserAttribution.FirstPaymentDeductCount = field.NewUint64(tableName, "first_payment_deduct_count")
 	_videoUserAttribution.RegistrationCallbackCount = field.NewUint64(tableName, "registration_callback_count")
 	_videoUserAttribution.RegistrationDeductCount = field.NewUint64(tableName, "registration_deduct_count")
-	_videoUserAttribution.AttributedAt = field.NewTime(tableName, "attributed_at")
-	_videoUserAttribution.LastOperatedAt = field.NewTime(tableName, "last_operated_at")
 	_videoUserAttribution.Remark = field.NewString(tableName, "remark")
 	_videoUserAttribution.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUserAttribution.UpdatedAt = field.NewTime(tableName, "updated_at")
@@ -58,8 +72,92 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 		RelationField: field.NewRelation("User", "model.VideoUser"),
 		Channel: struct {
 			field.RelationField
+			Owner struct {
+				field.RelationField
+				Roles struct {
+					field.RelationField
+					Menus struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}
+				}
+			}
 		}{
 			RelationField: field.NewRelation("User.Channel", "model.VideoChannel"),
+			Owner: struct {
+				field.RelationField
+				Roles struct {
+					field.RelationField
+					Menus struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}
+				}
+			}{
+				RelationField: field.NewRelation("User.Channel.Owner", "model.VideoAdmin"),
+				Roles: struct {
+					field.RelationField
+					Menus struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}
+				}{
+					RelationField: field.NewRelation("User.Channel.Owner.Roles", "model.VideoRole"),
+					Menus: struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}{
+						RelationField: field.NewRelation("User.Channel.Owner.Roles.Menus", "model.VideoMenu"),
+						ParentMenu: struct {
+							field.RelationField
+						}{
+							RelationField: field.NewRelation("User.Channel.Owner.Roles.Menus.ParentMenu", "model.VideoMenu"),
+						},
+						ChildMenus: struct {
+							field.RelationField
+						}{
+							RelationField: field.NewRelation("User.Channel.Owner.Roles.Menus.ChildMenus", "model.VideoMenu"),
+						},
+						APIs: struct {
+							field.RelationField
+						}{
+							RelationField: field.NewRelation("User.Channel.Owner.Roles.Menus.APIs", "model.VideoAPI"),
+						},
+					},
+				},
+			},
 		},
 		PointsLedgers: struct {
 			field.RelationField
@@ -175,6 +273,72 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("Channel", "model.VideoChannel"),
+		Owner: struct {
+			field.RelationField
+			Roles struct {
+				field.RelationField
+				Menus struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Channel.Owner", "model.VideoAdmin"),
+			Roles: struct {
+				field.RelationField
+				Menus struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}
+			}{
+				RelationField: field.NewRelation("Channel.Owner.Roles", "model.VideoRole"),
+				Menus: struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}{
+					RelationField: field.NewRelation("Channel.Owner.Roles.Menus", "model.VideoMenu"),
+					ParentMenu: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Channel.Owner.Roles.Menus.ParentMenu", "model.VideoMenu"),
+					},
+					ChildMenus: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Channel.Owner.Roles.Menus.ChildMenus", "model.VideoMenu"),
+					},
+					APIs: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Channel.Owner.Roles.Menus.APIs", "model.VideoAPI"),
+					},
+				},
+			},
+		},
 	}
 
 	_videoUserAttribution.fillFieldMap()
@@ -182,34 +346,49 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 	return _videoUserAttribution
 }
 
+// videoUserAttribution 用户归因表
 type videoUserAttribution struct {
 	videoUserAttributionDo videoUserAttributionDo
 
 	ALL                       field.Asterisk
-	ID                        field.Uint64 // attribution ID
-	UserID                    field.Uint64 // client user ID
-	ChannelCode               field.String // channel code snapshot
-	OAID                      field.String // OAID
-	IMEI                      field.String // IMEI
+	ID                        field.Uint64 // 自增主键ID
+	AppCode                   field.String // appcode
+	UserID                    field.Uint64 // 客户端用户ID（关联用户表；可为空，非空时唯一）
+	AdjustAdid                field.String // Adjust设备ID（唯一标识，用于融合匹配）
+	ChannelID                 field.Uint64 // 渠道ID
+	MediaID                   field.Uint64 // 媒体ID
+	AttributedAdID            field.Uint64 // 归因广告点ID，未归因到为0
+	AttributedPointID         field.Uint64 // 归因点ID，未归因到为0
+	OAID                      field.String // OAID（Android设备匿名标识）
+	IMEI                      field.String // IMEI（国际移动设备识别码）
 	AndroidID                 field.String // Android ID
-	IP                        field.String // attribution IP
-	UserAgent                 field.String // user agent
-	ActivationCallbackCount   field.Uint64
-	ActivationDeductCount     field.Uint64
-	KeyBehaviorCallbackCount  field.Uint64
-	KeyBehaviorDeductCount    field.Uint64
-	PaymentCallbackCount      field.Uint64
-	PaymentDeductCount        field.Uint64
-	FirstPaymentCallbackCount field.Uint64
-	FirstPaymentDeductCount   field.Uint64
-	RegistrationCallbackCount field.Uint64
-	RegistrationDeductCount   field.Uint64
-	AttributedAt              field.Time // attribution time
-	LastOperatedAt            field.Time // last callback or deduct time
-	Remark                    field.String
-	CreatedAt                 field.Time
-	UpdatedAt                 field.Time
-	DeletedAt                 field.Field
+	GoogleAdID                field.String // Google广告ID（GAID）
+	ActivityKind              field.String // 活动类型（如click/install/reattribution）
+	AttributionType           field.String // 归因类型（如click/impression）
+	IsOrganic                 field.Uint32 // 是否自然量（0-否，1-是）
+	Reattributed              field.Uint32 // 是否重归因（0-否，1-是）
+	IsRedownload              field.Uint32 // 是否重新下载（0-否，1-是）
+	ClickTime                 field.Time   // 点击时间（毫秒精度）
+	InstallTime               field.Time   // 安装时间（毫秒精度）
+	AttributedAt              field.Time   // 首次归因时间（用户归因锁定时间）
+	ReattributedAt            field.Time   // 重归因时间
+	AttributionUpdatedAt      field.Time   // 归因信息最后更新时间
+	LastOperatedAt            field.Time   // 最后操作时间（最近一次回调或扣费）
+	AdjustCreatedAt           field.Time   // Adjust侧原始记录创建时间
+	ActivationCallbackCount   field.Uint64 // 激活回调累计次数
+	ActivationDeductCount     field.Uint64 // 激活扣费累计次数
+	KeyBehaviorCallbackCount  field.Uint64 // 关键行为回调累计次数
+	KeyBehaviorDeductCount    field.Uint64 // 关键行为扣费累计次数
+	PaymentCallbackCount      field.Uint64 // 付费回调累计次数
+	PaymentDeductCount        field.Uint64 // 付费扣费累计次数
+	FirstPaymentCallbackCount field.Uint64 // 首次付费回调累计次数
+	FirstPaymentDeductCount   field.Uint64 // 首次付费扣费累计次数
+	RegistrationCallbackCount field.Uint64 // 注册回调累计次数
+	RegistrationDeductCount   field.Uint64 // 注册扣费累计次数
+	Remark                    field.String // 备注信息
+	CreatedAt                 field.Time   // 记录创建时间
+	UpdatedAt                 field.Time   // 记录更新时间
+	DeletedAt                 field.Field  // 删除时间（软删除）
 	User                      videoUserAttributionBelongsToUser
 
 	Channel videoUserAttributionBelongsToChannel
@@ -230,13 +409,29 @@ func (v videoUserAttribution) As(alias string) *videoUserAttribution {
 func (v *videoUserAttribution) updateTableName(table string) *videoUserAttribution {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
+	v.AppCode = field.NewString(table, "app_code")
 	v.UserID = field.NewUint64(table, "user_id")
-	v.ChannelCode = field.NewString(table, "channel_code")
+	v.AdjustAdid = field.NewString(table, "adjust_adid")
+	v.ChannelID = field.NewUint64(table, "channel_id")
+	v.MediaID = field.NewUint64(table, "media_id")
+	v.AttributedAdID = field.NewUint64(table, "attributed_ad_id")
+	v.AttributedPointID = field.NewUint64(table, "attributed_point_id")
 	v.OAID = field.NewString(table, "oaid")
 	v.IMEI = field.NewString(table, "imei")
 	v.AndroidID = field.NewString(table, "android_id")
-	v.IP = field.NewString(table, "ip")
-	v.UserAgent = field.NewString(table, "user_agent")
+	v.GoogleAdID = field.NewString(table, "google_ad_id")
+	v.ActivityKind = field.NewString(table, "activity_kind")
+	v.AttributionType = field.NewString(table, "attribution_type")
+	v.IsOrganic = field.NewUint32(table, "is_organic")
+	v.Reattributed = field.NewUint32(table, "reattributed")
+	v.IsRedownload = field.NewUint32(table, "is_redownload")
+	v.ClickTime = field.NewTime(table, "click_time")
+	v.InstallTime = field.NewTime(table, "install_time")
+	v.AttributedAt = field.NewTime(table, "attributed_at")
+	v.ReattributedAt = field.NewTime(table, "reattributed_at")
+	v.AttributionUpdatedAt = field.NewTime(table, "attribution_updated_at")
+	v.LastOperatedAt = field.NewTime(table, "last_operated_at")
+	v.AdjustCreatedAt = field.NewTime(table, "adjust_created_at")
 	v.ActivationCallbackCount = field.NewUint64(table, "activation_callback_count")
 	v.ActivationDeductCount = field.NewUint64(table, "activation_deduct_count")
 	v.KeyBehaviorCallbackCount = field.NewUint64(table, "key_behavior_callback_count")
@@ -247,8 +442,6 @@ func (v *videoUserAttribution) updateTableName(table string) *videoUserAttributi
 	v.FirstPaymentDeductCount = field.NewUint64(table, "first_payment_deduct_count")
 	v.RegistrationCallbackCount = field.NewUint64(table, "registration_callback_count")
 	v.RegistrationDeductCount = field.NewUint64(table, "registration_deduct_count")
-	v.AttributedAt = field.NewTime(table, "attributed_at")
-	v.LastOperatedAt = field.NewTime(table, "last_operated_at")
 	v.Remark = field.NewString(table, "remark")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
@@ -281,15 +474,31 @@ func (v *videoUserAttribution) GetFieldByName(fieldName string) (field.OrderExpr
 }
 
 func (v *videoUserAttribution) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 26)
+	v.fieldMap = make(map[string]field.Expr, 40)
 	v.fieldMap["id"] = v.ID
+	v.fieldMap["app_code"] = v.AppCode
 	v.fieldMap["user_id"] = v.UserID
-	v.fieldMap["channel_code"] = v.ChannelCode
+	v.fieldMap["adjust_adid"] = v.AdjustAdid
+	v.fieldMap["channel_id"] = v.ChannelID
+	v.fieldMap["media_id"] = v.MediaID
+	v.fieldMap["attributed_ad_id"] = v.AttributedAdID
+	v.fieldMap["attributed_point_id"] = v.AttributedPointID
 	v.fieldMap["oaid"] = v.OAID
 	v.fieldMap["imei"] = v.IMEI
 	v.fieldMap["android_id"] = v.AndroidID
-	v.fieldMap["ip"] = v.IP
-	v.fieldMap["user_agent"] = v.UserAgent
+	v.fieldMap["google_ad_id"] = v.GoogleAdID
+	v.fieldMap["activity_kind"] = v.ActivityKind
+	v.fieldMap["attribution_type"] = v.AttributionType
+	v.fieldMap["is_organic"] = v.IsOrganic
+	v.fieldMap["reattributed"] = v.Reattributed
+	v.fieldMap["is_redownload"] = v.IsRedownload
+	v.fieldMap["click_time"] = v.ClickTime
+	v.fieldMap["install_time"] = v.InstallTime
+	v.fieldMap["attributed_at"] = v.AttributedAt
+	v.fieldMap["reattributed_at"] = v.ReattributedAt
+	v.fieldMap["attribution_updated_at"] = v.AttributionUpdatedAt
+	v.fieldMap["last_operated_at"] = v.LastOperatedAt
+	v.fieldMap["adjust_created_at"] = v.AdjustCreatedAt
 	v.fieldMap["activation_callback_count"] = v.ActivationCallbackCount
 	v.fieldMap["activation_deduct_count"] = v.ActivationDeductCount
 	v.fieldMap["key_behavior_callback_count"] = v.KeyBehaviorCallbackCount
@@ -300,8 +509,6 @@ func (v *videoUserAttribution) fillFieldMap() {
 	v.fieldMap["first_payment_deduct_count"] = v.FirstPaymentDeductCount
 	v.fieldMap["registration_callback_count"] = v.RegistrationCallbackCount
 	v.fieldMap["registration_deduct_count"] = v.RegistrationDeductCount
-	v.fieldMap["attributed_at"] = v.AttributedAt
-	v.fieldMap["last_operated_at"] = v.LastOperatedAt
 	v.fieldMap["remark"] = v.Remark
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
@@ -332,6 +539,24 @@ type videoUserAttributionBelongsToUser struct {
 
 	Channel struct {
 		field.RelationField
+		Owner struct {
+			field.RelationField
+			Roles struct {
+				field.RelationField
+				Menus struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}
+			}
+		}
 	}
 	PointsLedgers struct {
 		field.RelationField
@@ -450,6 +675,25 @@ type videoUserAttributionBelongsToChannel struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	Owner struct {
+		field.RelationField
+		Roles struct {
+			field.RelationField
+			Menus struct {
+				field.RelationField
+				ParentMenu struct {
+					field.RelationField
+				}
+				ChildMenus struct {
+					field.RelationField
+				}
+				APIs struct {
+					field.RelationField
+				}
+			}
+		}
+	}
 }
 
 func (a videoUserAttributionBelongsToChannel) Where(conds ...field.Expr) *videoUserAttributionBelongsToChannel {

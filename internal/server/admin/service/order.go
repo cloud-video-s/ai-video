@@ -82,7 +82,7 @@ func (s *OrderAdminService) List(ctx context.Context, page, pageSize int, req *L
 		return nil, 0, repository.OrderAdminSummary{}, err
 	}
 	records, total, summary, err := s.repo.PageAdmin(ctx, page, pageSize, &repository.OrderAdminFilter{
-		UserID: req.UserID, ProductType: req.ProductType,
+		UserID: req.UserID, ProductType: req.ProductType, PayChannel: 2,
 		ProductCode: strings.TrimSpace(req.ProductCode), Status: req.Status,
 		PayType: req.PayType, Keyword: strings.TrimSpace(req.Keyword),
 		CreatedFrom: from, CreatedTo: to,

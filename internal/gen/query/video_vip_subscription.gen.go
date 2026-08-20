@@ -111,6 +111,72 @@ func newVideoVipSubscription(db *gorm.DB, opts ...gen.DOOption) videoVipSubscrip
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("Channels", "model.VideoChannel"),
+		Owner: struct {
+			field.RelationField
+			Roles struct {
+				field.RelationField
+				Menus struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Channels.Owner", "model.VideoAdmin"),
+			Roles: struct {
+				field.RelationField
+				Menus struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}
+			}{
+				RelationField: field.NewRelation("Channels.Owner.Roles", "model.VideoRole"),
+				Menus: struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}{
+					RelationField: field.NewRelation("Channels.Owner.Roles.Menus", "model.VideoMenu"),
+					ParentMenu: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Channels.Owner.Roles.Menus.ParentMenu", "model.VideoMenu"),
+					},
+					ChildMenus: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Channels.Owner.Roles.Menus.ChildMenus", "model.VideoMenu"),
+					},
+					APIs: struct {
+						field.RelationField
+					}{
+						RelationField: field.NewRelation("Channels.Owner.Roles.Menus.APIs", "model.VideoAPI"),
+					},
+				},
+			},
+		},
 	}
 
 	_videoVipSubscription.fillFieldMap()
@@ -723,6 +789,25 @@ type videoVipSubscriptionManyToManyChannels struct {
 	db *gorm.DB
 
 	field.RelationField
+
+	Owner struct {
+		field.RelationField
+		Roles struct {
+			field.RelationField
+			Menus struct {
+				field.RelationField
+				ParentMenu struct {
+					field.RelationField
+				}
+				ChildMenus struct {
+					field.RelationField
+				}
+				APIs struct {
+					field.RelationField
+				}
+			}
+		}
+	}
 }
 
 func (a videoVipSubscriptionManyToManyChannels) Where(conds ...field.Expr) *videoVipSubscriptionManyToManyChannels {

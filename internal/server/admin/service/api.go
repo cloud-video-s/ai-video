@@ -36,6 +36,7 @@ type UpdateAPIRequest struct {
 }
 
 type ListAPIRequest struct {
+	ListSortRequest
 	Group   string `form:"group" binding:"omitempty,max=64"`
 	Method  string `form:"method" binding:"omitempty,oneof=GET POST PUT PATCH DELETE OPTIONS HEAD"`
 	Keyword string `form:"keyword" binding:"omitempty,max=255"`
@@ -141,7 +142,8 @@ func (s *APIService) List(ctx context.Context, page, pageSize int, req *ListAPIR
 		req = &ListAPIRequest{}
 	}
 	return s.apiRepo.PageList(ctx, page, pageSize, &repository.APIListFilter{
-		Group: strings.TrimSpace(req.Group), Method: strings.ToUpper(strings.TrimSpace(req.Method)),
+		ListSort: req.listSort(),
+		Group:    strings.TrimSpace(req.Group), Method: strings.ToUpper(strings.TrimSpace(req.Method)),
 		Keyword: strings.TrimSpace(req.Keyword),
 	})
 }

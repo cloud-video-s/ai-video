@@ -29,25 +29,152 @@ func newVideoPointsPackage(db *gorm.DB, opts ...gen.DOOption) videoPointsPackage
 	tableName := _videoPointsPackage.videoPointsPackageDo.TableName()
 	_videoPointsPackage.ALL = field.NewAsterisk(tableName)
 	_videoPointsPackage.ID = field.NewUint64(tableName, "id")
-	_videoPointsPackage.ProductCode = field.NewString(tableName, "product_code")
-	_videoPointsPackage.Name = field.NewString(tableName, "name")
-	_videoPointsPackage.Systems = field.NewString(tableName, "systems")
-	_videoPointsPackage.UserTypes = field.NewString(tableName, "user_types")
-	_videoPointsPackage.ResourceType = field.NewString(tableName, "resource_type")
-	_videoPointsPackage.Points = field.NewUint64(tableName, "points")
-	_videoPointsPackage.Currency = field.NewString(tableName, "currency")
-	_videoPointsPackage.SalePrice = field.NewFloat64(tableName, "sale_price")
-	_videoPointsPackage.ActualRevenue = field.NewFloat64(tableName, "actual_revenue")
-	_videoPointsPackage.OriginalPrice = field.NewFloat64(tableName, "original_price")
-	_videoPointsPackage.BadgeText = field.NewString(tableName, "badge_text")
-	_videoPointsPackage.Description = field.NewString(tableName, "description")
-	_videoPointsPackage.ButtonText = field.NewString(tableName, "button_text")
-	_videoPointsPackage.IsDefault = field.NewInt8(tableName, "is_default")
-	_videoPointsPackage.Status = field.NewInt8(tableName, "status")
-	_videoPointsPackage.Sort = field.NewInt64(tableName, "sort")
+	_videoPointsPackage.PointsID = field.NewInt64(tableName, "points_id")
+	_videoPointsPackage.PackageCode = field.NewString(tableName, "package_code")
 	_videoPointsPackage.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoPointsPackage.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoPointsPackage.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoPointsPackage.Points = videoPointsPackageBelongsToPoints{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Points", "model.VideoPoint"),
+		Apps: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Points.Apps", "model.VideoApp"),
+		},
+		Packages: struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+			}
+		}{
+			RelationField: field.NewRelation("Points.Packages", "model.VideoPackage"),
+			App: struct {
+				field.RelationField
+			}{
+				RelationField: field.NewRelation("Points.Packages.App", "model.VideoApp"),
+			},
+		},
+		PackageVersion: struct {
+			field.RelationField
+			Package struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Points.PackageVersion", "model.VideoPackageVersion"),
+			Package: struct {
+				field.RelationField
+				App struct {
+					field.RelationField
+				}
+			}{
+				RelationField: field.NewRelation("Points.PackageVersion.Package", "model.VideoPackage"),
+				App: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Points.PackageVersion.Package.App", "model.VideoApp"),
+				},
+			},
+		},
+		Country: struct {
+			field.RelationField
+		}{
+			RelationField: field.NewRelation("Points.Country", "model.VideoCountry"),
+		},
+		Channels: struct {
+			field.RelationField
+			Owner struct {
+				field.RelationField
+				Roles struct {
+					field.RelationField
+					Menus struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Points.Channels", "model.VideoChannel"),
+			Owner: struct {
+				field.RelationField
+				Roles struct {
+					field.RelationField
+					Menus struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}
+				}
+			}{
+				RelationField: field.NewRelation("Points.Channels.Owner", "model.VideoAdmin"),
+				Roles: struct {
+					field.RelationField
+					Menus struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}
+				}{
+					RelationField: field.NewRelation("Points.Channels.Owner.Roles", "model.VideoRole"),
+					Menus: struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}{
+						RelationField: field.NewRelation("Points.Channels.Owner.Roles.Menus", "model.VideoMenu"),
+						ParentMenu: struct {
+							field.RelationField
+						}{
+							RelationField: field.NewRelation("Points.Channels.Owner.Roles.Menus.ParentMenu", "model.VideoMenu"),
+						},
+						ChildMenus: struct {
+							field.RelationField
+						}{
+							RelationField: field.NewRelation("Points.Channels.Owner.Roles.Menus.ChildMenus", "model.VideoMenu"),
+						},
+						APIs: struct {
+							field.RelationField
+						}{
+							RelationField: field.NewRelation("Points.Channels.Owner.Roles.Menus.APIs", "model.VideoAPI"),
+						},
+					},
+				},
+			},
+		},
+	}
 
 	_videoPointsPackage.fillFieldMap()
 
@@ -57,27 +184,14 @@ func newVideoPointsPackage(db *gorm.DB, opts ...gen.DOOption) videoPointsPackage
 type videoPointsPackage struct {
 	videoPointsPackageDo videoPointsPackageDo
 
-	ALL           field.Asterisk
-	ID            field.Uint64
-	ProductCode   field.String  // globally unique store product SKU
-	Name          field.String  // points package name
-	Systems       field.String  // android, ios, pc, harmony or other systems
-	UserTypes     field.String  // app user types: 1 free, 2 paid
-	ResourceType  field.String  // resource type
-	Points        field.Uint64  // granted points quantity
-	Currency      field.String  // ISO currency code
-	SalePrice     field.Float64 // sale price
-	ActualRevenue field.Float64 // net revenue
-	OriginalPrice field.Float64 // strikethrough price
-	BadgeText     field.String  // badge copy
-	Description   field.String  // package description
-	ButtonText    field.String  // purchase button copy
-	IsDefault     field.Int8    // default package for app package and resource type
-	Status        field.Int8    // 0 disabled, 1 enabled
-	Sort          field.Int64   // sort order
-	CreatedAt     field.Time
-	UpdatedAt     field.Time
-	DeletedAt     field.Field
+	ALL         field.Asterisk
+	ID          field.Uint64
+	PointsID    field.Int64
+	PackageCode field.String // channel ID
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
+	Points      videoPointsPackageBelongsToPoints
 
 	fieldMap map[string]field.Expr
 }
@@ -95,22 +209,8 @@ func (v videoPointsPackage) As(alias string) *videoPointsPackage {
 func (v *videoPointsPackage) updateTableName(table string) *videoPointsPackage {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
-	v.ProductCode = field.NewString(table, "product_code")
-	v.Name = field.NewString(table, "name")
-	v.Systems = field.NewString(table, "systems")
-	v.UserTypes = field.NewString(table, "user_types")
-	v.ResourceType = field.NewString(table, "resource_type")
-	v.Points = field.NewUint64(table, "points")
-	v.Currency = field.NewString(table, "currency")
-	v.SalePrice = field.NewFloat64(table, "sale_price")
-	v.ActualRevenue = field.NewFloat64(table, "actual_revenue")
-	v.OriginalPrice = field.NewFloat64(table, "original_price")
-	v.BadgeText = field.NewString(table, "badge_text")
-	v.Description = field.NewString(table, "description")
-	v.ButtonText = field.NewString(table, "button_text")
-	v.IsDefault = field.NewInt8(table, "is_default")
-	v.Status = field.NewInt8(table, "status")
-	v.Sort = field.NewInt64(table, "sort")
+	v.PointsID = field.NewInt64(table, "points_id")
+	v.PackageCode = field.NewString(table, "package_code")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -142,37 +242,151 @@ func (v *videoPointsPackage) GetFieldByName(fieldName string) (field.OrderExpr, 
 }
 
 func (v *videoPointsPackage) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 20)
+	v.fieldMap = make(map[string]field.Expr, 7)
 	v.fieldMap["id"] = v.ID
-	v.fieldMap["product_code"] = v.ProductCode
-	v.fieldMap["name"] = v.Name
-	v.fieldMap["systems"] = v.Systems
-	v.fieldMap["user_types"] = v.UserTypes
-	v.fieldMap["resource_type"] = v.ResourceType
-	v.fieldMap["points"] = v.Points
-	v.fieldMap["currency"] = v.Currency
-	v.fieldMap["sale_price"] = v.SalePrice
-	v.fieldMap["actual_revenue"] = v.ActualRevenue
-	v.fieldMap["original_price"] = v.OriginalPrice
-	v.fieldMap["badge_text"] = v.BadgeText
-	v.fieldMap["description"] = v.Description
-	v.fieldMap["button_text"] = v.ButtonText
-	v.fieldMap["is_default"] = v.IsDefault
-	v.fieldMap["status"] = v.Status
-	v.fieldMap["sort"] = v.Sort
+	v.fieldMap["points_id"] = v.PointsID
+	v.fieldMap["package_code"] = v.PackageCode
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoPointsPackage) clone(db *gorm.DB) videoPointsPackage {
 	v.videoPointsPackageDo.ReplaceConnPool(db.Statement.ConnPool)
+	v.Points.db = db.Session(&gorm.Session{Initialized: true})
+	v.Points.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoPointsPackage) replaceDB(db *gorm.DB) videoPointsPackage {
 	v.videoPointsPackageDo.ReplaceDB(db)
+	v.Points.db = db.Session(&gorm.Session{})
 	return v
+}
+
+type videoPointsPackageBelongsToPoints struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	Apps struct {
+		field.RelationField
+	}
+	Packages struct {
+		field.RelationField
+		App struct {
+			field.RelationField
+		}
+	}
+	PackageVersion struct {
+		field.RelationField
+		Package struct {
+			field.RelationField
+			App struct {
+				field.RelationField
+			}
+		}
+	}
+	Country struct {
+		field.RelationField
+	}
+	Channels struct {
+		field.RelationField
+		Owner struct {
+			field.RelationField
+			Roles struct {
+				field.RelationField
+				Menus struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}
+			}
+		}
+	}
+}
+
+func (a videoPointsPackageBelongsToPoints) Where(conds ...field.Expr) *videoPointsPackageBelongsToPoints {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoPointsPackageBelongsToPoints) WithContext(ctx context.Context) *videoPointsPackageBelongsToPoints {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoPointsPackageBelongsToPoints) Session(session *gorm.Session) *videoPointsPackageBelongsToPoints {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoPointsPackageBelongsToPoints) Model(m *model.VideoPointsPackage) *videoPointsPackageBelongsToPointsTx {
+	return &videoPointsPackageBelongsToPointsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoPointsPackageBelongsToPoints) Unscoped() *videoPointsPackageBelongsToPoints {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoPointsPackageBelongsToPointsTx struct{ tx *gorm.Association }
+
+func (a videoPointsPackageBelongsToPointsTx) Find() (result *model.VideoPoint, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoPointsPackageBelongsToPointsTx) Append(values ...*model.VideoPoint) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoPointsPackageBelongsToPointsTx) Replace(values ...*model.VideoPoint) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoPointsPackageBelongsToPointsTx) Delete(values ...*model.VideoPoint) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoPointsPackageBelongsToPointsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoPointsPackageBelongsToPointsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoPointsPackageBelongsToPointsTx) Unscoped() *videoPointsPackageBelongsToPointsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type videoPointsPackageDo struct{ gen.DO }

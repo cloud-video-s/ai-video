@@ -7,6 +7,7 @@ import (
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -49,15 +50,16 @@ type GenerationTaskPointState struct {
 // row is locked. It must be called in the same transaction that creates the
 // task and updates the user's available and frozen balances.
 func (r *UserGenerationTaskRepo) SetPointAllocation(ctx context.Context, id uint64, scoreType, vipScore, pointsScore uint32) error {
-	result := dbFrom(ctx).Table(model.TableNameVideoUserGenerationTask).
-		Where("id = ?", id).
-		Updates(map[string]any{"score_type": scoreType, "vip_score": vipScore, "points_score": pointsScore})
-	if result.Error != nil {
-		return result.Error
+	q := qFrom(ctx).VideoUserGenerationTask
+	result, err := q.WithContext(ctx).Where(q.ID.Eq(id)).Updates(map[string]any{
+		"score_type": scoreType, "vip_score": vipScore, "points_score": pointsScore,
+	})
+	if err != nil {
+		return err
 	}
 	if result.RowsAffected != 1 {
-		var count int64
-		if err := dbFrom(ctx).Table(model.TableNameVideoUserGenerationTask).Where("id = ?", id).Count(&count).Error; err != nil {
+		count, err := q.WithContext(ctx).Where(q.ID.Eq(id)).Count()
+		if err != nil {
 			return err
 		}
 		if count != 1 {
@@ -71,13 +73,18 @@ func (r *UserGenerationTaskRepo) SetPointAllocation(ctx context.Context, id uint
 // one task. The task row is the idempotency guard that prevents a duplicate
 // ledger entry or a second refund.
 func (r *UserGenerationTaskRepo) GetPointStateForUpdate(ctx context.Context, id uint64) (*GenerationTaskPointState, error) {
-	var state GenerationTaskPointState
-	err := dbFrom(ctx).Table(model.TableNameVideoUserGenerationTask).
+	q := qFrom(ctx).VideoUserGenerationTask
+	task, err := q.WithContext(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE"}).
-		Select("id", "user_id", "task_code", "status", "score", "score_type", "vip_score", "points_score").
-		Where("id = ? AND deleted_at IS NULL", id).
-		Take(&state).Error
-	return &state, err
+		Select(q.ID, q.UserID, q.TaskCode, q.Status, q.Score, q.ScoreType, q.VipScore, q.PointsScore).
+		Where(q.ID.Eq(id)).Take()
+	if err != nil {
+		return nil, err
+	}
+	return &GenerationTaskPointState{
+		ID: task.ID, UserID: task.UserID, TaskCode: task.TaskCode, Status: task.Status,
+		Score: task.Score, ScoreType: task.ScoreType, VIPScore: task.VipScore, PointsScore: task.PointsScore,
+	}, nil
 }
 
 // SumActiveVIPScore returns subscription points currently reserved by tasks
@@ -87,16 +94,16 @@ func (r *UserGenerationTaskRepo) SumActiveVIPScore(ctx context.Context, userID u
 	var result struct {
 		Total uint64 `gorm:"column:total"`
 	}
-	err := dbFrom(ctx).Table(model.TableNameVideoUserGenerationTask).
-		Select("COALESCE(SUM(vip_score), 0) AS total").
-		Where("user_id = ? AND deleted_at IS NULL AND status IN ?", userID, []int{
+	q := qFrom(ctx).VideoUserGenerationTask
+	err := q.WithContext(ctx).
+		Select(field.NewUnsafeFieldRaw("COALESCE(SUM(video_user_generation_task.vip_score), 0)").As("total")).
+		Where(q.UserID.Eq(userID), q.Status.In(
 			domain.GenerationTaskStatusSubmitting,
 			domain.GenerationTaskStatusSubmitted,
 			domain.GenerationTaskStatusPending,
 			domain.GenerationTaskStatusRunning,
 			domain.GenerationTaskStatusDownloading,
-		}).
-		Scan(&result).Error
+		)).Scan(&result)
 	return result.Total, err
 }
 

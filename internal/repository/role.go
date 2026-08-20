@@ -7,6 +7,7 @@ import (
 
 	"ai-video/internal/gen/model"
 
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
 
@@ -104,9 +105,14 @@ func (d *RoleRepo) Delete(ctx context.Context, id uint64) error {
 	})
 }
 
-func (d *RoleRepo) PageList(ctx context.Context, page, pageSize int, _ *QueryOptions) ([]model.VideoRole, int64, error) {
+func (d *RoleRepo) PageList(ctx context.Context, page, pageSize int, opts *QueryOptions) ([]model.VideoRole, int64, error) {
 	q := qFrom(ctx).VideoRole
-	dao := q.WithContext(ctx).Order(q.Sort.Asc(), q.ID.Asc())
+	listSort := ListSort{}
+	if opts != nil {
+		listSort = opts.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID, "sort": q.Sort}, q.ID, q.Sort.Asc(), q.ID.Asc())
+	dao := q.WithContext(ctx).Order(order...)
 	total, err := dao.Count()
 	if err != nil {
 		return nil, 0, err

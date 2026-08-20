@@ -30,6 +30,7 @@ func NewBannerService() *BannerService {
 }
 
 type ListBannerRequest struct {
+	ListSortRequest
 	PositionKey string `form:"position_key" binding:"omitempty,max=100"`
 	CountryCode string `form:"country_code" binding:"omitempty,max=50"`
 	AppCode     string `form:"app_code" binding:"omitempty,max=60"`
@@ -69,6 +70,7 @@ type BannerView struct {
 
 func (s *BannerService) List(ctx context.Context, page, pageSize int, req *ListBannerRequest) ([]BannerView, int64, error) {
 	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.BannerListFilter{
+		ListSort:    req.listSort(),
 		CountryCode: strings.ToUpper(strings.TrimSpace(req.CountryCode)),
 		AppCode:     strings.TrimSpace(req.AppCode), PackageCode: strings.TrimSpace(req.PackageCode),
 		VersionCode: strings.TrimSpace(req.VersionCode), PositionKey: strings.TrimSpace(req.PositionKey),

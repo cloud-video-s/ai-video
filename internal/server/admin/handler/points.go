@@ -9,16 +9,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type PointsPackageHandler struct {
-	svc *service.PointsPackageService
+type PointsHandler struct {
+	svc *service.PointsService
 }
 
-func NewPointsPackageHandler() *PointsPackageHandler {
-	return &PointsPackageHandler{svc: service.NewPointsPackageService()}
+func NewPointsHandler() *PointsHandler {
+	return &PointsHandler{svc: service.NewPointsService()}
 }
 
-func (h *PointsPackageHandler) List(c *gin.Context) {
-	var req service.ListPointsPackageRequest
+func (h *PointsHandler) List(c *gin.Context) {
+	var req service.ListPointsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
@@ -32,7 +32,7 @@ func (h *PointsPackageHandler) List(c *gin.Context) {
 	response.OK(c, gin.H{"list": list, "total": total, "page": p.Page, "size": p.PageSize})
 }
 
-func (h *PointsPackageHandler) ListOptions(c *gin.Context) {
+func (h *PointsHandler) ListOptions(c *gin.Context) {
 	list, err := h.svc.ListOptions(c.Request.Context())
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
@@ -41,7 +41,7 @@ func (h *PointsPackageHandler) ListOptions(c *gin.Context) {
 	response.OK(c, list)
 }
 
-func (h *PointsPackageHandler) GetByID(c *gin.Context) {
+func (h *PointsHandler) GetByID(c *gin.Context) {
 	id, ok := templateResourceID(c, "积分套餐")
 	if !ok {
 		return
@@ -54,8 +54,8 @@ func (h *PointsPackageHandler) GetByID(c *gin.Context) {
 	response.OK(c, item)
 }
 
-func (h *PointsPackageHandler) Create(c *gin.Context) {
-	var req service.PointsPackagePayload
+func (h *PointsHandler) Create(c *gin.Context) {
+	var req service.PointsPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
@@ -68,12 +68,12 @@ func (h *PointsPackageHandler) Create(c *gin.Context) {
 	response.OK(c, item)
 }
 
-func (h *PointsPackageHandler) Update(c *gin.Context) {
+func (h *PointsHandler) Update(c *gin.Context) {
 	id, ok := templateResourceID(c, "积分套餐")
 	if !ok {
 		return
 	}
-	var req service.PointsPackagePayload
+	var req service.PointsPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
@@ -86,7 +86,7 @@ func (h *PointsPackageHandler) Update(c *gin.Context) {
 	response.OK(c, item)
 }
 
-func (h *PointsPackageHandler) Delete(c *gin.Context) {
+func (h *PointsHandler) Delete(c *gin.Context) {
 	id, ok := templateResourceID(c, "积分套餐")
 	if !ok {
 		return
@@ -98,12 +98,12 @@ func (h *PointsPackageHandler) Delete(c *gin.Context) {
 	response.OK(c, nil)
 }
 
-func (h *PointsPackageHandler) UpdateStatus(c *gin.Context) {
+func (h *PointsHandler) UpdateStatus(c *gin.Context) {
 	id, ok := templateResourceID(c, "积分套餐")
 	if !ok {
 		return
 	}
-	var req service.PointsPackageStatusPayload
+	var req service.PointsStatusPayload
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
@@ -115,7 +115,7 @@ func (h *PointsPackageHandler) UpdateStatus(c *gin.Context) {
 	response.OK(c, nil)
 }
 
-func (h *PointsPackageHandler) SetDefault(c *gin.Context) {
+func (h *PointsHandler) SetDefault(c *gin.Context) {
 	id, ok := templateResourceID(c, "积分套餐")
 	if !ok {
 		return

@@ -15,6 +15,7 @@ import (
 	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/upload"
 
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
 
@@ -94,10 +95,12 @@ func (r *UploadRepo) ConfirmUploadedByURLs(ctx context.Context, owner upload.Upl
 	if len(urls) == 0 {
 		return nil
 	}
-	return dbFrom(ctx).Table(model.TableNameVideoUpload).
-		Where("user_type = ? AND user_id = ? AND status = ?", userType, owner.ID, domain.UploadStatusIncomplete).
-		Where("file_url IN ? OR file_path IN ?", urls, paths).
-		Updates(map[string]any{"status": domain.UploadStatusCompleted, "updated_at": time.Now()}).Error
+	q := qFrom(ctx).VideoUpload
+	_, err = q.WithContext(ctx).
+		Where(q.UserType.Eq(userType), q.UserID.Eq(owner.ID), q.Status.Eq(domain.UploadStatusIncomplete)).
+		Where(field.Or(q.FileURL.In(urls...), q.FilePath.In(paths...))).
+		Updates(map[string]any{"status": domain.UploadStatusCompleted, "updated_at": time.Now()})
+	return err
 }
 
 // OwnedHalfURLs returns the canonical domain-free addresses among the supplied
@@ -120,12 +123,11 @@ func (r *UploadRepo) OwnedHalfURLs(ctx context.Context, owner upload.UploadOwner
 	if len(urls) == 0 {
 		return result, nil
 	}
-	var rows []struct {
-		FileURL string `gorm:"column:file_url"`
-	}
-	if err := dbFrom(ctx).Table(model.TableNameVideoUpload).Select("file_url").
-		Where("user_type = ? AND user_id = ? AND deleted_at IS NULL", userType, owner.ID).
-		Where("file_url IN ? OR file_path IN ?", urls, paths).Find(&rows).Error; err != nil {
+	q := qFrom(ctx).VideoUpload
+	rows, err := q.WithContext(ctx).Select(q.FileURL).
+		Where(q.UserType.Eq(userType), q.UserID.Eq(owner.ID)).
+		Where(field.Or(q.FileURL.In(urls...), q.FilePath.In(paths...))).Find()
+	if err != nil {
 		return nil, err
 	}
 	for _, row := range rows {
@@ -137,41 +139,41 @@ func (r *UploadRepo) OwnedHalfURLs(ctx context.Context, owner upload.UploadOwner
 }
 
 func (r *UploadRepo) PageList(ctx context.Context, page, pageSize int, filter *UploadListFilter) ([]model.VideoUpload, int64, error) {
-	table := model.TableNameVideoUpload
-	dao := dbFrom(ctx).Table(table).Where("deleted_at IS NULL")
+	q := qFrom(ctx).VideoUpload
+	dao := q.WithContext(ctx)
 	if filter != nil {
 		if filter.UserType != 0 {
-			dao = dao.Where("user_type = ?", filter.UserType)
+			dao = dao.Where(q.UserType.Eq(filter.UserType))
 		}
 		if filter.UserID != 0 {
-			dao = dao.Where("user_id = ?", filter.UserID)
+			dao = dao.Where(q.UserID.Eq(filter.UserID))
 		}
 		if filter.Status != 0 {
-			dao = dao.Where("status = ?", filter.Status)
+			dao = dao.Where(q.Status.Eq(filter.Status))
 		}
 		if filter.MediaType != "" {
-			dao = dao.Where("media_type = ?", filter.MediaType)
+			dao = dao.Where(q.MediaType.Eq(filter.MediaType))
 		}
 		if filter.FileType != "" {
-			dao = dao.Where("file_type = ?", strings.TrimPrefix(strings.ToLower(filter.FileType), "."))
+			dao = dao.Where(q.FileType.Eq(strings.TrimPrefix(strings.ToLower(filter.FileType), ".")))
 		}
 		if filter.StorageProvider != "" {
-			dao = dao.Where("storage_provider = ?", filter.StorageProvider)
+			dao = dao.Where(q.StorageProvider.Eq(filter.StorageProvider))
 		}
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
-			dao = dao.Where("original_name LIKE ? OR file_path LIKE ? OR upload_id LIKE ?", keyword, keyword, keyword)
+			dao = dao.Where(field.Or(q.OriginalName.Like(keyword), q.FilePath.Like(keyword), q.UploadID.Like(keyword)))
 		}
 	}
-	var total int64
-	if err := dao.Count(&total).Error; err != nil {
+	total, err := dao.Count()
+	if err != nil {
 		return nil, 0, err
 	}
-	rows := make([]model.VideoUpload, 0)
-	if err := dao.Order("id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
+	rows, err := dao.Order(q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	if err != nil {
 		return nil, 0, err
 	}
-	return rows, total, nil
+	return valuesOf(rows), total, nil
 }
 
 type uploadRecord struct {
@@ -223,15 +225,27 @@ func (r *UploadRepo) record(ctx context.Context, owner upload.UploadOwner, recor
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
-	result := dbFrom(ctx).Table(model.TableNameVideoUpload).Create(row)
-	if result.Error == nil {
+	q := qFrom(ctx).VideoUpload
+	created := &model.VideoUpload{
+		UploadID: record.UploadID, UserType: userType, UserID: owner.ID,
+		MediaType: string(record.Kind), FileType: extension, MIMEType: strings.TrimSpace(record.ContentType),
+		OriginalName: strings.TrimSpace(record.OriginalName), FileSize: uint64(record.FileSize),
+		StorageProvider: strings.TrimSpace(record.StorageProvider), FilePath: record.FilePath,
+		FileURL: record.FileURL, SHA256: strings.ToLower(strings.TrimSpace(record.SHA256)),
+		Status: status, CreatedAt: now, UpdatedAt: now,
+	}
+	err = q.WithContext(ctx).Select(
+		q.UploadID, q.UserType, q.UserID, q.MediaType, q.FileType, q.MIMEType, q.OriginalName,
+		q.FileSize, q.StorageProvider, q.FilePath, q.FileURL, q.SHA256, q.Status, q.CreatedAt, q.UpdatedAt,
+	).Create(created)
+	if err == nil {
 		return nil
 	}
 	// MySQL's GORM conflict builder emits an invalid trailing
 	// "ON DUPLICATE KEY UPDATE" for DoNothing with map inserts. Use a plain
 	// insert and handle the translated duplicate-key error explicitly instead.
-	if !errors.Is(result.Error, gorm.ErrDuplicatedKey) {
-		return result.Error
+	if !errors.Is(err, gorm.ErrDuplicatedKey) {
+		return err
 	}
 	existing, err = findUploadOwner(ctx, record.UploadID)
 	if err != nil {
@@ -246,10 +260,13 @@ type uploadOwnerRow struct {
 }
 
 func findUploadOwner(ctx context.Context, uploadID string) (uploadOwnerRow, error) {
-	var existing uploadOwnerRow
-	err := dbFrom(ctx).Table(model.TableNameVideoUpload).
-		Select("user_type", "user_id").Where("upload_id = ?", uploadID).Order("id ASC").Take(&existing).Error
-	return existing, err
+	q := qFrom(ctx).VideoUpload
+	item, err := q.WithContext(ctx).Unscoped().Select(q.UserType, q.UserID).
+		Where(q.UploadID.Eq(uploadID)).Order(q.ID.Asc()).Take()
+	if err != nil {
+		return uploadOwnerRow{}, err
+	}
+	return uploadOwnerRow{UserType: item.UserType, UserID: item.UserID}, nil
 }
 
 func updateExistingUpload(
@@ -271,9 +288,11 @@ func updateExistingUpload(
 	delete(row, "user_type")
 	delete(row, "user_id")
 	delete(row, "created_at")
-	return dbFrom(ctx).Table(model.TableNameVideoUpload).
-		Where("upload_id = ? AND user_type = ? AND user_id = ?", uploadID, userType, userID).
-		Updates(row).Error
+	q := qFrom(ctx).VideoUpload
+	_, err := q.WithContext(ctx).Unscoped().
+		Where(q.UploadID.Eq(uploadID), q.UserType.Eq(userType), q.UserID.Eq(userID)).
+		Updates(row)
+	return err
 }
 
 func storedUploadID(provider, filePath string) string {

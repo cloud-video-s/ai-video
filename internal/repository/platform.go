@@ -15,8 +15,9 @@ type PlatformRepo struct {
 func NewPlatformRepo() *PlatformRepo { return &PlatformRepo{} }
 
 type PlatformListFilter struct {
-	Keyword string
-	Status  *int32
+	ListSort ListSort
+	Keyword  string
+	Status   *int32
 }
 
 func (r *PlatformRepo) PageList(ctx context.Context, page, pageSize int, filter *PlatformListFilter) ([]model.VideoPlatform, int64, error) {
@@ -35,7 +36,12 @@ func (r *PlatformRepo) PageList(ctx context.Context, page, pageSize int, filter 
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID}, q.ID, q.ID.Desc())
+	rows, err := dao.Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
 }
 

@@ -15,8 +15,9 @@ func NewDelayConfigRepo() *DelayConfigRepo {
 }
 
 type DelayConfigListFilter struct {
-	Group   string
-	Keyword string
+	ListSort ListSort
+	Group    string
+	Keyword  string
 }
 
 func (d *DelayConfigRepo) Create(ctx context.Context, config *model.VideoDelayConfig) error {
@@ -83,7 +84,12 @@ func (d *DelayConfigRepo) PageList(ctx context.Context, page, pageSize int, filt
 		return nil, 0, err
 	}
 	var list []model.VideoDelayConfig
-	if err := db.Order("sort ASC, id ASC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error; err != nil {
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderSQLForList(listSort, map[string]string{"sort": "sort"}, "id", "sort ASC, id ASC")
+	if err := db.Order(order).Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error; err != nil {
 		return nil, 0, err
 	}
 	return list, total, nil
@@ -126,7 +132,7 @@ func (d *DelayConfigRepo) ListValues(ctx context.Context) (map[string]interface{
 	return result, nil
 }
 
-func parseDelayConfigNumber(strType, value string) (interface{}, error) {
+func parseDelayConfigNumber(strType, value string) (any, error) {
 	switch strType {
 	case "string":
 		return value, nil

@@ -8,6 +8,7 @@ import (
 
 	"ai-video/internal/gen/model"
 
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
 
@@ -39,6 +40,12 @@ func (r AdminRecord) MarshalJSON() ([]byte, error) {
 }
 
 type AdminRepo struct{}
+
+type AdminOption struct {
+	ID       uint64 `json:"id"`
+	Username string `json:"username"`
+	Nickname string `json:"nickname"`
+}
 
 func NewAdminRepo() *AdminRepo { return &AdminRepo{} }
 
@@ -111,9 +118,14 @@ func (d *AdminRepo) Delete(ctx context.Context, id uint64) error {
 	})
 }
 
-func (d *AdminRepo) PageList(ctx context.Context, page, pageSize int, _ *QueryOptions) ([]AdminRecord, int64, error) {
+func (d *AdminRepo) PageList(ctx context.Context, page, pageSize int, opts *QueryOptions) ([]AdminRecord, int64, error) {
 	q := qFrom(ctx).VideoAdmin
-	dao := q.WithContext(ctx).Order(q.ID.Desc())
+	listSort := ListSort{}
+	if opts != nil {
+		listSort = opts.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID}, q.ID, q.ID.Desc())
+	dao := q.WithContext(ctx).Order(order...)
 	total, err := dao.Count()
 	if err != nil {
 		return nil, 0, err
@@ -130,6 +142,22 @@ func (d *AdminRepo) PageList(ctx context.Context, page, pageSize int, _ *QueryOp
 	}
 	records, err := d.loadRecords(ctx, users)
 	return records, total, err
+}
+
+func (d *AdminRepo) ListOptions(ctx context.Context) ([]AdminOption, error) {
+	q := qFrom(ctx).VideoAdmin
+	rows, err := q.WithContext(ctx).Select(q.ID, q.Username, q.Nickname).
+		Where(q.Status.Eq(1)).Order(q.Username.Asc(), q.ID.Asc()).Find()
+	if err != nil {
+		return nil, err
+	}
+	options := make([]AdminOption, 0, len(rows))
+	for _, row := range rows {
+		if row != nil {
+			options = append(options, AdminOption{ID: row.ID, Username: row.Username, Nickname: row.Nickname})
+		}
+	}
+	return options, nil
 }
 
 // SetRoles 使用 video_admin_role 显式替换账号角色，不调用 GORM Association。

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -17,7 +18,33 @@ type UserAttributionRepo struct{}
 
 func NewUserAttributionRepo() *UserAttributionRepo { return &UserAttributionRepo{} }
 
+// FusedUserAttribution is the user-level acquisition snapshot produced after
+// an Adjust APP report and callback have been fused successfully.
+type FusedUserAttribution struct {
+	AppCode              string
+	UserID               uint64
+	AdjustADID           string
+	ChannelID            uint64
+	MediaID              uint64
+	AttributedAdID       uint64
+	AttributedPointID    uint64
+	IMEI                 string
+	GoogleAdID           string
+	ActivityKind         string
+	AttributionType      string
+	IsOrganic            uint8
+	Reattributed         uint8
+	IsRedownload         uint8
+	ClickTime            *time.Time
+	InstallTime          *time.Time
+	AttributedAt         *time.Time
+	ReattributedAt       *time.Time
+	AttributionUpdatedAt *time.Time
+	AdjustCreatedAt      *time.Time
+}
+
 type UserAttributionListFilter struct {
+	ListSort    ListSort
 	Keyword     string
 	ChannelCode string
 	Event       string
@@ -41,14 +68,8 @@ func (r *UserAttributionRepo) PageList(ctx context.Context, page, pageSize int, 
 			keyword := "%" + filter.Keyword + "%"
 			dao = dao.Where(field.Or(
 				attribution.OAID.Like(keyword), attribution.IMEI.Like(keyword),
-				attribution.AndroidID.Like(keyword), attribution.IP.Like(keyword),
+				attribution.AndroidID.Like(keyword),
 				user.Username.Like(keyword), user.IMEI.Like(keyword),
-			))
-		}
-		if filter.ChannelCode != "" {
-			dao = dao.Where(field.Or(
-				attribution.ChannelCode.Eq(filter.ChannelCode),
-				field.And(attribution.ChannelCode.Eq(""), user.ChannelID.Eq(filter.ChannelCode)),
 			))
 		}
 		if filter.StartedAt != nil {
@@ -82,8 +103,13 @@ func (r *UserAttributionRepo) PageList(ctx context.Context, page, pageSize int, 
 	if err != nil {
 		return nil, 0, err
 	}
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": attribution.ID}, attribution.ID, attribution.ID.Desc())
 	rows, err := dao.Select(attribution.ALL).
-		Order(attribution.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+		Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -144,7 +170,7 @@ func (r *UserAttributionRepo) GetByUserID(ctx context.Context, userID uint64) (*
 func (r *UserAttributionRepo) ClearDevice(ctx context.Context, userID uint64) error {
 	q := qFrom(ctx).VideoUserAttribution
 	_, err := q.WithContext(ctx).Where(q.UserID.Eq(userID)).Updates(map[string]interface{}{
-		"oaid": "", "imei": "", "android_id": "", "ip": "", "user_agent": "",
+		"oaid": "", "imei": "", "android_id": "", "google_ad_id": "",
 	})
 	return err
 }
@@ -152,24 +178,90 @@ func (r *UserAttributionRepo) ClearDevice(ctx context.Context, userID uint64) er
 func (r *UserAttributionRepo) Update(ctx context.Context, item *model.VideoUserAttribution) error {
 	q := qFrom(ctx).VideoUserAttribution
 	_, err := q.WithContext(ctx).Where(q.ID.Eq(item.ID)).Select(
-		q.ChannelCode, q.OAID, q.IMEI, q.AndroidID, q.IP, q.UserAgent, q.AttributedAt, q.Remark,
+		q.ChannelID, q.OAID, q.IMEI, q.AndroidID, q.AttributedAt, q.Remark,
 	).Updates(item)
 	return err
 }
 
-func (r *UserAttributionRepo) UpsertDevice(ctx context.Context, userID uint64, updates map[string]interface{}) error {
+// ApplyFusedAttribution locks the user-level acquisition snapshot and applies
+// a completed Adjust fusion. The first valid install wins; install_update may
+// only correct the same ADID and can never replace another acquisition.
+func (r *UserAttributionRepo) ApplyFusedAttribution(
+	ctx context.Context,
+	item *FusedUserAttribution,
+	allowCorrection bool,
+) (bool, error) {
+	if item == nil || item.UserID == 0 {
+		return false, gorm.ErrInvalidData
+	}
+	adjustADID := strings.TrimSpace(item.AdjustADID)
+	if adjustADID == "" {
+		return false, gorm.ErrInvalidData
+	}
+
 	q := qFrom(ctx).VideoUserAttribution
-	row := model.VideoUserAttribution{UserID: userID}
-	if err := q.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "user_id"}}, DoNothing: true,
-	}).Create(&row); err != nil {
-		return err
+	existing, err := q.WithContext(ctx).Unscoped().
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where(q.UserID.Eq(item.UserID)).Take()
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, err
 	}
-	if len(updates) == 0 {
-		return nil
+
+	bound, boundErr := q.WithContext(ctx).Unscoped().Select(q.UserID).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where(q.AdjustAdid.Eq(adjustADID)).Take()
+	if boundErr == nil && bound.UserID != item.UserID {
+		return false, gorm.ErrDuplicatedKey
 	}
-	_, err := q.WithContext(ctx).Where(q.UserID.Eq(userID)).Updates(updates)
-	return err
+	if boundErr != nil && !errors.Is(boundErr, gorm.ErrRecordNotFound) {
+		return false, boundErr
+	}
+
+	now := time.Now()
+	updates := map[string]any{
+		"app_code": item.AppCode, "user_id": item.UserID, "adjust_adid": adjustADID,
+		"channel_id": item.ChannelID, "media_id": item.MediaID,
+		"attributed_ad_id": item.AttributedAdID, "attributed_point_id": item.AttributedPointID,
+		"oaid": "", "imei": item.IMEI, "android_id": "", "google_ad_id": item.GoogleAdID,
+		"activity_kind": item.ActivityKind, "attribution_type": item.AttributionType,
+		"is_organic": item.IsOrganic, "reattributed": item.Reattributed, "is_redownload": item.IsRedownload,
+		"click_time": item.ClickTime, "install_time": item.InstallTime,
+		"attributed_at": item.AttributedAt, "reattributed_at": item.ReattributedAt,
+		"attribution_updated_at": item.AttributionUpdatedAt, "adjust_created_at": item.AdjustCreatedAt,
+		"updated_at": now, "deleted_at": nil,
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		updates["last_operated_at"] = nil
+		updates["created_at"] = now
+		updates["activation_callback_count"] = 0
+		updates["activation_deduct_count"] = 0
+		updates["key_behavior_callback_count"] = 0
+		updates["key_behavior_deduct_count"] = 0
+		updates["payment_callback_count"] = 0
+		updates["payment_deduct_count"] = 0
+		updates["first_payment_callback_count"] = 0
+		updates["first_payment_deduct_count"] = 0
+		updates["registration_callback_count"] = 0
+		updates["registration_deduct_count"] = 0
+		updates["remark"] = ""
+		createErr := q.WithContext(ctx).UnderlyingDB().
+			Model(&model.VideoUserAttribution{}).Create(updates).Error
+		if createErr != nil {
+			return false, createErr
+		}
+		return true, nil
+	}
+
+	existingADID := strings.TrimSpace(existing.AdjustAdid)
+	if existingADID != "" && (!allowCorrection || existingADID != adjustADID) {
+		return false, nil
+	}
+	_, err = q.WithContext(ctx).Unscoped().Where(q.ID.Eq(existing.ID)).Updates(updates)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (r *UserAttributionRepo) IncrementEvent(ctx context.Context, id uint64, column string, now time.Time) error {
@@ -243,8 +335,8 @@ func (r *UserAttributionRepo) SyncUsers(ctx context.Context) (int64, error) {
 				attributedAt = *item.FirstOpenedAt
 			}
 			rows = append(rows, &model.VideoUserAttribution{
-				UserID: item.ID, ChannelCode: item.ChannelID,
-				IMEI: item.DeviceCode, IP: item.LastLoginIP, AttributedAt: &attributedAt,
+				UserID: item.ID,
+				IMEI:   item.DeviceCode, AttributedAt: &attributedAt,
 			})
 		}
 		if len(rows) == 0 {

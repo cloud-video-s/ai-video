@@ -43,7 +43,12 @@ func (d *OperationLogRepo) PageList(ctx context.Context, page, pageSize int, opt
 		return nil, 0, err
 	}
 	var list []model.VideoOperationLog
-	if err := db.Order("id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error; err != nil {
+	listSort := ListSort{}
+	if opts != nil {
+		listSort = opts.ListSort
+	}
+	if err := db.Order(orderSQLForList(listSort, map[string]string{"id": "id"}, "id", "id DESC")).
+		Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error; err != nil {
 		return nil, 0, err
 	}
 	return list, total, nil

@@ -37,7 +37,7 @@ type Service struct {
 	users          *repository.AppUserRepo
 	ledgers        *repository.CommercePointsLedgerRepo
 	vipProducts    *repository.VIPSubscriptionRepo
-	pointProducts  *repository.PointsPackageRepo
+	points         *repository.PointsRepo
 	packages       *repository.PackageRepo
 	tasks          *repository.UserGenerationTaskRepo
 	appleRootCAs   *x509.CertPool
@@ -50,7 +50,7 @@ func NewService() *Service {
 	return &Service{
 		orders: repository.NewOrderRepo(), users: repository.NewAppUserRepo(),
 		ledgers: repository.NewCommercePointsLedgerRepo(), vipProducts: repository.NewVIPSubscriptionRepo(),
-		pointProducts: repository.NewPointsPackageRepo(), packages: repository.NewPackageRepo(),
+		points: repository.NewPointsRepo(), packages: repository.NewPackageRepo(),
 		tasks:          repository.NewUserGenerationTaskRepo(),
 		appleRootCAs:   defaultAppleRootCAs,
 		appleServerAPI: newAppleServerAPIClient(config.Cfg.AppStore),
@@ -67,6 +67,7 @@ type CreateOrderRequest struct {
 	ClientRequestID string
 	Renewal         bool
 	PaidAmount      float64
+	PayChannel      int
 }
 
 // ApplePaymentResult contains transaction fields that have already passed
@@ -124,7 +125,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 		order := &model.VideoOrder{
 			OrderNo: newOrderNo(), ClientRequestID: req.ClientRequestID, UserID: req.UserID,
 			ProductType: req.ProductType, ProductID: req.ProductID, PayType: req.PayType,
-			Status: domain.OrderStatusPending, OrderType: orderType,
+			Status: domain.OrderStatusPending, OrderType: orderType, PayChannel: uint32(req.PayChannel),
 		}
 		switch req.ProductType {
 		case domain.OrderProductVIPSubscription:
@@ -153,7 +154,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 			order.ProductAmount, order.PayableAmount, order.ActualAmountMoney, order.BonusPoints = price, payableAmount, revenue, int64(bonus)
 			order.VipLevel, order.VipDurationDays = uint(product.LevelID), product.VIPDurationDays
 		case domain.OrderProductPointsPackage:
-			product, err := s.pointProducts.GetByID(ctx, uint(req.ProductID))
+			product, err := s.points.GetByID(ctx, uint(req.ProductID))
 			if err != nil {
 				return err
 			}
@@ -172,7 +173,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 		expiresAt := time.Now().Add(7 * time.Minute)
 		order.ExpiresAt = expiresAt
 		order.CompletedAt = time.Now().UTC()
-		if err := s.orders.Create(ctx, order); err != nil {
+		if err = s.orders.Create(ctx, order); err != nil {
 			return err
 		}
 
@@ -183,7 +184,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 		if user.FirstOrderCreatedAt == nil {
 			updates["first_order_created_at"] = now
 		}
-		if err := s.users.Update(ctx, user.ID, updates); err != nil {
+		if err = s.users.Update(ctx, user.ID, updates); err != nil {
 			return err
 		}
 		created = order

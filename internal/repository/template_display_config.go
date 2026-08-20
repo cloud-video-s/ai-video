@@ -25,6 +25,7 @@ func (r *TemplateDisplayConfigRepo) Create(ctx context.Context, item *model.Vide
 }
 
 type TemplateDisplayConfigListFilter struct {
+	ListSort       ListSort
 	TemplateID     uint64
 	TemplateTypeID uint64
 	PositionKey    string
@@ -73,7 +74,12 @@ func (r *TemplateDisplayConfigRepo) PageList(ctx context.Context, page, pageSize
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(config.Sort.Desc(), config.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": config.ID, "sort": config.Sort}, config.ID, config.Sort.Desc(), config.ID.Desc())
+	rows, err := dao.Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, err
 	}

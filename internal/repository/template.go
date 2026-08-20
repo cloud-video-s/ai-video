@@ -22,6 +22,7 @@ func NewTemplateTypeRepo() *TemplateTypeRepo {
 }
 
 type TemplateTypeListFilter struct {
+	ListSort    ListSort
 	Status      *int8
 	PositionKey string
 	CountryID   uint64
@@ -121,7 +122,12 @@ func (r *TemplateTypeRepo) PageList(ctx context.Context, page, pageSize int, fil
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(templateType.ID.Desc()).
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": templateType.ID, "sort": templateType.Sort}, templateType.ID, templateType.ID.Desc())
+	rows, err := dao.Order(order...).
 		Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, err
@@ -540,6 +546,7 @@ func NewTemplateRepo() *TemplateRepo {
 }
 
 type TemplateListFilter struct {
+	ListSort       ListSort
 	TemplateTypeID uint64
 	ModelID        uint64
 	PositionKey    string
@@ -590,7 +597,12 @@ func (r *TemplateRepo) PageList(ctx context.Context, page, pageSize int, filter 
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(q.ID.Desc()).
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID, "sort": q.Sort}, q.ID, q.ID.Desc())
+	rows, err := dao.Order(order...).
 		Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, err

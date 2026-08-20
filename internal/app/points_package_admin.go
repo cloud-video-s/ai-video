@@ -11,13 +11,13 @@ import (
 func SeedPointsPackageAdmin() error {
 	return config.DB.Transaction(func(tx *gorm.DB) error {
 		seeds := []vipSubscriptionAPISeed{
-			{Path: "/admin/points-packages", Method: "GET", Description: "积分套餐列表"},
-			{Path: "/admin/points-packages/:id", Method: "GET", Description: "积分套餐详情"},
-			{Path: "/admin/points-packages", Method: "POST", Description: "新增积分套餐"},
-			{Path: "/admin/points-packages/:id", Method: "PUT", Description: "编辑积分套餐"},
-			{Path: "/admin/points-packages/:id", Method: "DELETE", Description: "删除积分套餐"},
-			{Path: "/admin/points-packages/:id/status", Method: "PATCH", Description: "切换积分套餐状态"},
-			{Path: "/admin/points-packages/:id/default", Method: "PATCH", Description: "设置默认积分套餐"},
+			{Path: "/admin/points", Method: "GET", Description: "积分套餐列表"},
+			{Path: "/admin/points/:id", Method: "GET", Description: "积分套餐详情"},
+			{Path: "/admin/points", Method: "POST", Description: "新增积分套餐"},
+			{Path: "/admin/points/:id", Method: "PUT", Description: "编辑积分套餐"},
+			{Path: "/admin/points/:id", Method: "DELETE", Description: "删除积分套餐"},
+			{Path: "/admin/points/:id/status", Method: "PATCH", Description: "切换积分套餐状态"},
+			{Path: "/admin/points/:id/default", Method: "PATCH", Description: "设置默认积分套餐"},
 		}
 		apis := make([]model.VideoAPI, 0, len(seeds))
 		for _, seed := range seeds {

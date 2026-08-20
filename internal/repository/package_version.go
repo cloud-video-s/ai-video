@@ -15,6 +15,7 @@ type PackageVersionRepo struct {
 func NewPackageVersionRepo() *PackageVersionRepo { return &PackageVersionRepo{} }
 
 type PackageVersionListFilter struct {
+	ListSort    ListSort
 	PackageCode string
 	VersionCode string
 	Status      *uint32
@@ -43,7 +44,12 @@ func (r *PackageVersionRepo) PageList(ctx context.Context, page, pageSize int, f
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID}, q.ID, q.ID.Desc())
+	rows, err := dao.Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
 }
 

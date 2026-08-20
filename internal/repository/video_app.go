@@ -14,9 +14,10 @@ type VideoAppRepo struct{ BaseRepo[model.VideoApp] }
 func NewVideoAppRepo() *VideoAppRepo { return &VideoAppRepo{} }
 
 type VideoAppListFilter struct {
-	Keyword string
-	AppCode string
-	Status  *uint32
+	ListSort ListSort
+	Keyword  string
+	AppCode  string
+	Status   *uint32
 }
 
 func (r *VideoAppRepo) PageList(ctx context.Context, page, pageSize int, filter *VideoAppListFilter) ([]model.VideoApp, int64, error) {
@@ -38,7 +39,12 @@ func (r *VideoAppRepo) PageList(ctx context.Context, page, pageSize int, filter 
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID, "sort": q.Sort}, q.ID, q.Sort.Asc(), q.ID.Desc())
+	rows, err := dao.Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
 }
 

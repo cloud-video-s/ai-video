@@ -23,6 +23,7 @@ func NewBannerPlacementService() *BannerPlacementService {
 }
 
 type ListBannerPlacementRequest struct {
+	ListSortRequest
 	Status  *int8  `form:"status" binding:"omitempty,oneof=0 1"`
 	Keyword string `form:"keyword" binding:"max=255"`
 }
@@ -38,7 +39,8 @@ type BannerPlacementPayload struct {
 
 func (s *BannerPlacementService) List(ctx context.Context, page, pageSize int, req *ListBannerPlacementRequest) ([]model.VideoBannerPlacement, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.BannerPlacementListFilter{
-		Status: req.Status, Keyword: strings.TrimSpace(req.Keyword),
+		ListSort: req.listSort(),
+		Status:   req.Status, Keyword: strings.TrimSpace(req.Keyword),
 	})
 }
 

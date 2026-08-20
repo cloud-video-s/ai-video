@@ -22,6 +22,7 @@ func NewBannerRepo() *BannerRepo {
 }
 
 type BannerListFilter struct {
+	ListSort    ListSort
 	CountryCode string
 	AppCode     string
 	PackageCode string
@@ -90,7 +91,12 @@ func (r *BannerRepo) PageList(ctx context.Context, page, pageSize int, filter *B
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID, "sort": q.Sort}, q.ID, q.Sort.Asc(), q.ID.Desc())
+	rows, err := dao.Order(order...).
 		Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, err

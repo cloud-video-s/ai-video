@@ -111,7 +111,7 @@ func verifyAppleJWSWithRoots(compact string, target any, roots *x509.CertPool) e
 	var signedData struct {
 		SignedDate int64 `json:"signedDate"`
 	}
-	if err := json.Unmarshal(payloadJSON, &signedData); err != nil {
+	if err = json.Unmarshal(payloadJSON, &signedData); err != nil {
 		return ErrAppleSignatureInvalid
 	}
 	verificationTime := time.Now()
@@ -121,13 +121,13 @@ func verifyAppleJWSWithRoots(compact string, target any, roots *x509.CertPool) e
 	// Validate the x5c ordering and require its supplied root to resolve to the
 	// server-owned trust store. The untrusted header may not substitute its own
 	// self-signed root even when the leaf signature is otherwise well formed.
-	if err := leaf.CheckSignatureFrom(intermediate); err != nil {
+	if err = leaf.CheckSignatureFrom(intermediate); err != nil {
 		return fmt.Errorf("%w: invalid leaf/intermediate chain", ErrAppleSignatureInvalid)
 	}
-	if err := intermediate.CheckSignatureFrom(suppliedRoot); err != nil {
+	if err = intermediate.CheckSignatureFrom(suppliedRoot); err != nil {
 		return fmt.Errorf("%w: invalid intermediate/root chain", ErrAppleSignatureInvalid)
 	}
-	if _, err := suppliedRoot.Verify(x509.VerifyOptions{
+	if _, err = suppliedRoot.Verify(x509.VerifyOptions{
 		Roots:       roots,
 		CurrentTime: verificationTime,
 		KeyUsages:   []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
@@ -136,7 +136,7 @@ func verifyAppleJWSWithRoots(compact string, target any, roots *x509.CertPool) e
 	}
 	intermediates := x509.NewCertPool()
 	intermediates.AddCert(intermediate)
-	if _, err := leaf.Verify(x509.VerifyOptions{
+	if _, err = leaf.Verify(x509.VerifyOptions{
 		Roots:         roots,
 		Intermediates: intermediates,
 		CurrentTime:   verificationTime,
@@ -159,7 +159,7 @@ func verifyAppleJWSWithRoots(compact string, target any, roots *x509.CertPool) e
 	if r.Sign() <= 0 || s.Sign() <= 0 || !ecdsa.Verify(publicKey, digest[:], r, s) {
 		return ErrAppleSignatureInvalid
 	}
-	if err := json.Unmarshal(payloadJSON, target); err != nil {
+	if err = json.Unmarshal(payloadJSON, target); err != nil {
 		return fmt.Errorf("%w: invalid signed JSON", ErrAppleEvidenceInvalid)
 	}
 	return nil

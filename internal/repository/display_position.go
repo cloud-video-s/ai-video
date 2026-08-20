@@ -15,8 +15,9 @@ type DisplayPositionRepo struct {
 func NewDisplayPositionRepo() *DisplayPositionRepo { return &DisplayPositionRepo{} }
 
 type DisplayPositionListFilter struct {
-	Status  *int8
-	Keyword string
+	ListSort ListSort
+	Status   *int8
+	Keyword  string
 }
 
 func (r *DisplayPositionRepo) PageList(ctx context.Context, page, pageSize int, filter *DisplayPositionListFilter) ([]model.VideoDisplayPosition, int64, error) {
@@ -35,7 +36,12 @@ func (r *DisplayPositionRepo) PageList(ctx context.Context, page, pageSize int, 
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID, "sort": q.Sort}, q.ID, q.Sort.Asc(), q.ID.Desc())
+	rows, err := dao.Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
 }
 

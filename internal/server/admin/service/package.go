@@ -28,6 +28,7 @@ func NewPackageService() *PackageService {
 }
 
 type ListPackageRequest struct {
+	ListSortRequest
 	AppCode     string  `form:"app_code" binding:"max=50"`
 	PackageCode string  `form:"package_code" binding:"max=128"`
 	SystemType  *uint32 `form:"system_type" binding:"omitempty,oneof=1 2"`
@@ -47,7 +48,8 @@ type PackagePayload struct {
 
 func (s *PackageService) List(ctx context.Context, page, pageSize int, req *ListPackageRequest) ([]model.VideoPackage, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.PackageListFilter{
-		AppCode: strings.TrimSpace(req.AppCode), PackageCode: strings.TrimSpace(req.PackageCode),
+		ListSort: req.listSort(),
+		AppCode:  strings.TrimSpace(req.AppCode), PackageCode: strings.TrimSpace(req.PackageCode),
 		SystemType: req.SystemType, Status: req.Status, Keyword: strings.TrimSpace(req.Keyword),
 	})
 }

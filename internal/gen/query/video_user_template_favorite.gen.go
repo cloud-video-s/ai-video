@@ -40,8 +40,92 @@ func newVideoUserTemplateFavorite(db *gorm.DB, opts ...gen.DOOption) videoUserTe
 		RelationField: field.NewRelation("User", "model.VideoUser"),
 		Channel: struct {
 			field.RelationField
+			Owner struct {
+				field.RelationField
+				Roles struct {
+					field.RelationField
+					Menus struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}
+				}
+			}
 		}{
 			RelationField: field.NewRelation("User.Channel", "model.VideoChannel"),
+			Owner: struct {
+				field.RelationField
+				Roles struct {
+					field.RelationField
+					Menus struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}
+				}
+			}{
+				RelationField: field.NewRelation("User.Channel.Owner", "model.VideoAdmin"),
+				Roles: struct {
+					field.RelationField
+					Menus struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}
+				}{
+					RelationField: field.NewRelation("User.Channel.Owner.Roles", "model.VideoRole"),
+					Menus: struct {
+						field.RelationField
+						ParentMenu struct {
+							field.RelationField
+						}
+						ChildMenus struct {
+							field.RelationField
+						}
+						APIs struct {
+							field.RelationField
+						}
+					}{
+						RelationField: field.NewRelation("User.Channel.Owner.Roles.Menus", "model.VideoMenu"),
+						ParentMenu: struct {
+							field.RelationField
+						}{
+							RelationField: field.NewRelation("User.Channel.Owner.Roles.Menus.ParentMenu", "model.VideoMenu"),
+						},
+						ChildMenus: struct {
+							field.RelationField
+						}{
+							RelationField: field.NewRelation("User.Channel.Owner.Roles.Menus.ChildMenus", "model.VideoMenu"),
+						},
+						APIs: struct {
+							field.RelationField
+						}{
+							RelationField: field.NewRelation("User.Channel.Owner.Roles.Menus.APIs", "model.VideoAPI"),
+						},
+					},
+				},
+			},
 		},
 		PointsLedgers: struct {
 			field.RelationField
@@ -293,6 +377,24 @@ type videoUserTemplateFavoriteBelongsToUser struct {
 
 	Channel struct {
 		field.RelationField
+		Owner struct {
+			field.RelationField
+			Roles struct {
+				field.RelationField
+				Menus struct {
+					field.RelationField
+					ParentMenu struct {
+						field.RelationField
+					}
+					ChildMenus struct {
+						field.RelationField
+					}
+					APIs struct {
+						field.RelationField
+					}
+				}
+			}
+		}
 	}
 	PointsLedgers struct {
 		field.RelationField

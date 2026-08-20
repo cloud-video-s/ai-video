@@ -28,20 +28,79 @@ func newVideoChannel(db *gorm.DB, opts ...gen.DOOption) videoChannel {
 
 	tableName := _videoChannel.videoChannelDo.TableName()
 	_videoChannel.ALL = field.NewAsterisk(tableName)
-	_videoChannel.ChannelID = field.NewUint64(tableName, "channel_id")
+	_videoChannel.ID = field.NewUint64(tableName, "id")
 	_videoChannel.ChannelCode = field.NewString(tableName, "channel_code")
 	_videoChannel.ChannelName = field.NewString(tableName, "channel_name")
+	_videoChannel.AccountChannel = field.NewString(tableName, "account_channel")
 	_videoChannel.AgencyCompany = field.NewString(tableName, "agency_company")
+	_videoChannel.MediaID = field.NewUint64(tableName, "media_id")
 	_videoChannel.AdPlatform = field.NewString(tableName, "ad_platform")
 	_videoChannel.DeliveryPackage = field.NewString(tableName, "delivery_package")
+	_videoChannel.SystemType = field.NewString(tableName, "system_type")
+	_videoChannel.OwnerAdminID = field.NewUint64(tableName, "owner_admin_id")
+	_videoChannel.AdAccount = field.NewString(tableName, "ad_account")
 	_videoChannel.TrackingURL = field.NewString(tableName, "tracking_url")
+	_videoChannel.LandingPage = field.NewString(tableName, "landing_page")
 	_videoChannel.PortRebate = field.NewFloat64(tableName, "port_rebate")
 	_videoChannel.ServiceOrderFee = field.NewFloat64(tableName, "service_order_fee")
 	_videoChannel.UploadMethod = field.NewString(tableName, "upload_method")
+	_videoChannel.CallbackConfig = field.NewString(tableName, "callback_config")
 	_videoChannel.Status = field.NewInt8(tableName, "status")
+	_videoChannel.IsDefault = field.NewUint32(tableName, "is_default")
 	_videoChannel.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoChannel.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoChannel.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoChannel.Owner = videoChannelBelongsToOwner{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Owner", "model.VideoAdmin"),
+		Roles: struct {
+			field.RelationField
+			Menus struct {
+				field.RelationField
+				ParentMenu struct {
+					field.RelationField
+				}
+				ChildMenus struct {
+					field.RelationField
+				}
+				APIs struct {
+					field.RelationField
+				}
+			}
+		}{
+			RelationField: field.NewRelation("Owner.Roles", "model.VideoRole"),
+			Menus: struct {
+				field.RelationField
+				ParentMenu struct {
+					field.RelationField
+				}
+				ChildMenus struct {
+					field.RelationField
+				}
+				APIs struct {
+					field.RelationField
+				}
+			}{
+				RelationField: field.NewRelation("Owner.Roles.Menus", "model.VideoMenu"),
+				ParentMenu: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Owner.Roles.Menus.ParentMenu", "model.VideoMenu"),
+				},
+				ChildMenus: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Owner.Roles.Menus.ChildMenus", "model.VideoMenu"),
+				},
+				APIs: struct {
+					field.RelationField
+				}{
+					RelationField: field.NewRelation("Owner.Roles.Menus.APIs", "model.VideoAPI"),
+				},
+			},
+		},
+	}
 
 	_videoChannel.fillFieldMap()
 
@@ -52,20 +111,29 @@ type videoChannel struct {
 	videoChannelDo videoChannelDo
 
 	ALL             field.Asterisk
-	ChannelID       field.Uint64  // channel ID
-	ChannelCode     field.String  // unique channel identifier
-	ChannelName     field.String  // channel name
-	AgencyCompany   field.String  // agency company
-	AdPlatform      field.String  // advertising platform
-	DeliveryPackage field.String  // delivery package
-	TrackingURL     field.String  // tracking URL
-	PortRebate      field.Float64 // port rebate percentage
-	ServiceOrderFee field.Float64 // service fee per order
-	UploadMethod    field.String  // data upload method
-	Status          field.Int8    // status: 0 disabled, 1 enabled
-	CreatedAt       field.Time
-	UpdatedAt       field.Time
-	DeletedAt       field.Field
+	ID              field.Uint64  // 渠道ID
+	ChannelCode     field.String  // 唯一渠道标识符
+	ChannelName     field.String  // 渠道名称
+	AccountChannel  field.String  // 开户渠道
+	AgencyCompany   field.String  // 代理公司
+	MediaID         field.Uint64  // 媒体ID
+	AdPlatform      field.String  // 广告平台
+	DeliveryPackage field.String  // 投放套餐
+	SystemType      field.String  // 目标系统：iOS、Android、Web
+	OwnerAdminID    field.Uint64  // 负责人后台管理员ID
+	AdAccount       field.String  // 广告账户
+	TrackingURL     field.String  // 跟踪链接
+	LandingPage     field.String  // 落地页标识或URL
+	PortRebate      field.Float64 // 端口返点百分比
+	ServiceOrderFee field.Float64 // 每单服务费
+	UploadMethod    field.String  // 数据上传方式
+	CallbackConfig  field.String  // 归因回调事件配置
+	Status          field.Int8    // 状态：0禁用，1启用
+	IsDefault       field.Uint32  // 是否默认渠道 1=是 0=否
+	CreatedAt       field.Time    // 创建时间
+	UpdatedAt       field.Time    // 更新时间
+	DeletedAt       field.Field   // 删除时间（软删除）
+	Owner           videoChannelBelongsToOwner
 
 	fieldMap map[string]field.Expr
 }
@@ -82,17 +150,25 @@ func (v videoChannel) As(alias string) *videoChannel {
 
 func (v *videoChannel) updateTableName(table string) *videoChannel {
 	v.ALL = field.NewAsterisk(table)
-	v.ChannelID = field.NewUint64(table, "channel_id")
+	v.ID = field.NewUint64(table, "id")
 	v.ChannelCode = field.NewString(table, "channel_code")
 	v.ChannelName = field.NewString(table, "channel_name")
+	v.AccountChannel = field.NewString(table, "account_channel")
 	v.AgencyCompany = field.NewString(table, "agency_company")
+	v.MediaID = field.NewUint64(table, "media_id")
 	v.AdPlatform = field.NewString(table, "ad_platform")
 	v.DeliveryPackage = field.NewString(table, "delivery_package")
+	v.SystemType = field.NewString(table, "system_type")
+	v.OwnerAdminID = field.NewUint64(table, "owner_admin_id")
+	v.AdAccount = field.NewString(table, "ad_account")
 	v.TrackingURL = field.NewString(table, "tracking_url")
+	v.LandingPage = field.NewString(table, "landing_page")
 	v.PortRebate = field.NewFloat64(table, "port_rebate")
 	v.ServiceOrderFee = field.NewFloat64(table, "service_order_fee")
 	v.UploadMethod = field.NewString(table, "upload_method")
+	v.CallbackConfig = field.NewString(table, "callback_config")
 	v.Status = field.NewInt8(table, "status")
+	v.IsDefault = field.NewUint32(table, "is_default")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -124,31 +200,140 @@ func (v *videoChannel) GetFieldByName(fieldName string) (field.OrderExpr, bool) 
 }
 
 func (v *videoChannel) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 14)
-	v.fieldMap["channel_id"] = v.ChannelID
+	v.fieldMap = make(map[string]field.Expr, 23)
+	v.fieldMap["id"] = v.ID
 	v.fieldMap["channel_code"] = v.ChannelCode
 	v.fieldMap["channel_name"] = v.ChannelName
+	v.fieldMap["account_channel"] = v.AccountChannel
 	v.fieldMap["agency_company"] = v.AgencyCompany
+	v.fieldMap["media_id"] = v.MediaID
 	v.fieldMap["ad_platform"] = v.AdPlatform
 	v.fieldMap["delivery_package"] = v.DeliveryPackage
+	v.fieldMap["system_type"] = v.SystemType
+	v.fieldMap["owner_admin_id"] = v.OwnerAdminID
+	v.fieldMap["ad_account"] = v.AdAccount
 	v.fieldMap["tracking_url"] = v.TrackingURL
+	v.fieldMap["landing_page"] = v.LandingPage
 	v.fieldMap["port_rebate"] = v.PortRebate
 	v.fieldMap["service_order_fee"] = v.ServiceOrderFee
 	v.fieldMap["upload_method"] = v.UploadMethod
+	v.fieldMap["callback_config"] = v.CallbackConfig
 	v.fieldMap["status"] = v.Status
+	v.fieldMap["is_default"] = v.IsDefault
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt
+
 }
 
 func (v videoChannel) clone(db *gorm.DB) videoChannel {
 	v.videoChannelDo.ReplaceConnPool(db.Statement.ConnPool)
+	v.Owner.db = db.Session(&gorm.Session{Initialized: true})
+	v.Owner.db.Statement.ConnPool = db.Statement.ConnPool
 	return v
 }
 
 func (v videoChannel) replaceDB(db *gorm.DB) videoChannel {
 	v.videoChannelDo.ReplaceDB(db)
+	v.Owner.db = db.Session(&gorm.Session{})
 	return v
+}
+
+type videoChannelBelongsToOwner struct {
+	db *gorm.DB
+
+	field.RelationField
+
+	Roles struct {
+		field.RelationField
+		Menus struct {
+			field.RelationField
+			ParentMenu struct {
+				field.RelationField
+			}
+			ChildMenus struct {
+				field.RelationField
+			}
+			APIs struct {
+				field.RelationField
+			}
+		}
+	}
+}
+
+func (a videoChannelBelongsToOwner) Where(conds ...field.Expr) *videoChannelBelongsToOwner {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a videoChannelBelongsToOwner) WithContext(ctx context.Context) *videoChannelBelongsToOwner {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a videoChannelBelongsToOwner) Session(session *gorm.Session) *videoChannelBelongsToOwner {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a videoChannelBelongsToOwner) Model(m *model.VideoChannel) *videoChannelBelongsToOwnerTx {
+	return &videoChannelBelongsToOwnerTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a videoChannelBelongsToOwner) Unscoped() *videoChannelBelongsToOwner {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type videoChannelBelongsToOwnerTx struct{ tx *gorm.Association }
+
+func (a videoChannelBelongsToOwnerTx) Find() (result *model.VideoAdmin, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a videoChannelBelongsToOwnerTx) Append(values ...*model.VideoAdmin) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a videoChannelBelongsToOwnerTx) Replace(values ...*model.VideoAdmin) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a videoChannelBelongsToOwnerTx) Delete(values ...*model.VideoAdmin) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a videoChannelBelongsToOwnerTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a videoChannelBelongsToOwnerTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a videoChannelBelongsToOwnerTx) Unscoped() *videoChannelBelongsToOwnerTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type videoChannelDo struct{ gen.DO }

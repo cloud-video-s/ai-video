@@ -33,6 +33,7 @@ func NewModelService() *ModelService {
 }
 
 type ListModelRequest struct {
+	ListSortRequest
 	Keyword       string   `form:"keyword"`
 	PlatformID    *int64   `form:"platform_id" binding:"omitempty,gt=0"`
 	ModelType     uint32   `form:"model_type"`
@@ -92,7 +93,8 @@ type ModelView struct {
 
 func (s *ModelService) List(ctx context.Context, page, pageSize int, req *ListModelRequest) ([]ModelView, int64, error) {
 	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.ModelListFilter{
-		Keyword: strings.TrimSpace(req.Keyword), PlatformID: req.PlatformID,
+		ListSort: req.listSort(),
+		Keyword:  strings.TrimSpace(req.Keyword), PlatformID: req.PlatformID,
 		ModelType: req.ModelType, ModelFeatures: req.ModelFeatures, Status: req.Status,
 	})
 	if err != nil {

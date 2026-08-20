@@ -16,6 +16,7 @@ type ModelRepo struct {
 func NewModelRepo() *ModelRepo { return &ModelRepo{} }
 
 type ModelListFilter struct {
+	ListSort      ListSort
 	Keyword       string
 	PlatformID    *int64
 	ModelType     uint32
@@ -48,7 +49,12 @@ func (r *ModelRepo) PageList(ctx context.Context, page, pageSize int, filter *Mo
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Preload(q.Platform).Order(q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID}, q.ID, q.ID.Desc())
+	rows, err := dao.Preload(q.Platform).Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
 }
 
@@ -163,7 +169,9 @@ func (r *ModelRepo) UpdateFields(ctx context.Context, item *model.VideoModel) er
 // credential through generated model JSON. The column is added by the reviewed
 // script in scripts/schema and is never returned in plaintext by the service.
 func (r *ModelRepo) UpdateAPIKey(ctx context.Context, id int64, apiKey string) error {
-	return dbFrom(ctx).Table(model.TableNameVideoModel).Where("id = ?", id).Update("api_key", apiKey).Error
+	q := qFrom(ctx).VideoModel
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(id)).Update(q.APIKey, apiKey)
+	return err
 }
 
 func (r *ModelRepo) APIKeyConfigured(ctx context.Context, ids []int64) (map[int64]bool, error) {
@@ -171,12 +179,9 @@ func (r *ModelRepo) APIKeyConfigured(ctx context.Context, ids []int64) (map[int6
 	if len(ids) == 0 {
 		return configured, nil
 	}
-	var rows []struct {
-		ID     int64
-		APIKey string
-	}
-	if err := dbFrom(ctx).Table(model.TableNameVideoModel).
-		Select("id, api_key").Where("id IN ?", ids).Scan(&rows).Error; err != nil {
+	q := qFrom(ctx).VideoModel
+	rows, err := q.WithContext(ctx).Select(q.ID, q.APIKey).Where(q.ID.In(ids...)).Find()
+	if err != nil {
 		return nil, err
 	}
 	for _, row := range rows {

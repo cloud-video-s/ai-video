@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -169,7 +170,7 @@ func captureRequest(c *gin.Context) string {
 
 	out := make(map[string]string, 2)
 	if q := c.Request.URL.RawQuery; q != "" {
-		out["query"] = q
+		out["query"] = redactQuery(q)
 	}
 	if bodyStr != "" {
 		out["body"] = bodyStr
@@ -245,6 +246,22 @@ func isSensitiveName(name string) bool {
 		}
 	}
 	return false
+}
+
+func redactQuery(raw string) string {
+	if strings.TrimSpace(raw) == "" {
+		return ""
+	}
+	values, err := url.ParseQuery(raw)
+	if err != nil {
+		return "[invalid query omitted]"
+	}
+	for key := range values {
+		if isSensitiveName(key) {
+			values.Set(key, "***")
+		}
+	}
+	return values.Encode()
 }
 
 // parseBizResult extracts the {code,message} envelope from a response body to

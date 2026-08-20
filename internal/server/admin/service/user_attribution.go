@@ -25,6 +25,7 @@ func NewUserAttributionService() *UserAttributionService {
 }
 
 type ListUserAttributionRequest struct {
+	ListSortRequest
 	Keyword     string `form:"keyword" binding:"max=128"`
 	ChannelCode string `form:"channel_code" binding:"max=64"`
 	Event       string `form:"event" binding:"omitempty,oneof=activation key_behavior payment first_payment registration"`
@@ -64,15 +65,14 @@ func (s *UserAttributionService) List(
 		return nil, 0, errors.New("筛选达标状态时必须选择事件")
 	}
 	list, total, err := s.repo.PageList(ctx, page, pageSize, &repository.UserAttributionListFilter{
-		Keyword: strings.TrimSpace(req.Keyword), ChannelCode: strings.TrimSpace(req.ChannelCode),
+		ListSort: req.listSort(),
+		Keyword:  strings.TrimSpace(req.Keyword), ChannelCode: strings.TrimSpace(req.ChannelCode),
 		Event: strings.TrimSpace(req.Event), Reached: req.Reached, StartedAt: startedAt, EndedAt: endedAt,
 	})
 	if err != nil {
 		return nil, 0, err
 	}
-	for i := range list {
-		s.enrichChannel(ctx, &list[i])
-	}
+
 	return list, total, nil
 }
 
@@ -81,7 +81,6 @@ func (s *UserAttributionService) GetByID(ctx context.Context, id uint64) (*repos
 	if err != nil {
 		return nil, notFoundOr(err, "归因记录不存在")
 	}
-	s.enrichChannel(ctx, item)
 	return item, nil
 }
 
@@ -101,12 +100,12 @@ func (s *UserAttributionService) Update(
 			return nil, err
 		}
 	}
-	item.ChannelCode = channelCode
+	//item.ChannelID = channelCode
 	item.OAID = strings.TrimSpace(req.OAID)
 	item.IMEI = strings.TrimSpace(req.IMEI)
 	item.AndroidID = strings.TrimSpace(req.AndroidID)
-	item.IP = strings.TrimSpace(req.IP)
-	item.UserAgent = strings.TrimSpace(req.UserAgent)
+	//item.IP = strings.TrimSpace(req.IP)
+	//item.UserAgent = strings.TrimSpace(req.UserAgent)
 	item.Remark = strings.TrimSpace(req.Remark)
 	if err := s.repo.Update(ctx, &item.VideoUserAttribution); err != nil {
 		return nil, err
@@ -146,18 +145,6 @@ func (s *UserAttributionService) RecordEvent(
 
 func (s *UserAttributionService) SyncUsers(ctx context.Context) (int64, error) {
 	return s.repo.SyncUsers(ctx)
-}
-
-func (s *UserAttributionService) enrichChannel(ctx context.Context, item *repository.UserAttributionRecord) {
-	code := strings.TrimSpace(item.ChannelCode)
-	if code == "" {
-		code = strings.TrimSpace(item.User.ChannelID)
-		item.ChannelCode = code
-	}
-	if code == "" {
-		return
-	}
-	return
 }
 
 func parseAttributionDate(value string, endOfDay bool) (*time.Time, error) {

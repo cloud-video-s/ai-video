@@ -14,7 +14,7 @@ const TableNameVideoVipSubscriptionApp = "video_vip_subscription_app"
 
 // VideoVipSubscriptionApp VIP绑定包表
 type VideoVipSubscriptionApp struct {
-	ID             uint64         `gorm:"column:id;type:bigint unsigned;primaryKey" json:"id"`
+	ID             uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
 	SubscriptionID uint64         `gorm:"column:subscription_id;type:bigint unsigned;not null;uniqueIndex:idx_trmplate_app,priority:1" json:"subscription_id"`
 	AppCode        string         `gorm:"column:app_code;type:varchar(50);not null;uniqueIndex:idx_trmplate_app,priority:2" json:"app_code"`
 	CreatedAt      time.Time      `gorm:"column:created_at;type:datetime(3);not null" json:"created_at"`

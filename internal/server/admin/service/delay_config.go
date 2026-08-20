@@ -24,6 +24,7 @@ func NewDelayConfigService() *DelayConfigService {
 }
 
 type ListDelayConfigRequest struct {
+	ListSortRequest
 	Group   string
 	Keyword string
 }
@@ -54,7 +55,8 @@ type DelayConfigValueItem struct {
 
 func (s *DelayConfigService) List(ctx context.Context, page, pageSize int, req *ListDelayConfigRequest) ([]model.VideoDelayConfig, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.DelayConfigListFilter{
-		Group: strings.TrimSpace(req.Group), Keyword: strings.TrimSpace(req.Keyword),
+		ListSort: req.listSort(),
+		Group:    strings.TrimSpace(req.Group), Keyword: strings.TrimSpace(req.Keyword),
 	})
 }
 

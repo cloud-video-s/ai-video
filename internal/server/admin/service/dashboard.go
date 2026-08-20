@@ -70,7 +70,7 @@ func (s *DashboardService) Get(ctx context.Context, page, pageSize int, req *Das
 	}
 	records, total, err := s.orderRepo.PageAdminList(ctx, page, pageSize, &repository.OrderAdminFilter{
 		UserID: req.UserID, ProductType: domain.OrderProductVIPSubscription,
-		ProductCode: strings.TrimSpace(req.ProductCode), Status: req.Status,
+		ProductCode: strings.TrimSpace(req.ProductCode), Status: req.Status, PayChannel: 2,
 		PayType: req.PayType, Keyword: strings.TrimSpace(req.Keyword),
 		CreatedFrom: createdFrom, CreatedTo: createdTo,
 	})

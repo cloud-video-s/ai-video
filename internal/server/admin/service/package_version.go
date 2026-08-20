@@ -24,6 +24,7 @@ func NewPackageVersionService() *PackageVersionService {
 }
 
 type ListPackageVersionRequest struct {
+	ListSortRequest
 	PackageCode string  `form:"package_code" binding:"max=128"`
 	VersionCode string  `form:"version_code" binding:"max=50"`
 	Status      *uint32 `form:"status" binding:"omitempty,oneof=1 2"`
@@ -43,6 +44,7 @@ type PackageVersionPayload struct {
 
 func (s *PackageVersionService) List(ctx context.Context, page, pageSize int, req *ListPackageVersionRequest) ([]model.VideoPackageVersion, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.PackageVersionListFilter{
+		ListSort:    req.listSort(),
 		PackageCode: strings.TrimSpace(req.PackageCode), VersionCode: strings.TrimSpace(req.VersionCode),
 		Status: req.Status, Keyword: strings.TrimSpace(req.Keyword),
 	})

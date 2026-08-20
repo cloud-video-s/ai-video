@@ -18,6 +18,7 @@ type VIPSubscriptionRepo struct {
 func NewVIPSubscriptionRepo() *VIPSubscriptionRepo { return &VIPSubscriptionRepo{} }
 
 type VIPSubscriptionListFilter struct {
+	ListSort           ListSort
 	AppCode            string
 	PackageCode        string
 	VersionCode        string
@@ -76,7 +77,12 @@ func (r *VIPSubscriptionRepo) PageList(ctx context.Context, page, pageSize int, 
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(vip.Sort.Asc(), vip.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": vip.ID, "sort": vip.Sort}, vip.ID, vip.Sort.Asc(), vip.ID.Desc())
+	rows, err := dao.Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, err
 	}

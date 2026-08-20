@@ -147,9 +147,9 @@ func (s *RoleService) Delete(ctx context.Context, id uint64) error {
 	return s.reloadPolicies()
 }
 
-func (s *RoleService) List(ctx context.Context, page, pageSize int) ([]model.VideoRole, int64, error) {
+func (s *RoleService) List(ctx context.Context, page, pageSize int, req *ListSortRequest) ([]model.VideoRole, int64, error) {
 	return s.roleRepo.PageList(ctx, page, pageSize, &repository.QueryOptions{
-		Order: []string{"sort ASC", "id ASC"},
+		ListSort: req.listSort(),
 	})
 }
 

@@ -35,6 +35,29 @@ type endpointType struct {
 	response reflect.Type
 }
 
+type adjustAttributionCallbackRequest struct {
+	CallbackToken        string `json:"callback_token" form:"callback_token" binding:"required"`
+	ADID                 string `json:"adid" form:"adid" binding:"required,max=64"`
+	AppToken             string `json:"app_token" form:"app_token" binding:"omitempty,max=64"`
+	TrackerToken         string `json:"tracker_token" form:"tracker_token" binding:"omitempty,max=64"`
+	TrackerName          string `json:"tracker_name" form:"tracker_name" binding:"omitempty,max=255"`
+	OutdatedTracker      string `json:"outdated_tracker" form:"outdated_tracker" binding:"omitempty,max=64"`
+	OutdatedTrackerName  string `json:"outdated_tracker_name" form:"outdated_tracker_name" binding:"omitempty,max=255"`
+	Network              string `json:"network" form:"network" binding:"omitempty,max=255"`
+	Campaign             string `json:"campaign" form:"campaign" binding:"omitempty,max=255"`
+	Adgroup              string `json:"adgroup" form:"adgroup" binding:"omitempty,max=255"`
+	Creative             string `json:"creative" form:"creative" binding:"omitempty,max=255"`
+	ActivityKind         string `json:"activity_kind" form:"activity_kind" binding:"omitempty,max=64"`
+	AttributionType      string `json:"attribution_type" form:"attribution_type" binding:"omitempty,max=32"`
+	Reattributed         bool   `json:"reattributed" form:"reattributed"`
+	IsRedownload         bool   `json:"is_redownload" form:"is_redownload"`
+	ClickTime            string `json:"click_time" form:"click_time"`
+	InstalledAt          string `json:"installed_at" form:"installed_at"`
+	ReattributedAt       string `json:"reattributed_at" form:"reattributed_at"`
+	AttributionUpdatedAt string `json:"attribution_updated_at" form:"attribution_updated_at"`
+	CreatedAt            string `json:"created_at" form:"created_at"`
+}
+
 type templateCategoriesQuery struct {
 	apiservice.BasePage
 }
@@ -126,6 +149,21 @@ type thirdPartyLoginDocRequest struct {
 }
 
 var requestBodyExamples = map[string]any{
+	"POST /api/attributions/adjust/report": map[string]any{
+		"trackerToken": "22hydf4k", "trackerName": "TikTok SAN tracker",
+		"campaign": "TT campaign", "network": "TikTok SAN",
+		"creative": "instruction.mp4", "adgroup": "TT adgroup",
+		"clickLabel": "", "costType": "", "costAmount": nil, "costCurrency": "",
+		"fbInstallReferrer": "", "googleAdId": "928cdf5a-d453-45a6-8016-115481cbeaa5",
+		"adid": "0a09e2a1de95add39162efdf3adff446", "idfa": "", "idfv": "",
+	},
+	"POST /api/attributions/adjust/callback": map[string]any{
+		"callback_token": "configured-callback-token", "adid": "adjust-device-id",
+		"app_token": "app-token", "tracker_token": "abc123",
+		"tracker_name": "Paid Tracker", "network": "Example Network", "campaign": "Launch",
+		"activity_kind": "install", "click_time": "2026-08-17T10:00:00Z",
+		"installed_at": "2026-08-17T10:05:00Z", "created_at": "2026-08-17T10:06:00Z",
+	},
 	"POST /api/auth/login": map[string]any{
 		"device_code": "device-0123456789abcdef", "force_new": false,
 	},
@@ -447,6 +485,9 @@ var responseDataExamples = map[string]any{
 var endpointTypes = map[string]endpointType{
 	"GET /api/health":                                  {response: typeOf[map[string]string]()},
 	"GET /api/configs/list":                            {response: typeOf[map[string]string]()},
+	"GET /api/attributions/adjust/callback":            {query: typeOf[adjustAttributionCallbackRequest](), response: typeOf[apiservice.AdjustCallbackResult]()},
+	"POST /api/attributions/adjust/callback":           {body: typeOf[adjustAttributionCallbackRequest](), response: typeOf[apiservice.AdjustCallbackResult]()},
+	"POST /api/attributions/adjust/report":             {body: typeOf[apiservice.AdjustAppReportRequest](), response: typeOf[apiservice.AdjustAppReportResult]()},
 	"POST /api/auth/login":                             {body: typeOf[loginDocRequest](), response: typeOf[apiservice.AuthResponse]()},
 	"POST /api/auth/apple_order_login":                 {body: typeOf[apiservice.AppleOrderLoginRequest](), response: typeOf[apiservice.AuthResponse]()},
 	"POST /api/auth/refresh":                           {response: typeOf[apiservice.AuthResponse]()},
@@ -590,7 +631,8 @@ var fieldDescriptions = map[string]string{
 	"evidence_mode": "交易凭证模式，固定为 jws",
 	"vip_type":      "VIP 套餐类型", "vip_types": "VIP 套餐类型数组；使用重复 Query 参数传递，例如 vip_types=1&vip_types=2",
 	"suk_code": "商店产品 SKU", "level_name": "会员等级名称", "currency": "ISO 货币代码",
-	"vip_duration_days": "VIP 权益持续天数", "trial_days": "免费试用天数", "badge_text": "徽章文案",
+	"vip_duration_days": "VIP 权益持续天数", "trial_days": "免费试用天数", "badge_text": "VIP 套餐徽章文案",
+	"icon":                      "图标图片地址；半链接由展示端自动拼接 CDN 域名",
 	"agreement_default_checked": "订阅协议是否默认勾选", "display_mode": "展示模式：0 隐藏，1 正常",
 	"free_trial": "是否启用免费试用", "is_subscription": "是否循环订阅", "is_default": "是否为默认套餐",
 	"subscription_description": "订阅说明", "subscription_price": "当前用户适用的订阅价格",
@@ -623,6 +665,46 @@ var paginatedRoutes = map[string]bool{
 var sseRoutes = map[string]bool{}
 
 var operationIDSanitizer = regexp.MustCompile(`[^A-Za-z0-9]+`)
+
+func init() {
+	for _, key := range []string{
+		"GET /api/attributions/adjust/callback",
+		"POST /api/attributions/adjust/callback",
+	} {
+		publicRoutes[key] = true
+		operationSummaries[key] = "接收 Adjust 归因回调"
+	}
+	operationDescriptions["GET /api/attributions/adjust/callback"] =
+		"接收 Adjust 服务端归因回调。使用专用 callback_token 鉴权，按无密钥的标准化载荷幂等落库，并在用户可匹配时更新当前归因汇总。"
+	operationDescriptions["POST /api/attributions/adjust/callback"] =
+		"接收 Adjust 服务端归因回调。支持 JSON 或表单参数；处理和幂等规则与 GET 回调一致。"
+	operationSummaries["POST /api/attributions/adjust/report"] = "上报 APP Adjust 归因数据"
+	operationDescriptions["POST /api/attributions/adjust/report"] =
+		"接收 Adjust SDK 的客户端归因快照。接口必须使用客户端 Bearer JWT，用户 ID 只从鉴权上下文获取；服务端按 ADID 与 Adjust 回调融合。"
+	resourceNames["attributions"] = "归因"
+	fieldDescriptions["callback_token"] = "Adjust 回调专用密钥；仅用于鉴权，不会持久化"
+	fieldDescriptions["adid"] = "Adjust 设备 ID"
+	fieldDescriptions["tracker_token"] = "Adjust tracker token"
+	fieldDescriptions["tracker_name"] = "Adjust tracker 名称"
+	fieldDescriptions["trackerToken"] = "Adjust SDK tracker token"
+	fieldDescriptions["trackerName"] = "Adjust SDK tracker 名称"
+	fieldDescriptions["costAmount"] = "Adjust SDK 原始成本值；可能为字符串 NaN"
+	fieldDescriptions["googleAdId"] = "Google Advertising ID"
+	fieldDescriptions["costAmount"] = "Adjust SDK 成本值；客户端应发送 number 或 null，兼容历史字符串 NaN"
+	fieldDescriptions["app_token"] = "Adjust 应用 token"
+	fieldDescriptions["outdated_tracker"] = "归因更新前的 tracker token"
+	fieldDescriptions["outdated_tracker_name"] = "归因更新前的 tracker 名称"
+	fieldDescriptions["installed_at"] = "Adjust 安装时间"
+	fieldDescriptions["reattributed_at"] = "Adjust 再归因时间"
+	fieldDescriptions["attribution_updated_at"] = "Adjust 归因更新时间"
+	fieldDescriptions["is_redownload"] = "是否为重新下载/安装"
+	operationDescriptions["POST /api/attributions/adjust/report"] =
+		"接收 Adjust SDK 当前归因快照；SDK 归因变化时应重复幂等上报。用户 ID 只从 Bearer JWT 获取，并按 ADID 与服务端 callback 融合。"
+	operationDescriptions["GET /api/attributions/adjust/callback"] =
+		"接收 Adjust callback，按事件类型区分首次安装、安装更新、再归因、审计忽略和 GDPR 删除；首次获客不会被再归因覆盖。"
+	operationDescriptions["POST /api/attributions/adjust/callback"] =
+		operationDescriptions["GET /api/attributions/adjust/callback"]
+}
 
 func typeOf[T any]() reflect.Type { return reflect.TypeOf((*T)(nil)).Elem() }
 
@@ -810,6 +892,16 @@ func requestSchemaForType(valueType reflect.Type) map[string]any {
 	properties, ok := schema["properties"].(map[string]any)
 	if !ok {
 		return schema
+	}
+	if indirectType(valueType) == typeOf[apiservice.AdjustAppReportRequest]() {
+		properties["costAmount"] = map[string]any{
+			"nullable": true,
+			"oneOf": []any{
+				map[string]any{"type": "number", "format": "double"},
+				map[string]any{"type": "string", "maxLength": 64},
+			},
+			"description": fieldDescriptions["costAmount"],
+		}
 	}
 	for name := range commonContextFieldNames {
 		delete(properties, name)

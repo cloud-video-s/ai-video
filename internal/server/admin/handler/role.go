@@ -77,8 +77,13 @@ func (h *RoleHandler) Delete(c *gin.Context) {
 }
 
 func (h *RoleHandler) List(c *gin.Context) {
+	var req service.ListSortRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
 	p := utils.GetPagination(c)
-	roles, total, err := h.svc.List(c.Request.Context(), p.Page, p.PageSize)
+	roles, total, err := h.svc.List(c.Request.Context(), p.Page, p.PageSize, &req)
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return

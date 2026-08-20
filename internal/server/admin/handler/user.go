@@ -96,8 +96,13 @@ func (h *UserHandler) Delete(c *gin.Context) {
 }
 
 func (h *UserHandler) List(c *gin.Context) {
+	var req service.ListSortRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
+		return
+	}
 	p := utils.GetPagination(c)
-	users, total, err := h.svc.List(c.Request.Context(), p.Page, p.PageSize)
+	users, total, err := h.svc.List(c.Request.Context(), p.Page, p.PageSize, &req)
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
@@ -108,4 +113,13 @@ func (h *UserHandler) List(c *gin.Context) {
 		"page":  p.Page,
 		"size":  p.PageSize,
 	})
+}
+
+func (h *UserHandler) ListOptions(c *gin.Context) {
+	users, err := h.svc.ListOptions(c.Request.Context())
+	if err != nil {
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, users)
 }

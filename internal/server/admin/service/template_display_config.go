@@ -25,6 +25,7 @@ func NewTemplateDisplayConfigService() *TemplateDisplayConfigService {
 }
 
 type ListTemplateDisplayConfigRequest struct {
+	ListSortRequest
 	TemplateID     uint64 `form:"template_id"`
 	TemplateTypeID uint64 `form:"video_template_type_id"`
 	PositionKey    string `form:"position_key" binding:"omitempty,max=64"`
@@ -42,6 +43,7 @@ type TemplateDisplayConfigPayload struct {
 
 func (s *TemplateDisplayConfigService) List(ctx context.Context, page, pageSize int, req *ListTemplateDisplayConfigRequest) ([]repository.TemplateDisplayConfigRecord, int64, error) {
 	items, total, err := s.repo.PageList(ctx, page, pageSize, &repository.TemplateDisplayConfigListFilter{
+		ListSort:   req.listSort(),
 		TemplateID: req.TemplateID, TemplateTypeID: req.TemplateTypeID,
 		PositionKey: strings.TrimSpace(req.PositionKey), Status: req.Status,
 		Keyword: strings.TrimSpace(req.Keyword),

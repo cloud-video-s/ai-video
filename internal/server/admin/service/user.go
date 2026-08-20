@@ -128,6 +128,7 @@ type UpdateAppUserRequest struct {
 }
 
 type ListAppUserRequest struct {
+	ListSortRequest
 	Keyword            string `form:"keyword" binding:"max=255"`
 	ClientCountry      string `form:"client_country" binding:"max=64"`
 	DeviceCountry      string `form:"device_country" binding:"max=64"`
@@ -389,7 +390,8 @@ func (s *AppUserService) List(ctx context.Context, page, pageSize int, req *List
 		clientCountry = strings.TrimSpace(req.DeviceCountry)
 	}
 	return s.repo.PageList(ctx, page, pageSize, &repository.AppUserListFilter{
-		Keyword: strings.TrimSpace(req.Keyword), ClientCountry: clientCountry,
+		ListSort: req.listSort(),
+		Keyword:  strings.TrimSpace(req.Keyword), ClientCountry: clientCountry,
 		ServerCountry: strings.TrimSpace(req.ServerCountry), ChannelID: strings.TrimSpace(req.ChannelID),
 		AppVersion: strings.TrimSpace(req.AppVersion), AppName: strings.TrimSpace(req.AppName),
 		PackageCode: strings.TrimSpace(req.PackageCode), LoginType: req.LoginType,

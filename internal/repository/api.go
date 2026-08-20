@@ -48,9 +48,10 @@ func (d *ApiRepo) Delete(ctx context.Context, id uint) error {
 }
 
 type APIListFilter struct {
-	Group   string
-	Method  string
-	Keyword string
+	ListSort ListSort
+	Group    string
+	Method   string
+	Keyword  string
 }
 
 func (d *ApiRepo) PageList(ctx context.Context, page, pageSize int, filter *APIListFilter) ([]model.VideoAPI, int64, error) {
@@ -75,7 +76,12 @@ func (d *ApiRepo) PageList(ctx context.Context, page, pageSize int, filter *APIL
 		return nil, 0, err
 	}
 	var apis []model.VideoAPI
-	if err := dao.Order(q.Group.Asc(), q.ID.Asc()).
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID}, q.ID, q.Group.Asc(), q.ID.Asc())
+	if err := dao.Order(order...).
 		Offset((page - 1) * pageSize).Limit(pageSize).Scan(&apis); err != nil {
 		return nil, 0, err
 	}

@@ -17,8 +17,9 @@ func NewVIPSubscriptionLevelRepo() *VIPSubscriptionLevelRepo {
 }
 
 type VIPSubscriptionLevelListFilter struct {
-	Status  *uint32
-	Keyword string
+	ListSort ListSort
+	Status   *uint32
+	Keyword  string
 }
 
 func (r *VIPSubscriptionLevelRepo) PageList(ctx context.Context, page, pageSize int, filter *VIPSubscriptionLevelListFilter) ([]model.VideoVipSubscriptionLevel, int64, error) {
@@ -37,7 +38,12 @@ func (r *VIPSubscriptionLevelRepo) PageList(ctx context.Context, page, pageSize 
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := dao.Order(q.Sort.Asc(), q.ID.Desc()).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	listSort := ListSort{}
+	if filter != nil {
+		listSort = filter.ListSort
+	}
+	order := orderForList(listSort, map[string]field.OrderExpr{"id": q.ID, "sort": q.Sort}, q.ID, q.Sort.Asc(), q.ID.Desc())
+	rows, err := dao.Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	return valuesOf(rows), total, err
 }
 

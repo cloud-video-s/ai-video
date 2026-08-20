@@ -14,20 +14,29 @@ const TableNameVideoChannel = "video_channel"
 
 // VideoChannel mapped from table <video_channel>
 type VideoChannel struct {
-	ChannelID       uint64         `gorm:"column:channel_id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:channel ID" json:"channel_id"`                                                   // channel ID
-	ChannelCode     string         `gorm:"column:channel_code;type:varchar(64);not null;uniqueIndex:idx_video_channel_channel_code,priority:1;comment:unique channel identifier" json:"channel_code"`   // unique channel identifier
-	ChannelName     string         `gorm:"column:channel_name;type:varchar(128);not null;index:idx_video_channel_channel_name,priority:1;comment:channel name" json:"channel_name"`                     // channel name
-	AgencyCompany   string         `gorm:"column:agency_company;type:varchar(128);index:idx_video_channel_agency_company,priority:1;comment:agency company" json:"agency_company"`                      // agency company
-	AdPlatform      string         `gorm:"column:ad_platform;type:varchar(64);not null;index:idx_video_channel_ad_platform,priority:1;comment:advertising platform" json:"ad_platform"`                 // advertising platform
-	DeliveryPackage string         `gorm:"column:delivery_package;type:varchar(255);not null;index:idx_video_channel_delivery_package,priority:1;comment:delivery package" json:"delivery_package"`     // delivery package
-	TrackingURL     string         `gorm:"column:tracking_url;type:varchar(1024);comment:tracking URL" json:"tracking_url"`                                                                             // tracking URL
-	PortRebate      float64        `gorm:"column:port_rebate;type:decimal(8,4);not null;default:0.0000;comment:port rebate percentage" json:"port_rebate"`                                              // port rebate percentage
-	ServiceOrderFee float64        `gorm:"column:service_order_fee;type:decimal(12,2);not null;default:0.00;comment:service fee per order" json:"service_order_fee"`                                    // service fee per order
-	UploadMethod    string         `gorm:"column:upload_method;type:varchar(32);not null;index:idx_video_channel_upload_method,priority:1;default:API;comment:data upload method" json:"upload_method"` // data upload method
-	Status          int8           `gorm:"column:status;type:tinyint;not null;index:idx_video_channel_status,priority:1;default:1;comment:status: 0 disabled, 1 enabled" json:"status"`                 // status: 0 disabled, 1 enabled
-	CreatedAt       time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_video_channel_created_at,priority:1" json:"created_at"`
-	UpdatedAt       time.Time      `gorm:"column:updated_at;type:datetime(3)" json:"updated_at"`
-	DeletedAt       gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_channel_deleted_at,priority:1" json:"deleted_at"`
+	ID              uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:渠道ID" json:"id"`                                                             // 渠道ID
+	ChannelCode     string         `gorm:"column:channel_code;type:varchar(64);not null;uniqueIndex:idx_video_channel_channel_code,priority:1;comment:唯一渠道标识符" json:"channel_code"`         // 唯一渠道标识符
+	ChannelName     string         `gorm:"column:channel_name;type:varchar(128);not null;index:idx_video_channel_channel_name,priority:1;comment:渠道名称" json:"channel_name"`                 // 渠道名称
+	AccountChannel  string         `gorm:"column:account_channel;type:varchar(128);not null;comment:开户渠道" json:"account_channel"`                                                           // 开户渠道
+	AgencyCompany   string         `gorm:"column:agency_company;type:varchar(128);index:idx_video_channel_agency_company,priority:1;comment:代理公司" json:"agency_company"`                    // 代理公司
+	MediaID         uint64         `gorm:"column:media_id;type:bigint unsigned;not null;uniqueIndex:idx_ad_account_media,priority:2;comment:媒体ID" json:"media_id"`                          // 媒体ID
+	AdPlatform      string         `gorm:"column:ad_platform;type:varchar(64);not null;index:idx_video_channel_ad_platform,priority:1;comment:广告平台" json:"ad_platform"`                     // 广告平台
+	DeliveryPackage string         `gorm:"column:delivery_package;type:varchar(255);not null;index:idx_video_channel_delivery_package,priority:1;comment:投放套餐" json:"delivery_package"`     // 投放套餐
+	SystemType      string         `gorm:"column:system_type;type:varchar(16);not null;default:iOS;comment:目标系统：iOS、Android、Web" json:"system_type"`                                        // 目标系统：iOS、Android、Web
+	OwnerAdminID    *uint64        `gorm:"column:owner_admin_id;type:bigint unsigned;index:idx_video_channel_owner_admin_id,priority:1;comment:负责人后台管理员ID" json:"owner_admin_id"`           // 负责人后台管理员ID
+	AdAccount       string         `gorm:"column:ad_account;type:varchar(128);not null;uniqueIndex:idx_ad_account_media,priority:1;comment:广告账户" json:"ad_account"`                         // 广告账户
+	TrackingURL     string         `gorm:"column:tracking_url;type:varchar(1024);comment:跟踪链接" json:"tracking_url"`                                                                         // 跟踪链接
+	LandingPage     string         `gorm:"column:landing_page;type:varchar(1024);not null;default:API;comment:落地页标识或URL" json:"landing_page"`                                               // 落地页标识或URL
+	PortRebate      float64        `gorm:"column:port_rebate;type:decimal(8,4);not null;default:0.0000;comment:端口返点百分比" json:"port_rebate"`                                                 // 端口返点百分比
+	ServiceOrderFee float64        `gorm:"column:service_order_fee;type:decimal(12,2);not null;default:0.00;comment:每单服务费" json:"service_order_fee"`                                        // 每单服务费
+	UploadMethod    string         `gorm:"column:upload_method;type:varchar(32);not null;index:idx_video_channel_upload_method,priority:1;default:API;comment:数据上传方式" json:"upload_method"` // 数据上传方式
+	CallbackConfig  string         `gorm:"column:callback_config;type:json;comment:归因回调事件配置" json:"callback_config"`                                                                        // 归因回调事件配置
+	Status          int8           `gorm:"column:status;type:tinyint;not null;index:idx_video_channel_status,priority:1;default:1;comment:状态：0禁用，1启用" json:"status"`                        // 状态：0禁用，1启用
+	IsDefault       uint32         `gorm:"column:is_default;type:tinyint unsigned;not null;comment:是否默认渠道 1=是 0=否" json:"is_default"`                                                       // 是否默认渠道 1=是 0=否
+	CreatedAt       time.Time      `gorm:"column:created_at;type:datetime(3);index:idx_video_channel_created_at,priority:1;comment:创建时间" json:"created_at"`                                 // 创建时间
+	UpdatedAt       time.Time      `gorm:"column:updated_at;type:datetime(3);comment:更新时间" json:"updated_at"`                                                                               // 更新时间
+	DeletedAt       gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_video_channel_deleted_at,priority:1;comment:删除时间（软删除）" json:"deleted_at"`                            // 删除时间（软删除）
+	Owner           *VideoAdmin    `gorm:"foreignKey:OwnerAdminID;references:ID" json:"owner"`
 }
 
 // TableName VideoChannel's table name

@@ -128,7 +128,7 @@ func (s *Service) validateOrderProduct(ctx context.Context, shopType uint32, pro
 	case domain.OrderProductVIPSubscription:
 		_, err = s.vipProducts.GetEnabledForPackage(ctx, productID, packageCode)
 	case domain.OrderProductPointsPackage:
-		_, err = s.pointProducts.GetEnabledForPackage(ctx, productID, packageCode)
+		_, err = s.points.GetEnabledForPackage(ctx, productID, packageCode)
 	default:
 		return ErrUnsupportedProduct
 	}

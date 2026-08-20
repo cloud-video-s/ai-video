@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"ai-video/internal/middleware"
 	"ai-video/internal/pkg/errcode"
 	"ai-video/internal/pkg/response"
 	"ai-video/internal/pkg/utils"
@@ -41,6 +42,15 @@ func (h *ChannelHandler) ListOptions(c *gin.Context) {
 	response.OK(c, list)
 }
 
+func (h *ChannelHandler) ListMediaOptions(c *gin.Context) {
+	list, err := h.svc.ListMediaOptions(c.Request.Context())
+	if err != nil {
+		response.Fail(c, errcode.ErrServer, err.Error())
+		return
+	}
+	response.OK(c, list)
+}
+
 func (h *ChannelHandler) GetByID(c *gin.Context) {
 	id, ok := templateResourceID(c, "渠道")
 	if !ok {
@@ -60,7 +70,7 @@ func (h *ChannelHandler) Create(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	item, err := h.svc.Create(c.Request.Context(), &req)
+	item, err := h.svc.Create(c.Request.Context(), &req, middleware.GetAdminID(c))
 	if err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return

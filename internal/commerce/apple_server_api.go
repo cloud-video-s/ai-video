@@ -28,6 +28,8 @@ const (
 	appleServerAPITokenTTL      = 5 * time.Minute
 	appleServerAPIResponseLimit = 1 << 20
 	applePrivateKeySizeLimit    = 64 << 10
+	applePayChannelOne          = 1
+	applePayChannelTwo          = 2
 )
 
 var (
@@ -40,7 +42,7 @@ var (
 // appleTransactionInfoProvider resolves a client-supplied transaction ID to
 // Apple's authoritative signedTransactionInfo response.
 type appleTransactionInfoProvider interface {
-	LookupTransaction(context.Context, string, string) (string, error)
+	LookupTransaction(context.Context, string, string) (string, int, error)
 }
 
 type appleServerAPIClient struct {
@@ -83,14 +85,19 @@ func (s *Service) verifyApplePurchaseEvidence(
 	if s.appleServerAPI == nil {
 		return nil, ErrAppleServerAPIConfig
 	}
-	signedTransaction, err := s.appleServerAPI.LookupTransaction(
+	signedTransaction, payChannel, err := s.appleServerAPI.LookupTransaction(
 		ctx, strings.TrimSpace(req.TransactionID), strings.TrimSpace(expectedBundle),
 	)
 	if err != nil {
 		return nil, err
 	}
 	req.SignedTransactionInfo = signedTransaction
-	return verifyApplePurchase(req, expectedBundle, s.appleRootCAs)
+	purchase, err := verifyApplePurchase(req, expectedBundle, s.appleRootCAs)
+	if err != nil {
+		return purchase, err
+	}
+	purchase.payChannel = payChannel
+	return purchase, nil
 }
 
 // LookupTransaction calls Apple's current Get Transaction Info endpoint. It
@@ -102,33 +109,34 @@ func (c *appleServerAPIClient) LookupTransaction(
 	ctx context.Context,
 	transactionID string,
 	bundleID string,
-) (string, error) {
+) (string, int, error) {
 	transactionID = strings.TrimSpace(transactionID)
 	bundleID = strings.TrimSpace(bundleID)
 	if transactionID == "" || bundleID == "" {
-		return "", ErrAppleEvidenceInvalid
+		return "", 0, ErrAppleEvidenceInvalid
 	}
 	configuredBundleID := strings.TrimSpace(c.config.BundleID)
 	if configuredBundleID != "" {
 		if bundleID != configuredBundleID {
-			return "", ErrAppleBundleMismatch
+			return "", 0, ErrAppleBundleMismatch
 		}
 		bundleID = configuredBundleID
 	}
 	token, err := c.authorizationToken(bundleID)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
 	signedTransaction, err := c.lookupAt(ctx, c.productionURL, transactionID, token)
 	if err == nil {
-		return signedTransaction, nil
+		return signedTransaction, applePayChannelOne, nil
 	}
 	//if !errors.Is(err, ErrAppleTransactionNotFound) &&
 	//	!errors.Is(err, ErrAppleServerAPIAuthorization) {
 	//	return "", err
 	//}
-	return c.lookupAt(ctx, c.sandboxURL, transactionID, token)
+	at, err := c.lookupAt(ctx, c.sandboxURL, transactionID, token)
+	return at, applePayChannelTwo, err
 }
 
 func (c *appleServerAPIClient) lookupAt(

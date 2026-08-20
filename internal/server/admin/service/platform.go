@@ -22,6 +22,7 @@ func NewPlatformService() *PlatformService {
 }
 
 type ListPlatformRequest struct {
+	ListSortRequest
 	Keyword string `form:"keyword"`
 	Status  *int32 `form:"status" binding:"omitempty,oneof=0 1"`
 }
@@ -36,7 +37,8 @@ type PlatformPayload struct {
 
 func (s *PlatformService) List(ctx context.Context, page, pageSize int, req *ListPlatformRequest) ([]model.VideoPlatform, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.PlatformListFilter{
-		Keyword: strings.TrimSpace(req.Keyword), Status: req.Status,
+		ListSort: req.listSort(),
+		Keyword:  strings.TrimSpace(req.Keyword), Status: req.Status,
 	})
 }
 

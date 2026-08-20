@@ -103,16 +103,6 @@ func mapClientBanner(item *model.VideoBanner) ClientBanner {
 	return result
 }
 
-func clientBannerPositionKeys(items []model.VideoDisplayPosition) []string {
-	result := make([]string, 0, len(items))
-	for i := range items {
-		if key := strings.TrimSpace(items[i].PositionKey); key != "" {
-			result = append(result, key)
-		}
-	}
-	return result
-}
-
 func clientBannerRoute(item *model.VideoBanner) string {
 	if item.JumpURL != "" {
 		return item.JumpURL
@@ -126,31 +116,6 @@ func clientBannerRoute(item *model.VideoBanner) string {
 		return "/text-to-image"
 	case domain.BannerJumpTypeTextToVideo:
 		return "/text-to-video"
-	}
-	return ""
-}
-
-func clientChannelIDs(items []model.VideoChannel) []uint64 {
-	result := make([]uint64, len(items))
-	for i := range items {
-		result[i] = items[i].ChannelID
-	}
-	return result
-}
-
-func clientPackageIDs(items []model.VideoPackage) []uint64 {
-	result := make([]uint64, len(items))
-	for i := range items {
-		result[i] = items[i].ID
-	}
-	return result
-}
-
-func firstNotEmpty(values ...string) string {
-	for _, value := range values {
-		if value = strings.TrimSpace(value); value != "" {
-			return value
-		}
 	}
 	return ""
 }
