@@ -3,6 +3,7 @@ package main
 import (
 	"ai-video/internal/config"
 	"ai-video/internal/generation"
+	"ai-video/internal/pkg/monitor"
 	"ai-video/internal/pkg/setting"
 	"ai-video/internal/pkg/task"
 	"ai-video/internal/router"
@@ -11,11 +12,13 @@ import (
 	"ai-video/internal/server/api"
 	"context"
 	"embed"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 	"time"
 )
@@ -23,11 +26,31 @@ import (
 var AdminDist embed.FS
 
 func main() {
+	os.Exit(realMain())
+}
+
+func realMain() (exitCode int) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			monitor.ReportPanic(config.Log, "admin-server", recovered, debug.Stack())
+			exitCode = 1
+		}
+		config.Close()
+	}()
+
+	if err := run(); err != nil {
+		monitor.Report(config.Log, monitor.KindProcessExit, "admin-server", err)
+		return 1
+	}
+	return 0
+}
+
+func run() error {
 	cfgFile := flag.String("config", "", "config file path")
 	flag.Parse()
 
 	if err := config.Init(*cfgFile); err != nil {
-		panic(fmt.Sprintf("init app failed: %v", err))
+		return fmt.Errorf("init app failed: %w", err)
 	}
 	if err := setting.Init(context.Background()); err != nil {
 		config.Log.Warnf("init settings: %v", err)
@@ -37,14 +60,13 @@ func main() {
 		RedisAddr: config.Cfg.Redis.Addr(), RedisPassword: config.Cfg.Redis.Password, RedisDB: config.Cfg.Redis.DB,
 		Concurrency: config.Cfg.Task.Concurrency, Queues: config.Cfg.Task.Queues,
 		ErrorHandler: func(ctx context.Context, taskType string, err error) {
-			config.Logger(ctx).Errorf("task failed: type=%s err=%v", taskType, err)
+			monitor.Report(config.Logger(ctx), monitor.KindTaskFailure, "task_worker", err, "task_type", taskType)
 		},
 	})
+	defer taskManager.Close()
 	subscriptionExpirationAt, subscriptionExpirationEnabled, err := config.Cfg.Task.SubscriptionExpirationTime(time.Local)
 	if err != nil {
-		taskManager.Close()
-		config.Close()
-		panic(fmt.Sprintf("parse subscription expiration execution time failed: %v", err))
+		return fmt.Errorf("parse subscription expiration execution time failed: %w", err)
 	}
 	if err = scheduledtask.RegisterSubscriptionExpiration(
 		taskManager,
@@ -55,9 +77,7 @@ func main() {
 			}
 		},
 	); err != nil {
-		taskManager.Close()
-		config.Close()
-		panic(fmt.Sprintf("register scheduled tasks failed: %v", err))
+		return fmt.Errorf("register scheduled tasks failed: %w", err)
 	}
 	if !subscriptionExpirationEnabled {
 		config.Log.Info("subscription expiration task is not scheduled: task.subscription_expiration_at is empty")
@@ -80,32 +100,47 @@ func main() {
 
 	go func() {
 		config.Log.Infof("server starting at %s", addr)
-		if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			runtimeErr <- fmt.Errorf("server run failed: %w", err)
+		defer reportComponentPanic("http_server", runtimeErr)
+		if serveErr := srv.ListenAndServe(); serveErr != nil && serveErr != http.ErrServerClosed {
+			runtimeErr <- fmt.Errorf("server run failed: %w", serveErr)
 		}
 	}()
 	go func() {
-		if err = taskManager.Worker.Start(); err != nil {
-			runtimeErr <- fmt.Errorf("task worker stopped: %w", err)
+		defer reportComponentPanic("task_worker", runtimeErr)
+		if workerErr := taskManager.Worker.Start(); workerErr != nil {
+			runtimeErr <- fmt.Errorf("task worker stopped: %w", workerErr)
 		}
 	}()
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(quit)
+	var runtimeFailure error
 	select {
-	case <-quit:
-	case err = <-runtimeErr:
-		config.Log.Errorf("service component stopped unexpectedly: %v", err)
+	case sig := <-quit:
+		config.Log.Infow("shutdown signal received", "signal", sig.String())
+	case runtimeFailure = <-runtimeErr:
+		monitor.Report(config.Log, monitor.KindComponentExit, "admin-server", runtimeFailure)
 	}
 
 	config.Log.Info("shutting down server...")
+	generation.Stop()
 	taskManager.Worker.Stop()
-	taskManager.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	var shutdownErr error
 	if err = srv.Shutdown(ctx); err != nil {
-		config.Log.Errorf("server forced to shutdown: %v", err)
+		shutdownErr = fmt.Errorf("server forced to shutdown: %w", err)
+		monitor.Report(config.Log, monitor.KindComponentExit, "http_server_shutdown", shutdownErr)
 	}
-	config.Close()
 	config.Log.Info("server stopped")
+	return errors.Join(runtimeFailure, shutdownErr)
+}
+
+func reportComponentPanic(source string, runtimeErr chan<- error) {
+	if recovered := recover(); recovered != nil {
+		stack := debug.Stack()
+		monitor.ReportPanic(config.Log, source, recovered, stack)
+		runtimeErr <- fmt.Errorf("%s panicked: %v", source, recovered)
+	}
 }

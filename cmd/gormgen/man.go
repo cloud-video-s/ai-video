@@ -273,10 +273,21 @@ func main() {
 	)
 
 	videoChannel := g.GenerateModel("video_channel",
-		gen.FieldType("channel_id", "uint64"),
+		gen.FieldType("id", "uint64"),
 		gen.FieldType("status", "int8"),
 		gen.FieldType("port_rebate", "float64"),
 		gen.FieldType("service_order_fee", "float64"),
+		gen.FieldType("owner_admin_id", "*uint64"),
+		gen.FieldType("callback_config", "string"),
+		gen.FieldRelate(field.BelongsTo, "Owner", videoAdmin,
+			&field.RelateConfig{
+				RelatePointer: true,
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"OwnerAdminID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
 	)
 
 	videoConfig := g.GenerateModel("video_config",
@@ -331,7 +342,7 @@ func main() {
 		),
 	)
 
-	videoPointsPackage := g.GenerateModel("video_points_package",
+	videoPoints := g.GenerateModel("video_points",
 		gen.FieldType("id", "uint64"),
 		gen.FieldType("points", "uint64"),
 		gen.FieldType("sale_price", "float64"),
@@ -340,27 +351,119 @@ func main() {
 		gen.FieldType("is_default", "int8"),
 		gen.FieldType("status", "int8"),
 		gen.FieldType("sort", "int64"),
-	)
-
-	videoPointsPackageChannel := g.GenerateModel("video_points_package_channel",
-		gen.FieldType("id", "uint64"),
-		gen.FieldRelate(field.BelongsTo, "PointsPackage", videoPointsPackage,
+		gen.FieldRelate(field.Many2Many, "Apps", videoApp,
 			&field.RelateConfig{
+				RelateSlicePointer: true,
 				GORMTag: field.GormTag{
-					"foreignKey": []string{"ProductCode"},
-					"references": []string{"ProductCode"},
+					"many2many":      []string{"video_points_app"},
+					"foreignKey":     []string{"ID"},
+					"joinForeignKey": []string{"PointsID"},
+					"joinReferences": []string{"AppCode"},
+					"References":     []string{"AppCode"},
+				},
+			},
+		),
+		gen.FieldRelate(field.Many2Many, "Packages", videoPackage,
+			&field.RelateConfig{
+				RelateSlicePointer: true,
+				GORMTag: field.GormTag{
+					"many2many":      []string{"video_points_package"},
+					"foreignKey":     []string{"ID"},
+					"joinForeignKey": []string{"PointsID"},
+					"joinReferences": []string{"PackageCode"},
+					"References":     []string{"PackageCode"},
+				},
+			},
+		),
+		gen.FieldRelate(field.Many2Many, "PackageVersion", videoPackageVersion,
+			&field.RelateConfig{
+				RelateSlicePointer: true,
+				GORMTag: field.GormTag{
+					"many2many":      []string{"video_points_version"},
+					"foreignKey":     []string{"ID"},
+					"joinForeignKey": []string{"PointsID"},
+					"joinReferences": []string{"VersionCode"},
+					"References":     []string{"VersionCode"},
+				},
+			},
+		),
+		gen.FieldRelate(field.Many2Many, "Country", videoCountry,
+			&field.RelateConfig{
+				RelateSlicePointer: true,
+				GORMTag: field.GormTag{
+					"many2many":      []string{"video_points_country"},
+					"foreignKey":     []string{"ID"},
+					"joinForeignKey": []string{"PointsID"},
+					"joinReferences": []string{"CountryCode"},
+					"References":     []string{"Code"},
+				},
+			},
+		),
+		gen.FieldRelate(field.Many2Many, "Channels", videoChannel,
+			&field.RelateConfig{
+				RelateSlicePointer: true,
+				GORMTag: field.GormTag{
+					"many2many":      []string{"video_points_channel"},
+					"foreignKey":     []string{"ID"},
+					"joinForeignKey": []string{"PointsID"},
+					"joinReferences": []string{"ChannelCode"},
+					"References":     []string{"ChannelCode"},
 				},
 			},
 		),
 	)
 
-	videoPointsPackagePackage := g.GenerateModel("video_points_package_package",
+	videoPointsChannel := g.GenerateModel("video_points_channel",
 		gen.FieldType("id", "uint64"),
-		gen.FieldRelate(field.BelongsTo, "PointsPackage", videoPointsPackage,
+		gen.FieldRelate(field.BelongsTo, "Points", videoPoints,
 			&field.RelateConfig{
 				GORMTag: field.GormTag{
-					"foreignKey": []string{"ProductCode"},
-					"references": []string{"ProductCode"},
+					"foreignKey": []string{"PointsID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
+	videoPointsCountry := g.GenerateModel("video_points_country",
+		gen.FieldType("id", "uint64"),
+		gen.FieldRelate(field.BelongsTo, "Points", videoPoints,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"PointsID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
+	videoPointsApp := g.GenerateModel("video_points_app",
+		gen.FieldType("id", "uint64"),
+		gen.FieldRelate(field.BelongsTo, "Points", videoPoints,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"PointsID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
+	videoPointsPackage := g.GenerateModel("video_points_package",
+		gen.FieldType("id", "uint64"),
+		gen.FieldRelate(field.BelongsTo, "Points", videoPoints,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"PointsID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
+	videoPointsVersion := g.GenerateModel("video_points_version",
+		gen.FieldType("id", "uint64"),
+		gen.FieldRelate(field.BelongsTo, "Points", videoPoints,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"PointsID"},
+					"references": []string{"ID"},
 				},
 			},
 		),
@@ -675,8 +778,40 @@ func main() {
 		gen.FieldRelate(field.BelongsTo, "Channel", videoChannel,
 			&field.RelateConfig{
 				GORMTag: field.GormTag{
-					"foreignKey": []string{"ChannelCode"},
-					"references": []string{"ChannelCode"},
+					"foreignKey": []string{"ChannelID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
+
+	videoAdjustAttribution := g.GenerateModel("video_adjust_attribution",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("user_id", "uint64"),
+		gen.FieldType("app_payload", "*string"),
+		gen.FieldType("callback_payload", "*string"),
+		gen.FieldType("is_organic", "uint8"),
+		gen.FieldType("reattributed", "uint8"),
+		gen.FieldType("is_redownload", "uint8"),
+		gen.FieldType("callback_count", "uint64"),
+		gen.FieldType("summary_applied", "uint8"),
+		gen.FieldType("click_time", "*time.Time"),
+		gen.FieldType("install_time", "*time.Time"),
+		gen.FieldType("reattributed_at", "*time.Time"),
+		gen.FieldType("attribution_updated_at", "*time.Time"),
+		gen.FieldType("adjust_created_at", "*time.Time"),
+		gen.FieldType("app_reported_at", "*time.Time"),
+		gen.FieldType("callback_received_at", "*time.Time"),
+		gen.FieldType("fused_at", "*time.Time"),
+		gen.FieldRename("adjust_adid", "AdjustADID"),
+		gen.FieldRename("fb_install_referrer", "FBInstallReferrer"),
+		gen.FieldRename("idfa", "IDFA"),
+		gen.FieldRename("idfv", "IDFV"),
+		gen.FieldRelate(field.BelongsTo, "User", videoUser,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"UserID"},
+					"references": []string{"ID"},
 				},
 			},
 		),
@@ -876,8 +1011,9 @@ func main() {
 			},
 		),
 	)
+	videoMedia := g.GenerateModel("video_media")
 
-	allModels := []interface{}{
+	allModels := []any{
 		casbinRule,
 		videoAdmin,
 		videoAdminRole,
@@ -901,9 +1037,12 @@ func main() {
 		videoOrder,
 		videoPackage,
 		videoPackageVersion,
+		videoPoints,
+		videoPointsChannel,
+		videoPointsCountry,
+		videoPointsApp,
 		videoPointsPackage,
-		videoPointsPackageChannel,
-		videoPointsPackagePackage,
+		videoPointsVersion,
 		videoRole,
 		videoRoleMenu,
 		videoTemplate,
@@ -920,6 +1059,7 @@ func main() {
 		videoUserGenerationTask,
 		videoUser,
 		videoUserAttribution,
+		videoAdjustAttribution,
 		videoUserPointsLedger,
 		videoUserTemplateFavorite,
 		videoVipSubscription,
@@ -934,6 +1074,7 @@ func main() {
 		videoModel,
 		videoModelParameter,
 		videoUserTemplateComplaint,
+		videoMedia,
 	}
 
 	g.ApplyBasic(allModels...)
@@ -957,8 +1098,4 @@ func openDB() (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
 	return db, nil
-}
-
-func jsonSerializer(tag field.GormTag) field.GormTag {
-	return tag.Set("serializer", "json")
 }
