@@ -47,8 +47,8 @@
         </el-button>
       </div>
 
-      <el-table :data="tableData" v-loading="loading" row-key="id" stripe class="config-table">
-        <el-table-column prop="sort" label="排序" width="72" align="center" />
+      <el-table :data="tableData" v-loading="loading" row-key="id" stripe class="config-table" @sort-change="handleSortChange">
+        <el-table-column prop="sort" label="排序" width="72" align="center" sortable="custom" />
         <el-table-column label="配置项" min-width="250">
           <template #default="{ row }">
             <div class="config-name">
@@ -188,6 +188,7 @@ import {
   type DelayConfig, type DelayConfigPayload,
 } from '@/api/delayConfig.ts'
 import { useUserStore } from '@/store/user.ts'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('system:delay-config:add'))
@@ -203,6 +204,7 @@ const tableData = ref<DelayConfig[]>([])
 const groups = ref<string[]>([])
 const dirtyKeys = ref<string[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ group: '', keyword: '' })
@@ -212,7 +214,7 @@ async function fetchData() {
   try {
     const res: any = await getDelayConfigList({
       page: page.value, page_size: pageSize.value, group: query.group || undefined,
-      keyword: query.keyword.trim() || undefined,
+      keyword: query.keyword.trim() || undefined, ...sortParams(),
     })
     tableData.value = res.data.list || []
     total.value = res.data.total || 0

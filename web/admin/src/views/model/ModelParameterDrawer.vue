@@ -15,7 +15,7 @@
     </div>
 
     <el-table v-loading="loading" :data="items" row-key="id" stripe>
-      <el-table-column prop="sort_order" label="排序" width="70" align="center" />
+      <el-table-column prop="sort_order" label="排序" width="70" align="center" sortable />
       <el-table-column label="字段" min-width="160">
         <template #default="{ row }">
           <code class="param-key">{{ row.param_key }}</code>

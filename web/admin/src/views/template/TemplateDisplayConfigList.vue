@@ -31,8 +31,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="72" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="72" sortable="custom" />
         <el-table-column label="视频模板" min-width="270">
           <template #default="{ row }">
             <div class="template-cell">
@@ -71,7 +71,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="sort" label="排序" width="80" align="center" />
+        <el-table-column prop="sort" label="排序" width="80" align="center" sortable="custom" />
         <el-table-column label="状态" width="88" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
@@ -205,6 +205,7 @@ import {
 } from '@/api/template'
 import { useUserStore } from '@/store/user'
 import { toMediaURL } from '@/utils/mediaUrl'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('template:display-config:add'))
@@ -220,6 +221,7 @@ const tableData = ref<TemplateDisplayConfig[]>([])
 const templateOptions = ref<VideoTemplate[]>([])
 const positionOptions = ref<DisplayPosition[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ keyword: '', template_id: '', position_key: '', status: '' })
@@ -256,7 +258,7 @@ function positionLabel(item: DisplayPosition) {
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     for (const [key, value] of Object.entries(query)) {
       if (value !== '') params[key] = value
     }

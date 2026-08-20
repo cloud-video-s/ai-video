@@ -35,8 +35,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="70" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="70" sortable="custom" />
         <el-table-column label="模型" min-width="190">
           <template #default="{ row }">
             <div class="model-cell">
@@ -226,6 +226,7 @@ import {
 import { useUserStore } from '@/store/user'
 import { toMediaURL } from '@/utils/mediaUrl'
 import LogoImageUploader from '@/components/LogoImageUploader.vue'
+import { useRemoteTableSort } from '@/utils/tableSort'
 import ModelParameterDrawer from './ModelParameterDrawer.vue'
 
 const userStore = useUserStore()
@@ -281,6 +282,7 @@ const formRef = ref<FormInstance>()
 const tableData = ref<VideoModel[]>([])
 const platformOptions = ref<VideoPlatform[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ keyword: '', platform_id: '', model_type: '', status: '' })
@@ -343,7 +345,7 @@ async function fetchPlatforms() {
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     if (query.keyword.trim()) params.keyword = query.keyword.trim()
     if (query.platform_id) params.platform_id = query.platform_id
     if (query.model_type) params.model_type = query.model_type

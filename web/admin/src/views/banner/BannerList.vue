@@ -43,8 +43,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="70" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="70" sortable="custom" />
         <el-table-column label="Banner" min-width="190">
           <template #default="{ row }">
             <div class="primary-text">{{ row.name }}</div>
@@ -91,7 +91,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="sort" label="排序" width="72" align="center" />
+        <el-table-column prop="sort" label="排序" width="72" align="center" sortable="custom" />
         <el-table-column label="状态" width="82" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
@@ -300,6 +300,7 @@ import { getBannerPlacementOptions, type BannerPlacement } from '@/api/bannerPla
 import { useUserStore } from '@/store/user.ts'
 import { toMediaURL } from '@/utils/mediaUrl'
 import MediaUploader from '@/components/MediaUploader.vue'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 interface BannerForm extends VideoBannerPayload { id: number }
 type TargetMode = 'all' | 'selected'
@@ -326,6 +327,7 @@ const deliveryOptions = ref<BannerDeliveryApp[]>([])
 const templateOptions = ref<VideoTemplate[]>([])
 const positionOptions = ref<BannerPlacement[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ position_key: '', country_code: '', app_code: '', package_code: '', version_code: '', jump_type: '', status: '', keyword: '' })
@@ -399,7 +401,7 @@ async function fetchOptions() {
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     Object.entries(query).forEach(([key, value]) => { if (value !== '') params[key] = value })
     const res: any = await getBannerList(params)
     tableData.value = res.data.list || []

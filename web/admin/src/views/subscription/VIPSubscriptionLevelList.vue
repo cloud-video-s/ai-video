@@ -25,8 +25,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="80" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="80" sortable="custom" />
         <el-table-column prop="level" label="VIP 等级" min-width="180">
           <template #default="{ row }"><span class="level-name">{{ row.level }}</span></template>
         </el-table-column>
@@ -38,7 +38,7 @@
             <span v-else class="empty-text">暂无说明</span>
           </template>
         </el-table-column>
-        <el-table-column prop="sort" label="排序" width="100" align="center" />
+        <el-table-column prop="sort" label="排序" width="100" align="center" sortable="custom" />
         <el-table-column label="状态" width="150" align="center">
           <template #default="{ row }">
             <el-switch
@@ -127,6 +127,7 @@ import {
   type VIPSubscriptionLevelPayload,
 } from '@/api/vipSubscriptionLevel'
 import { useUserStore } from '@/store/user'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('subscription:vip-level:add'))
@@ -140,6 +141,7 @@ const formRef = ref<FormInstance>()
 const tableData = ref<VIPSubscriptionLevel[]>([])
 const updatingIds = ref<number[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ keyword: '', status: '' })
@@ -152,7 +154,7 @@ const rules: FormRules = {
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     if (query.keyword.trim()) params.keyword = query.keyword.trim()
     if (query.status !== '') params.status = query.status
     const res: any = await getVIPSubscriptionLevelList(params)

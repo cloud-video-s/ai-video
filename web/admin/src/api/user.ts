@@ -1,7 +1,17 @@
 import request from '@/utils/request'
 
+export interface AdminOption {
+  id: number
+  username: string
+  nickname: string
+}
+
 export function getUserList(params: { page: number; page_size: number }) {
   return request.get('/admin/users', { params })
+}
+
+export function getUserOptions() {
+  return request.get('/admin/users/options')
 }
 
 export function getUserById(id: number) {

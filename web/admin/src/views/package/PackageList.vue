@@ -28,8 +28,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="70" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="70" sortable="custom" />
         <el-table-column label="安装包" min-width="220">
           <template #default="{ row }">
             <div class="primary-text">{{ row.package_name }}</div>
@@ -53,7 +53,7 @@
             <span v-else class="secondary-text">暂无描述</span>
           </template>
         </el-table-column>
-        <el-table-column prop="sort" label="排序" width="75" align="center" />
+        <el-table-column prop="sort" label="排序" width="75" align="center" sortable="custom" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
@@ -134,6 +134,7 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createPackage, deletePackage, getPackageList, updatePackage, type AppPackage, type AppPackagePayload } from '@/api/package'
 import { getVideoAppOptions, type VideoApp } from '@/api/videoApp'
 import { useUserStore } from '@/store/user'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -152,6 +153,7 @@ const dialogVisible = ref(false)
 const formRef = ref<FormInstance>()
 const tableData = ref<AppPackage[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ keyword: '', app_code: '', package_code: '', system_type: '', status: '' })
@@ -184,7 +186,7 @@ async function fetchOptions() {
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     for (const [key, value] of Object.entries(query)) {
       if (value !== '') params[key] = value.trim()
     }

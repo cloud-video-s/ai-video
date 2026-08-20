@@ -25,8 +25,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="70" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="70" sortable="custom" />
         <el-table-column label="安装包" min-width="220">
           <template #default="{ row }">
             <div class="primary-text">{{ packageName(row.package_code) }}</div>
@@ -152,6 +152,7 @@ import {
   type PackageVersionPayload,
 } from '@/api/packageVersion'
 import { useUserStore } from '@/store/user'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -165,6 +166,7 @@ const dialogVisible = ref(false)
 const formRef = ref<FormInstance>()
 const tableData = ref<PackageVersion[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ keyword: '', package_code: '', version_code: '', status: '' })
@@ -200,7 +202,7 @@ async function fetchOptions() {
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     for (const [key, value] of Object.entries(query)) {
       if (value !== '') params[key] = value.trim()
     }

@@ -7,8 +7,8 @@
           <el-button v-if="userStore.hasPermission('system:user:add')" type="primary" @click="openDialog()">新增用户</el-button>
         </div>
       </template>
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="id" label="ID" width="80" />
+      <el-table :data="tableData" v-loading="loading" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="80" sortable="custom" />
         <el-table-column prop="username" label="用户名" width="140" />
         <el-table-column prop="nickname" label="昵称" width="140" />
         <el-table-column prop="email" label="邮箱" />
@@ -91,6 +91,7 @@ import { ElMessage, type FormInstance } from 'element-plus'
 import { getUserList, createUser, updateUser, deleteUser } from '@/api/user'
 import { getAllRoles } from '@/api/role'
 import { useUserStore } from '@/store/user'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const userStore = useUserStore()
 
@@ -101,6 +102,7 @@ const formRef = ref<FormInstance>()
 const tableData = ref<any[]>([])
 const allRoles = ref<any[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(10)
 const total = ref(0)
 
@@ -115,7 +117,7 @@ const rules = {
 async function fetchData() {
   loading.value = true
   try {
-    const res: any = await getUserList({ page: page.value, page_size: pageSize.value })
+    const res: any = await getUserList({ page: page.value, page_size: pageSize.value, ...sortParams() })
     tableData.value = res.data.list || []
     total.value = res.data.total || 0
   } finally {

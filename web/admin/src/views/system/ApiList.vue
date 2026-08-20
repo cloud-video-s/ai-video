@@ -23,8 +23,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="76" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="76" sortable="custom" />
         <el-table-column label="方法" width="92" align="center">
           <template #default="{ row }"><el-tag :type="methodTag(row.method)">{{ row.method }}</el-tag></template>
         </el-table-column>
@@ -89,6 +89,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createAPI, deleteAPI, getAPIList, updateAPI, type AdminAPI, type AdminAPIPayload } from '@/api/api'
 import { useUserStore } from '@/store/user'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD']
 const userStore = useUserStore()
@@ -102,6 +103,7 @@ const dialogVisible = ref(false)
 const formRef = ref<FormInstance>()
 const tableData = ref<AdminAPI[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ keyword: '', group: '', method: '' })
@@ -120,7 +122,7 @@ const rules: FormRules = {
 async function fetchData() {
   loading.value = true
   try {
-    const res: any = await getAPIList({ page: page.value, page_size: pageSize.value, ...query })
+    const res: any = await getAPIList({ page: page.value, page_size: pageSize.value, ...query, ...sortParams() })
     tableData.value = res.data?.list || []
     total.value = Number(res.data?.total) || 0
   } finally {

@@ -40,8 +40,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="72" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="72" sortable="custom" />
         <el-table-column prop="category_name" label="分类名称" min-width="210">
           <template #default="{ row }">
             <div class="primary-text">{{ row.category_name }}</div>
@@ -59,7 +59,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="sort" label="排序" width="72" align="center" />
+        <el-table-column prop="sort" label="排序" width="72" align="center" sortable="custom" />
         <el-table-column label="状态" width="86" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
@@ -216,6 +216,7 @@ import type { PackageVersion } from '@/api/packageVersion'
 import { useUserStore } from '@/store/user'
 import { toMediaURL } from '@/utils/mediaUrl'
 import LogoImageUploader from '@/components/LogoImageUploader.vue'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 type TargetMode = 'all' | 'selected'
 interface TemplateTypeForm {
@@ -245,6 +246,7 @@ const positionOptions = ref<DisplayPosition[]>([])
 const countryOptions = ref<Country[]>([])
 const deliveryOptions = ref<BannerDeliveryApp[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ position_key: '', country_id: '', app_code: '', package_code: '', version_code: '', status: '', keyword: '' })
@@ -308,7 +310,7 @@ function versionSummary(items?: PackageVersion[]) { return compactSummary(arrayV
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     Object.entries(query).forEach(([key, value]) => { if (value !== '') params[key] = value })
     const res: any = await getTemplateTypeList(params)
     tableData.value = arrayValue<VideoTemplateType>(res.data?.list)

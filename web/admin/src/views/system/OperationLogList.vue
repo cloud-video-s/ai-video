@@ -47,8 +47,8 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="id" label="ID" width="70" />
+      <el-table :data="tableData" v-loading="loading" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="70" sortable="custom" />
         <el-table-column label="时间" width="170">
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
@@ -155,12 +155,14 @@ import {
   clearOperationLogs,
 } from '@/api/operationLog'
 import { useUserStore } from '@/store/user'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const userStore = useUserStore()
 
 const loading = ref(false)
 const tableData = ref<any[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(10)
 const total = ref(0)
 
@@ -176,6 +178,7 @@ async function fetchData() {
     const params: any = {
       page: page.value,
       page_size: pageSize.value,
+      ...sortParams(),
       username: query.username || undefined,
       module: query.module || undefined,
       success: query.success || undefined,

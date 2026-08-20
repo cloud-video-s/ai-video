@@ -46,9 +46,9 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="sort" label="排序" width="68" align="center" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="70" sortable="custom" />
+        <el-table-column prop="sort" label="排序" width="68" align="center" sortable="custom" />
         <el-table-column label="套餐" min-width="240">
           <template #default="{ row }">
             <div class="primary-text">{{ row.name }}</div>
@@ -322,6 +322,7 @@ import {
 } from '@/api/vipSubscription'
 import { getVIPSubscriptionLevelOptions, type VIPSubscriptionLevel } from '@/api/vipSubscriptionLevel'
 import { useUserStore } from '@/store/user'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 type TargetMode = 'all' | 'selected'
 type VIPSubscriptionForm = VIPSubscriptionPayload & { id: number }
@@ -358,6 +359,7 @@ const countryOptions = ref<Country[]>([])
 const channelOptions = ref<Channel[]>([])
 const deliveryOptions = ref<BannerDeliveryApp[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ vip_type: '', level_id: '', app_code: '', package_code: '', version_code: '', status: '', display_mode: '', is_subscription: '', keyword: '' })
@@ -447,7 +449,7 @@ function formatMoney(value: number) { return Number(value || 0).toFixed(2) }
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     Object.entries(query).forEach(([key, value]) => { if (value !== '') params[key] = value })
     const res: any = await getVIPSubscriptionList(params)
     tableData.value = arrayValue<VIPSubscription>(res.data?.list)

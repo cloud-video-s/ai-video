@@ -1,29 +1,92 @@
 import request from '@/utils/request'
 
+export type ChannelCallbackEvent = 'activation' | 'login' | 'order_created' | 'payment' | 'subscription'
+
+export interface ChannelCallbackRule {
+  trigger_event: ChannelCallbackEvent
+  callback_events: ChannelCallbackEvent[]
+  order_count_threshold: number
+  payment_minimum_amount: number
+  subscription_delay_minutes: number
+  amount_deduction_enabled: boolean
+  amount_deduction_percent: number
+}
+
+export interface ChannelCallbackConfig {
+  rules: ChannelCallbackRule[]
+}
+
 export interface Channel {
   channel_id: number
   channel_code: string
   channel_name: string
+  account_channel: string
   agency_company: string
   ad_platform: string
+  ad_media: string
   delivery_package: string
+  delivery_package_name: string
+  system_type: string
+  owner_admin_id: number
+  owner_username: string
+  owner_nickname: string
+  ad_account: string
   tracking_url: string
+  landing_page: string
   port_rebate: number
   service_order_fee: number
   upload_method: string
+  callback_config: ChannelCallbackConfig
   status: number
   created_at: string
   updated_at: string
 }
 
-export type ChannelPayload = Omit<Channel, 'channel_id' | 'created_at' | 'updated_at'>
+export interface ChannelPayload {
+  channel_code?: string
+  channel_name: string
+  account_channel: string
+  agency_company: string
+  ad_platform: string
+  ad_media: string
+  delivery_package: string
+  system_type: string
+  owner_admin_id: number
+  ad_account: string
+  tracking_url: string
+  landing_page: string
+  port_rebate: number
+  service_order_fee: number
+  upload_method: string
+  callback_config: ChannelCallbackConfig
+  status?: number
+}
 
-export function getChannelList(params: Record<string, unknown>) {
+export interface ChannelListParams {
+  page: number
+  page_size: number
+  agency_company?: string
+  delivery_package?: string
+  ad_platform?: string
+  keyword?: string
+}
+
+export interface MediaOption {
+  id: number
+  name: string
+  adjust_partner_id: number
+}
+
+export function getChannelList(params: ChannelListParams) {
   return request.get('/admin/channels', { params })
 }
 
 export function getChannelOptions() {
   return request.get('/admin/channels/options')
+}
+
+export function getMediaOptions() {
+  return request.get('/admin/channels/media-options')
 }
 
 export function createChannel(data: ChannelPayload) {

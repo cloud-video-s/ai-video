@@ -7,8 +7,8 @@
           <el-button v-if="userStore.hasPermission('system:role:add')" type="primary" @click="openDialog()">新增角色</el-button>
         </div>
       </template>
-      <el-table :data="tableData" v-loading="loading" stripe>
-        <el-table-column prop="id" label="ID" width="80" />
+      <el-table :data="tableData" v-loading="loading" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="80" sortable="custom" />
         <el-table-column label="角色名称" width="200">
           <template #default="{ row }">
             <span>{{ row.name }}</span>
@@ -16,7 +16,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="code" label="角色编码" width="160" />
-        <el-table-column prop="sort" label="排序" width="80" />
+        <el-table-column prop="sort" label="排序" width="80" sortable="custom" />
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '正常' : '禁用' }}</el-tag>
@@ -104,6 +104,7 @@ import { ElMessage, type FormInstance } from 'element-plus'
 import { getRoleList, createRole, updateRole, deleteRole, setRoleMenus, getRoleById } from '@/api/role'
 import { getMenuTree } from '@/api/menu'
 import { useUserStore } from '@/store/user'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const userStore = useUserStore()
 
@@ -119,6 +120,7 @@ const menuTreeData = ref<any[]>([])
 const checkedMenuIds = ref<number[]>([])
 const currentRoleId = ref(0)
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(10)
 const total = ref(0)
 const SYSTEM_ROLE_CODE = 'admin'
@@ -138,7 +140,7 @@ function isSystemRole(role: any) {
 async function fetchData() {
   loading.value = true
   try {
-    const res: any = await getRoleList({ page: page.value, page_size: pageSize.value })
+    const res: any = await getRoleList({ page: page.value, page_size: pageSize.value, ...sortParams() })
     tableData.value = res.data.list || []
     total.value = res.data.total || 0
   } finally {

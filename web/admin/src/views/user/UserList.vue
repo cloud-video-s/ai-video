@@ -45,8 +45,8 @@
         </el-form-item>
       </el-form>
 
-      <el-table v-loading="listLoading" :data="listData" row-key="id" stripe>
-        <el-table-column prop="id" label="用户 ID" width="95" />
+      <el-table v-loading="listLoading" :data="listData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="用户 ID" width="95" sortable="custom" />
         <el-table-column label="用户" min-width="210">
           <template #default="{ row }">
             <div class="primary-text">{{ row.username || '-' }}</div>
@@ -214,7 +214,7 @@
               显示最近 {{ detail.works.length }} 条
             </div>
             <el-table :data="detail.works" border empty-text="暂无任务">
-              <el-table-column prop="id" label="任务 ID" width="95" />
+              <el-table-column prop="id" label="任务 ID" width="95" sortable />
               <el-table-column label="模型" min-width="160">
                 <template #default="{ row }">
                   <div class="primary-text">{{ row.model_name || `模型 #${row.model_id}` }}</div>
@@ -307,12 +307,14 @@ import {
 import { useUserStore } from '@/store/user'
 import { orderPaymentLabel as paymentMethodLabel } from '@/utils/orderPayment'
 import { orderStatusLabel, orderStatusType } from '@/utils/orderStatus'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const userStore = useUserStore()
 const canManage = computed(() => userStore.hasPermission('system:app-user:manage'))
 const listLoading = ref(false)
 const listData = ref<AppUser[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchList)
 const pageSize = ref(20)
 const total = ref(0)
 const filters = reactive({ keyword: '', device_country: '', channel_id: '', user_type: undefined as number | undefined, login_type: undefined as number | undefined, status: undefined as number | undefined })
@@ -328,7 +330,7 @@ const vipForm = reactive({ level: 1, vip_points: 0, started_at: '', expires_at: 
 async function fetchList() {
   listLoading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     for (const [key, value] of Object.entries(filters)) {
       if (value !== '' && value !== undefined && value !== null) params[key] = typeof value === 'string' ? value.trim() : value
     }

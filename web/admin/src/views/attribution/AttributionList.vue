@@ -35,8 +35,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="归因 ID" width="88" fixed="left" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="归因 ID" width="88" fixed="left" sortable="custom" />
         <el-table-column label="用户 / 渠道" min-width="190" fixed="left">
           <template #default="{ row }">
             <div class="primary-text">{{ row.user?.username || `用户 #${row.user_id}` }}</div>
@@ -164,6 +164,7 @@ import {
 } from '@/api/attribution'
 import { getChannelOptions, type Channel } from '@/api/channel'
 import { useUserStore } from '@/store/user'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const userStore = useUserStore()
 const canEdit = computed(() => userStore.hasPermission('attribution:edit'))
@@ -185,6 +186,7 @@ const syncing = ref(false)
 const submitting = ref(false)
 const operatingKey = ref('')
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(10)
 const total = ref(0)
 
@@ -209,7 +211,7 @@ async function fetchOptions() {
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     for (const [key, value] of Object.entries(query)) if (value !== '') params[key] = value
     if (dateRange.value?.length === 2) {
       params.started_at = dateRange.value[0]

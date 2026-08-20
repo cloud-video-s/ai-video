@@ -25,8 +25,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="80" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="80" sortable="custom" />
         <el-table-column label="平台" min-width="210">
           <template #default="{ row }">
             <div class="primary-text">{{ row.name }}</div>
@@ -120,6 +120,7 @@ import {
   type VideoPlatformPayload,
 } from '@/api/videoModel'
 import { useUserStore } from '@/store/user'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('platform:add'))
@@ -132,6 +133,7 @@ const dialogVisible = ref(false)
 const formRef = ref<FormInstance>()
 const tableData = ref<VideoPlatform[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ keyword: '', status: '' })
@@ -160,7 +162,7 @@ const rules: FormRules = {
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     if (query.keyword.trim()) params.keyword = query.keyword.trim()
     if (query.status !== '') params.status = query.status
     const res: any = await getPlatformList(params)

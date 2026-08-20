@@ -50,7 +50,7 @@
           <el-option
             v-for="item in packageOptions"
             :key="item.id"
-            :label="`${item.name} · ${item.product_id}`"
+            :label="`${item.name} · ${item.product_code}`"
             :value="Number(item.id)"
           />
         </el-select>
@@ -68,8 +68,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="流水 ID" width="90" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="流水 ID" width="90" sortable="custom" />
         <el-table-column label="用户" min-width="200">
           <template #default="{ row }">
             <div class="primary-text">{{ row.user?.username || `用户 #${row.user_id}` }}</div>
@@ -145,7 +145,7 @@
         <el-descriptions-item label="来源类型">{{ sourceTypeLabel(detail.source_type) }}</el-descriptions-item>
         <el-descriptions-item label="业务单号">{{ detail.order_code || '-' }}</el-descriptions-item>
         <el-descriptions-item label="积分套餐" :span="2">
-          {{ detail.points_package ? `${detail.points_package.name} · ${detail.points_package.product_id}` : '-' }}
+          {{ detail.points_package ? `${detail.points_package.name} · ${detail.points_package.product_code}` : '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="后台操作员">{{ detail.admin_id || '-' }}</el-descriptions-item>
         <el-descriptions-item label="入库时间">{{ formatDate(detail.created_at) }}</el-descriptions-item>
@@ -157,7 +157,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { getPointsPackageOptions, type PointsPackage } from '@/api/pointsPackage'
+import { getPointsPackageOptions, type Points } from '@/api/points.ts'
+import { useRemoteTableSort } from '@/utils/tableSort'
 import {
   getUserPointsLedger,
   getUserPointsLedgerList,
@@ -181,8 +182,9 @@ const detailLoading = ref(false)
 const detailVisible = ref(false)
 const tableData = ref<UserPointsLedger[]>([])
 const detail = ref<UserPointsLedger | null>(null)
-const packageOptions = ref<PointsPackage[]>([])
+const packageOptions = ref<Points[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const dateRange = ref<string[]>([])
@@ -225,7 +227,7 @@ function formatDate(value: string) {
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     for (const [key, value] of Object.entries(query)) {
       if (value !== '' && value !== undefined) {
         params[key] = typeof value === 'string' ? value.trim() : value

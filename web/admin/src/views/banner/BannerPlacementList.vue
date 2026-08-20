@@ -25,8 +25,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="72" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="72" sortable="custom" />
         <el-table-column label="封面图" width="132" align="center">
           <template #default="{ row }">
             <el-image
@@ -54,7 +54,7 @@
             <span v-else class="secondary-text">暂无描述</span>
           </template>
         </el-table-column>
-        <el-table-column prop="sort" label="排序" width="80" align="center" />
+        <el-table-column prop="sort" label="排序" width="80" align="center" sortable="custom" />
         <el-table-column label="状态" width="88" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">
@@ -157,6 +157,7 @@ import {
 import { useUserStore } from '@/store/user'
 import { toMediaURL } from '@/utils/mediaUrl'
 import CoverImageUploader from '@/components/CoverImageUploader.vue'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('banner:placement:add'))
@@ -170,6 +171,7 @@ const previewVisible = ref(false)
 const formRef = ref<FormInstance>()
 const tableData = ref<BannerPlacement[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ keyword: '', status: '' })
@@ -196,7 +198,7 @@ const rules: FormRules = {
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     if (query.keyword) params.keyword = query.keyword
     if (query.status !== '') params.status = query.status
     const res: any = await getBannerPlacementList(params)

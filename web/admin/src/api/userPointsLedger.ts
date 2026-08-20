@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 import type { AppUser } from '@/api/appUser'
-import type { PointsPackage } from '@/api/pointsPackage'
+import type { Points } from '@/api/points.ts'
 
 export interface UserPointsLedger {
   id: number
@@ -18,7 +18,7 @@ export interface UserPointsLedger {
   occurred_at: string
   created_at: string
   user?: AppUser
-  points_package?: PointsPackage
+  points_package?: Points
 }
 
 export interface UserPointsLedgerSummary {

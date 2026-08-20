@@ -22,8 +22,8 @@
         <el-button @click="handleReset">重置</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="tableData" row-key="id" stripe>
-        <el-table-column prop="id" label="ID" width="90" />
+      <el-table v-loading="loading" :data="tableData" row-key="id" stripe @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="90" sortable="custom" />
         <el-table-column prop="name" label="应用名称" min-width="180">
           <template #default="{ row }"><span class="app-name">{{ row.name }}</span></template>
         </el-table-column>
@@ -38,7 +38,7 @@
             <span v-else class="secondary-text">暂无描述</span>
           </template>
         </el-table-column>
-        <el-table-column prop="sort" label="排序" width="90" align="center" />
+        <el-table-column prop="sort" label="排序" width="90" align="center" sortable="custom" />
         <el-table-column label="状态" width="110" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
@@ -104,6 +104,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createVideoApp, deleteVideoApp, getVideoAppList, updateVideoApp, type VideoApp, type VideoAppPayload } from '@/api/videoApp'
 import { useUserStore } from '@/store/user'
+import { useRemoteTableSort } from '@/utils/tableSort'
 
 const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('app:add'))
@@ -116,6 +117,7 @@ const dialogVisible = ref(false)
 const formRef = ref<FormInstance>()
 const tableData = ref<VideoApp[]>([])
 const page = ref(1)
+const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const pageSize = ref(20)
 const total = ref(0)
 const query = reactive({ keyword: '', app_code: '', status: '' })
@@ -139,7 +141,7 @@ const rules: FormRules = {
 async function fetchData() {
   loading.value = true
   try {
-    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value }
+    const params: Record<string, unknown> = { page: page.value, page_size: pageSize.value, ...sortParams() }
     if (query.keyword.trim()) params.keyword = query.keyword.trim()
     if (query.app_code.trim()) params.app_code = query.app_code.trim()
     if (query.status !== '') params.status = query.status

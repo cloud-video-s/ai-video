@@ -30,7 +30,7 @@
             <el-tag v-else type="info">按钮</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="sort" label="排序" width="70" />
+        <el-table-column prop="sort" label="排序" width="70" sortable />
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '正常' : '禁用' }}</el-tag>
