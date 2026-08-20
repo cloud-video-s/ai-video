@@ -480,6 +480,16 @@ var responseDataExamples = map[string]any{
 			CreatedAt: 1784859371, UpdatedAt: 1784835434,
 		},
 	},
+	"GET /api/points/list": []apiservice.ClientPointProductResponse{
+		{
+			ID: 8, ProductCode: "credits_100", Name: "100 Credits",
+			ResourceType: "credits",
+			Points:       100, Currency: "USD", SalePrice: 1.99, OriginalPrice: 2.99,
+			Icon:        "https://cdn.example.com/points/credits-100.png",
+			Description: "Add 100 credits", ButtonText: "Buy", IsDefault: true,
+			Status: 1, Sort: 10, CreatedAt: 1784859371, UpdatedAt: 1784859371,
+		},
+	},
 }
 
 var endpointTypes = map[string]endpointType{
@@ -515,6 +525,7 @@ var endpointTypes = map[string]endpointType{
 	"DELETE /api/generation/tasks/:id":                 {},
 	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[apiservice.VIPRecommendResponse]()},
 	"GET /api/vip/list":                                {query: typeOf[apiservice.VipVipListRequest](), response: typeOf[[]apiservice.VIPRecommendResponse]()},
+	"GET /api/points/list":                             {response: typeOf[[]apiservice.ClientPointProductResponse]()},
 	"POST /api/payments/apple/pay":                     {body: typeOf[commerce.ApplePurchaseRequest](), response: typeOf[commerce.ApplePurchaseResponse]()},
 	"POST /api/payments/apple/notification":            {body: typeOf[commerce.AppleNotificationV2Request](), response: typeOf[commerce.AppleNotificationV2Summary]()},
 	"POST /api/apy":                                    {body: typeOf[commerce.AppleNotificationV2Request](), response: typeOf[commerce.AppleNotificationV2Summary]()},
@@ -552,6 +563,7 @@ var operationDescriptions = map[string]string{
 	"DELETE /api/generation/tasks/:id":      "删除指定生成任务。",
 	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
 	"GET /api/vip/list":                     "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
+	"GET /api/points/list":                  "查询当前客户端可购买的积分商品。服务端按登录用户类型以及公共请求上下文中的国家、应用、安装包、APP 版本、系统和渠道进行 AND 筛选，仅返回 status=1 的商品。应用、版本、国家和渠道未配置关联时表示支持全部；积分商品必须明确关联当前安装包。系统从 Video_System_Type 读取，未提供时根据 User-Agent 推断 iOS 或 Android。结果按 is_default DESC、sort ASC、id DESC 排序。",
 	"POST /api/payments/apple/pay":          "校验 StoreKit 交易、创建订单并发放对应商品。标准三段式 JWS 直接验签，其他客户端凭证通过 transactionID 调用 App Store Server API 获取已签名交易后验签。接口按 Apple 交易 ID 幂等处理。请求中的 isActive 是客户端上报值；响应中的 is_active 由已验签交易的撤销时间和到期时间按服务端当前时间计算。",
 	"POST /api/payments/apple/notification": "接收 App Store Server Notifications V2 回调。该公开端点由 Apple 服务器调用，不需要 Bearer Token 或客户端公共请求头；服务端按通知中的 signedPayload 验签并幂等处理退款、续费、订阅过期等事件。",
 	"POST /api/uploads/oss/signature":       "校验媒体类型、文件扩展名、MIME 和精确字节数，生成短时效阿里云 OSS V4 预签名 PUT 地址。客户端必须使用响应中的 method、upload_url 和签名 headers 将文件原始字节直接上传到 OSS；该接口需要 Bearer Token，且仅在当前存储方式为 aliyun_oss 时可用。",
@@ -570,6 +582,7 @@ var operationSummaries = map[string]string{
 	"POST /api/templates/:id/favorite":   "收藏模板",
 	"DELETE /api/templates/:id/favorite": "取消收藏模板", "POST /api/templates/complaint": "投诉模板", "GET /api/vip/recommend": "查询推荐 VIP 套餐",
 	"GET /api/vip/list":          "查询 VIP 套餐列表",
+	"GET /api/points/list":       "查询积分商品列表",
 	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务", "POST /api/generation/template-tasks": "按模板创建生成任务",
 	"GET /api/generation/tasks": "查询生成任务", "GET /api/generation/tasks/:id": "获取生成任务", "DELETE /api/generation/tasks/:id": "删除生成任务",
 	"POST /api/payments/apple/pay": "确认 Apple 支付", "POST /api/payments/apple/notification": "接收 Apple 支付通知",
@@ -626,13 +639,18 @@ var fieldDescriptions = map[string]string{
 	"affected_order_no": "受影响的订单号", "action": "本次通知执行的业务动作", "message": "处理结果说明",
 	"purchaseDate": "客户端购买时间，RFC 3339 格式，必须与签名交易一致", "expirationDate": "订阅到期时间，RFC 3339 格式；无到期时间时为 null", "revocationDate": "撤销时间，RFC 3339 格式；未撤销时为 null", "isActive": "客户端上报的订阅状态；服务端不以此值作为最终状态",
 	"source": "购买入口来源，可选", "order_no": "服务端订单号", "order_code": "Apple 原始交易 ID 数组；按数组中的编号匹配订单", "product_type": "订单商品类型",
-	"product_code": "Apple 商品 ID", "paid_amount": "实付金额，单位由 currency 指定", "purchase_date": "已验签的购买时间",
+	"product_code": "商店商品 SKU；Apple 支付场景中对应 Apple 商品 ID", "paid_amount": "实付金额，单位由 currency 指定", "purchase_date": "已验签的购买时间",
 	"expiration_date": "已验签的订阅到期时间", "is_active": "服务端计算的当前状态：交易未撤销，且订阅到期时间晚于服务端当前时间",
 	"evidence_mode": "交易凭证模式，固定为 jws",
 	"vip_type":      "VIP 套餐类型", "vip_types": "VIP 套餐类型数组；使用重复 Query 参数传递，例如 vip_types=1&vip_types=2",
 	"suk_code": "商店产品 SKU", "level_name": "会员等级名称", "currency": "ISO 货币代码",
 	"vip_duration_days": "VIP 权益持续天数", "trial_days": "免费试用天数", "badge_text": "VIP 套餐徽章文案",
 	"icon":                      "图标图片地址；半链接由展示端自动拼接 CDN 域名",
+	"systems":                   "适用客户端系统数组",
+	"resource_type":             "积分商品发放的资源类型",
+	"points":                    "购买商品后发放的积分数量",
+	"sale_price":                "商品销售价格",
+	"button_text":               "购买按钮文案",
 	"agreement_default_checked": "订阅协议是否默认勾选", "display_mode": "展示模式：0 隐藏，1 正常",
 	"free_trial": "是否启用免费试用", "is_subscription": "是否循环订阅", "is_default": "是否为默认套餐",
 	"subscription_description": "订阅说明", "subscription_price": "当前用户适用的订阅价格",
@@ -649,7 +667,7 @@ var fieldDescriptions = map[string]string{
 
 var resourceNames = map[string]string{
 	"health": "健康检查", "configs": "系统配置", "auth": "认证", "users": "用户",
-	"banners": "Banner", "templates": "视频模板", "generation": "内容生成", "payments": "支付", "vip": "VIP",
+	"banners": "Banner", "templates": "视频模板", "generation": "内容生成", "payments": "支付", "vip": "VIP", "points": "积分商品",
 	"uploads": "文件上传", "profile": "个人资料",
 }
 
@@ -1301,6 +1319,7 @@ func clientHeaderParameters() []any {
 		{"Video_App_Version", "应用版本号；用于 Banner 等内容的版本范围匹配", true},
 		{"Video_Phone_Model", "设备型号", true},
 		{"Video_Channel_Code", "渠道代码，对应渠道配置中的 channel_code", true},
+		{"Video_System_Type", "客户端系统类型；支持 1 或 ios、2 或 android，未提供时根据 User-Agent 推断", false},
 		{"Video_Device_Country", "ISO 3166-1 alpha-2 国家或地区代码；用于 Banner 等内容的国家范围匹配和语言配置，未传时根据客户端 IP 或用户资料推断", false},
 	}
 	parameters := make([]any, 0, len(headers))

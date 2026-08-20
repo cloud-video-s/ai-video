@@ -328,9 +328,6 @@ func validateChannelPayloadFields(req *ChannelPayload) error {
 }
 
 func validateChannelCallbackConfig(config *ChannelCallbackConfig) error {
-	if len(config.Rules) > 3 {
-		return errors.New("回传类型最多选择 3 个")
-	}
 	triggerEvents := make(map[string]struct{}, len(config.Rules))
 	for i := range config.Rules {
 		rule := &config.Rules[i]

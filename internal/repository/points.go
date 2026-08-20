@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"ai-video/internal/gen/model"
+	genquery "ai-video/internal/gen/query"
 
+	"gorm.io/gen"
 	"gorm.io/gen/field"
 )
 
@@ -29,6 +31,75 @@ type PointsListFilter struct {
 	ResourceType string
 	Status       *int8
 	Keyword      string
+}
+
+// ClientPointsTargets contains the authenticated client dimensions used to
+// select points products that are available for the current request.
+type ClientPointsTargets struct {
+	ProductID   uint64
+	AppCode     string
+	PackageCode string
+	VersionCode string
+	CountryCode string
+	ChannelCode string
+	System      string
+	UserType    int
+}
+
+// ListForClient returns enabled points products matching every client
+// dimension. Empty optional target relations mean "all", while a product must
+// always be assigned to the caller's package before it can be purchased.
+func (r *PointsRepo) ListForClient(ctx context.Context, targets ClientPointsTargets) ([]*model.VideoPoint, error) {
+	points := qFrom(ctx).VideoPoint
+	dao := points.WithContext(ctx).Where(points.Status.Eq(1))
+	if targets.ProductID != 0 {
+		dao = dao.Where(points.ID.Eq(targets.ProductID))
+	}
+	if targets.System != "" {
+		dao = dao.Where(points.Systems.Like("%" + fmt.Sprint(targets.System) + "%"))
+	}
+	if targets.UserType > 0 {
+		dao = dao.Where(points.UserTypes.Like("%" + fmt.Sprint(targets.UserType) + "%"))
+	}
+	dao = applyClientPointsTarget(dao, "video_points_app", "app_code", targets.AppCode, true)
+	dao = applyClientPointsTarget(dao, "video_points_package", "package_code", targets.PackageCode, false)
+	dao = applyClientPointsTarget(dao, "video_points_version", "version_code", targets.VersionCode, true)
+	dao = applyClientPointsTarget(dao, "video_points_country", "country_code", targets.CountryCode, true)
+	dao = applyClientPointsTarget(dao, "video_points_channel", "channel_code", targets.ChannelCode, true)
+
+	rows, err := dao.Order(points.IsDefault.Desc(), points.Sort.Asc(), points.ID.Desc()).Find()
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func applyClientPointsTarget(
+	dao genquery.IVideoPointDo,
+	relationTable, codeColumn, code string,
+	emptyIsWildcard bool,
+) genquery.IVideoPointDo {
+	withoutTargets := fmt.Sprintf(`NOT EXISTS (
+		SELECT 1 FROM %s relation
+		WHERE relation.points_id = video_points.id AND relation.deleted_at IS NULL
+	)`, relationTable)
+	if code == "" {
+		return dao.Where(pointsSQLCondition(withoutTargets)...)
+	}
+
+	matchingTarget := fmt.Sprintf(`EXISTS (
+		SELECT 1 FROM %s relation
+		WHERE relation.points_id = video_points.id
+			AND relation.%s = ? AND relation.deleted_at IS NULL
+	)`, relationTable, codeColumn)
+	if !emptyIsWildcard {
+		return dao.Where(pointsSQLCondition(matchingTarget, code)...)
+	}
+	return dao.Where(pointsSQLCondition("("+withoutTargets+" OR "+matchingTarget+")", code)...)
+}
+
+func pointsSQLCondition(sql string, args ...interface{}) []gen.Condition {
+	return []gen.Condition{field.NewUnsafeFieldRaw(sql, args...)}
 }
 
 func (r *PointsRepo) PageList(ctx context.Context, page, pageSize int, filter *PointsListFilter) ([]model.VideoPoint, int64, error) {

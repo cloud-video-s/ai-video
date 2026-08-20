@@ -30,6 +30,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	templateHandler := handler.NewTemplateHandler()
 	generationHandler := handler.NewGenerationHandler()
 	vipHandler := handler.NewVipHandler()
+	pointProductHandler := handler.NewPointProductHandler()
 	paymentHandler := handler.NewPaymentHandler()
 	adjustAttributionHandler := handler.NewAdjustAttributionHandler()
 	uploadRepo := repository.NewUploadRepo()
@@ -113,6 +114,11 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		{
 			vip.GET("/recommend", vipHandler.Recommend)
 			vip.GET("list", vipHandler.VipList)
+		}
+
+		points := authenticated.Group("/points")
+		{
+			points.GET("/list", pointProductHandler.List)
 		}
 
 		authenticated.POST("/orders", paymentHandler.CreateOrder)
