@@ -16,6 +16,7 @@ const TableNameVideoMedium = "video_media"
 type VideoMedium struct {
 	ID              uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true" json:"id"`
 	Name            string         `gorm:"column:name;type:varchar(255);not null;comment:名称" json:"name"`                                             // 名称
+	Keyword         string         `gorm:"column:keyword;type:varchar(255);not null;comment:缩写关键字" json:"keyword"`                                    // 缩写关键字
 	AdjustPartnerID uint64         `gorm:"column:adjust_partner_id;type:bigint unsigned;not null;comment:adjust_partner_id" json:"adjust_partner_id"` // adjust_partner_id
 	Status          uint32         `gorm:"column:status;type:tinyint unsigned;not null;default:1;comment:状态 1=启用0=禁用" json:"status"`                  // 状态 1=启用0=禁用
 	CreatedAt       time.Time      `gorm:"column:created_at;type:datetime(3);not null" json:"created_at"`

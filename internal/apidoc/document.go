@@ -86,6 +86,20 @@ type uploadListResponse struct {
 	Size  int                 `json:"size"`
 }
 
+type trackingEventDocRequest struct {
+	TrackingType  string `json:"tracking_type" binding:"required,oneof=OB_Payment_show OB_Payment_back_show Home_Show Launc_Payment_Show Launc_Payment_back_Show Payment_Show Payment_Create Payment_Suc Case_create"`
+	ExtensionType string `json:"extension_type"`
+	ModelID       uint64 `json:"model_id"`
+}
+
+type trackingEventDocResponse struct {
+	ID            uint64    `json:"id"`
+	TrackingType  string    `json:"tracking_type"`
+	ExtensionType string    `json:"extension_type"`
+	ModelID       uint64    `json:"model_id"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
 type generationTaskListResponse struct {
 	Page       int64                 `json:"page"`
 	PageSize   int64                 `json:"pageSize"`
@@ -175,6 +189,9 @@ var requestBodyExamples = map[string]any{
 	},
 	"POST /api/users/active_reporting": map[string]any{
 		"time_long": uint64(300),
+	},
+	"POST /api/tracking/events": map[string]any{
+		"tracking_type": "Payment_Create", "extension_type": "OB_back", "model_id": uint64(123),
 	},
 	"POST /api/orders": map[string]any{
 		"shop_type": uint32(2), "product_id": uint64(8), "pay_type": uint32(1),
@@ -420,6 +437,10 @@ var responseDataExamples = map[string]any{
 	"GET /api/generation/models":       generationModelResponseExample,
 	"GET /api/generation/tasks":        generationTaskListResponseExample,
 	"GET /api/generation/tasks/:id":    generationTaskResponseExample,
+	"POST /api/tracking/events": trackingEventDocResponse{
+		ID: 12345, TrackingType: "Payment_Create", ExtensionType: "OB_back", ModelID: 123,
+		CreatedAt: time.Date(2026, 8, 20, 10, 11, 12, 0, time.FixedZone("UTC+8", 8*60*60)),
+	},
 	"POST /api/orders": commerce.CreatePaymentOrderResponse{
 		OrderNo: "20260820143000a1b2c3d4e5f6", ClientRequestID: "points-order-20260820-0001",
 		ShopType: 2, ProductID: 8, ProductCode: "credits_100", ProductName: "100 Credits",
@@ -540,6 +561,7 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[apiservice.VIPRecommendResponse]()},
 	"GET /api/vip/list":                                {query: typeOf[apiservice.VipVipListRequest](), response: typeOf[[]apiservice.VIPRecommendResponse]()},
 	"GET /api/points/list":                             {response: typeOf[[]apiservice.ClientPointProductResponse]()},
+	"POST /api/tracking/events":                        {body: typeOf[trackingEventDocRequest](), response: typeOf[trackingEventDocResponse]()},
 	"POST /api/orders":                                 {body: typeOf[commerce.CreatePaymentOrderRequest](), response: typeOf[commerce.CreatePaymentOrderResponse]()},
 	"POST /api/payments/apple/pay":                     {body: typeOf[commerce.ApplePurchaseRequest](), response: typeOf[commerce.ApplePurchaseResponse]()},
 	"POST /api/payments/apple/notification":            {body: typeOf[commerce.AppleNotificationV2Request](), response: typeOf[commerce.AppleNotificationV2Summary]()},
@@ -579,6 +601,7 @@ var operationDescriptions = map[string]string{
 	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
 	"GET /api/vip/list":                     "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
 	"GET /api/points/list":                  "查询当前客户端可购买的积分商品。服务端按登录用户类型以及公共请求上下文中的国家、应用、安装包、APP 版本、系统和渠道进行 AND 筛选，仅返回 status=1 的商品。应用、版本、国家和渠道未配置关联时表示支持全部；积分商品必须明确关联当前安装包。系统从 Video_System_Type 读取，未提供时根据 User-Agent 推断 iOS 或 Android。结果按 is_default DESC、sort ASC、id DESC 排序。",
+	"POST /api/tracking/events":             "上报单个客户端埋点事件。tracking_type 仅支持当前九个事件名且大小写敏感；Payment_Create、Payment_Suc 和 Case_create 必须提供 extension_type。model_id 可选，不适用时可省略。每次成功请求都会新增一条记录，不去重、不覆盖。",
 	"POST /api/orders":                      "为当前登录用户创建待支付订单。shop_type=1 表示 VIP 订阅，shop_type=2 表示积分商品；pay_type=1 表示 Apple IAP，pay_type=2 表示 Google Play。创建积分商品订单时，服务端会再次按用户类型、国家、应用、安装包、APP 版本、系统和渠道校验商品投放范围，并返回原生商店支付参数；积分商品的 payment_info.product_type 固定为 inapp。client_request_id 用于幂等重试，未提供时由服务端生成。",
 	"POST /api/payments/apple/pay":          "校验 StoreKit 交易、创建订单并发放对应商品。标准三段式 JWS 直接验签，其他客户端凭证通过 transactionID 调用 App Store Server API 获取已签名交易后验签。接口按 Apple 交易 ID 幂等处理。请求中的 isActive 是客户端上报值；响应中的 is_active 由已验签交易的撤销时间和到期时间按服务端当前时间计算。",
 	"POST /api/payments/apple/notification": "接收 App Store Server Notifications V2 回调。该公开端点由 Apple 服务器调用，不需要 Bearer Token 或客户端公共请求头；服务端按通知中的 signedPayload 验签并幂等处理退款、续费、订阅过期等事件。",
@@ -599,6 +622,7 @@ var operationSummaries = map[string]string{
 	"DELETE /api/templates/:id/favorite": "取消收藏模板", "POST /api/templates/complaint": "投诉模板", "GET /api/vip/recommend": "查询推荐 VIP 套餐",
 	"GET /api/vip/list":          "查询 VIP 套餐列表",
 	"GET /api/points/list":       "查询积分商品列表",
+	"POST /api/tracking/events":  "上报客户端埋点事件",
 	"POST /api/orders":           "创建支付订单",
 	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务", "POST /api/generation/template-tasks": "按模板创建生成任务",
 	"GET /api/generation/tasks": "查询生成任务", "GET /api/generation/tasks/:id": "获取生成任务", "DELETE /api/generation/tasks/:id": "删除生成任务",
@@ -624,8 +648,11 @@ var fieldDescriptions = map[string]string{
 	"id": "记录 ID", "user_id": "客户端用户 ID", "email": "邮箱", "vip_expires_at": "VIP 到期时间（Unix 秒）", "points_balance": "积分余额",
 	"points_type": "积分变动方向：1=收入，2=支出", "start_time": "筛选开始时间（Unix 秒；需与 end_time 同时提供）", "end_time": "筛选结束时间（Unix 秒；需与 start_time 同时提供）",
 	"direction": "积分变动方向：1=收入，2=支出", "points_change": "积分变动量；正数表示增加，负数表示减少", "balance_before": "变动前积分余额", "balance_after": "变动后积分余额",
-	"time_long": "本次上报的用户活跃时长，单位秒，必须大于 0",
-	"status":    "状态", "last_login_at": "最近登录时间", "last_login_ip": "最近登录 IP", "login_account": "登录账号",
+	"time_long":      "本次上报的用户活跃时长，单位秒，必须大于 0",
+	"tracking_type":  "埋点事件类型；仅支持文档列出的九个值，且大小写敏感",
+	"extension_type": "扩展来源标识；Payment_Create、Payment_Suc 和 Case_create 必填",
+	"model_id":       "模板 ID；不适用时可省略或传 0",
+	"status":         "状态", "last_login_at": "最近登录时间", "last_login_ip": "最近登录 IP", "login_account": "登录账号",
 	"appid_binding": "是否已绑定 Apple", "google_binding": "是否已绑定 Google", "provider": "提供方标识；身份接口表示身份提供方，OSS 直传接口表示存储提供方",
 	"provider_subject": "身份提供方用户唯一标识", "issuer": "Token 签发方", "audience": "Token 受众",
 	"email_verified": "邮箱是否已验证", "is_private_email": "是否为隐私邮箱", "avatar_url": "头像地址",
@@ -685,7 +712,7 @@ var fieldDescriptions = map[string]string{
 var resourceNames = map[string]string{
 	"health": "健康检查", "configs": "系统配置", "auth": "认证", "users": "用户",
 	"banners": "Banner", "templates": "视频模板", "generation": "内容生成", "payments": "支付", "vip": "VIP", "points": "积分商品",
-	"orders": "支付订单", "uploads": "文件上传", "profile": "个人资料",
+	"orders": "支付订单", "uploads": "文件上传", "tracking": "数据埋点", "profile": "个人资料",
 }
 
 var publicRoutes = map[string]bool{

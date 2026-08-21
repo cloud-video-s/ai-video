@@ -30,6 +30,7 @@ func newVideoMedium(db *gorm.DB, opts ...gen.DOOption) videoMedium {
 	_videoMedium.ALL = field.NewAsterisk(tableName)
 	_videoMedium.ID = field.NewUint64(tableName, "id")
 	_videoMedium.Name = field.NewString(tableName, "name")
+	_videoMedium.Keyword = field.NewString(tableName, "keyword")
 	_videoMedium.AdjustPartnerID = field.NewUint64(tableName, "adjust_partner_id")
 	_videoMedium.Status = field.NewUint32(tableName, "status")
 	_videoMedium.CreatedAt = field.NewTime(tableName, "created_at")
@@ -48,6 +49,7 @@ type videoMedium struct {
 	ALL             field.Asterisk
 	ID              field.Uint64
 	Name            field.String // 名称
+	Keyword         field.String // 缩写关键字
 	AdjustPartnerID field.Uint64 // adjust_partner_id
 	Status          field.Uint32 // 状态 1=启用0=禁用
 	CreatedAt       field.Time
@@ -71,6 +73,7 @@ func (v *videoMedium) updateTableName(table string) *videoMedium {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
 	v.Name = field.NewString(table, "name")
+	v.Keyword = field.NewString(table, "keyword")
 	v.AdjustPartnerID = field.NewUint64(table, "adjust_partner_id")
 	v.Status = field.NewUint32(table, "status")
 	v.CreatedAt = field.NewTime(table, "created_at")
@@ -102,9 +105,10 @@ func (v *videoMedium) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoMedium) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 7)
+	v.fieldMap = make(map[string]field.Expr, 8)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["name"] = v.Name
+	v.fieldMap["keyword"] = v.Keyword
 	v.fieldMap["adjust_partner_id"] = v.AdjustPartnerID
 	v.fieldMap["status"] = v.Status
 	v.fieldMap["created_at"] = v.CreatedAt

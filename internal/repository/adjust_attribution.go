@@ -80,7 +80,7 @@ func (r *AdjustAttributionRepo) ResolveMedia(ctx context.Context, network string
 	}
 	q := qFrom(ctx).VideoMedium
 	row, err := q.WithContext(ctx).
-		Where(field.NewUnsafeFieldRaw("INSTR(LOWER(?), LOWER(`name`)) > 0", network)).
+		Where(field.NewUnsafeFieldRaw("INSTR(LOWER(?), LOWER(`keyword`)) > 0", network)).
 		Where(q.Status.Eq(1)).
 		Order(q.ID.Asc()).First()
 	if errors.Is(err, gorm.ErrRecordNotFound) {
