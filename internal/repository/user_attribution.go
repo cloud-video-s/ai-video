@@ -29,6 +29,13 @@ type FusedUserAttribution struct {
 	AttributedAdID       uint64
 	AttributedPointID    uint64
 	IMEI                 string
+	OAID                 string
+	AndroidID            string
+	GpsAdid              string
+	Idfa                 string
+	Idfv                 string
+	UserAgent            string
+	DeviceIP             string
 	GoogleAdID           string
 	ActivityKind         string
 	AttributionType      string
@@ -222,7 +229,8 @@ func (r *UserAttributionRepo) ApplyFusedAttribution(
 		"app_code": item.AppCode, "user_id": item.UserID, "adjust_adid": adjustADID,
 		"channel_id": item.ChannelID, "media_id": item.MediaID,
 		"attributed_ad_id": item.AttributedAdID, "attributed_point_id": item.AttributedPointID,
-		"oaid": "", "imei": item.IMEI, "android_id": "", "google_ad_id": item.GoogleAdID,
+		"oaid": item.Idfa, "imei": item.IMEI, "android_id": "", "google_ad_id": item.GoogleAdID,
+		"idfa": item.Idfa, "idfv": item.Idfa, "user_agent": item.UserAgent, "device_ip": item.DeviceIP,
 		"activity_kind": item.ActivityKind, "attribution_type": item.AttributionType,
 		"is_organic": item.IsOrganic, "reattributed": item.Reattributed, "is_redownload": item.IsRedownload,
 		"click_time": item.ClickTime, "install_time": item.InstallTime,

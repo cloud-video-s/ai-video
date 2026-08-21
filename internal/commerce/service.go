@@ -12,9 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"ai-video/internal/adjustevent"
 	"ai-video/internal/config"
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/adjust"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -198,6 +200,9 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 		}
 		return nil, err
 	}
+	if created.ProductType == domain.OrderProductPointsPackage {
+		enqueueAdjustEvent(ctx, created.UserID, adjust.EventTokenOrderCreated, created.OrderNo, created.CreatedAt)
+	}
 	return created, nil
 }
 
@@ -247,7 +252,7 @@ func (s *Service) ConfirmApplePayment(ctx context.Context, orderNo string, resul
 		if strings.TrimSpace(result.ProductCode) != order.ProductCode ||
 			strings.ToUpper(strings.TrimSpace(result.Currency)) != order.Currency ||
 			math.Abs(result.PaidAmount-order.PayableAmount) > 0.005 {
-			order.PaidAmount = result.PaidAmount
+			return ErrPaymentMismatch
 		}
 
 		payAt := result.PurchaseDate
@@ -289,7 +294,8 @@ func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder
 	if order == nil || strings.TrimSpace(order.OrderNo) == "" {
 		return errors.New("Apple order is required for fulfillment")
 	}
-	return repository.Transaction(ctx, func(ctx context.Context) error {
+	var completedOrder *model.VideoOrder
+	err := repository.Transaction(ctx, func(ctx context.Context) error {
 		lockedOrder, err := s.orders.GetByOrderNo(ctx, order.OrderNo, true)
 		if err != nil {
 			return err
@@ -405,10 +411,37 @@ func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder
 		if err := s.users.Update(ctx, user.ID, updates); err != nil {
 			return err
 		}
-		return s.orders.Update(ctx, lockedOrder.ID, map[string]any{
+		if err := s.orders.Update(ctx, lockedOrder.ID, map[string]any{
 			"status": domain.OrderStatusEnd, "completed_at": now,
-		})
+		}); err != nil {
+			return err
+		}
+		completedOrder = lockedOrder
+		return nil
 	})
+	if err != nil {
+		return err
+	}
+	if completedOrder != nil {
+		occurredAt := completedOrder.PayTime
+		if occurredAt.IsZero() {
+			occurredAt = time.Now()
+		}
+		enqueueAdjustEvent(ctx, completedOrder.UserID, adjust.EventTokenPayment, completedOrder.OrderNo, occurredAt)
+		if completedOrder.ProductType == domain.OrderProductVIPSubscription {
+			enqueueAdjustEvent(ctx, completedOrder.UserID, adjust.EventTokenSubscription, completedOrder.OrderNo, occurredAt)
+		}
+	}
+	return nil
+}
+
+func enqueueAdjustEvent(ctx context.Context, userID uint64, action adjust.EventToken, orderNo string, occurredAt time.Time) {
+	if err := adjustevent.Enqueue(ctx, userID, action, adjustevent.EnqueueOptions{
+		OrderNo: orderNo, OccurredAt: occurredAt,
+	}); err != nil {
+		config.Logger(ctx).Errorw("enqueue Adjust business event", "error", err, "user_id", userID,
+			"action", action, "order_no", orderNo)
+	}
 }
 
 // CancelOrder cancels a pending order owned by the requested user. Paid,

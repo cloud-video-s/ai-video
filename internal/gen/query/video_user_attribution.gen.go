@@ -63,6 +63,11 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 	_videoUserAttribution.RegistrationCallbackCount = field.NewUint64(tableName, "registration_callback_count")
 	_videoUserAttribution.RegistrationDeductCount = field.NewUint64(tableName, "registration_deduct_count")
 	_videoUserAttribution.Remark = field.NewString(tableName, "remark")
+	_videoUserAttribution.GpsAdid = field.NewString(tableName, "gps_adid")
+	_videoUserAttribution.Idfa = field.NewString(tableName, "idfa")
+	_videoUserAttribution.Idfv = field.NewString(tableName, "idfv")
+	_videoUserAttribution.UserAgent = field.NewString(tableName, "user_agent")
+	_videoUserAttribution.DeviceIP = field.NewString(tableName, "device_ip")
 	_videoUserAttribution.CreatedAt = field.NewTime(tableName, "created_at")
 	_videoUserAttribution.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_videoUserAttribution.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -359,7 +364,7 @@ type videoUserAttribution struct {
 	MediaID                   field.Uint64 // 媒体ID
 	AttributedAdID            field.Uint64 // 归因广告点ID，未归因到为0
 	AttributedPointID         field.Uint64 // 归因点ID，未归因到为0
-	OAID                      field.String // OAID（Android设备匿名标识）
+	OAID                      field.String // OAID（匿名标识）
 	IMEI                      field.String // IMEI（国际移动设备识别码）
 	AndroidID                 field.String // Android ID
 	GoogleAdID                field.String // Google广告ID（GAID）
@@ -386,6 +391,11 @@ type videoUserAttribution struct {
 	RegistrationCallbackCount field.Uint64 // 注册回调累计次数
 	RegistrationDeductCount   field.Uint64 // 注册扣费累计次数
 	Remark                    field.String // 备注信息
+	GpsAdid                   field.String // 安卓设备唯一标识
+	Idfa                      field.String // IOS设备唯一标识
+	Idfv                      field.String // idfv
+	UserAgent                 field.String // user_agent
+	DeviceIP                  field.String // device_ip
 	CreatedAt                 field.Time   // 记录创建时间
 	UpdatedAt                 field.Time   // 记录更新时间
 	DeletedAt                 field.Field  // 删除时间（软删除）
@@ -443,6 +453,11 @@ func (v *videoUserAttribution) updateTableName(table string) *videoUserAttributi
 	v.RegistrationCallbackCount = field.NewUint64(table, "registration_callback_count")
 	v.RegistrationDeductCount = field.NewUint64(table, "registration_deduct_count")
 	v.Remark = field.NewString(table, "remark")
+	v.GpsAdid = field.NewString(table, "gps_adid")
+	v.Idfa = field.NewString(table, "idfa")
+	v.Idfv = field.NewString(table, "idfv")
+	v.UserAgent = field.NewString(table, "user_agent")
+	v.DeviceIP = field.NewString(table, "device_ip")
 	v.CreatedAt = field.NewTime(table, "created_at")
 	v.UpdatedAt = field.NewTime(table, "updated_at")
 	v.DeletedAt = field.NewField(table, "deleted_at")
@@ -474,7 +489,7 @@ func (v *videoUserAttribution) GetFieldByName(fieldName string) (field.OrderExpr
 }
 
 func (v *videoUserAttribution) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 40)
+	v.fieldMap = make(map[string]field.Expr, 45)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["app_code"] = v.AppCode
 	v.fieldMap["user_id"] = v.UserID
@@ -510,6 +525,11 @@ func (v *videoUserAttribution) fillFieldMap() {
 	v.fieldMap["registration_callback_count"] = v.RegistrationCallbackCount
 	v.fieldMap["registration_deduct_count"] = v.RegistrationDeductCount
 	v.fieldMap["remark"] = v.Remark
+	v.fieldMap["gps_adid"] = v.GpsAdid
+	v.fieldMap["idfa"] = v.Idfa
+	v.fieldMap["idfv"] = v.Idfv
+	v.fieldMap["user_agent"] = v.UserAgent
+	v.fieldMap["device_ip"] = v.DeviceIP
 	v.fieldMap["created_at"] = v.CreatedAt
 	v.fieldMap["updated_at"] = v.UpdatedAt
 	v.fieldMap["deleted_at"] = v.DeletedAt

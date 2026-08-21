@@ -20,6 +20,7 @@ var (
 	CasbinRule                       *casbinRule
 	VideoAPI                         *videoAPI
 	VideoAdjustAttribution           *videoAdjustAttribution
+	VideoAdjustPendingEvent          *videoAdjustPendingEvent
 	VideoAdmin                       *videoAdmin
 	VideoAdminRole                   *videoAdminRole
 	VideoApp                         *videoApp
@@ -63,6 +64,8 @@ var (
 	VideoTemplateTypeDisplayPosition *videoTemplateTypeDisplayPosition
 	VideoTemplateTypePackage         *videoTemplateTypePackage
 	VideoTemplateTypeVersion         *videoTemplateTypeVersion
+	VideoToolConfig                  *videoToolConfig
+	VideoTrackingEvent               *videoTrackingEvent
 	VideoUpload                      *videoUpload
 	VideoUser                        *videoUser
 	VideoUserAttribution             *videoUserAttribution
@@ -85,6 +88,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	CasbinRule = &Q.CasbinRule
 	VideoAPI = &Q.VideoAPI
 	VideoAdjustAttribution = &Q.VideoAdjustAttribution
+	VideoAdjustPendingEvent = &Q.VideoAdjustPendingEvent
 	VideoAdmin = &Q.VideoAdmin
 	VideoAdminRole = &Q.VideoAdminRole
 	VideoApp = &Q.VideoApp
@@ -128,6 +132,8 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoTemplateTypeDisplayPosition = &Q.VideoTemplateTypeDisplayPosition
 	VideoTemplateTypePackage = &Q.VideoTemplateTypePackage
 	VideoTemplateTypeVersion = &Q.VideoTemplateTypeVersion
+	VideoToolConfig = &Q.VideoToolConfig
+	VideoTrackingEvent = &Q.VideoTrackingEvent
 	VideoUpload = &Q.VideoUpload
 	VideoUser = &Q.VideoUser
 	VideoUserAttribution = &Q.VideoUserAttribution
@@ -151,6 +157,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		CasbinRule:                       newCasbinRule(db, opts...),
 		VideoAPI:                         newVideoAPI(db, opts...),
 		VideoAdjustAttribution:           newVideoAdjustAttribution(db, opts...),
+		VideoAdjustPendingEvent:          newVideoAdjustPendingEvent(db, opts...),
 		VideoAdmin:                       newVideoAdmin(db, opts...),
 		VideoAdminRole:                   newVideoAdminRole(db, opts...),
 		VideoApp:                         newVideoApp(db, opts...),
@@ -194,6 +201,8 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoTemplateTypeDisplayPosition: newVideoTemplateTypeDisplayPosition(db, opts...),
 		VideoTemplateTypePackage:         newVideoTemplateTypePackage(db, opts...),
 		VideoTemplateTypeVersion:         newVideoTemplateTypeVersion(db, opts...),
+		VideoToolConfig:                  newVideoToolConfig(db, opts...),
+		VideoTrackingEvent:               newVideoTrackingEvent(db, opts...),
 		VideoUpload:                      newVideoUpload(db, opts...),
 		VideoUser:                        newVideoUser(db, opts...),
 		VideoUserAttribution:             newVideoUserAttribution(db, opts...),
@@ -218,6 +227,7 @@ type Query struct {
 	CasbinRule                       casbinRule
 	VideoAPI                         videoAPI
 	VideoAdjustAttribution           videoAdjustAttribution
+	VideoAdjustPendingEvent          videoAdjustPendingEvent
 	VideoAdmin                       videoAdmin
 	VideoAdminRole                   videoAdminRole
 	VideoApp                         videoApp
@@ -261,6 +271,8 @@ type Query struct {
 	VideoTemplateTypeDisplayPosition videoTemplateTypeDisplayPosition
 	VideoTemplateTypePackage         videoTemplateTypePackage
 	VideoTemplateTypeVersion         videoTemplateTypeVersion
+	VideoToolConfig                  videoToolConfig
+	VideoTrackingEvent               videoTrackingEvent
 	VideoUpload                      videoUpload
 	VideoUser                        videoUser
 	VideoUserAttribution             videoUserAttribution
@@ -288,6 +300,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		CasbinRule:                       q.CasbinRule.clone(db),
 		VideoAPI:                         q.VideoAPI.clone(db),
 		VideoAdjustAttribution:           q.VideoAdjustAttribution.clone(db),
+		VideoAdjustPendingEvent:          q.VideoAdjustPendingEvent.clone(db),
 		VideoAdmin:                       q.VideoAdmin.clone(db),
 		VideoAdminRole:                   q.VideoAdminRole.clone(db),
 		VideoApp:                         q.VideoApp.clone(db),
@@ -331,6 +344,8 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoTemplateTypeDisplayPosition: q.VideoTemplateTypeDisplayPosition.clone(db),
 		VideoTemplateTypePackage:         q.VideoTemplateTypePackage.clone(db),
 		VideoTemplateTypeVersion:         q.VideoTemplateTypeVersion.clone(db),
+		VideoToolConfig:                  q.VideoToolConfig.clone(db),
+		VideoTrackingEvent:               q.VideoTrackingEvent.clone(db),
 		VideoUpload:                      q.VideoUpload.clone(db),
 		VideoUser:                        q.VideoUser.clone(db),
 		VideoUserAttribution:             q.VideoUserAttribution.clone(db),
@@ -363,6 +378,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		CasbinRule:                       q.CasbinRule.replaceDB(db),
 		VideoAPI:                         q.VideoAPI.replaceDB(db),
 		VideoAdjustAttribution:           q.VideoAdjustAttribution.replaceDB(db),
+		VideoAdjustPendingEvent:          q.VideoAdjustPendingEvent.replaceDB(db),
 		VideoAdmin:                       q.VideoAdmin.replaceDB(db),
 		VideoAdminRole:                   q.VideoAdminRole.replaceDB(db),
 		VideoApp:                         q.VideoApp.replaceDB(db),
@@ -406,6 +422,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoTemplateTypeDisplayPosition: q.VideoTemplateTypeDisplayPosition.replaceDB(db),
 		VideoTemplateTypePackage:         q.VideoTemplateTypePackage.replaceDB(db),
 		VideoTemplateTypeVersion:         q.VideoTemplateTypeVersion.replaceDB(db),
+		VideoToolConfig:                  q.VideoToolConfig.replaceDB(db),
+		VideoTrackingEvent:               q.VideoTrackingEvent.replaceDB(db),
 		VideoUpload:                      q.VideoUpload.replaceDB(db),
 		VideoUser:                        q.VideoUser.replaceDB(db),
 		VideoUserAttribution:             q.VideoUserAttribution.replaceDB(db),
@@ -428,6 +446,7 @@ type queryCtx struct {
 	CasbinRule                       ICasbinRuleDo
 	VideoAPI                         IVideoAPIDo
 	VideoAdjustAttribution           IVideoAdjustAttributionDo
+	VideoAdjustPendingEvent          IVideoAdjustPendingEventDo
 	VideoAdmin                       IVideoAdminDo
 	VideoAdminRole                   IVideoAdminRoleDo
 	VideoApp                         IVideoAppDo
@@ -471,6 +490,8 @@ type queryCtx struct {
 	VideoTemplateTypeDisplayPosition IVideoTemplateTypeDisplayPositionDo
 	VideoTemplateTypePackage         IVideoTemplateTypePackageDo
 	VideoTemplateTypeVersion         IVideoTemplateTypeVersionDo
+	VideoToolConfig                  IVideoToolConfigDo
+	VideoTrackingEvent               IVideoTrackingEventDo
 	VideoUpload                      IVideoUploadDo
 	VideoUser                        IVideoUserDo
 	VideoUserAttribution             IVideoUserAttributionDo
@@ -493,6 +514,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		CasbinRule:                       q.CasbinRule.WithContext(ctx),
 		VideoAPI:                         q.VideoAPI.WithContext(ctx),
 		VideoAdjustAttribution:           q.VideoAdjustAttribution.WithContext(ctx),
+		VideoAdjustPendingEvent:          q.VideoAdjustPendingEvent.WithContext(ctx),
 		VideoAdmin:                       q.VideoAdmin.WithContext(ctx),
 		VideoAdminRole:                   q.VideoAdminRole.WithContext(ctx),
 		VideoApp:                         q.VideoApp.WithContext(ctx),
@@ -536,6 +558,8 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoTemplateTypeDisplayPosition: q.VideoTemplateTypeDisplayPosition.WithContext(ctx),
 		VideoTemplateTypePackage:         q.VideoTemplateTypePackage.WithContext(ctx),
 		VideoTemplateTypeVersion:         q.VideoTemplateTypeVersion.WithContext(ctx),
+		VideoToolConfig:                  q.VideoToolConfig.WithContext(ctx),
+		VideoTrackingEvent:               q.VideoTrackingEvent.WithContext(ctx),
 		VideoUpload:                      q.VideoUpload.WithContext(ctx),
 		VideoUser:                        q.VideoUser.WithContext(ctx),
 		VideoUserAttribution:             q.VideoUserAttribution.WithContext(ctx),

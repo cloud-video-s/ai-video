@@ -49,6 +49,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	userGenerationTaskHandler := handler.NewUserGenerationTaskHandler()
 	bannerHandler := handler.NewBannerHandler()
 	bannerPlacementHandler := handler.NewBannerPlacementHandler()
+	toolConfigHandler := handler.NewToolConfigHandler()
 	platformHandler := handler.NewPlatformHandler()
 	modelHandler := handler.NewModelHandler()
 	modelParameterHandler := handler.NewModelParameterHandler()
@@ -101,6 +102,8 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		authenticated.GET("/vip-subscription-levels/options", vipSubscriptionLevelHandler.ListOptions)
 		authenticated.GET("/banners/delivery-options", bannerHandler.DeliveryOptions)
 		authenticated.GET("/banner-placements/options", bannerPlacementHandler.ListOptions)
+		authenticated.GET("/tool-configs/options", toolConfigHandler.ListOptions)
+		authenticated.GET("/tool-configs/model-options", toolConfigHandler.ListModelOptions)
 		authenticated.GET("/platforms/options", platformHandler.ListOptions)
 	}
 
@@ -324,6 +327,14 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		auth.GET("/banner-placements/:id", bannerPlacementHandler.GetByID)
 		auth.PUT("/banner-placements/:id", bannerPlacementHandler.Update)
 		auth.DELETE("/banner-placements/:id", bannerPlacementHandler.Delete)
+
+		// Tool configurations
+		auth.GET("/tool-configs", toolConfigHandler.List)
+		auth.POST("/tool-configs", toolConfigHandler.Create)
+		auth.GET("/tool-configs/:id", toolConfigHandler.GetByID)
+		auth.PUT("/tool-configs/:id", toolConfigHandler.Update)
+		auth.PATCH("/tool-configs/:id/status", toolConfigHandler.UpdateStatus)
+		auth.DELETE("/tool-configs/:id", toolConfigHandler.Delete)
 
 		// Chunked media uploads and small APP/config documents
 		auth.GET("/uploads", uploadRecordHandler.List)

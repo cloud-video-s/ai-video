@@ -11,6 +11,7 @@ import (
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 	"ai-video/internal/middleware"
+	"ai-video/internal/pkg/adjust"
 	"ai-video/internal/pkg/monitor"
 	"ai-video/internal/pkg/oidc"
 	"ai-video/internal/pkg/utils"
@@ -71,6 +72,7 @@ func (s *AuthService) ThirdPartyLogin(ctx *gin.Context, req *ThirdPartyLoginRequ
 func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLoginRequest, clientIP string) (*AuthResponse, error) {
 	now := time.Now()
 	var user *model.VideoUser
+	boundIdentity := false
 	apiUserID := middleware.GetAPIUserID(ctx)
 	serverCountry := utils.ClientIP(ctx)
 	var err error
@@ -111,6 +113,7 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 			)
 			return nil, errors.New("failed to update third party login info")
 		}
+		boundIdentity = true
 	}
 
 	if user.ID != apiUserID {
@@ -131,6 +134,9 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 	}
 	if user.ID != apiUserID {
 		token.DeviceCode = user.DeviceCode
+	}
+	if boundIdentity {
+		enqueueAuthAdjustEvent(ctx.Request.Context(), user.ID, adjust.EventTokenLogin)
 	}
 	return token, nil
 }

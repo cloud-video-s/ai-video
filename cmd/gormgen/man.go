@@ -817,6 +817,15 @@ func main() {
 		),
 	)
 
+	videoAdjustPendingEvent := g.GenerateModel("video_adjust_pending_event",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("user_id", "uint64"),
+		gen.FieldType("channel_id", "uint64"),
+		gen.FieldType("status", "uint8"),
+		gen.FieldType("payload", "string"),
+		gen.FieldType("requeued_at", "*time.Time"),
+	)
+
 	// ================================================================
 	// 36. video_user_points_ledger
 	// ================================================================
@@ -1012,6 +1021,37 @@ func main() {
 		),
 	)
 	videoMedia := g.GenerateModel("video_media")
+	videoTrackingEvent := g.GenerateModel("video_tracking_event",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("user_id", "uint64"),
+		gen.FieldType("extended_fields", "*string"),
+		gen.FieldType("system_type", "uint8"),
+		gen.FieldRelate(field.BelongsTo, "User", videoUser,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"UserID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
+	videoToolConfig := g.GenerateModel("video_tool_config",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("tool_type", "uint8"),
+		gen.FieldType("model_id", "int64"),
+		gen.FieldType("config_type", "uint8"),
+		gen.FieldType("config_data", "string"),
+		gen.FieldType("sort", "int64"),
+		gen.FieldType("status", "int8"),
+		gen.FieldRelate(field.BelongsTo, "Model", videoModel,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"ModelID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
 
 	allModels := []any{
 		casbinRule,
@@ -1060,6 +1100,7 @@ func main() {
 		videoUser,
 		videoUserAttribution,
 		videoAdjustAttribution,
+		videoAdjustPendingEvent,
 		videoUserPointsLedger,
 		videoUserTemplateFavorite,
 		videoVipSubscription,
@@ -1075,6 +1116,8 @@ func main() {
 		videoModelParameter,
 		videoUserTemplateComplaint,
 		videoMedia,
+		videoTrackingEvent,
+		videoToolConfig,
 	}
 
 	g.ApplyBasic(allModels...)

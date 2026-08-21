@@ -29,8 +29,12 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "订单参数错误: "+err.Error())
 		return
 	}
-	result, err := h.service.CreatePaymentOrder(
-		c.Request.Context(), middleware.GetAPIUserID(c), middleware.GetAPIAppPackageCode(c), req,
+	result, err := h.service.CreatePaymentOrderForClient(
+		c.Request.Context(), middleware.GetAPIUserID(c), commerce.PaymentClientContext{
+			AppCode: middleware.GetAPIAPPCode(c), PackageCode: middleware.GetAPIAppPackageCode(c),
+			VersionCode: middleware.GetAPIAppVersion(c), CountryCode: middleware.GetAPIDeviceCountry(c),
+			ChannelCode: middleware.GetAPIChannelCode(c), SystemType: middleware.GetAPISystemType(c),
+		}, req,
 	)
 	if err != nil {
 		if isCreateOrderInputError(err) {

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"ai-video/internal/adjustevent"
 	"ai-video/internal/config"
 	"ai-video/internal/generation"
+	"ai-video/internal/pkg/adjust"
 	"ai-video/internal/pkg/monitor"
 	"ai-video/internal/pkg/setting"
 	"ai-video/internal/pkg/task"
@@ -19,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -56,14 +59,50 @@ func run() error {
 		config.Log.Warnf("init settings: %v", err)
 	}
 
+	workerRestartDelay, workerRestartMaxDelay := config.Cfg.Task.WorkerRestartBackoff()
 	taskManager := task.NewManager(task.ManagerConfig{
-		RedisAddr: config.Cfg.Redis.Addr(), RedisPassword: config.Cfg.Redis.Password, RedisDB: config.Cfg.Redis.DB,
+		RedisAddr: config.Cfg.Redis.Addr(), RedisUsername: config.Cfg.Redis.Username,
+		RedisPassword: config.Cfg.Redis.Password, RedisDB: config.Cfg.Redis.DB,
 		Concurrency: config.Cfg.Task.Concurrency, Queues: config.Cfg.Task.Queues,
+		RestartDelay: workerRestartDelay, RestartMaxDelay: workerRestartMaxDelay,
 		ErrorHandler: func(ctx context.Context, taskType string, err error) {
 			monitor.Report(config.Logger(ctx), monitor.KindTaskFailure, "task_worker", err, "task_type", taskType)
 		},
+		RestartHandler: func(err error, nextDelay time.Duration) {
+			monitor.Report(
+				config.Log,
+				monitor.KindError,
+				"task_worker_supervisor",
+				err,
+				"restart_in", nextDelay.String(),
+			)
+		},
 	})
 	defer taskManager.Close()
+
+	eventContext, stopAdjustEvents := context.WithCancel(context.Background())
+	defer stopAdjustEvents()
+	var adjustEvents *adjustevent.Runtime
+	if config.Cfg.Adjust.EventEnabled {
+		createdAdjustEvents, eventErr := adjustevent.NewRuntime(adjustevent.RuntimeConfig{
+			Client: taskManager.Client, Worker: taskManager.Worker,
+			AuthToken: config.Cfg.Adjust.EventAuthToken, BaseURL: config.Cfg.Adjust.EventBaseURL,
+			Environment: adjust.Environment(strings.ToLower(strings.TrimSpace(config.Cfg.Adjust.EventEnvironment))),
+		})
+		if eventErr != nil {
+			return fmt.Errorf("init Adjust event runtime failed: %w", eventErr)
+		}
+		adjustEvents = createdAdjustEvents
+		if eventErr = adjustEvents.Start(eventContext); eventErr != nil {
+			return fmt.Errorf("start Adjust event runtime failed: %w", eventErr)
+		}
+		adjustevent.SetDefault(adjustEvents)
+		defer adjustevent.SetDefault(nil)
+		config.Log.Infof("Adjust event Redis runtime started: environment=%s", config.Cfg.Adjust.EventEnvironment)
+	} else {
+		config.Log.Warn("Adjust event reporting is disabled by adjust.event_enabled")
+	}
+
 	subscriptionExpirationAt, subscriptionExpirationEnabled, err := config.Cfg.Task.SubscriptionExpirationTime(time.Local)
 	if err != nil {
 		return fmt.Errorf("parse subscription expiration execution time failed: %w", err)
@@ -97,6 +136,21 @@ func run() error {
 	srv := &http.Server{Addr: addr, Handler: engine}
 	generation.Start()
 	runtimeErr := make(chan error, 2)
+	if adjustEvents != nil {
+		go func() {
+			for {
+				select {
+				case eventErr, ok := <-adjustEvents.Errors():
+					if !ok {
+						return
+					}
+					monitor.Report(config.Log, monitor.KindError, "adjust_event_runtime", eventErr)
+				case <-eventContext.Done():
+					return
+				}
+			}
+		}()
+	}
 
 	go func() {
 		config.Log.Infof("server starting at %s", addr)
@@ -124,6 +178,8 @@ func run() error {
 	}
 
 	config.Log.Info("shutting down server...")
+	stopAdjustEvents()
+	adjustevent.SetDefault(nil)
 	generation.Stop()
 	taskManager.Worker.Stop()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

@@ -176,6 +176,10 @@ var requestBodyExamples = map[string]any{
 	"POST /api/users/active_reporting": map[string]any{
 		"time_long": uint64(300),
 	},
+	"POST /api/orders": map[string]any{
+		"shop_type": uint32(2), "product_id": uint64(8), "pay_type": uint32(1),
+		"client_request_id": "points-order-20260820-0001",
+	},
 	"POST /api/templates/complaint": map[string]any{
 		"template_id": uint64(3), "complaint_type": "Hate speech or discrimination", "content": "测试",
 	},
@@ -416,6 +420,16 @@ var responseDataExamples = map[string]any{
 	"GET /api/generation/models":       generationModelResponseExample,
 	"GET /api/generation/tasks":        generationTaskListResponseExample,
 	"GET /api/generation/tasks/:id":    generationTaskResponseExample,
+	"POST /api/orders": commerce.CreatePaymentOrderResponse{
+		OrderNo: "20260820143000a1b2c3d4e5f6", ClientRequestID: "points-order-20260820-0001",
+		ShopType: 2, ProductID: 8, ProductCode: "credits_100", ProductName: "100 Credits",
+		PayType: 1, Status: 1, Currency: "USD", PayableAmount: 1.99,
+		ExpiresAt: time.Date(2026, 8, 20, 14, 37, 0, 0, time.FixedZone("UTC+8", 8*60*60)),
+		PaymentInfo: commerce.StorePaymentInfo{
+			PayType: 1, ProductID: "credits_100", ProductType: "inapp",
+			BundleID: "com.example.ios", Quantity: 1, ConfirmPath: "/api/payments/apple/pay",
+		},
+	},
 	"POST /api/payments/apple/pay": commerce.ApplePurchaseResponse{
 		OrderNo: "20260728090907cc7d7c1ffd15", Status: 4, ProductType: 1,
 		ProductID: 1, ProductCode: "dolaai18", TransactionID: "2000001209105682",
@@ -526,6 +540,7 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[apiservice.VIPRecommendResponse]()},
 	"GET /api/vip/list":                                {query: typeOf[apiservice.VipVipListRequest](), response: typeOf[[]apiservice.VIPRecommendResponse]()},
 	"GET /api/points/list":                             {response: typeOf[[]apiservice.ClientPointProductResponse]()},
+	"POST /api/orders":                                 {body: typeOf[commerce.CreatePaymentOrderRequest](), response: typeOf[commerce.CreatePaymentOrderResponse]()},
 	"POST /api/payments/apple/pay":                     {body: typeOf[commerce.ApplePurchaseRequest](), response: typeOf[commerce.ApplePurchaseResponse]()},
 	"POST /api/payments/apple/notification":            {body: typeOf[commerce.AppleNotificationV2Request](), response: typeOf[commerce.AppleNotificationV2Summary]()},
 	"POST /api/apy":                                    {body: typeOf[commerce.AppleNotificationV2Request](), response: typeOf[commerce.AppleNotificationV2Summary]()},
@@ -564,6 +579,7 @@ var operationDescriptions = map[string]string{
 	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
 	"GET /api/vip/list":                     "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
 	"GET /api/points/list":                  "查询当前客户端可购买的积分商品。服务端按登录用户类型以及公共请求上下文中的国家、应用、安装包、APP 版本、系统和渠道进行 AND 筛选，仅返回 status=1 的商品。应用、版本、国家和渠道未配置关联时表示支持全部；积分商品必须明确关联当前安装包。系统从 Video_System_Type 读取，未提供时根据 User-Agent 推断 iOS 或 Android。结果按 is_default DESC、sort ASC、id DESC 排序。",
+	"POST /api/orders":                      "为当前登录用户创建待支付订单。shop_type=1 表示 VIP 订阅，shop_type=2 表示积分商品；pay_type=1 表示 Apple IAP，pay_type=2 表示 Google Play。创建积分商品订单时，服务端会再次按用户类型、国家、应用、安装包、APP 版本、系统和渠道校验商品投放范围，并返回原生商店支付参数；积分商品的 payment_info.product_type 固定为 inapp。client_request_id 用于幂等重试，未提供时由服务端生成。",
 	"POST /api/payments/apple/pay":          "校验 StoreKit 交易、创建订单并发放对应商品。标准三段式 JWS 直接验签，其他客户端凭证通过 transactionID 调用 App Store Server API 获取已签名交易后验签。接口按 Apple 交易 ID 幂等处理。请求中的 isActive 是客户端上报值；响应中的 is_active 由已验签交易的撤销时间和到期时间按服务端当前时间计算。",
 	"POST /api/payments/apple/notification": "接收 App Store Server Notifications V2 回调。该公开端点由 Apple 服务器调用，不需要 Bearer Token 或客户端公共请求头；服务端按通知中的 signedPayload 验签并幂等处理退款、续费、订阅过期等事件。",
 	"POST /api/uploads/oss/signature":       "校验媒体类型、文件扩展名、MIME 和精确字节数，生成短时效阿里云 OSS V4 预签名 PUT 地址。客户端必须使用响应中的 method、upload_url 和签名 headers 将文件原始字节直接上传到 OSS；该接口需要 Bearer Token，且仅在当前存储方式为 aliyun_oss 时可用。",
@@ -583,6 +599,7 @@ var operationSummaries = map[string]string{
 	"DELETE /api/templates/:id/favorite": "取消收藏模板", "POST /api/templates/complaint": "投诉模板", "GET /api/vip/recommend": "查询推荐 VIP 套餐",
 	"GET /api/vip/list":          "查询 VIP 套餐列表",
 	"GET /api/points/list":       "查询积分商品列表",
+	"POST /api/orders":           "创建支付订单",
 	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务", "POST /api/generation/template-tasks": "按模板创建生成任务",
 	"GET /api/generation/tasks": "查询生成任务", "GET /api/generation/tasks/:id": "获取生成任务", "DELETE /api/generation/tasks/:id": "删除生成任务",
 	"POST /api/payments/apple/pay": "确认 Apple 支付", "POST /api/payments/apple/notification": "接收 Apple 支付通知",
@@ -630,15 +647,15 @@ var fieldDescriptions = map[string]string{
 	"local_urls": "生成结果的持久化访问地址（本地或 OSS）", "error_message": "任务失败原因", "usage_duration": "任务计费用时（秒）",
 	"submitted_at": "任务提交到上游的时间", "started_at": "上游开始处理的时间", "finished_at": "任务结束时间",
 	"default_parameters": "模型默认参数", "model_name": "提供方模型名称",
-	"shop_type": "商品类型：1=VIP 订阅，2=积分商品", "bundleID": "Apple Bundle ID，必须与 Video_App_Package_Code 及签名交易一致", "productID": "Apple 商品 ID", "transactionID": "Apple 交易 ID",
+	"shop_type": "商品类型：1=VIP 订阅，2=积分商品", "pay_type": "支付类型：1=Apple IAP，2=Google Play", "bundleID": "Apple Bundle ID，必须与 Video_App_Package_Code 及签名交易一致", "productID": "Apple 商品 ID", "transactionID": "Apple 交易 ID",
 	"originalTransactionID": "Apple 原始交易 ID", "signedTransactionInfo": "可选的 Apple 三段式签名交易 JWS；非标准格式将改用 transactionID 调用 App Store Server API 查询",
 	"signedPayload": "App Store Server Notifications V2 签名载荷 JWS", "notification_type": "Apple 通知类型",
 	"subtype": "Apple 通知子类型", "notification_uuid": "Apple 通知唯一标识", "bundle_id": "Apple Bundle ID",
 	"environment": "App Store 环境", "original_transaction_id": "Apple 原始交易 ID", "transaction_id": "Apple 交易 ID",
-	"product_id": "Apple 商品 ID", "processed": "是否已完成对应业务处理", "affected_user_id": "受影响的用户 ID",
+	"product_id": "服务端商品 ID；创建订单时对应 VIP 套餐或积分商品主键", "processed": "是否已完成对应业务处理", "affected_user_id": "受影响的用户 ID",
 	"affected_order_no": "受影响的订单号", "action": "本次通知执行的业务动作", "message": "处理结果说明",
 	"purchaseDate": "客户端购买时间，RFC 3339 格式，必须与签名交易一致", "expirationDate": "订阅到期时间，RFC 3339 格式；无到期时间时为 null", "revocationDate": "撤销时间，RFC 3339 格式；未撤销时为 null", "isActive": "客户端上报的订阅状态；服务端不以此值作为最终状态",
-	"source": "购买入口来源，可选", "order_no": "服务端订单号", "order_code": "Apple 原始交易 ID 数组；按数组中的编号匹配订单", "product_type": "订单商品类型",
+	"source": "购买入口来源，可选", "order_no": "服务端订单号", "order_code": "Apple 原始交易 ID 数组；按数组中的编号匹配订单", "product_type": "原生商店商品类型；积分商品为 inapp，VIP 商品为 subscription", "payment_info": "客户端发起原生商店支付所需参数", "quantity": "购买数量", "confirm_path": "客户端支付成功后的服务端确认接口", "package_name": "Google Play 包名", "payable_amount": "订单应付金额",
 	"product_code": "商店商品 SKU；Apple 支付场景中对应 Apple 商品 ID", "paid_amount": "实付金额，单位由 currency 指定", "purchase_date": "已验签的购买时间",
 	"expiration_date": "已验签的订阅到期时间", "is_active": "服务端计算的当前状态：交易未撤销，且订阅到期时间晚于服务端当前时间",
 	"evidence_mode": "交易凭证模式，固定为 jws",
@@ -668,7 +685,7 @@ var fieldDescriptions = map[string]string{
 var resourceNames = map[string]string{
 	"health": "健康检查", "configs": "系统配置", "auth": "认证", "users": "用户",
 	"banners": "Banner", "templates": "视频模板", "generation": "内容生成", "payments": "支付", "vip": "VIP", "points": "积分商品",
-	"uploads": "文件上传", "profile": "个人资料",
+	"orders": "支付订单", "uploads": "文件上传", "profile": "个人资料",
 }
 
 var publicRoutes = map[string]bool{

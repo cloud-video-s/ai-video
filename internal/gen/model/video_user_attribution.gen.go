@@ -22,7 +22,7 @@ type VideoUserAttribution struct {
 	MediaID                   uint64         `gorm:"column:media_id;type:bigint unsigned;not null;comment:媒体ID" json:"media_id"`                                                            // 媒体ID
 	AttributedAdID            uint64         `gorm:"column:attributed_ad_id;type:bigint unsigned;not null;comment:归因广告点ID，未归因到为0" json:"attributed_ad_id"`                                  // 归因广告点ID，未归因到为0
 	AttributedPointID         uint64         `gorm:"column:attributed_point_id;type:bigint unsigned;not null;comment:归因点ID，未归因到为0" json:"attributed_point_id"`                              // 归因点ID，未归因到为0
-	OAID                      string         `gorm:"column:oaid;type:varchar(128);not null;index:idx_oaid,priority:1;comment:OAID（Android设备匿名标识）" json:"oaid"`                              // OAID（Android设备匿名标识）
+	OAID                      string         `gorm:"column:oaid;type:varchar(128);not null;index:idx_oaid,priority:1;comment:OAID（匿名标识）" json:"oaid"`                                       // OAID（匿名标识）
 	IMEI                      string         `gorm:"column:imei;type:varchar(128);not null;index:idx_imei,priority:1;comment:IMEI（国际移动设备识别码）" json:"imei"`                                  // IMEI（国际移动设备识别码）
 	AndroidID                 string         `gorm:"column:android_id;type:varchar(128);not null;comment:Android ID" json:"android_id"`                                                     // Android ID
 	GoogleAdID                string         `gorm:"column:google_ad_id;type:varchar(128);not null;index:idx_google_ad_id,priority:1;comment:Google广告ID（GAID）" json:"google_ad_id"`         // Google广告ID（GAID）
@@ -49,6 +49,11 @@ type VideoUserAttribution struct {
 	RegistrationCallbackCount uint64         `gorm:"column:registration_callback_count;type:bigint unsigned;not null;comment:注册回调累计次数" json:"registration_callback_count"`                  // 注册回调累计次数
 	RegistrationDeductCount   uint64         `gorm:"column:registration_deduct_count;type:bigint unsigned;not null;comment:注册扣费累计次数" json:"registration_deduct_count"`                      // 注册扣费累计次数
 	Remark                    string         `gorm:"column:remark;type:varchar(255);not null;comment:备注信息" json:"remark"`                                                                   // 备注信息
+	GpsAdid                   string         `gorm:"column:gps_adid;type:varchar(255);comment:安卓设备唯一标识" json:"gps_adid"`                                                                    // 安卓设备唯一标识
+	Idfa                      string         `gorm:"column:idfa;type:varchar(255);comment:IOS设备唯一标识" json:"idfa"`                                                                           // IOS设备唯一标识
+	Idfv                      string         `gorm:"column:idfv;type:varchar(255);comment:idfv" json:"idfv"`                                                                                // idfv
+	UserAgent                 string         `gorm:"column:user_agent;type:varchar(255);comment:user_agent" json:"user_agent"`                                                              // user_agent
+	DeviceIP                  string         `gorm:"column:device_ip;type:varchar(255);comment:device_ip" json:"device_ip"`                                                                 // device_ip
 	CreatedAt                 time.Time      `gorm:"column:created_at;type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);comment:记录创建时间" json:"created_at"`                             // 记录创建时间
 	UpdatedAt                 time.Time      `gorm:"column:updated_at;type:datetime(3);not null;default:CURRENT_TIMESTAMP(3);comment:记录更新时间" json:"updated_at"`                             // 记录更新时间
 	DeletedAt                 gorm.DeletedAt `gorm:"column:deleted_at;type:datetime(3);index:idx_deleted_at,priority:1;comment:删除时间（软删除）" json:"deleted_at"`                                // 删除时间（软删除）

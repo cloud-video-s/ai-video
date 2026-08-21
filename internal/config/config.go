@@ -27,11 +27,33 @@ type Config struct {
 }
 
 type TaskConfig struct {
-	Concurrency              int      `mapstructure:"concurrency"`
-	DownloadConcurrency      int      `mapstructure:"download_concurrency"`
-	DownloadRetryCount       int      `mapstructure:"download_retry_count"`
-	Queues                   []string `mapstructure:"queues"`
-	SubscriptionExpirationAt string   `mapstructure:"subscription_expiration_at"`
+	Concurrency                  int      `mapstructure:"concurrency"`
+	DownloadConcurrency          int      `mapstructure:"download_concurrency"`
+	DownloadRetryCount           int      `mapstructure:"download_retry_count"`
+	WorkerRestartDelaySeconds    int      `mapstructure:"worker_restart_delay_seconds"`
+	WorkerRestartMaxDelaySeconds int      `mapstructure:"worker_restart_max_delay_seconds"`
+	Queues                       []string `mapstructure:"queues"`
+	SubscriptionExpirationAt     string   `mapstructure:"subscription_expiration_at"`
+}
+
+const (
+	defaultWorkerRestartDelaySeconds    = 1
+	defaultWorkerRestartMaxDelaySeconds = 30
+)
+
+func (c TaskConfig) WorkerRestartBackoff() (time.Duration, time.Duration) {
+	initialSeconds := c.WorkerRestartDelaySeconds
+	if initialSeconds <= 0 {
+		initialSeconds = defaultWorkerRestartDelaySeconds
+	}
+	maxSeconds := c.WorkerRestartMaxDelaySeconds
+	if maxSeconds <= 0 {
+		maxSeconds = defaultWorkerRestartMaxDelaySeconds
+	}
+	if maxSeconds < initialSeconds {
+		maxSeconds = initialSeconds
+	}
+	return time.Duration(initialSeconds) * time.Second, time.Duration(maxSeconds) * time.Second
 }
 
 const TaskExecuteAtLayout = "2006-01-02 15:04:05"
@@ -138,14 +160,20 @@ type OIDCProviderConfig struct {
 	JWKSURL   string   `mapstructure:"jwks_url"`
 }
 
-// AdjustConfig controls the public Adjust attribution callback. The callback
-// stays disabled until both enabled and callback_token are configured. Tracker
-// channel keys may be Adjust tracker tokens or tracker names; token matches win.
+// AdjustConfig controls inbound attribution callbacks and outbound S2S events
+// independently. CallbackToken is an application-defined callback credential;
+// Adjust does not prescribe its length. Tracker channel keys may be Adjust
+// tracker tokens or tracker names; token matches win.
 type AdjustConfig struct {
-	Enabled         bool              `mapstructure:"enabled"`
-	CallbackToken   string            `mapstructure:"callback_token"`
-	MaxBodyBytes    int64             `mapstructure:"max_body_bytes"`
-	TrackerChannels map[string]string `mapstructure:"tracker_channels"`
+	Enabled          bool              `mapstructure:"enabled"`
+	EventEnabled     bool              `mapstructure:"event_enabled"`
+	CallbackToken    string            `mapstructure:"callback_token"`
+	MaxBodyBytes     int64             `mapstructure:"max_body_bytes"`
+	TrackerChannels  map[string]string `mapstructure:"tracker_channels"`
+	EventAuthToken   string            `mapstructure:"event_auth_token"`
+	EventBaseURL     string            `mapstructure:"event_base_url"`
+	EventEnvironment string            `mapstructure:"event_environment"`
+	EventAppTokens   map[string]string `mapstructure:"event_app_tokens"`
 }
 
 // AppStoreConfig contains the App Store Connect API key metadata used to call
@@ -245,10 +273,15 @@ func setConfigDefaults() {
 	viper.SetDefault("third_party_auth.google.jwks_url", "https://www.googleapis.com/oauth2/v3/certs")
 	viper.SetDefault("third_party_auth.apple.issuers", []string{"https://appleid.apple.com"})
 	viper.SetDefault("third_party_auth.apple.jwks_url", "https://appleid.apple.com/auth/keys")
-	viper.SetDefault("adjust.enabled", true)
+	viper.SetDefault("adjust.enabled", false)
+	viper.SetDefault("adjust.event_enabled", true)
 	viper.SetDefault("adjust.callback_token", "")
 	viper.SetDefault("adjust.max_body_bytes", int64(65536))
 	viper.SetDefault("adjust.tracker_channels", map[string]string{})
+	viper.SetDefault("adjust.event_auth_token", "")
+	viper.SetDefault("adjust.event_base_url", "https://s2s.adjust.com")
+	viper.SetDefault("adjust.event_environment", "production")
+	viper.SetDefault("adjust.event_app_tokens", map[string]string{})
 	viper.SetDefault("app_store.bundle_id", "")
 	viper.SetDefault("app_store.issuer_id", "")
 	viper.SetDefault("app_store.key_id", "")
@@ -273,6 +306,8 @@ func setConfigDefaults() {
 	viper.SetDefault("task.concurrency", 10)
 	viper.SetDefault("task.download_concurrency", 1)
 	viper.SetDefault("task.download_retry_count", 3)
+	viper.SetDefault("task.worker_restart_delay_seconds", defaultWorkerRestartDelaySeconds)
+	viper.SetDefault("task.worker_restart_max_delay_seconds", defaultWorkerRestartMaxDelaySeconds)
 	viper.SetDefault("task.subscription_expiration_at", "")
 }
 
@@ -326,10 +361,17 @@ func validateConfig() error {
 	if Cfg.Task.DownloadRetryCount < 0 {
 		return fmt.Errorf("task.download_retry_count cannot be negative")
 	}
+	if Cfg.Task.WorkerRestartDelaySeconds < 0 {
+		return fmt.Errorf("task.worker_restart_delay_seconds cannot be negative")
+	}
+	if Cfg.Task.WorkerRestartMaxDelaySeconds < 0 {
+		return fmt.Errorf("task.worker_restart_max_delay_seconds cannot be negative")
+	}
+	if Cfg.Task.WorkerRestartDelaySeconds > 0 && Cfg.Task.WorkerRestartMaxDelaySeconds > 0 &&
+		Cfg.Task.WorkerRestartMaxDelaySeconds < Cfg.Task.WorkerRestartDelaySeconds {
+		return fmt.Errorf("task.worker_restart_max_delay_seconds cannot be less than task.worker_restart_delay_seconds")
+	}
 	if Cfg.Adjust.Enabled {
-		if len(strings.TrimSpace(Cfg.Adjust.CallbackToken)) < 16 {
-			return fmt.Errorf("adjust.callback_token must be at least 16 bytes when Adjust callbacks are enabled")
-		}
 		if Cfg.Adjust.MaxBodyBytes <= 0 || Cfg.Adjust.MaxBodyBytes > 1<<20 {
 			return fmt.Errorf("adjust.max_body_bytes must be between 1 and 1048576")
 		}
@@ -344,10 +386,33 @@ func validateConfig() error {
 			}
 		}
 	}
-	if Cfg.Server.Mode == "release" {
-		if Cfg.JWT.Secret == defaultJWTSecret {
-			return fmt.Errorf("jwt.secret must be changed from the default value in release mode")
+	if Cfg.Adjust.EventEnabled {
+		if len(Cfg.Task.Queues) > 0 {
+			hasDefaultQueue := false
+			for _, queue := range Cfg.Task.Queues {
+				if strings.TrimSpace(queue) == "default" {
+					hasDefaultQueue = true
+					break
+				}
+			}
+			if !hasDefaultQueue {
+				return fmt.Errorf("task.queues must contain default when Adjust event reporting is enabled")
+			}
 		}
+		environment := strings.ToLower(strings.TrimSpace(Cfg.Adjust.EventEnvironment))
+		if environment != "production" && environment != "sandbox" {
+			return fmt.Errorf("adjust.event_environment must be production or sandbox")
+		}
+		if strings.TrimSpace(Cfg.Adjust.EventBaseURL) == "" {
+			return fmt.Errorf("adjust.event_base_url is required when Adjust event reporting is enabled")
+		}
+		for appCode, appToken := range Cfg.Adjust.EventAppTokens {
+			if strings.TrimSpace(appCode) == "" || strings.TrimSpace(appToken) == "" {
+				return fmt.Errorf("adjust.event_app_tokens cannot contain empty app codes or tokens")
+			}
+		}
+	}
+	if Cfg.Server.Mode == "release" {
 		if len(Cfg.JWT.Secret) < 32 {
 			return fmt.Errorf("jwt.secret must be at least 32 bytes in release mode")
 		}

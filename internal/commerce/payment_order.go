@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ai-video/internal/domain"
+	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
 )
@@ -26,6 +27,18 @@ type CreatePaymentOrderRequest struct {
 	ProductID       uint64 `json:"product_id" binding:"required"`
 	PayType         uint32 `json:"pay_type" binding:"required,oneof=1 2"`
 	ClientRequestID string `json:"client_request_id" binding:"omitempty,max=64"`
+}
+
+// PaymentClientContext carries the authenticated delivery dimensions that
+// must be rechecked before a client is allowed to start a store purchase.
+type PaymentClientContext struct {
+	AppCode              string
+	PackageCode          string
+	VersionCode          string
+	CountryCode          string
+	ChannelCode          string
+	SystemType           int
+	CheckDeliveryTargets bool
 }
 
 // StorePaymentInfo tells the app which native store product to purchase.
@@ -60,7 +73,19 @@ type CreatePaymentOrderResponse struct {
 // CreatePaymentOrder validates the requested product against the authenticated
 // package, snapshots a pending order, and returns platform payment parameters.
 func (s *Service) CreatePaymentOrder(ctx context.Context, userID uint64, packageCode string, req CreatePaymentOrderRequest) (*CreatePaymentOrderResponse, error) {
-	packageCode = strings.TrimSpace(packageCode)
+	return s.createPaymentOrder(ctx, userID, PaymentClientContext{PackageCode: packageCode}, req)
+}
+
+// CreatePaymentOrderForClient is the API-facing variant. In addition to the
+// package/payment checks retained by CreatePaymentOrder, points products must
+// match the current user, app, version, country, system, and channel targets.
+func (s *Service) CreatePaymentOrderForClient(ctx context.Context, userID uint64, client PaymentClientContext, req CreatePaymentOrderRequest) (*CreatePaymentOrderResponse, error) {
+	client.CheckDeliveryTargets = true
+	return s.createPaymentOrder(ctx, userID, client, req)
+}
+
+func (s *Service) createPaymentOrder(ctx context.Context, userID uint64, client PaymentClientContext, req CreatePaymentOrderRequest) (*CreatePaymentOrderResponse, error) {
+	packageCode := strings.TrimSpace(client.PackageCode)
 	if userID == 0 || packageCode == "" {
 		return nil, ErrPackageNotAvailable
 	}
@@ -79,11 +104,18 @@ func (s *Service) CreatePaymentOrder(ctx context.Context, userID uint64, package
 	if appPackage.Status != 1 {
 		return nil, ErrPackageNotAvailable
 	}
+	if client.CheckDeliveryTargets && strings.TrimSpace(client.AppCode) != "" &&
+		appPackage.AppCode != strings.TrimSpace(client.AppCode) {
+		return nil, ErrPackageNotAvailable
+	}
 	if int(appPackage.SystemType) != expectedSystem {
 		return nil, ErrPaymentPackageMismatch
 	}
+	if client.CheckDeliveryTargets && client.SystemType != 0 && client.SystemType != expectedSystem {
+		return nil, ErrPaymentPackageMismatch
+	}
 
-	if err := s.validateOrderProduct(ctx, req.ShopType, req.ProductID, packageCode); err != nil {
+	if err := s.validateOrderProductForClient(ctx, userID, req.ShopType, req.ProductID, client, int(appPackage.SystemType)); err != nil {
 		return nil, err
 	}
 	clientRequestID := strings.TrimSpace(req.ClientRequestID)
@@ -122,6 +154,46 @@ func (s *Service) CreatePaymentOrder(ctx context.Context, userID uint64, package
 	}, nil
 }
 
+func (s *Service) validateOrderProductForClient(
+	ctx context.Context,
+	userID uint64,
+	shopType uint32,
+	productID uint64,
+	client PaymentClientContext,
+	packageSystem int,
+) error {
+	packageCode := strings.TrimSpace(client.PackageCode)
+	if shopType != domain.OrderProductPointsPackage || !client.CheckDeliveryTargets {
+		return s.validateOrderProduct(ctx, shopType, productID, packageCode)
+	}
+
+	user, err := s.users.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	countryCode := strings.ToUpper(strings.TrimSpace(client.CountryCode))
+	if countryCode == "" {
+		countryCode = strings.ToUpper(strings.TrimSpace(user.ClientCountry))
+	}
+	systemType := client.SystemType
+	if systemType == 0 {
+		systemType = packageSystem
+	}
+	items, err := s.points.ListForClient(ctx, repository.ClientPointsTargets{
+		ProductID: productID, AppCode: strings.TrimSpace(client.AppCode),
+		PackageCode: packageCode, VersionCode: strings.TrimSpace(client.VersionCode),
+		CountryCode: countryCode, ChannelCode: strings.TrimSpace(client.ChannelCode),
+		System: paymentSystemName(systemType), UserType: int(user.UserType),
+	})
+	if err != nil {
+		return err
+	}
+	if len(items) == 0 {
+		return ErrProductNotAvailable
+	}
+	return nil
+}
+
 func (s *Service) validateOrderProduct(ctx context.Context, shopType uint32, productID uint64, packageCode string) error {
 	var err error
 	switch shopType {
@@ -146,5 +218,16 @@ func paymentMethodForPayType(payType uint32) (pay uint32, expectedSystem int, er
 		return domain.PaymentMethodGooglePlay, domain.SystemTypeA, nil
 	default:
 		return 0, 0, fmt.Errorf("%w: pay_type=%d", ErrUnsupportedPaymentMethod, payType)
+	}
+}
+
+func paymentSystemName(systemType int) string {
+	switch systemType {
+	case domain.SystemTypeIos:
+		return "ios"
+	case domain.SystemTypeA:
+		return "android"
+	default:
+		return ""
 	}
 }

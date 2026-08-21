@@ -84,6 +84,9 @@ func applyClientPointsTarget(
 		WHERE relation.points_id = video_points.id AND relation.deleted_at IS NULL
 	)`, relationTable)
 	if code == "" {
+		if !emptyIsWildcard {
+			return dao.Where(pointsSQLCondition("1 = 0")...)
+		}
 		return dao.Where(pointsSQLCondition(withoutTargets)...)
 	}
 
@@ -98,7 +101,7 @@ func applyClientPointsTarget(
 	return dao.Where(pointsSQLCondition("("+withoutTargets+" OR "+matchingTarget+")", code)...)
 }
 
-func pointsSQLCondition(sql string, args ...interface{}) []gen.Condition {
+func pointsSQLCondition(sql string, args ...any) []gen.Condition {
 	return []gen.Condition{field.NewUnsafeFieldRaw(sql, args...)}
 }
 

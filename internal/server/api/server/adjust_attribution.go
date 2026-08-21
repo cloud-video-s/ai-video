@@ -1,6 +1,7 @@
 package service
 
 import (
+	"ai-video/internal/adjustevent"
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -190,6 +191,7 @@ func (s *AdjustAttributionService) ReportApp(ctx context.Context, userID uint64,
 			payload := string(rawPayload)
 			fusion.UserID = userID
 			fusion.AppCode = strings.TrimSpace(user.AppName)
+			fusion.DeviceIP = strings.TrimSpace(user.LastLoginIP)
 			fusion.AppPayload = &payload
 			fusion.AppReportedAt = &now
 			fusion.MatchStatus = repository.AdjustMatchStatusPendingApp
@@ -250,6 +252,11 @@ func (s *AdjustAttributionService) ReportApp(ctx context.Context, userID uint64,
 	if err != nil {
 		return nil, err
 	}
+	if result.Status == repository.AdjustMatchStatusFused {
+		if err := adjustevent.ReplayPending(ctx, userID); err != nil {
+			return nil, fmt.Errorf("replay pending Adjust events: %w", err)
+		}
+	}
 	return result, nil
 }
 
@@ -262,6 +269,7 @@ func (s *AdjustAttributionService) Handle(ctx context.Context, input AdjustCallb
 		return nil, err
 	}
 	result := &AdjustCallbackResult{}
+	var matchedUserID uint64
 	err = repository.Transaction(ctx, func(txCtx context.Context) error {
 		callbackClass := classifyAdjustCallback(callback)
 		if callbackClass == adjustCallbackGDPRForget {
@@ -275,9 +283,7 @@ func (s *AdjustAttributionService) Handle(ctx context.Context, input AdjustCallb
 		fusion, err := s.repo.GetByADID(txCtx, callback.AdjustADID, true)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			fusion = callbackFusion(callback)
-			if callbackClass == adjustCallbackIgnored {
-				fusion.MatchStatus = fusion.MatchStatus
-			} else {
+			if callbackClass != adjustCallbackIgnored {
 				if err = s.resolveAttributionDimensions(txCtx, fusion); err != nil {
 					return err
 				}
@@ -303,6 +309,7 @@ func (s *AdjustAttributionService) Handle(ctx context.Context, input AdjustCallb
 				return err
 			}
 			result.Matched = fusion.UserID != 0
+			matchedUserID = fusion.UserID
 			result.Status = fusion.MatchStatus
 			return nil
 		}
@@ -342,11 +349,17 @@ func (s *AdjustAttributionService) Handle(ctx context.Context, input AdjustCallb
 			return err
 		}
 		result.Matched, result.Applied = true, applied
+		matchedUserID = fusion.UserID
 		result.Status = fusion.MatchStatus
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+	if matchedUserID != 0 {
+		if err := adjustevent.ReplayPending(ctx, matchedUserID); err != nil {
+			return nil, fmt.Errorf("replay pending Adjust events: %w", err)
+		}
 	}
 	return result, nil
 }
@@ -401,7 +414,8 @@ func (s *AdjustAttributionService) applyInitialAcquisition(ctx context.Context, 
 	}
 	applied, err := s.attributionRepo.ApplyFusedAttribution(ctx, &repository.FusedUserAttribution{
 		AppCode: appCode, UserID: user.ID, AdjustADID: callback.AdjustADID,
-		ChannelID: callback.ChannelID, MediaID: callback.MediaID, IMEI: user.DeviceCode,
+		ChannelID: callback.ChannelID, MediaID: callback.MediaID, IMEI: user.IMEI,
+		Idfa: callback.IDFA, Idfv: callback.IDFV, DeviceIP: callback.DeviceIP, UserAgent: callback.UserAgent,
 		GoogleAdID: callback.GoogleAdID, ActivityKind: callback.ActivityKind,
 		AttributionType: callback.AttributionType, IsOrganic: callback.IsOrganic,
 		Reattributed: callback.Reattributed, IsRedownload: callback.IsRedownload,

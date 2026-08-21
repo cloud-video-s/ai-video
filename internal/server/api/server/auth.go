@@ -1,6 +1,7 @@
 package service
 
 import (
+	"ai-video/internal/adjustevent"
 	"ai-video/internal/config"
 	"ai-video/internal/pkg/utils"
 	"context"
@@ -14,6 +15,7 @@ import (
 
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
+	"ai-video/internal/pkg/adjust"
 	"ai-video/internal/pkg/cache"
 	"ai-video/internal/pkg/jwt"
 	"ai-video/internal/pkg/oidc"
@@ -114,6 +116,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
 	now := time.Now()
 	var user *model.VideoUser
+	firstDeviceRegistration := false
 	country, _ := utils.GetCountryByIP(utils.ClientIP(ctx))
 	err := repository.Transaction(ctx, func(ctx context.Context) error {
 		firstOpenedAt := req.FirstOpenedAt
@@ -140,6 +143,14 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 			}
 		}
 		if isTrue {
+			firstDeviceRegistration = true
+			if req.ForceNew {
+				if _, anyDeviceErr := s.userRepo.GetByDeviceCode(ctx, req.DeviceCode, false); anyDeviceErr == nil {
+					firstDeviceRegistration = false
+				} else if !errors.Is(anyDeviceErr, gorm.ErrRecordNotFound) {
+					return anyDeviceErr
+				}
+			}
 			user = &model.VideoUser{
 				DeviceCode: req.DeviceCode,
 				Username:   newGuestUsername(), LoginType: uint8(domain.AppUserLoginGuest),
@@ -175,7 +186,18 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 		}
 		return nil, err
 	}
-	return issueToken(user, domain.AppUserLoginGuest)
+	result, err := issueToken(user, domain.AppUserLoginGuest)
+	if err == nil && firstDeviceRegistration {
+		enqueueAuthAdjustEvent(ctx.Request.Context(), user.ID, adjust.EventTokenActivation)
+	}
+	return result, err
+}
+
+func enqueueAuthAdjustEvent(ctx context.Context, userID uint64, action adjust.EventToken) {
+	if err := adjustevent.Enqueue(ctx, userID, action, adjustevent.EnqueueOptions{OccurredAt: time.Now()}); err != nil {
+		config.Logger(ctx).Errorw("enqueue Adjust authentication event", "error", err,
+			"user_id", userID, "action", action)
+	}
 }
 
 // LoginByAppleOrder resolves the user linked to an Apple original transaction

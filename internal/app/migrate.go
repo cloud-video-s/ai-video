@@ -71,6 +71,7 @@ func SeedAdminMetadata() error {
 		{name: "packages", fn: SeedPackageAdmin},
 		{name: "display positions", fn: SeedDisplayPositionAdmin},
 		{name: "Banner placements", fn: SeedBannerPlacementAdmin},
+		{name: "tool configs", fn: SeedToolConfigAdmin},
 		{name: "countries", fn: SeedCountryAdmin},
 		{name: "channels", fn: SeedChannelAdmin},
 		{name: "models", fn: SeedModelAdmin},

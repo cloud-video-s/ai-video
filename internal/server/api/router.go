@@ -33,6 +33,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	pointProductHandler := handler.NewPointProductHandler()
 	paymentHandler := handler.NewPaymentHandler()
 	adjustAttributionHandler := handler.NewAdjustAttributionHandler()
+	trackingEventHandler := handler.NewTrackingEventHandler()
 	uploadRepo := repository.NewUploadRepo()
 	uploadRecordHandler := handler.NewUploadHandler()
 	directUploadHandler := upload.NewHTTPHandler(
@@ -136,6 +137,11 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		attributions := authenticated.Group("/attributions")
 		{
 			attributions.POST("/adjust/report", adjustAttributionHandler.ReportApp)
+		}
+
+		tracking := authenticated.Group("/tracking")
+		{
+			tracking.POST("/events", trackingEventHandler.Report)
 		}
 
 	}

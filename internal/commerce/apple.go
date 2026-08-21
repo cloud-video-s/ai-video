@@ -206,15 +206,27 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 func (s *Service) resolveAppleProduct(ctx context.Context, shopType int, sukCode, packageCode string) (shopID uint64, err error) {
 	if shopType == domain.OrderProductVIPSubscription {
 		vip, vipErr := s.vipProducts.GetAppleProduct(ctx, sukCode, packageCode)
-		if vipErr != nil && !errors.Is(vipErr, gorm.ErrRecordNotFound) {
+		if vipErr != nil {
+			if errors.Is(vipErr, gorm.ErrRecordNotFound) {
+				return 0, ErrAppleProductNotFound
+			}
 			return 0, vipErr
+		}
+		if vip == nil {
+			return 0, ErrAppleProductNotFound
 		}
 		return vip.ID, nil
 	}
 	if shopType == domain.OrderProductPointsPackage {
 		points, pointsErr := s.points.GetAppleProduct(ctx, sukCode, packageCode)
-		if pointsErr != nil && !errors.Is(pointsErr, gorm.ErrRecordNotFound) {
+		if pointsErr != nil {
+			if errors.Is(pointsErr, gorm.ErrRecordNotFound) {
+				return 0, ErrAppleProductNotFound
+			}
 			return 0, pointsErr
+		}
+		if points == nil {
+			return 0, ErrAppleProductNotFound
 		}
 		return points.ID, nil
 	}
