@@ -129,14 +129,14 @@ func (c *appleServerAPIClient) LookupTransaction(
 
 	signedTransaction, err := c.lookupAt(ctx, c.productionURL, transactionID, token)
 	if err == nil {
-		return signedTransaction, applePayChannelOne, nil
+		return signedTransaction, applePayChannelTwo, nil
 	}
 	//if !errors.Is(err, ErrAppleTransactionNotFound) &&
 	//	!errors.Is(err, ErrAppleServerAPIAuthorization) {
 	//	return "", err
 	//}
 	at, err := c.lookupAt(ctx, c.sandboxURL, transactionID, token)
-	return at, applePayChannelTwo, err
+	return at, applePayChannelOne, err
 }
 
 func (c *appleServerAPIClient) lookupAt(
