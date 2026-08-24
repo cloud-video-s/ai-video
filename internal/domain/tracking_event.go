@@ -8,15 +8,16 @@ import "strings"
 type TrackingDataType string
 
 const (
-	TrackingOBPaymentShow     TrackingDataType = "OB_Payment_show"
-	TrackingOBPaymentBackShow TrackingDataType = "OB_Payment_back_show"
-	TrackingHomeShow          TrackingDataType = "Home_Show"
-	TrackingLaunchPaymentShow TrackingDataType = "Launc_Payment_Show"
-	TrackingLaunchPaymentBack TrackingDataType = "Launc_Payment_back_Show"
-	TrackingPaymentShow       TrackingDataType = "Payment_Show"
-	TrackingPaymentCreate     TrackingDataType = "Payment_Create"
-	TrackingPaymentSuccess    TrackingDataType = "Payment_Suc"
-	TrackingCaseCreate        TrackingDataType = "Case_create"
+	TrackingOBPaymentShow       TrackingDataType = "OB_Payment_show"
+	TrackingOBPaymentBackShow   TrackingDataType = "OB_Payment_back_show"
+	TrackingHomeShow            TrackingDataType = "Home_Show"
+	TrackingLaunchPaymentShow   TrackingDataType = "Launc_Payment_Show"
+	TrackingLaunchPaymentBack   TrackingDataType = "Launc_Payment_back_Show"
+	TrackingPaymentShow         TrackingDataType = "Payment_Show"
+	TrackingPaymentShowBackShow TrackingDataType = "Payment_Show_back_Show"
+	TrackingPaymentCreate       TrackingDataType = "Payment_Create"
+	TrackingPaymentSuccess      TrackingDataType = "Payment_Suc"
+	TrackingCaseCreate          TrackingDataType = "Case_create"
 )
 
 // ParseTrackingDataType accepts only the nine event names in the current
@@ -29,6 +30,7 @@ func ParseTrackingDataType(value string) (TrackingDataType, bool) {
 		TrackingOBPaymentBackShow,
 		TrackingHomeShow,
 		TrackingLaunchPaymentShow,
+		TrackingPaymentShowBackShow,
 		TrackingLaunchPaymentBack,
 		TrackingPaymentShow,
 		TrackingPaymentCreate,

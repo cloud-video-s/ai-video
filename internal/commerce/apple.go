@@ -118,7 +118,7 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 			return nil, ErrPaymentTransactionUsed
 		}
 		if existing.Status == domain.OrderStatusPaid {
-			if err := s.fulfillAppleOrder(ctx, existing, verified.ExpiresAt); err != nil {
+			if err = s.fulfillAppleOrder(ctx, existing, verified.ExpiresAt); err != nil {
 				return nil, err
 			}
 			existing, lookupErr = s.orders.GetByOrderNo(ctx, existing.OrderNo, false)
@@ -141,17 +141,15 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 			return nil, ErrApplePurchaseInactive
 		}
 	}
-	if (req.ShopType == domain.OrderProductVIPSubscription && !isSubscription) ||
-		(req.ShopType == domain.OrderProductPointsPackage && isSubscription) {
+	if (req.ShopType == domain.OrderProductVIPSubscription && !isSubscription) || (req.ShopType == domain.OrderProductPointsPackage && isSubscription) {
 		return nil, ErrPaymentMismatch
 	}
 	productType := domain.OrderProductVIPSubscription
-	if req.ShopType == 2 {
+	if req.ShopType == domain.OrderProductPointsPackage {
 		productType = domain.OrderProductPointsPackage
 	}
-	renewal := productType == domain.OrderProductVIPSubscription &&
-		(strings.EqualFold(verified.TransactionReason, "RENEWAL") ||
-			verified.TransactionID != verified.OriginalTransactionID)
+	renewal := productType == domain.OrderProductVIPSubscription && (strings.EqualFold(verified.TransactionReason, "RENEWAL") ||
+		verified.TransactionID != verified.OriginalTransactionID)
 	orderType := orderTypeForRenewal(renewal)
 	shopID, err := s.resolveAppleProduct(ctx, req.ShopType, verified.ProductID, expectedBundle)
 	if err != nil {

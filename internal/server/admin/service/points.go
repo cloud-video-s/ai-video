@@ -44,7 +44,7 @@ type ListPointsRequest struct {
 
 type PointsPayload struct {
 	AppCodes      []string `json:"app_codes" binding:"max=100,dive,gt=0"`
-	PackageCodes  []string `json:"package_codes" binding:"required,min=1,max=100,dive,gt=0"`
+	PackageCodes  []string `json:"package_codes" binding:"max=100,dive,gt=0"`
 	VersionCodes  []string `json:"version_codes" binding:"max=100,dive,gt=0"`
 	CountryCodes  []string `json:"country_codes" binding:"max=100,dive,gt=0"`
 	ChannelCodes  []string `json:"channel_codes" binding:"max=100,dive,gt=0"`
@@ -58,7 +58,7 @@ type PointsPayload struct {
 	SalePrice     float64  `json:"sale_price" binding:"gte=0"`
 	ActualRevenue float64  `json:"actual_revenue" binding:"gte=0"`
 	OriginalPrice float64  `json:"original_price" binding:"gte=0"`
-	Icon          string   `json:"icon" binding:"max=1024"`
+	Icon          string   `json:"icon" binding:"max=100"`
 	Description   string   `json:"description" binding:"max=1000"`
 	ButtonText    string   `json:"button_text" binding:"max=128"`
 	IsDefault     bool     `json:"is_default"`
@@ -182,6 +182,9 @@ func (s *PointsService) Update(ctx context.Context, id uint64, req *PointsPayloa
 }
 
 func (s *PointsService) clearDefaults(ctx context.Context, packageCodes []string, resourceType string, exceptID uint64) error {
+	if len(packageCodes) == 0 {
+		return s.repo.ClearDefaults(ctx, "", resourceType, exceptID)
+	}
 	for _, packageCode := range packageCodes {
 		if err := s.repo.ClearDefaults(ctx, packageCode, resourceType, exceptID); err != nil {
 			return err
@@ -219,9 +222,6 @@ func (s *PointsService) prepareAndValidate(ctx context.Context, req *PointsPaylo
 	}
 	if req.PackageCodes, err = normalizePointsTargetCodes(req.PackageCodes, "安装包", false); err != nil {
 		return err
-	}
-	if len(req.PackageCodes) == 0 {
-		return errors.New("请至少选择一个安装包")
 	}
 	if req.VersionCodes, err = normalizePointsTargetCodes(req.VersionCodes, "版本", false); err != nil {
 		return err

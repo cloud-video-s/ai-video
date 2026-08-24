@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -47,8 +48,7 @@ type ClientPointsTargets struct {
 }
 
 // ListForClient returns enabled points products matching every client
-// dimension. Empty optional target relations mean "all", while a product must
-// always be assigned to the caller's package before it can be purchased.
+// dimension. Empty target relations mean "all".
 func (r *PointsRepo) ListForClient(ctx context.Context, targets ClientPointsTargets) ([]*model.VideoPoint, error) {
 	points := qFrom(ctx).VideoPoint
 	dao := points.WithContext(ctx).Where(points.Status.Eq(1))
@@ -62,7 +62,7 @@ func (r *PointsRepo) ListForClient(ctx context.Context, targets ClientPointsTarg
 		dao = dao.Where(points.UserTypes.Like("%" + fmt.Sprint(targets.UserType) + "%"))
 	}
 	dao = applyClientPointsTarget(dao, "video_points_app", "app_code", targets.AppCode, true)
-	dao = applyClientPointsTarget(dao, "video_points_package", "package_code", targets.PackageCode, false)
+	dao = applyClientPointsTarget(dao, "video_points_package", "package_code", targets.PackageCode, true)
 	dao = applyClientPointsTarget(dao, "video_points_version", "version_code", targets.VersionCode, true)
 	dao = applyClientPointsTarget(dao, "video_points_country", "country_code", targets.CountryCode, true)
 	dao = applyClientPointsTarget(dao, "video_points_channel", "channel_code", targets.ChannelCode, true)
@@ -246,31 +246,18 @@ func (r *PointsRepo) GetByProductID(ctx context.Context, productID string) (*mod
 func (r *PointsRepo) GetAppleProduct(ctx context.Context, productID, packageCode string) (*model.VideoPoint, error) {
 	q := qFrom(ctx)
 	points := q.VideoPoint
-	item, err := points.WithContext(ctx).Where(points.ProductCode.Eq(productID), points.Status.Eq(1)).First()
-	if err != nil {
-		return nil, err
-	}
-	relation := q.VideoPointsPackage
-	if _, err := relation.WithContext(ctx).Where(
-		relation.PointsID.Eq(int64(item.ID)), relation.PackageCode.Eq(packageCode),
-	).First(); err != nil {
-		return nil, err
-	}
-	return item, nil
+	dao := points.WithContext(ctx).Where(points.ProductCode.Eq(productID), points.Status.Eq(1))
+	dao = applyClientPointsTarget(dao, "video_points_package", "package_code", strings.TrimSpace(packageCode), true)
+	return dao.First()
 }
 
-// GetEnabledForPackage loads an enabled points product only when it is
-// assigned to the authenticated application package.
+// GetEnabledForPackage loads an enabled points product when it applies to the
+// authenticated package. Products without package relations apply to all.
 func (r *PointsRepo) GetEnabledForPackage(ctx context.Context, id uint64, packageCode string) (*model.VideoPoint, error) {
-	q := qFrom(ctx)
-	relation := q.VideoPointsPackage
-	if _, err := relation.WithContext(ctx).Where(
-		relation.PointsID.Eq(int64(id)), relation.PackageCode.Eq(packageCode),
-	).First(); err != nil {
-		return nil, err
-	}
-	points := q.VideoPoint
-	return points.WithContext(ctx).Where(points.ID.Eq(id), points.Status.Eq(1)).First()
+	points := qFrom(ctx).VideoPoint
+	dao := points.WithContext(ctx).Where(points.ID.Eq(id), points.Status.Eq(1))
+	dao = applyClientPointsTarget(dao, "video_points_package", "package_code", strings.TrimSpace(packageCode), true)
+	return dao.First()
 }
 
 func (r *PointsRepo) ListOptions(ctx context.Context) ([]model.VideoPoint, error) {
@@ -415,6 +402,16 @@ func (r *PointsRepo) ReplaceTargets(ctx context.Context, item *model.VideoPoint,
 
 func (r *PointsRepo) ClearDefaults(ctx context.Context, packageCode, resourceType string, exceptID uint64) error {
 	q := qFrom(ctx)
+	points := q.VideoPoint
+	if strings.TrimSpace(packageCode) == "" {
+		dao := points.WithContext(ctx).Where(points.ResourceType.Eq(resourceType), points.IsDefault.Eq(1))
+		dao = applyClientPointsTarget(dao, "video_points_package", "package_code", "", true)
+		if exceptID != 0 {
+			dao = dao.Where(points.ID.Neq(exceptID))
+		}
+		_, err := dao.Update(points.IsDefault, int8(0))
+		return err
+	}
 	relation := q.VideoPointsPackage
 	var rawIDs []int64
 	if err := relation.WithContext(ctx).Where(relation.PackageCode.Eq(packageCode)).Pluck(relation.PointsID, &rawIDs); err != nil {
@@ -429,7 +426,6 @@ func (r *PointsRepo) ClearDefaults(ctx context.Context, packageCode, resourceTyp
 	if len(ids) == 0 {
 		return nil
 	}
-	points := q.VideoPoint
 	dao := points.WithContext(ctx).Where(points.ID.In(ids...), points.ResourceType.Eq(resourceType), points.IsDefault.Eq(1))
 	if exceptID != 0 {
 		dao = dao.Where(points.ID.Neq(exceptID))
@@ -439,10 +435,12 @@ func (r *PointsRepo) ClearDefaults(ctx context.Context, packageCode, resourceTyp
 }
 
 func (r *PointsRepo) SetDefault(ctx context.Context, item *model.VideoPoint) error {
-	if len(item.Packages) == 0 {
-		return fmt.Errorf("积分套餐未关联安装包")
-	}
 	return Transaction(ctx, func(txCtx context.Context) error {
+		if len(item.Packages) == 0 {
+			if err := r.ClearDefaults(txCtx, "", item.ResourceType, item.ID); err != nil {
+				return err
+			}
+		}
 		seen := make(map[string]struct{}, len(item.Packages))
 		for _, target := range item.Packages {
 			if target == nil {

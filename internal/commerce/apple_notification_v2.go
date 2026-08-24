@@ -216,7 +216,7 @@ func decodeAppleNotificationV2Payload(signedPayload string, roots *x509.CertPool
 		return nil, err
 	}
 	if result.SignedTransaction != "" {
-		if err := decodeAppleNotificationV2Transaction(result, roots); err != nil {
+		if err = decodeAppleNotificationV2Transaction(result, roots); err != nil {
 			return nil, err
 		}
 	}

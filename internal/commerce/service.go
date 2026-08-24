@@ -32,6 +32,8 @@ var (
 	ErrInsufficientPoints       = errors.New("insufficient points balance")
 )
 
+var enqueueAdjustBusinessEvent = adjustevent.Enqueue
+
 // Service coordinates commerce repositories and keeps order, payment,
 // entitlement, and points-ledger mutations inside explicit transactions.
 type Service struct {
@@ -147,8 +149,8 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 			// the order type, but it does not describe whether this user has ever
 			// paid for a subscription in this service. The local paid-order history
 			// is authoritative for the first-subscription snapshot.
-			price, revenue, bonus := subscriptionOrderTerms(product, paidCount > 0)
-			payableAmount := price
+			price, payPrice, revenue, bonus := subscriptionOrderTerms(product, paidCount > 0)
+			payableAmount := payPrice
 			if req.PaidAmount > 0 {
 				payableAmount = req.PaidAmount
 			}
@@ -168,7 +170,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 				payableAmount = req.PaidAmount
 			}
 			order.ProductCode, order.ProductName, order.Currency = product.ProductCode, product.Name, strings.ToUpper(product.Currency)
-			order.ProductAmount, order.PayableAmount, order.ActualAmountMoney, order.BonusPoints = product.SalePrice, payableAmount, product.ActualRevenue, int64(product.Points)
+			order.ProductAmount, order.PayableAmount, order.ActualAmountMoney, order.BonusPoints = product.OriginalPrice, payableAmount, product.ActualRevenue, int64(product.Points)
 		default:
 			return ErrUnsupportedProduct
 		}
@@ -206,11 +208,11 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (*mod
 	return created, nil
 }
 
-func subscriptionOrderTerms(product *model.VideoVipSubscription, hasPaidSubscription bool) (price, revenue float64, bonus uint64) {
+func subscriptionOrderTerms(product *model.VideoVipSubscription, hasPaidSubscription bool) (price, payPrice, revenue float64, bonus uint64) {
 	if !hasPaidSubscription {
-		return product.FirstSubscriptionPrice, product.FirstSubscriptionRevenue, product.FirstBonusPoints
+		return product.OriginalPrice, product.FirstSubscriptionPrice, product.FirstSubscriptionRevenue, product.FirstBonusPoints
 	}
-	return product.SubscriptionPrice, product.SubscriptionRevenue, product.SubscriptionPoints
+	return product.OriginalPrice, product.SubscriptionPrice, product.SubscriptionRevenue, product.SubscriptionPoints
 }
 
 // ConfirmApplePayment must be called only after the Apple signed transaction
@@ -306,6 +308,13 @@ func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder
 		if lockedOrder.Status != domain.OrderStatusPaid {
 			return fmt.Errorf("order %s is not paid", lockedOrder.OrderNo)
 		}
+		if lockedOrder.ProductType != domain.OrderProductVIPSubscription &&
+			lockedOrder.ProductType != domain.OrderProductPointsPackage {
+			return ErrUnsupportedProduct
+		}
+		if lockedOrder.BonusPoints < 0 {
+			return errors.New("order bonus points cannot be negative")
+		}
 
 		user, err := s.users.GetByIDForUpdate(ctx, lockedOrder.UserID)
 		if err != nil {
@@ -362,9 +371,6 @@ func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder
 			description := "Purchase bonus points"
 			ledger := &model.VideoUserPointsLedger{
 				UserID: user.ID, Direction: int8(domain.PointsDirectionIncome),
-				// PointsChange intentionally records the complete order gift;
-				// balances reflect the amount made available after frozen VIP
-				// reservations are offset.
 				PointsChange: lockedOrder.BonusPoints, BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(afterBalance),
 				SourceType: sourceType, OrderCode: lockedOrder.OrderNo,
 				Description: description, OccurredAt: now, CreatedAt: now,
@@ -386,8 +392,6 @@ func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder
 			paidAt = now
 		}
 		updates := map[string]any{
-			"vip_points":          user.VipPoints,
-			"points_balance":      user.PointsBalance,
 			"payment_count":       user.PaymentCount + 1,
 			"actual_amount_money": user.ActualAmountMoney + lockedOrder.ActualAmountMoney,
 			"last_paid_at":        paidAt,
@@ -403,15 +407,17 @@ func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder
 			updates["payment_met"] = 1
 		}
 		if lockedOrder.ProductType == domain.OrderProductVIPSubscription {
+			updates["vip_points"] = user.VipPoints
 			updates["subscription_payment_count"] = user.SubscriptionPaymentCount + 1
 			applyVIPEntitlement(user, lockedOrder, now, appleExpiresAt, updates)
 		} else {
+			updates["points_balance"] = user.PointsBalance
 			updates["one_time_payment_count"] = user.OneTimePaymentCount + 1
 		}
-		if err := s.users.Update(ctx, user.ID, updates); err != nil {
+		if err = s.users.Update(ctx, user.ID, updates); err != nil {
 			return err
 		}
-		if err := s.orders.Update(ctx, lockedOrder.ID, map[string]any{
+		if err = s.orders.Update(ctx, lockedOrder.ID, map[string]any{
 			"status": domain.OrderStatusEnd, "completed_at": now,
 		}); err != nil {
 			return err
@@ -436,7 +442,7 @@ func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder
 }
 
 func enqueueAdjustEvent(ctx context.Context, userID uint64, action adjust.EventToken, orderNo string, occurredAt time.Time) {
-	if err := adjustevent.Enqueue(ctx, userID, action, adjustevent.EnqueueOptions{
+	if err := enqueueAdjustBusinessEvent(ctx, userID, action, adjustevent.EnqueueOptions{
 		OrderNo: orderNo, OccurredAt: occurredAt,
 	}); err != nil {
 		config.Logger(ctx).Errorw("enqueue Adjust business event", "error", err, "user_id", userID,

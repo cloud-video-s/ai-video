@@ -95,8 +95,21 @@ func (s *Service) HandleAppleServerNotificationV2(ctx context.Context, signedPay
 
 	case AppleNotificationOneTimeCharge:
 		summary.Action = "one_time_charge"
+		completed, processErr := s.processAppleOneTimeChargeTransaction(ctx, order, decoded)
+		if processErr != nil {
+			return nil, processErr
+		}
+		if completed == nil {
+			// A server notification does not identify the authenticated local
+			// user. The client confirmation will associate the transaction with
+			// its pending points order and finish fulfillment.
+			summary.Processed = true
+			summary.Message = "points purchase awaiting authenticated client confirmation"
+			break
+		}
+		setAppleNotificationSummaryOrder(summary, completed)
 		summary.Processed = true
-		summary.Message = "one-time charge acknowledged"
+		summary.Message = "points order completed"
 
 	case AppleNotificationDidRenew:
 		summary.Action = "renew"
@@ -289,6 +302,63 @@ func (s *Service) processAppleSubscriptionTransaction(
 	return s.orders.GetByOrderNo(ctx, order.OrderNo, false)
 }
 
+// processAppleOneTimeChargeTransaction completes a points-package order from
+// the verified transaction carried by a ONE_TIME_CHARGE notification. If the
+// transaction has not yet been associated with a local user/order, the
+// authenticated client confirmation remains responsible for that association.
+func (s *Service) processAppleOneTimeChargeTransaction(
+	ctx context.Context,
+	order *model.VideoOrder,
+	decoded *DecodedAppleNotificationV2,
+) (*model.VideoOrder, error) {
+	if decoded == nil || strings.TrimSpace(decoded.TransactionID) == "" ||
+		strings.TrimSpace(decoded.OriginalTransaction) == "" ||
+		strings.TrimSpace(decoded.ProductID) == "" || decoded.PurchaseDate <= 0 ||
+		decoded.Price < 0 || strings.TrimSpace(decoded.Currency) == "" {
+		return nil, fmt.Errorf("%w: incomplete one-time charge transaction", ErrAppleEvidenceInvalid)
+	}
+	if order == nil {
+		return nil, nil
+	}
+	if order.PayType != domain.PaymentMethodAppleIAP ||
+		order.ProductType != domain.OrderProductPointsPackage ||
+		order.ProductCode != decoded.ProductID {
+		return nil, ErrPaymentMismatch
+	}
+	if (order.Status == domain.OrderStatusPending &&
+		order.ClientRequestID != appleClientRequestID(decoded.TransactionID)) ||
+		(order.Status != domain.OrderStatusPending && order.ThirdOrderNo != decoded.TransactionID) {
+		return nil, ErrPaymentMismatch
+	}
+
+	switch order.Status {
+	case domain.OrderStatusPending:
+		paid, err := s.ConfirmApplePayment(ctx, order.OrderNo, ApplePaymentResult{
+			TransactionID: decoded.TransactionID, OriginalTransactionID: decoded.OriginalTransaction,
+			ProductCode: decoded.ProductID, OrderType: domain.OrderTypeNewPurchase,
+			Currency:          strings.ToUpper(strings.TrimSpace(decoded.Currency)),
+			PaidAmount:        appleNotificationPaidAmount(decoded.Price),
+			SignedTransaction: decoded.SignedTransaction,
+			PurchaseDate:      time.UnixMilli(decoded.PurchaseDate),
+		})
+		if err != nil {
+			return nil, err
+		}
+		order = paid
+	case domain.OrderStatusPaid:
+		// Continue below and recover a crash between payment and fulfillment.
+	case domain.OrderStatusEnd:
+		return order, nil
+	default:
+		return nil, fmt.Errorf("Apple transaction %s belongs to non-actionable order status %d", decoded.TransactionID, order.Status)
+	}
+
+	if err := s.fulfillAppleOrder(ctx, order, nil); err != nil {
+		return nil, err
+	}
+	return s.orders.GetByOrderNo(ctx, order.OrderNo, false)
+}
+
 func appleNotificationPaidAmount(price int64) float64 {
 	return math.Round((float64(price)/1000)*100) / 100
 }
@@ -335,6 +405,17 @@ func (s *Service) findAppleNotificationV2Order(ctx context.Context, decoded *Dec
 		}
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err
+		}
+		if decoded.NotificationType == AppleNotificationOneTimeCharge ||
+			decoded.NotificationType == AppleNotificationSubscribed ||
+			decoded.NotificationType == AppleNotificationDidRenew {
+			order, err = s.orders.GetByClientRequestID(ctx, appleClientRequestID(decoded.TransactionID))
+			if err == nil {
+				return order, nil
+			}
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, err
+			}
 		}
 	}
 	if decoded.OriginalTransaction != "" {

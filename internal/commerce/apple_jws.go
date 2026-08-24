@@ -86,7 +86,7 @@ func verifyAppleJWSWithRoots(compact string, target any, roots *x509.CertPool) e
 		Alg string   `json:"alg"`
 		X5C []string `json:"x5c"`
 	}
-	if err := json.Unmarshal(headerJSON, &header); err != nil || header.Alg != "ES256" || len(header.X5C) != 3 {
+	if err = json.Unmarshal(headerJSON, &header); err != nil || header.Alg != "ES256" || len(header.X5C) != 3 {
 		return ErrAppleSignatureInvalid
 	}
 
