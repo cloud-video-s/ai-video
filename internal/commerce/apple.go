@@ -146,6 +146,13 @@ func (s *Service) ConfirmApplePurchase(ctx context.Context, userID uint64, expec
 	}
 	productType := domain.OrderProductVIPSubscription
 	if req.ShopType == domain.OrderProductPointsPackage {
+		user, err := s.users.GetByIDForUpdate(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if user.SubscriptionStatus != domain.SubscriptionStatusSubscribed || user.VipExpiresAt.Unix() <= time.Now().Unix() {
+			return nil, ErrApplePurchaseInactive
+		}
 		productType = domain.OrderProductPointsPackage
 	}
 	renewal := productType == domain.OrderProductVIPSubscription && (strings.EqualFold(verified.TransactionReason, "RENEWAL") ||
