@@ -225,7 +225,7 @@
                 :value="item.value"
               >{{ item.label }}</el-checkbox-button>
             </el-checkbox-group>
-            <div class="field-tip">最多同时选择 3 个触发类型；每个类型单独配置需要回传的事件和条件。</div>
+            <div class="field-tip">可同时选择多个触发类型；每个类型单独配置需要回传的事件和条件。</div>
 
             <div v-if="form.callback_config.rules.length" class="callback-rule-list">
               <section
@@ -374,7 +374,6 @@ const packageOptions = ref<AppPackage[]>([])
 const ownerOptions = ref<AdminOption[]>([])
 const mediaOptions = ref<MediaOption[]>([])
 const selectedCallbackTypes = ref<ChannelCallbackEvent[]>([])
-const previousCallbackTypes = ref<ChannelCallbackEvent[]>([])
 const page = ref(1)
 const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData, { channel_id: 'id' })
 const pageSize = ref(20)
@@ -491,12 +490,11 @@ function openCreate() {
   Object.assign(form, createDefaultForm())
   form.callback_config = defaultCallbackConfig()
   selectedCallbackTypes.value = []
-  previousCallbackTypes.value = []
   dialogVisible.value = true
 }
 
 function openEdit(row: Channel) {
-  const callbackRules = (row.callback_config?.rules || []).slice(0, 3).map(cloneCallbackRule)
+  const callbackRules = (row.callback_config?.rules || []).map(cloneCallbackRule)
   Object.assign(form, {
     channel_id: row.channel_id,
     channel_code: row.channel_code,
@@ -518,7 +516,6 @@ function openEdit(row: Channel) {
     status: row.status,
   })
   selectedCallbackTypes.value = callbackRules.map((rule) => rule.trigger_event)
-  previousCallbackTypes.value = [...selectedCallbackTypes.value]
   dialogVisible.value = true
 }
 
@@ -532,14 +529,8 @@ function cloneCallbackRule(rule: ChannelCallbackRule): ChannelCallbackRule {
 
 function handleCallbackTypesChange() {
   const types = [...selectedCallbackTypes.value]
-  if (types.length > 3) {
-    selectedCallbackTypes.value = [...previousCallbackTypes.value]
-    ElMessage.warning('回传配置最多同时选择 3 个')
-    return
-  }
   const existingRules = new Map(form.callback_config.rules.map((rule) => [rule.trigger_event, rule]))
   form.callback_config.rules = types.map((type) => existingRules.get(type) || defaultCallbackRule(type))
-  previousCallbackTypes.value = types
 }
 
 function hasRuleCallback(rule: ChannelCallbackRule, event: ChannelCallbackEvent) {
@@ -573,10 +564,6 @@ function callbackEventDescription(event: ChannelCallbackEvent) {
 }
 
 function validateCallbackConfig() {
-  if (form.callback_config.rules.length > 3) {
-    ElMessage.warning('回传配置最多同时选择 3 个')
-    return false
-  }
   for (const rule of form.callback_config.rules) {
     const prefix = `${callbackEventLabel(rule.trigger_event)}配置：`
     if (hasRuleCallback(rule, 'order_created') && rule.order_count_threshold < 1) {
