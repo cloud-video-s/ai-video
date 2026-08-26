@@ -12,6 +12,10 @@ const (
 	TaskTypeImage uint32 = 1
 	TaskTypeVideo uint32 = 2
 
+	TaskSourceCustom   uint32 = 1
+	TaskSourceTemplate uint32 = 2
+	TaskSourceTool     uint32 = 3
+
 	TaskStatusSubmitting  = 1 // 提交中
 	TaskStatusSubmitted   = 2 // 已提交
 	TaskStatusPending     = 3 // 等待处理
@@ -35,6 +39,8 @@ type CreateTaskRequest struct {
 	Input           map[string]any `json:"input" binding:"required"`
 	Parameters      map[string]any `json:"parameters,omitempty"`
 	TemplateID      uint64         `json:"template_id,omitempty"`
+	ToolConfigID    uint64         `json:"-"`
+	SourceType      uint32         `json:"-"`
 }
 
 // CreateTemplateTaskRequest selects the template-owned model, task type,
@@ -46,6 +52,18 @@ type CreateTemplateTaskRequest struct {
 	ClientRequestID string         `json:"client_request_id" binding:"omitempty,max=64"`
 	Input           map[string]any `json:"input,omitempty"`
 	Parameters      map[string]any `json:"parameters,omitempty"`
+}
+
+// CreateToolTaskRequest only accepts the user-owned media needed by a tool.
+// The prompt, task type, model, and model parameters are resolved on the
+// server from the selected tool and model configuration.
+type CreateToolTaskRequest struct {
+	ToolID          uint64 `json:"tool_id" binding:"required,gt=0"`
+	ConfigType      uint64 `json:"config_type" binding:"required,oneof=1 2 3 4"`
+	Image           string `json:"image,omitempty" binding:"omitempty,max=4096"`
+	Val             string `json:"val,omitempty" binding:"omitempty,max=4096"`
+	Video           string `json:"video,omitempty" binding:"omitempty,max=4096"`
+	ClientRequestID string `json:"client_request_id,omitempty" binding:"omitempty,max=64"`
 }
 
 // GenerationInput provides the media combinations supported by the UCloud
@@ -61,9 +79,9 @@ type GenerationInput struct {
 }
 
 type remoteSubmitRequest struct {
-	Model      string                 `json:"model"`
-	Input      map[string]interface{} `json:"input"`
-	Parameters map[string]interface{} `json:"parameters"`
+	Model      string         `json:"model"`
+	Input      map[string]any `json:"input"`
+	Parameters map[string]any `json:"parameters"`
 }
 
 type ProviderSubmitResult struct {
@@ -92,6 +110,8 @@ type TaskView struct {
 	ID            uint64         `json:"id"`
 	TaskCode      string         `json:"task_code"`
 	TemplateID    uint64         `json:"template_id,omitempty"`
+	ToolID        uint64         `json:"tool_id,omitempty"`
+	SourceType    uint32         `json:"source_type"`
 	TaskType      uint32         `json:"task_type"`
 	Status        int            `json:"status"`
 	Progress      uint8          `json:"progress"`
@@ -110,7 +130,8 @@ type TaskView struct {
 
 func ViewOf(item *model.VideoUserGenerationTask) TaskView {
 	view := TaskView{
-		ID: item.ID, TaskCode: item.TaskCode, TemplateID: item.TemplateID, TaskType: item.TaskType,
+		ID: item.ID, TaskCode: item.TaskCode, TemplateID: item.TemplateID,
+		ToolID: item.ToolConfigID, SourceType: item.SourceType, TaskType: item.TaskType,
 		Status: item.Status, Progress: uint8(item.Progress),
 		UsageDuration: item.UsageDuration,
 		CoverImageURL: item.CoverImageURL,

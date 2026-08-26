@@ -9,10 +9,10 @@ const (
 	ToolTypeImageGeneration uint8 = 1
 	ToolTypeVideoGeneration uint8 = 2
 
-	ToolConfigTypeNone           uint8 = 0
-	ToolConfigTypeReferenceImage uint8 = 1
-	ToolConfigTypeAge            uint8 = 2
-	ToolConfigTypeRatio          uint8 = 3
+	ToolConfigTypeNone           uint8 = 1
+	ToolConfigTypeReferenceImage uint8 = 2
+	ToolConfigTypeAge            uint8 = 3
+	ToolConfigTypeRatio          uint8 = 4
 )
 
 // ToolConfig describes a client tool entry managed by the admin console.

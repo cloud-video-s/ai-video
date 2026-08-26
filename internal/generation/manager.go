@@ -38,6 +38,7 @@ type Manager struct {
 	parameterRepo         *repository.ModelParameterRepo
 	taskRepo              *repository.UserGenerationTaskRepo
 	uploadRepo            *repository.UploadRepo
+	toolRepo              *repository.ToolConfigRepo
 	templateRepo          *repository.TemplateRepo
 	templateParameterRepo *repository.TemplateModelParameterRepo
 	hub                   *Hub
@@ -56,6 +57,7 @@ var sharedManager = &Manager{
 	parameterRepo:         repository.NewModelParameterRepo(),
 	taskRepo:              repository.NewUserGenerationTaskRepo(),
 	uploadRepo:            repository.NewUploadRepo(),
+	toolRepo:              repository.NewToolConfigRepo(),
 	templateRepo:          repository.NewTemplateRepo(),
 	templateParameterRepo: repository.NewTemplateModelParameterRepo(),
 	hub:                   NewHub(),
@@ -96,6 +98,9 @@ func (m *Manager) Subscribe(taskID uint64) (<-chan TaskView, func()) {
 }
 
 func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *CreateTaskRequest) (*model.VideoUserGenerationTask, error) {
+	if request == nil {
+		return nil, errors.New("生成请求不能为空")
+	}
 	if userID == 0 {
 		return nil, errors.New("用户 ID 无效")
 	}
@@ -114,7 +119,7 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		return nil, errors.New("input 不能为空")
 	}
 	if existing, err := m.taskRepo.GetByClientRequestID(ctx, userID, request.ClientRequestID); err == nil {
-		if err := validateIdempotentTemplate(existing, request.TemplateID); err != nil {
+		if err := validateIdempotentSource(existing, request.TemplateID, request.ToolConfigID); err != nil {
 			return nil, err
 		}
 		return existing, nil
@@ -159,9 +164,6 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 	}
 	taskCode := uuid.NewString()
 	if request.TaskType == TaskTypeVideo {
-		// The upstream idempotency key is owned by us and must be persisted in
-		// the queued payload before CreateTask returns. This makes submission
-		// recoverable after a restart and prevents clients from overriding it.
 		parameters["external_task_id"] = taskCode
 		if modelConfig.Code == ucloud.ModelKlingO3 {
 			if video, ok := request.Input["video"].(string); ok && video != "" {
@@ -187,10 +189,16 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		return nil, err
 	}
 	prompt, _ := request.Input["prompt"].(string)
+	sourceType := TaskSourceCustom
+	if request.TemplateID != 0 {
+		sourceType = TaskSourceTemplate
+	} else if request.ToolConfigID != 0 {
+		sourceType = TaskSourceTool
+	}
 	task := &model.VideoUserGenerationTask{
 		UserID: userID, ModelID: uint64(modelConfig.ID), ClientRequestID: request.ClientRequestID, TaskCode: taskCode, Score: uint32(modelConfig.Score),
-		TemplateID: request.TemplateID, TaskType: request.TaskType, Status: TaskStatusSubmitting, Progress: 0, Prompt: prompt, RequestPayload: string(payload),
-		RemoteUrls: "[]", LocalUrls: "[]",
+		TemplateID: request.TemplateID, ToolConfigID: request.ToolConfigID, TaskType: request.TaskType, Status: TaskStatusSubmitting, Progress: 0, Prompt: prompt, RequestPayload: string(payload),
+		RemoteUrls: "[]", LocalUrls: "[]", SourceType: sourceType,
 	}
 	if err = repository.Transaction(ctx, func(txCtx context.Context) error {
 		user, err := m.GetByIDForUpdate(txCtx, userID)
@@ -224,7 +232,7 @@ func (m *Manager) CreateTask(ctx context.Context, userID uint64, request *Create
 		return nil
 	}); err != nil {
 		if existing, lookupErr := m.taskRepo.GetByClientRequestID(ctx, userID, request.ClientRequestID); lookupErr == nil {
-			if err := validateIdempotentTemplate(existing, request.TemplateID); err != nil {
+			if err := validateIdempotentSource(existing, request.TemplateID, request.ToolConfigID); err != nil {
 				return nil, err
 			}
 			return existing, nil
@@ -283,9 +291,15 @@ func normalizeOwnedGenerationInput(source map[string]any, input GenerationInput,
 	}
 }
 
-func validateIdempotentTemplate(task *model.VideoUserGenerationTask, templateID uint64) error {
-	if task != nil && task.TemplateID != templateID {
+func validateIdempotentSource(task *model.VideoUserGenerationTask, templateID, toolConfigID uint64) error {
+	if task == nil {
+		return nil
+	}
+	if task.TemplateID != templateID {
 		return errors.New("client_request_id is already used by a task with a different template")
+	}
+	if task.ToolConfigID != toolConfigID {
+		return errors.New("client_request_id is already used by a task with a different tool")
 	}
 	return nil
 }

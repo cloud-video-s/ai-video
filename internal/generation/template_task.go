@@ -93,6 +93,7 @@ func (m *Manager) CreateTemplateTask(
 		Input:           input,
 		Parameters:      parameters,
 		TemplateID:      template.ID,
+		SourceType:      TaskSourceTemplate,
 	})
 }
 

@@ -79,6 +79,27 @@ func (h *GenerationHandler) CreateFromTemplate(c *gin.Context) {
 	response.OK(c, generation.ViewOf(task))
 }
 
+// CreateFromTool creates a task through a dedicated tool contract. The client
+// supplies at most one image and one video; the tool owns the model, prompt,
+// task type, and model parameter defaults.
+func (h *GenerationHandler) CreateFromTool(c *gin.Context) {
+	var request generation.CreateToolTaskRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		response.Fail(c, errcode.ErrParam, "invalid parameters: "+err.Error())
+		return
+	}
+	task, err := h.manager.CreateToolTask(c, middleware.GetAPIUserID(c), &request)
+	if err != nil {
+		//if errors.Is(err, generation.ErrToolUnavailable) {
+		//	response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, err.Error())
+		//	return
+		//}
+		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, err.Error())
+		return
+	}
+	response.OK(c, generation.ViewOf(task))
+}
+
 // List 分页返回当前客户端用户自己的生成任务。
 func (h *GenerationHandler) List(c *gin.Context) {
 	var request apiservice.GenerationListRequest

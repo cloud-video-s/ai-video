@@ -112,6 +112,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 			generationTasks.GET("/models", generationHandler.Models)
 			generationTasks.POST("/tasks", generationHandler.Create)
 			generationTasks.POST("/template-tasks", generationHandler.CreateFromTemplate)
+			generationTasks.POST("/tool-tasks", generationHandler.CreateFromTool)
 			generationTasks.GET("/tasks", generationHandler.List)
 			generationTasks.GET("/tasks/:id", generationHandler.Get)
 			generationTasks.DELETE("/tasks/:id", generationHandler.Delete)

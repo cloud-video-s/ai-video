@@ -207,6 +207,12 @@ var requestBodyExamples = map[string]any{
 			"https://balaaitest.oss-ap-southeast-1.aliyuncs.com/uploads/images/2026/07/30/12f35f980837d2e557f1e07a3078d1dc.png",
 		}},
 	},
+	"POST /api/generation/tool-tasks": map[string]any{
+		"tool_id":     uint64(16),
+		"config_type": uint64(2),
+		"image":       "/uploads/images/2026/08/26/character.png",
+		"video":       "/uploads/videos/2026/08/26/motion.mp4",
+	},
 }
 
 type responseExampleEnvelope struct {
@@ -235,7 +241,7 @@ var bannerResponseExampleTemplateID = uint64(42)
 var applePurchaseResponseExampleExpiration = time.Date(2026, 7, 22, 16, 47, 39, 0, time.FixedZone("UTC+8", 8*60*60))
 
 var generationTaskResponseExample = generation.TaskView{
-	ID: 13, TaskCode: "eafe15f0-780f-4a7f-9c62-7e99484be521", TaskType: generation.TaskTypeVideo,
+	ID: 13, TaskCode: "eafe15f0-780f-4a7f-9c62-7e99484be521", SourceType: generation.TaskSourceCustom, TaskType: generation.TaskTypeVideo,
 	Status: generation.TaskStatusFailure, Progress: 100,
 	Input: map[string]any{
 		"end_frame":   "https://cdn.example.com/uploads/images/end-frame.png",
@@ -256,6 +262,13 @@ var generationTaskResponseExample = generation.TaskView{
 	CreatedAt:     *generationTaskExampleTime(2026, 7, 30, 14, 44, 28, 235),
 	UpdatedAt:     *generationTaskExampleTime(2026, 7, 30, 14, 48, 33, 155),
 }
+
+var toolGenerationTaskResponseExample = func() generation.TaskView {
+	result := generationTaskResponseExample
+	result.ToolID = 16
+	result.SourceType = generation.TaskSourceTool
+	return result
+}()
 
 var generationTaskListResponseExample = generationTaskListResponse{
 	Page: 1, PageSize: 10, Total: 3, TotalPages: 1,
@@ -438,6 +451,7 @@ var responseDataExamples = map[string]any{
 	"GET /api/generation/models":       generationModelResponseExample,
 	"GET /api/generation/tasks":        generationTaskListResponseExample,
 	"GET /api/generation/tasks/:id":    generationTaskResponseExample,
+	"POST /api/generation/tool-tasks":  toolGenerationTaskResponseExample,
 	"POST /api/tracking/events": trackingEventDocResponse{
 		ID: 12345, TrackingType: "Payment_Create", ExtensionType: "OB_back", ModelID: 123,
 		CreatedAt: time.Date(2026, 8, 20, 10, 11, 12, 0, time.FixedZone("UTC+8", 8*60*60)),
@@ -530,7 +544,7 @@ var responseDataExamples = map[string]any{
 		{
 			ID: 16, Name: "照片转视频", Icon: "/uploads/images/tools/photo-video-icon.png",
 			BackgroundImage: "/uploads/images/tools/photo-video-background.png",
-			ToolType:        2, ModelID: 9, ConfigType: 3,
+			ToolType:        2, ModelID: 9, ConfigType: 4,
 			ConfigData: json.RawMessage(`{"ratio_options":[{"name":"16:9","value":"16:9","sort":1}]}`),
 			BadgeImage: "/uploads/images/tools/new.png", Sort: 10,
 			Prompt: "让照片自然动起来", Status: 1,
@@ -566,6 +580,7 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/generation/models":                       {query: typeOf[apiservice.GenerationModelRequest](), response: typeOf[[]apiservice.GenerationModelView]()},
 	"POST /api/generation/tasks":                       {body: typeOf[generation.CreateTaskRequest](), response: typeOf[generation.TaskView]()},
 	"POST /api/generation/template-tasks":              {body: typeOf[templateTaskRequest](), response: typeOf[generation.TaskView]()},
+	"POST /api/generation/tool-tasks":                  {body: typeOf[generation.CreateToolTaskRequest](), response: typeOf[generation.TaskView]()},
 	"GET /api/generation/tasks":                        {query: typeOf[apiservice.GenerationListRequest](), response: typeOf[generationTaskListResponse]()},
 	"GET /api/generation/tasks/:id":                    {response: typeOf[generation.TaskView]()},
 	"DELETE /api/generation/tasks/:id":                 {},
@@ -608,6 +623,7 @@ var operationDescriptions = map[string]string{
 	"POST /api/templates/complaint": "提交模板投诉。请求体使用 application/json，template_id 和 complaint_type 必填，content 为可选的补充说明。",
 	"GET /api/generation/models":    "按必填 model_type 查询平台和模型均启用的模型及其参数；返回全部 parameter_type=2 的请求参数和 is_display=1 的 parameter_type=1 选项参数，并按 parameter_type、sort_order、id 排序。", "POST /api/generation/tasks": "校验请求并创建待异步处理的生成任务，返回任务订单号。input.images、input.video、input.first_frame 和 input.end_frame 中的媒体地址同时支持半链接与 HTTP(S) 全链接。",
 	"POST /api/generation/template-tasks": "按模板创建生成任务。请求体仅展示必填的 template_id 和 input.images；图片地址同时支持半链接与 HTTP(S) 全链接，模板提示词和模型设置由服务端补充。",
+	"POST /api/generation/tool-tasks":     "使用独立工具协议创建生成任务。客户端传 tool_id、与工具一致的 config_type、单个 image、单个 video，以及可选 val 和 client_request_id；至少提供一种媒体。服务端从在线工具配置解析任务类型、启用模型和提示词，再使用模型默认参数进入统一异步生成链路。媒体支持半链接与 HTTP(S) 全链接。",
 	"GET /api/generation/tasks":           "分页查询当前用户的生成任务，列表项返回完整任务快照。", "GET /api/generation/tasks/:id": "查询指定生成任务详情，返回结构与列表中的单个任务一致。",
 	"DELETE /api/generation/tasks/:id":      "删除指定生成任务。",
 	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
@@ -638,7 +654,7 @@ var operationSummaries = map[string]string{
 	"GET /api/tools/list":        "查询工具列表",
 	"POST /api/tracking/events":  "上报客户端埋点事件",
 	"POST /api/orders":           "创建支付订单",
-	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务", "POST /api/generation/template-tasks": "按模板创建生成任务",
+	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务", "POST /api/generation/template-tasks": "按模板创建生成任务", "POST /api/generation/tool-tasks": "按工具创建生成任务",
 	"GET /api/generation/tasks": "查询生成任务", "GET /api/generation/tasks/:id": "获取生成任务", "DELETE /api/generation/tasks/:id": "删除生成任务",
 	"POST /api/payments/apple/pay": "确认 Apple 支付", "POST /api/payments/apple/notification": "接收 Apple 支付通知",
 	"POST /api/uploads/images/batches": "初始化图片上传", "POST /api/uploads/videos/batches": "初始化视频上传",
@@ -680,7 +696,7 @@ var fieldDescriptions = map[string]string{
 	"page": "页码，从 1 开始", "page_size": "每页数量", "pageSize": "每页数量", "total": "总记录数", "totalPages": "总页数", "list": "当前页数据列表", "template_type_id": "模板分类 ID", "third_type": "第三方身份类型：google 或 apple",
 	"third_code": "第三方平台用户标识",
 	"model_code": "生成模型代码", "model_type": "模型类型：1=生成图片，2=生成视频", "client_request_id": "客户端幂等请求 ID", "task_code": "任务唯一编码", "task_type": "任务类型：1=生成图片，2=生成视频；列表查询值 3 表示全部", "input": "生成任务输入参数", "parameters": "生成参数",
-	"images": "参考图片 URL 数组", "video": "参考视频 URL", "first_frame": "首帧图片 URL", "end_frame": "尾帧图片 URL",
+	"images": "参考图片 URL 数组", "image": "单张参考图片 URL", "video": "参考视频 URL", "first_frame": "首帧图片 URL", "end_frame": "尾帧图片 URL",
 	"complaint_type": "投诉类型", "content": "投诉补充内容",
 	"parameter": "模型参数列表", "param_key": "参数键名", "parameter_type": "参数类型：1=选项参数，2=请求参数",
 	"default_value": "参数默认值", "allowed_values": "兼容保留的参数允许值数组", "allowed_value_options": "选择值配置数组，每项包含成对的 value 和 alias", "constraints": "JSON 字符串格式的参数约束；空约束为 {}", "alias": "客户端展示名称", "display_type": "客户端控件类型", "is_display": "是否展示：1=是，0=否",
@@ -713,7 +729,7 @@ var fieldDescriptions = map[string]string{
 	"free_trial": "是否启用免费试用", "is_subscription": "是否循环订阅", "is_default": "是否为默认套餐",
 	"subscription_description": "订阅说明", "subscription_price": "当前用户适用的订阅价格",
 	"original_price": "原价", "subscription_points": "订阅赠送积分", "subscription_period": "订阅周期：1 周，2 月，3 季，4 年",
-	"background_image": "工具背景图片地址", "tool_type": "工具类型：1=图片生成，2=视频生成", "config_type": "工具配置类型：0=无，1=参考图，2=年龄，3=比例",
+	"background_image": "工具背景图片地址", "tool_id": "工具 ID", "tool_type": "工具类型：1=图片生成，2=视频生成", "source_type": "任务来源：1=自定义，2=模板，3=工具", "config_type": "工具配置类型：1=无，2=参考图，3=年龄，4=比例",
 	"config_data": "工具配置内容，结构由 config_type 决定", "badge_image": "工具角标图片地址",
 	"files": "待上传文件列表", "file_name": "文件名", "size": "文件字节数", "content_type": "MIME 类型", "sha256": "文件 SHA-256",
 	"media_type": "上传媒体类型：image 或 video", "method": "OSS 直传 HTTP 方法，固定为 PUT", "upload_url": "短时效 OSS V4 预签名上传地址",

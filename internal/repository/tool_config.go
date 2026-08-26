@@ -100,6 +100,14 @@ func (r *ToolConfigRepo) ListForClient(ctx context.Context) ([]*model.VideoToolC
 	return rows, nil
 }
 
+// GetEnabledByID returns an online, non-deleted tool for task generation.
+// Model and platform availability are validated separately by ModelRepo so a
+// disabled dependency cannot be invoked through a stale tool configuration.
+func (r *ToolConfigRepo) GetEnabledByID(ctx context.Context, id uint64) (*model.VideoToolConfig, error) {
+	q := qFrom(ctx).VideoToolConfig
+	return q.WithContext(ctx).Where(q.ID.Eq(id), q.Status.Eq(1)).First()
+}
+
 func (r *ToolConfigRepo) GetByID(ctx context.Context, id uint64) (*domain.ToolConfig, error) {
 	var row toolConfigRecord
 	if err := qFrom(ctx).UnderlyingDB().First(&row, id).Error; err != nil {

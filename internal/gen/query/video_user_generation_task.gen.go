@@ -49,6 +49,8 @@ func newVideoUserGenerationTask(db *gorm.DB, opts ...gen.DOOption) videoUserGene
 	_videoUserGenerationTask.FinishedAt = field.NewTime(tableName, "finished_at")
 	_videoUserGenerationTask.LastPolledAt = field.NewTime(tableName, "last_polled_at")
 	_videoUserGenerationTask.TemplateID = field.NewUint64(tableName, "template_id")
+	_videoUserGenerationTask.ToolConfigID = field.NewUint64(tableName, "tool_config_id")
+	_videoUserGenerationTask.SourceType = field.NewUint32(tableName, "source_type")
 	_videoUserGenerationTask.CoverImageURL = field.NewString(tableName, "cover_image_url")
 	_videoUserGenerationTask.Score = field.NewUint32(tableName, "score")
 	_videoUserGenerationTask.VipScore = field.NewUint32(tableName, "vip_score")
@@ -137,6 +139,8 @@ type videoUserGenerationTask struct {
 	FinishedAt       field.Time   // 任务完成时间
 	LastPolledAt     field.Time   // 最后一次轮询外部服务的时间
 	TemplateID       field.Uint64 // 关联模板id
+	ToolConfigID     field.Uint64 // 工具ID
+	SourceType       field.Uint32 // 来源 1=自定义 2=模板 3=工具
 	CoverImageURL    field.String // 封面URL
 	Score            field.Uint32 // 消耗积分
 	VipScore         field.Uint32 // 冻结订阅积分
@@ -188,6 +192,8 @@ func (v *videoUserGenerationTask) updateTableName(table string) *videoUserGenera
 	v.FinishedAt = field.NewTime(table, "finished_at")
 	v.LastPolledAt = field.NewTime(table, "last_polled_at")
 	v.TemplateID = field.NewUint64(table, "template_id")
+	v.ToolConfigID = field.NewUint64(table, "tool_config_id")
+	v.SourceType = field.NewUint32(table, "source_type")
 	v.CoverImageURL = field.NewString(table, "cover_image_url")
 	v.Score = field.NewUint32(table, "score")
 	v.VipScore = field.NewUint32(table, "vip_score")
@@ -225,7 +231,7 @@ func (v *videoUserGenerationTask) GetFieldByName(fieldName string) (field.OrderE
 }
 
 func (v *videoUserGenerationTask) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 33)
+	v.fieldMap = make(map[string]field.Expr, 35)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["user_id"] = v.UserID
 	v.fieldMap["model_id"] = v.ModelID
@@ -247,6 +253,8 @@ func (v *videoUserGenerationTask) fillFieldMap() {
 	v.fieldMap["finished_at"] = v.FinishedAt
 	v.fieldMap["last_polled_at"] = v.LastPolledAt
 	v.fieldMap["template_id"] = v.TemplateID
+	v.fieldMap["tool_config_id"] = v.ToolConfigID
+	v.fieldMap["source_type"] = v.SourceType
 	v.fieldMap["cover_image_url"] = v.CoverImageURL
 	v.fieldMap["score"] = v.Score
 	v.fieldMap["vip_score"] = v.VipScore

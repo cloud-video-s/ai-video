@@ -38,7 +38,7 @@ type ToolConfigPayload struct {
 	ToolType        uint8           `json:"tool_type" binding:"required,oneof=1 2"`
 	ToolsType       string          `json:"tools_type" binding:"required"`
 	ModelID         int64           `json:"model_id" binding:"required,gt=0"`
-	ConfigType      uint8           `json:"config_type" binding:"oneof=0 1 2 3"`
+	ConfigType      uint8           `json:"config_type" binding:"required,oneof=1 2 3 4"`
 	ConfigData      json.RawMessage `json:"config_data" binding:"required"`
 	BadgeImage      string          `json:"badge_image" binding:"max=1024"`
 	Sort            int64           `json:"sort" binding:"gte=0,lte=999999"`
@@ -189,7 +189,7 @@ func (s *ToolConfigService) prepareAndValidate(ctx context.Context, req *ToolCon
 	if _, ok := validToolsTypes[req.ToolsType]; !ok {
 		return errors.New("所属功能无效")
 	}
-	if req.ConfigType > domain.ToolConfigTypeRatio {
+	if req.ConfigType < domain.ToolConfigTypeNone || req.ConfigType > domain.ToolConfigTypeRatio {
 		return errors.New("工具配置类型无效")
 	}
 	modelExists, err := s.repo.ModelAvailable(ctx, req.ModelID, req.ToolType)
