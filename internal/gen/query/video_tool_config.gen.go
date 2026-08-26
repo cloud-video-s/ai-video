@@ -72,7 +72,7 @@ type videoToolConfig struct {
 	ToolType        field.Uint8  // 工具类型：1 图片生成，2 视频生成；与模型类型一致
 	ToolsType       field.String // 前端界面标识
 	ModelID         field.Int64  // 关联 video_model.id
-	ConfigType      field.Uint8  // 配置类型：0 无，1 参考图，2 年龄，3 比例
+	ConfigType      field.Uint8  // 配置类型：1 无，2 参考图，3 年龄，4 比例
 	ConfigData      field.String // 配置内容；按 config_type 存储参考图、比例选项或年龄范围
 	BadgeImage      field.String // 角标图片 URL
 	Sort            field.Int64  // 排序值，数值越小越靠前

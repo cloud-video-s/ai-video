@@ -59,6 +59,7 @@ type VideoUser struct {
 	LastLoginAt              *time.Time                 `gorm:"column:last_login_at;type:datetime(3);comment:上次登录时间" json:"last_login_at"`                                                                                                       // 上次登录时间
 	LastLoginIP              string                     `gorm:"column:last_login_ip;type:varchar(64);comment:上次登录IP" json:"last_login_ip"`                                                                                                       // 上次登录IP
 	LoginAccount             string                     `gorm:"column:login_account;type:varchar(255)" json:"login_account"`
+	AccountBindingTime       time.Time                  `gorm:"column:account_binding_time;type:datetime;comment:账号绑定时间" json:"account_binding_time"`           // 账号绑定时间
 	Email                    string                     `gorm:"column:email;type:varchar(255);index:idx_video_user_email,priority:1;comment:三方邮箱" json:"email"` // 三方邮箱
 	ThirdCode                string                     `gorm:"column:third_code;type:varchar(50);comment:三方唯一码" json:"third_code"`                             // 三方唯一码
 	PackageCode              string                     `gorm:"column:package_code;type:varchar(128);not null;comment:package identifier" json:"package_code"`  // package identifier

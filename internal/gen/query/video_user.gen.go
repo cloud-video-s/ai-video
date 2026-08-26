@@ -73,6 +73,7 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.LastLoginAt = field.NewTime(tableName, "last_login_at")
 	_videoUser.LastLoginIP = field.NewString(tableName, "last_login_ip")
 	_videoUser.LoginAccount = field.NewString(tableName, "login_account")
+	_videoUser.AccountBindingTime = field.NewTime(tableName, "account_binding_time")
 	_videoUser.Email = field.NewString(tableName, "email")
 	_videoUser.ThirdCode = field.NewString(tableName, "third_code")
 	_videoUser.PackageCode = field.NewString(tableName, "package_code")
@@ -295,6 +296,7 @@ type videoUser struct {
 	LastLoginAt              field.Time    // 上次登录时间
 	LastLoginIP              field.String  // 上次登录IP
 	LoginAccount             field.String
+	AccountBindingTime       field.Time   // 账号绑定时间
 	Email                    field.String // 三方邮箱
 	ThirdCode                field.String // 三方唯一码
 	PackageCode              field.String // package identifier
@@ -375,6 +377,7 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.LastLoginAt = field.NewTime(table, "last_login_at")
 	v.LastLoginIP = field.NewString(table, "last_login_ip")
 	v.LoginAccount = field.NewString(table, "login_account")
+	v.AccountBindingTime = field.NewTime(table, "account_binding_time")
 	v.Email = field.NewString(table, "email")
 	v.ThirdCode = field.NewString(table, "third_code")
 	v.PackageCode = field.NewString(table, "package_code")
@@ -413,7 +416,7 @@ func (v *videoUser) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (v *videoUser) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 61)
+	v.fieldMap = make(map[string]field.Expr, 62)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["device_code"] = v.DeviceCode
 	v.fieldMap["username"] = v.Username
@@ -459,6 +462,7 @@ func (v *videoUser) fillFieldMap() {
 	v.fieldMap["last_login_at"] = v.LastLoginAt
 	v.fieldMap["last_login_ip"] = v.LastLoginIP
 	v.fieldMap["login_account"] = v.LoginAccount
+	v.fieldMap["account_binding_time"] = v.AccountBindingTime
 	v.fieldMap["email"] = v.Email
 	v.fieldMap["third_code"] = v.ThirdCode
 	v.fieldMap["package_code"] = v.PackageCode

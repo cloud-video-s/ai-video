@@ -634,6 +634,8 @@ func main() {
 	videoUserGenerationTask := g.GenerateModel("video_user_generation_task",
 		gen.FieldType("status", "int"),
 		gen.FieldType("template_id", "uint64"),
+		gen.FieldType("tool_config_id", "uint64"),
+		gen.FieldType("source_type", "uint32"),
 		gen.FieldType("score", "uint32"),
 		gen.FieldType("score_type", "uint32"),
 		gen.FieldType("vip_score", "uint32"),
@@ -1076,6 +1078,11 @@ func main() {
 		gen.FieldType("tool_type", "uint8"),
 		gen.FieldType("model_id", "int64"),
 		gen.FieldType("config_type", "uint8"),
+		gen.FieldComment("config_type", "配置类型：1 无，2 参考图，3 年龄，4 比例"),
+		gen.FieldGORMTag("config_type", func(tag field.GormTag) field.GormTag {
+			tag["comment"] = []string{"配置类型：1 无，2 参考图，3 年龄，4 比例"}
+			return tag
+		}),
 		gen.FieldType("config_data", "string"),
 		gen.FieldType("sort", "int64"),
 		gen.FieldType("status", "int8"),
