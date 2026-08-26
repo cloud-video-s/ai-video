@@ -148,13 +148,13 @@ func valuesOf[T any](items []*T) []T {
 }
 
 func (r BaseRepo[T]) Create(ctx context.Context, m *T) error {
-	return dbFrom(ctx).Create(m).Error
+	return qFrom(ctx).UnderlyingDB().Create(m).Error
 }
 
 // GetByID loads by primary key, optionally preloading associations. The error
 // (incl. gorm.ErrRecordNotFound) is returned as-is, not masked.
 func (r BaseRepo[T]) GetByID(ctx context.Context, id uint, preloads ...string) (*T, error) {
-	q := dbFrom(ctx)
+	q := qFrom(ctx).UnderlyingDB()
 	for _, p := range preloads {
 		q = q.Preload(p)
 	}
@@ -170,7 +170,7 @@ func (r BaseRepo[T]) GetByID(ctx context.Context, id uint, preloads ...string) (
 // so callers can errors.Is it — handy for "fetch by some unique column".
 func (r BaseRepo[T]) GetOne(ctx context.Context, q *QueryOptions) (*T, error) {
 	var m T
-	if err := q.applyAll(dbFrom(ctx).Model(new(T))).First(&m).Error; err != nil {
+	if err := q.applyAll(qFrom(ctx).UnderlyingDB().Model(new(T))).First(&m).Error; err != nil {
 		return nil, err
 	}
 	return &m, nil
@@ -181,24 +181,24 @@ func (r BaseRepo[T]) GetOne(ctx context.Context, q *QueryOptions) (*T, error) {
 // the full row.
 func (r BaseRepo[T]) Update(ctx context.Context, m *T, fields ...string) error {
 	if len(fields) == 0 {
-		return dbFrom(ctx).Save(m).Error
+		return qFrom(ctx).UnderlyingDB().Save(m).Error
 	}
-	return dbFrom(ctx).Model(m).Select(fields).Updates(m).Error
+	return qFrom(ctx).UnderlyingDB().Model(m).Select(fields).Updates(m).Error
 }
 
 func (r BaseRepo[T]) Delete(ctx context.Context, id uint) error {
 	var m T
-	return dbFrom(ctx).Delete(&m, id).Error
+	return qFrom(ctx).UnderlyingDB().Delete(&m, id).Error
 }
 
 func (r BaseRepo[T]) HardDelete(ctx context.Context, id uint) error {
 	var m T
-	return dbFrom(ctx).Unscoped().Delete(&m, id).Error
+	return qFrom(ctx).UnderlyingDB().Unscoped().Delete(&m, id).Error
 }
 
 func (r BaseRepo[T]) Count(ctx context.Context, q *QueryOptions) (int64, error) {
 	var total int64
-	if err := q.applyFilter(dbFrom(ctx).Model(new(T))).Count(&total).Error; err != nil {
+	if err := q.applyFilter(qFrom(ctx).UnderlyingDB().Model(new(T))).Count(&total).Error; err != nil {
 		return 0, err
 	}
 	return total, nil
@@ -216,7 +216,7 @@ func (r BaseRepo[T]) Exists(ctx context.Context, q *QueryOptions) (bool, error) 
 
 func (r BaseRepo[T]) List(ctx context.Context, q *QueryOptions) ([]T, error) {
 	var list []T
-	if err := q.applyAll(dbFrom(ctx).Model(new(T))).Find(&list).Error; err != nil {
+	if err := q.applyAll(qFrom(ctx).UnderlyingDB().Model(new(T))).Find(&list).Error; err != nil {
 		return nil, err
 	}
 	return list, nil
@@ -228,7 +228,7 @@ func (r BaseRepo[T]) PageList(ctx context.Context, page, pageSize int, q *QueryO
 		return nil, 0, err
 	}
 	var list []T
-	db := q.applyAll(dbFrom(ctx).Model(new(T)))
+	db := q.applyAll(qFrom(ctx).UnderlyingDB().Model(new(T)))
 	if err := db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&list).Error; err != nil {
 		return nil, 0, err
 	}

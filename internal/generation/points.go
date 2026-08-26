@@ -7,7 +7,6 @@ import (
 	"math"
 	"time"
 
-	"ai-video/internal/commerce"
 	"ai-video/internal/domain"
 	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
@@ -55,26 +54,24 @@ func freezeTaskPoints(user *model.VideoUser, score uint32) (taskPointAllocation,
 		return taskPointAllocation{}, nil
 	}
 	remaining := int64(score)
-	if user.VipPoints+user.PointsBalance < remaining {
-		return taskPointAllocation{}, errors.New("user points balance is invalid")
-	}
-	vipScore := user.VipPoints
-	if vipScore >= remaining {
-		vipScore = remaining
-	}
-	remaining -= vipScore
-	if user.PointsBalance < remaining {
-		return taskPointAllocation{}, commerce.ErrInsufficientPoints
-	}
-	if uint64(score) > math.MaxUint64-user.FrozenPoints {
-		return taskPointAllocation{}, errors.New("frozen points overflow")
-	}
-
 	allocation := taskPointAllocation{
-		VIPScore:    uint32(vipScore),
-		PointsScore: uint32(remaining),
+		VIPScore:    0,
+		PointsScore: 0,
 	}
-	user.VipPoints -= vipScore
+	if user.SubscriptionStatus == 2 && user.VipExpiresAt.Unix() > time.Now().Unix() {
+		if user.VipPoints+user.PointsBalance < remaining {
+			return taskPointAllocation{}, errors.New("user points balance is invalid")
+		}
+		vipScore := min(user.VipPoints, remaining)
+		remaining -= vipScore
+		allocation.VIPScore = uint32(vipScore)
+	} else {
+		if user.PointsBalance < remaining {
+			return taskPointAllocation{}, errors.New("user points balance is invalid")
+		}
+	}
+	allocation.PointsScore = uint32(remaining)
+	user.VipPoints -= int64(allocation.VIPScore)
 	user.PointsBalance -= remaining
 	user.FrozenPoints += uint64(score)
 	return allocation, nil

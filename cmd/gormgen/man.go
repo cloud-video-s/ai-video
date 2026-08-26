@@ -785,6 +785,41 @@ func main() {
 		),
 	)
 
+	videoUserAttributionHistory := g.GenerateModel("video_user_attribution_history",
+		gen.FieldType("id", "uint64"),
+		gen.FieldType("user_id", "uint64"),
+		gen.FieldType("activation_callback_count", "uint64"),
+		gen.FieldType("activation_deduct_count", "uint64"),
+		gen.FieldType("key_behavior_callback_count", "uint64"),
+		gen.FieldType("key_behavior_deduct_count", "uint64"),
+		gen.FieldType("payment_callback_count", "uint64"),
+		gen.FieldType("payment_deduct_count", "uint64"),
+		gen.FieldType("first_payment_callback_count", "uint64"),
+		gen.FieldType("first_payment_deduct_count", "uint64"),
+		gen.FieldType("registration_callback_count", "uint64"),
+		gen.FieldType("registration_deduct_count", "uint64"),
+		gen.FieldType("attributed_at", "*time.Time"),
+		gen.FieldType("last_operated_at", "*time.Time"),
+		gen.FieldRename("oaid", "OAID"),
+		gen.FieldRename("imei", "IMEI"),
+		gen.FieldRelate(field.BelongsTo, "User", videoUser,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"UserID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+		gen.FieldRelate(field.BelongsTo, "Channel", videoChannel,
+			&field.RelateConfig{
+				GORMTag: field.GormTag{
+					"foreignKey": []string{"ChannelID"},
+					"references": []string{"ID"},
+				},
+			},
+		),
+	)
+
 	videoAdjustAttribution := g.GenerateModel("video_adjust_attribution",
 		gen.FieldType("id", "uint64"),
 		gen.FieldType("user_id", "uint64"),
@@ -1021,6 +1056,7 @@ func main() {
 		),
 	)
 	videoMedia := g.GenerateModel("video_media")
+	videoMediaAds := g.GenerateModel("video_media_ads")
 	videoTrackingEvent := g.GenerateModel("video_tracking_event",
 		gen.FieldType("id", "uint64"),
 		gen.FieldType("user_id", "uint64"),
@@ -1052,6 +1088,8 @@ func main() {
 			},
 		),
 	)
+
+	videoAdjustMediaAds := g.GenerateModel("video_adjust_media_ads")
 
 	allModels := []any{
 		casbinRule,
@@ -1099,6 +1137,7 @@ func main() {
 		videoUserGenerationTask,
 		videoUser,
 		videoUserAttribution,
+		videoUserAttributionHistory,
 		videoAdjustAttribution,
 		videoAdjustPendingEvent,
 		videoUserPointsLedger,
@@ -1116,8 +1155,10 @@ func main() {
 		videoModelParameter,
 		videoUserTemplateComplaint,
 		videoMedia,
+		videoMediaAds,
 		videoTrackingEvent,
 		videoToolConfig,
+		videoAdjustMediaAds,
 	}
 
 	g.ApplyBasic(allModels...)

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"ai-video/internal/domain"
+	"ai-video/internal/gen/model"
 	"ai-video/internal/repository"
 
 	"gorm.io/gorm"
@@ -35,6 +36,7 @@ type ToolConfigPayload struct {
 	Icon            string          `json:"icon" binding:"required,max=1024"`
 	BackgroundImage string          `json:"background_image" binding:"required,max=1024"`
 	ToolType        uint8           `json:"tool_type" binding:"required,oneof=1 2"`
+	ToolsType       string          `json:"tools_type" binding:"required"`
 	ModelID         int64           `json:"model_id" binding:"required,gt=0"`
 	ConfigType      uint8           `json:"config_type" binding:"oneof=0 1 2 3"`
 	ConfigData      json.RawMessage `json:"config_data" binding:"required"`
@@ -77,6 +79,18 @@ type ToolConfigStatusPayload struct {
 	Status int8 `json:"status" binding:"oneof=0 1"`
 }
 
+var validToolsTypes = map[string]struct{}{
+	"enhance":       {},
+	"outpaint":      {},
+	"hairstyle":     {},
+	"age_transform": {},
+	"body_reshape":  {},
+	"colorful":      {},
+	"makeup":        {},
+	"outfit":        {},
+	"pose_transfer": {},
+}
+
 func (s *ToolConfigService) List(ctx context.Context, page, pageSize int, req *ListToolConfigRequest) ([]domain.ToolConfig, int64, error) {
 	return s.repo.PageList(ctx, page, pageSize, &repository.ToolConfigListFilter{
 		ListSort: req.listSort(), Status: req.Status, Keyword: strings.TrimSpace(req.Keyword),
@@ -84,7 +98,11 @@ func (s *ToolConfigService) List(ctx context.Context, page, pageSize int, req *L
 }
 
 func (s *ToolConfigService) ListOptions(ctx context.Context) ([]domain.ToolConfig, error) {
-	return s.repo.ListOptions(ctx)
+	options, err := s.repo.ListOptions(ctx)
+	if err != nil {
+		return []domain.ToolConfig{}, err
+	}
+	return applyToolConfig(options), nil
 }
 
 func (s *ToolConfigService) ListModelOptions(ctx context.Context, toolType uint8) ([]domain.ToolModelOption, error) {
@@ -153,6 +171,7 @@ func (s *ToolConfigService) prepareAndValidate(ctx context.Context, req *ToolCon
 	req.Name = strings.TrimSpace(req.Name)
 	req.Icon = strings.TrimSpace(req.Icon)
 	req.BackgroundImage = strings.TrimSpace(req.BackgroundImage)
+	req.ToolsType = strings.TrimSpace(req.ToolsType)
 	req.BadgeImage = strings.TrimSpace(req.BadgeImage)
 	req.Prompt = strings.TrimSpace(req.Prompt)
 	if req.Name == "" {
@@ -166,6 +185,9 @@ func (s *ToolConfigService) prepareAndValidate(ctx context.Context, req *ToolCon
 	}
 	if req.ToolType < domain.ToolTypeImageGeneration || req.ToolType > domain.ToolTypeVideoGeneration {
 		return errors.New("工具类型无效")
+	}
+	if _, ok := validToolsTypes[req.ToolsType]; !ok {
+		return errors.New("所属功能无效")
 	}
 	if req.ConfigType > domain.ToolConfigTypeRatio {
 		return errors.New("工具配置类型无效")
@@ -204,6 +226,7 @@ func applyToolConfigPayload(item *domain.ToolConfig, req *ToolConfigPayload) {
 	item.Icon = req.Icon
 	item.BackgroundImage = req.BackgroundImage
 	item.ToolType = req.ToolType
+	item.ToolsType = strings.TrimSpace(req.ToolsType)
 	item.ModelID = req.ModelID
 	item.ConfigType = req.ConfigType
 	item.ConfigData = append([]byte(nil), req.ConfigData...)
@@ -288,4 +311,24 @@ func normalizeToolConfigData(req *ToolConfigPayload) error {
 	default:
 		return errors.New("工具配置类型无效")
 	}
+}
+
+func applyToolConfig(rows []*model.VideoToolConfig) (data []domain.ToolConfig) {
+	for _, item := range rows {
+		data = append(data, domain.ToolConfig{
+			Name:            item.Name,
+			Icon:            item.Icon,
+			BackgroundImage: item.BackgroundImage,
+			ToolType:        item.ToolType,
+			ToolsType:       item.ToolsType,
+			ModelID:         item.ModelID,
+			ConfigType:      item.ConfigType,
+			ConfigData:      json.RawMessage(item.ConfigData),
+			BadgeImage:      item.BadgeImage,
+			Sort:            item.Sort,
+			Status:          item.Status,
+			Prompt:          item.Prompt,
+		})
+	}
+	return data
 }

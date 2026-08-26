@@ -27,6 +27,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	delayConfigHandler := handler.NewDelayConfigHandler()
 	authHandler := handler.NewAuthHandler()
 	bannerHandler := handler.NewBannerHandler()
+	toolHandler := handler.NewToolHandler()
 	templateHandler := handler.NewTemplateHandler()
 	generationHandler := handler.NewGenerationHandler()
 	vipHandler := handler.NewVipHandler()
@@ -84,6 +85,11 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		banners := authenticated.Group("/banners")
 		{
 			banners.GET("/list", bannerHandler.List)
+		}
+
+		tools := authenticated.Group("/tools")
+		{
+			tools.GET("/list", toolHandler.List)
 		}
 
 		templates := authenticated.Group("/templates")

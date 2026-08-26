@@ -33,6 +33,7 @@ func newVideoToolConfig(db *gorm.DB, opts ...gen.DOOption) videoToolConfig {
 	_videoToolConfig.Icon = field.NewString(tableName, "icon")
 	_videoToolConfig.BackgroundImage = field.NewString(tableName, "background_image")
 	_videoToolConfig.ToolType = field.NewUint8(tableName, "tool_type")
+	_videoToolConfig.ToolsType = field.NewString(tableName, "tools_type")
 	_videoToolConfig.ModelID = field.NewInt64(tableName, "model_id")
 	_videoToolConfig.ConfigType = field.NewUint8(tableName, "config_type")
 	_videoToolConfig.ConfigData = field.NewString(tableName, "config_data")
@@ -69,6 +70,7 @@ type videoToolConfig struct {
 	Icon            field.String // 工具图标 URL
 	BackgroundImage field.String // 工具背景图 URL
 	ToolType        field.Uint8  // 工具类型：1 图片生成，2 视频生成；与模型类型一致
+	ToolsType       field.String // 前端界面标识
 	ModelID         field.Int64  // 关联 video_model.id
 	ConfigType      field.Uint8  // 配置类型：0 无，1 参考图，2 年龄，3 比例
 	ConfigData      field.String // 配置内容；按 config_type 存储参考图、比例选项或年龄范围
@@ -101,6 +103,7 @@ func (v *videoToolConfig) updateTableName(table string) *videoToolConfig {
 	v.Icon = field.NewString(table, "icon")
 	v.BackgroundImage = field.NewString(table, "background_image")
 	v.ToolType = field.NewUint8(table, "tool_type")
+	v.ToolsType = field.NewString(table, "tools_type")
 	v.ModelID = field.NewInt64(table, "model_id")
 	v.ConfigType = field.NewUint8(table, "config_type")
 	v.ConfigData = field.NewString(table, "config_data")
@@ -139,12 +142,13 @@ func (v *videoToolConfig) GetFieldByName(fieldName string) (field.OrderExpr, boo
 }
 
 func (v *videoToolConfig) fillFieldMap() {
-	v.fieldMap = make(map[string]field.Expr, 16)
+	v.fieldMap = make(map[string]field.Expr, 17)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["name"] = v.Name
 	v.fieldMap["icon"] = v.Icon
 	v.fieldMap["background_image"] = v.BackgroundImage
 	v.fieldMap["tool_type"] = v.ToolType
+	v.fieldMap["tools_type"] = v.ToolsType
 	v.fieldMap["model_id"] = v.ModelID
 	v.fieldMap["config_type"] = v.ConfigType
 	v.fieldMap["config_data"] = v.ConfigData

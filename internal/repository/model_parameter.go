@@ -62,7 +62,7 @@ func (r *ModelParameterRepo) GetApiPageTask(ctx context.Context, userID uint64, 
 }
 
 func (r *ModelParameterRepo) UpdateFields(ctx context.Context, item *model.VideoModelParameter) error {
-	return dbFrom(ctx).Model(&model.VideoModelParameter{}).
+	return qFrom(ctx).UnderlyingDB().Model(&model.VideoModelParameter{}).
 		Where("id = ? AND model_id = ?", item.ID, item.ModelID).
 		Updates(map[string]interface{}{
 			"param_key":             item.ParamKey,

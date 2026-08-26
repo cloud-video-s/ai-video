@@ -59,15 +59,15 @@ type VideoUser struct {
 	LastLoginAt              *time.Time                 `gorm:"column:last_login_at;type:datetime(3);comment:上次登录时间" json:"last_login_at"`                                                                                                       // 上次登录时间
 	LastLoginIP              string                     `gorm:"column:last_login_ip;type:varchar(64);comment:上次登录IP" json:"last_login_ip"`                                                                                                       // 上次登录IP
 	LoginAccount             string                     `gorm:"column:login_account;type:varchar(255)" json:"login_account"`
-	Email                    string                     `gorm:"column:email;type:varchar(255);index:idx_video_user_email,priority:1;comment:三方邮箱" json:"email"`        // 三方邮箱
-	ThirdCode                string                     `gorm:"column:third_code;type:varchar(50);comment:三方唯一码" json:"third_code"`                                    // 三方唯一码
-	PackageCode              string                     `gorm:"column:package_code;type:varchar(128);not null;comment:package identifier" json:"package_code"`         // package identifier
-	IMEI                     string                     `gorm:"column:imei;type:varchar(50);comment:imei" json:"imei"`                                                 // imei
-	ServerCountry            string                     `gorm:"column:server_country;type:varchar(255);comment:ip获取国家" json:"server_country"`                          // ip获取国家
-	VIPLevel                 uint                       `gorm:"column:vip_level;type:int unsigned;not null;comment:VIP等级" json:"vip_level"`                            // VIP等级
-	Phone                    string                     `gorm:"column:phone;type:varchar(32);not null;index:idx_video_user_phone,priority:1;comment:手机号" json:"phone"` // 手机号
-	IsBlacklisted            int8                       `gorm:"column:is_blacklisted;type:tinyint unsigned;not null;comment:是否拉黑 1是 0否" json:"is_blacklisted"`         // 是否拉黑 1是 0否
-	IsFrozen                 int8                       `gorm:"column:is_frozen;type:tinyint unsigned;not null;comment:是否冻结 1是 0否" json:"is_frozen"`                   // 是否冻结 1是 0否
+	Email                    string                     `gorm:"column:email;type:varchar(255);index:idx_video_user_email,priority:1;comment:三方邮箱" json:"email"` // 三方邮箱
+	ThirdCode                string                     `gorm:"column:third_code;type:varchar(50);comment:三方唯一码" json:"third_code"`                             // 三方唯一码
+	PackageCode              string                     `gorm:"column:package_code;type:varchar(128);not null;comment:package identifier" json:"package_code"`  // package identifier
+	IMEI                     string                     `gorm:"column:imei;type:varchar(50);comment:imei" json:"imei"`                                          // imei
+	ServerCountry            string                     `gorm:"column:server_country;type:varchar(255);comment:ip获取国家" json:"server_country"`                   // ip获取国家
+	VIPLevel                 uint                       `gorm:"column:vip_level;type:int unsigned;not null;comment:VIP等级" json:"vip_level"`                     // VIP等级
+	Phone                    string                     `gorm:"column:phone;type:varchar(32);index:idx_video_user_phone,priority:1;comment:手机号" json:"phone"`   // 手机号
+	IsBlacklisted            int8                       `gorm:"column:is_blacklisted;type:tinyint unsigned;not null;comment:是否拉黑 1是 0否" json:"is_blacklisted"`  // 是否拉黑 1是 0否
+	IsFrozen                 int8                       `gorm:"column:is_frozen;type:tinyint unsigned;not null;comment:是否冻结 1是 0否" json:"is_frozen"`            // 是否冻结 1是 0否
 	CreatedAt                time.Time                  `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_user_created_at,priority:1" json:"created_at"`
 	UpdatedAt                time.Time                  `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt                gorm.DeletedAt             `gorm:"column:deleted_at;type:datetime(3);index:idx_video_user_deleted_at,priority:1" json:"deleted_at"`

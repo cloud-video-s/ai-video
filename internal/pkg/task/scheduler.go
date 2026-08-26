@@ -3,6 +3,7 @@ package task
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -14,7 +15,7 @@ type CronTask struct {
 	TypeName string        // task type name
 	Payload  interface{}   // task payload (will be JSON-marshaled)
 	Queue    string        // target queue (optional, defaults to "default")
-	Unique   time.Duration // if > 0, dedupe enqueues within this TTL (set < the cron interval)
+	Unique   time.Duration // if > 0, dedupe enqueues within this TTL
 }
 
 // Scheduler wraps asynq.Scheduler for cron jobs.
@@ -26,12 +27,20 @@ type CronTask struct {
 // deduplicated by Redis.
 type Scheduler struct {
 	scheduler *asynq.Scheduler
+	stopOnce  sync.Once
 }
 
 func NewScheduler(redisAddr, password string, db int) *Scheduler {
+	return NewSchedulerWithUsername(redisAddr, "", password, db)
+}
+
+// NewSchedulerWithUsername creates a scheduler for Redis deployments that use
+// ACL usernames. NewScheduler remains available for password-only deployments.
+func NewSchedulerWithUsername(redisAddr, username, password string, db int) *Scheduler {
 	s := asynq.NewScheduler(
 		asynq.RedisClientOpt{
 			Addr:     redisAddr,
+			Username: username,
 			Password: password,
 			DB:       db,
 		},
@@ -58,7 +67,6 @@ func (s *Scheduler) Register(ct CronTask) (string, error) {
 	if ct.Unique > 0 {
 		opts = append(opts, asynq.Unique(ct.Unique))
 	}
-
 	entryID, err := s.scheduler.Register(ct.Cron, task, opts...)
 	if err != nil {
 		return "", fmt.Errorf("register cron task [%s]: %w", ct.TypeName, err)
@@ -73,5 +81,8 @@ func (s *Scheduler) Start() error {
 
 // Stop shuts down the scheduler.
 func (s *Scheduler) Stop() {
-	s.scheduler.Shutdown()
+	if s == nil || s.scheduler == nil {
+		return
+	}
+	s.stopOnce.Do(s.scheduler.Shutdown)
 }

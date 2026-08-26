@@ -124,7 +124,7 @@ func (r *ModelRepo) ListEnabledByIDs(ctx context.Context, ids []int64) ([]model.
 		return []model.VideoModel{}, nil
 	}
 	var rows []model.VideoModel
-	err := dbFrom(ctx).Model(&model.VideoModel{}).
+	err := qFrom(ctx).UnderlyingDB().Model(&model.VideoModel{}).
 		Select(model.TableNameVideoModel+".*").
 		Joins("JOIN "+model.TableNameVideoPlatform+" ON "+model.TableNameVideoPlatform+".id = "+model.TableNameVideoModel+".platform_id").
 		Where(model.TableNameVideoModel+".id IN ?", ids).
@@ -138,7 +138,7 @@ func (r *ModelRepo) ListEnabledByIDs(ctx context.Context, ids []int64) ([]model.
 
 func (r *ModelRepo) listEnabled(ctx context.Context, modelType uint32) ([]model.VideoModel, error) {
 	var rows []model.VideoModel
-	db := dbFrom(ctx).Model(&model.VideoModel{}).
+	db := qFrom(ctx).UnderlyingDB().Model(&model.VideoModel{}).
 		Select(model.TableNameVideoModel+".*").
 		Joins("JOIN "+model.TableNameVideoPlatform+" ON "+model.TableNameVideoPlatform+".id = "+model.TableNameVideoModel+".platform_id").
 		Where(model.TableNameVideoModel+".status = ?", 1).

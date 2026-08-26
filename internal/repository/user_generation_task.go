@@ -25,7 +25,7 @@ func NewUserGenerationTaskRepo() *UserGenerationTaskRepo {
 // time.Time for these columns, so writing its zero value would otherwise turn
 // a SQL NULL into MySQL's zero date.
 func (r *UserGenerationTaskRepo) Create(ctx context.Context, task *model.VideoUserGenerationTask) error {
-	return dbFrom(ctx).Omit(
+	return qFrom(ctx).UnderlyingDB().Omit(
 		"User", "AIModel", "Template", "ThirdTaskCode", "SubmittedAt", "StartedAt", "FinishedAt", "LastPolledAt",
 	).Create(task).Error
 }
@@ -181,7 +181,7 @@ func (r *UserGenerationTaskRepo) PageAdmin(ctx context.Context, page, pageSize i
 	userTable := model.TableNameVideoUser
 	modelTable := model.TableNameVideoModel
 
-	dao := preloadGenerationTaskAdminRelations(dbFrom(ctx).Model(&model.VideoUserGenerationTask{})).
+	dao := preloadGenerationTaskAdminRelations(qFrom(ctx).UnderlyingDB().Model(&model.VideoUserGenerationTask{})).
 		Joins("LEFT JOIN " + userTable + " ON " + userTable + ".id = " + taskTable + ".user_id").
 		Joins("LEFT JOIN " + modelTable + " ON " + modelTable + ".id = " + taskTable + ".model_id")
 	if filter != nil {
@@ -234,7 +234,7 @@ func (r *UserGenerationTaskRepo) PageAdmin(ctx context.Context, page, pageSize i
 
 func (r *UserGenerationTaskRepo) GetAdminDetail(ctx context.Context, id uint64) (*model.VideoUserGenerationTask, error) {
 	var task model.VideoUserGenerationTask
-	if err := preloadGenerationTaskAdminRelations(dbFrom(ctx)).Where("id = ?", id).First(&task).Error; err != nil {
+	if err := preloadGenerationTaskAdminRelations(qFrom(ctx).UnderlyingDB()).Where("id = ?", id).First(&task).Error; err != nil {
 		return nil, err
 	}
 	return &task, nil
@@ -263,7 +263,7 @@ func (r *UserGenerationTaskRepo) ListActive(ctx context.Context, limit int, stat
 }
 
 func (r *UserGenerationTaskRepo) UpdateFields(ctx context.Context, task *model.VideoUserGenerationTask, fields ...string) error {
-	return dbFrom(ctx).Model(task).Select(fields).Updates(task).Error
+	return qFrom(ctx).UnderlyingDB().Model(task).Select(fields).Updates(task).Error
 }
 
 func (r *UserGenerationTaskRepo) MarkPolling(ctx context.Context, id uint64, at time.Time) error {
@@ -302,7 +302,7 @@ func (r *UserGenerationTaskRepo) tryClaim(
 	expectedStatus int,
 	claimedAt, staleBefore time.Time,
 ) (bool, error) {
-	result := dbFrom(ctx).Model(&model.VideoUserGenerationTask{}).
+	result := qFrom(ctx).UnderlyingDB().Model(&model.VideoUserGenerationTask{}).
 		Where("id = ? AND status = ? AND (last_polled_at IS NULL OR last_polled_at < ?)", id, expectedStatus, staleBefore).
 		Update("last_polled_at", claimedAt)
 	return result.RowsAffected == 1, result.Error

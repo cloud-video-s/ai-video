@@ -26,17 +26,14 @@ func Transaction(ctx context.Context, fn func(ctx context.Context) error) error 
 	})
 }
 
-// dbFrom returns the active *gorm.DB: the transaction stored in ctx if present,
-// otherwise the global app.DB. The ctx is always attached for cancellation.
-func dbFrom(ctx context.Context) *gorm.DB {
-	if tx, ok := ctx.Value(txKey{}).(*gorm.DB); ok && tx != nil {
-		return tx.WithContext(ctx)
-	}
-	return config.DB.WithContext(ctx)
-}
-
+// qFrom returns the generated query set bound to the active transaction and
+// request context. Repository code should enter the database through this
+// helper so transaction propagation and context cancellation stay consistent.
 func qFrom(ctx context.Context) *query.Query {
-	return query.Use(dbFrom(ctx))
+	if tx, ok := ctx.Value(txKey{}).(*gorm.DB); ok && tx != nil {
+		return query.Use(tx.WithContext(ctx))
+	}
+	return query.Use(config.DB.WithContext(ctx))
 }
 
 // QFrom returns the active Query helper bound to ctx (transaction-aware). This

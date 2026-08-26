@@ -20,6 +20,7 @@ var (
 	CasbinRule                       *casbinRule
 	VideoAPI                         *videoAPI
 	VideoAdjustAttribution           *videoAdjustAttribution
+	VideoAdjustMediaAd               *videoAdjustMediaAd
 	VideoAdjustPendingEvent          *videoAdjustPendingEvent
 	VideoAdmin                       *videoAdmin
 	VideoAdminRole                   *videoAdminRole
@@ -36,6 +37,7 @@ var (
 	VideoCountry                     *videoCountry
 	VideoDelayConfig                 *videoDelayConfig
 	VideoDisplayPosition             *videoDisplayPosition
+	VideoMediaAd                     *videoMediaAd
 	VideoMedium                      *videoMedium
 	VideoMenu                        *videoMenu
 	VideoMenuAPI                     *videoMenuAPI
@@ -69,6 +71,7 @@ var (
 	VideoUpload                      *videoUpload
 	VideoUser                        *videoUser
 	VideoUserAttribution             *videoUserAttribution
+	VideoUserAttributionHistory      *videoUserAttributionHistory
 	VideoUserGenerationTask          *videoUserGenerationTask
 	VideoUserPointsLedger            *videoUserPointsLedger
 	VideoUserTemplateComplaint       *videoUserTemplateComplaint
@@ -88,6 +91,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	CasbinRule = &Q.CasbinRule
 	VideoAPI = &Q.VideoAPI
 	VideoAdjustAttribution = &Q.VideoAdjustAttribution
+	VideoAdjustMediaAd = &Q.VideoAdjustMediaAd
 	VideoAdjustPendingEvent = &Q.VideoAdjustPendingEvent
 	VideoAdmin = &Q.VideoAdmin
 	VideoAdminRole = &Q.VideoAdminRole
@@ -104,6 +108,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoCountry = &Q.VideoCountry
 	VideoDelayConfig = &Q.VideoDelayConfig
 	VideoDisplayPosition = &Q.VideoDisplayPosition
+	VideoMediaAd = &Q.VideoMediaAd
 	VideoMedium = &Q.VideoMedium
 	VideoMenu = &Q.VideoMenu
 	VideoMenuAPI = &Q.VideoMenuAPI
@@ -137,6 +142,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoUpload = &Q.VideoUpload
 	VideoUser = &Q.VideoUser
 	VideoUserAttribution = &Q.VideoUserAttribution
+	VideoUserAttributionHistory = &Q.VideoUserAttributionHistory
 	VideoUserGenerationTask = &Q.VideoUserGenerationTask
 	VideoUserPointsLedger = &Q.VideoUserPointsLedger
 	VideoUserTemplateComplaint = &Q.VideoUserTemplateComplaint
@@ -157,6 +163,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		CasbinRule:                       newCasbinRule(db, opts...),
 		VideoAPI:                         newVideoAPI(db, opts...),
 		VideoAdjustAttribution:           newVideoAdjustAttribution(db, opts...),
+		VideoAdjustMediaAd:               newVideoAdjustMediaAd(db, opts...),
 		VideoAdjustPendingEvent:          newVideoAdjustPendingEvent(db, opts...),
 		VideoAdmin:                       newVideoAdmin(db, opts...),
 		VideoAdminRole:                   newVideoAdminRole(db, opts...),
@@ -173,6 +180,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoCountry:                     newVideoCountry(db, opts...),
 		VideoDelayConfig:                 newVideoDelayConfig(db, opts...),
 		VideoDisplayPosition:             newVideoDisplayPosition(db, opts...),
+		VideoMediaAd:                     newVideoMediaAd(db, opts...),
 		VideoMedium:                      newVideoMedium(db, opts...),
 		VideoMenu:                        newVideoMenu(db, opts...),
 		VideoMenuAPI:                     newVideoMenuAPI(db, opts...),
@@ -206,6 +214,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoUpload:                      newVideoUpload(db, opts...),
 		VideoUser:                        newVideoUser(db, opts...),
 		VideoUserAttribution:             newVideoUserAttribution(db, opts...),
+		VideoUserAttributionHistory:      newVideoUserAttributionHistory(db, opts...),
 		VideoUserGenerationTask:          newVideoUserGenerationTask(db, opts...),
 		VideoUserPointsLedger:            newVideoUserPointsLedger(db, opts...),
 		VideoUserTemplateComplaint:       newVideoUserTemplateComplaint(db, opts...),
@@ -227,6 +236,7 @@ type Query struct {
 	CasbinRule                       casbinRule
 	VideoAPI                         videoAPI
 	VideoAdjustAttribution           videoAdjustAttribution
+	VideoAdjustMediaAd               videoAdjustMediaAd
 	VideoAdjustPendingEvent          videoAdjustPendingEvent
 	VideoAdmin                       videoAdmin
 	VideoAdminRole                   videoAdminRole
@@ -243,6 +253,7 @@ type Query struct {
 	VideoCountry                     videoCountry
 	VideoDelayConfig                 videoDelayConfig
 	VideoDisplayPosition             videoDisplayPosition
+	VideoMediaAd                     videoMediaAd
 	VideoMedium                      videoMedium
 	VideoMenu                        videoMenu
 	VideoMenuAPI                     videoMenuAPI
@@ -276,6 +287,7 @@ type Query struct {
 	VideoUpload                      videoUpload
 	VideoUser                        videoUser
 	VideoUserAttribution             videoUserAttribution
+	VideoUserAttributionHistory      videoUserAttributionHistory
 	VideoUserGenerationTask          videoUserGenerationTask
 	VideoUserPointsLedger            videoUserPointsLedger
 	VideoUserTemplateComplaint       videoUserTemplateComplaint
@@ -300,6 +312,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		CasbinRule:                       q.CasbinRule.clone(db),
 		VideoAPI:                         q.VideoAPI.clone(db),
 		VideoAdjustAttribution:           q.VideoAdjustAttribution.clone(db),
+		VideoAdjustMediaAd:               q.VideoAdjustMediaAd.clone(db),
 		VideoAdjustPendingEvent:          q.VideoAdjustPendingEvent.clone(db),
 		VideoAdmin:                       q.VideoAdmin.clone(db),
 		VideoAdminRole:                   q.VideoAdminRole.clone(db),
@@ -316,6 +329,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoCountry:                     q.VideoCountry.clone(db),
 		VideoDelayConfig:                 q.VideoDelayConfig.clone(db),
 		VideoDisplayPosition:             q.VideoDisplayPosition.clone(db),
+		VideoMediaAd:                     q.VideoMediaAd.clone(db),
 		VideoMedium:                      q.VideoMedium.clone(db),
 		VideoMenu:                        q.VideoMenu.clone(db),
 		VideoMenuAPI:                     q.VideoMenuAPI.clone(db),
@@ -349,6 +363,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoUpload:                      q.VideoUpload.clone(db),
 		VideoUser:                        q.VideoUser.clone(db),
 		VideoUserAttribution:             q.VideoUserAttribution.clone(db),
+		VideoUserAttributionHistory:      q.VideoUserAttributionHistory.clone(db),
 		VideoUserGenerationTask:          q.VideoUserGenerationTask.clone(db),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.clone(db),
 		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.clone(db),
@@ -378,6 +393,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		CasbinRule:                       q.CasbinRule.replaceDB(db),
 		VideoAPI:                         q.VideoAPI.replaceDB(db),
 		VideoAdjustAttribution:           q.VideoAdjustAttribution.replaceDB(db),
+		VideoAdjustMediaAd:               q.VideoAdjustMediaAd.replaceDB(db),
 		VideoAdjustPendingEvent:          q.VideoAdjustPendingEvent.replaceDB(db),
 		VideoAdmin:                       q.VideoAdmin.replaceDB(db),
 		VideoAdminRole:                   q.VideoAdminRole.replaceDB(db),
@@ -394,6 +410,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoCountry:                     q.VideoCountry.replaceDB(db),
 		VideoDelayConfig:                 q.VideoDelayConfig.replaceDB(db),
 		VideoDisplayPosition:             q.VideoDisplayPosition.replaceDB(db),
+		VideoMediaAd:                     q.VideoMediaAd.replaceDB(db),
 		VideoMedium:                      q.VideoMedium.replaceDB(db),
 		VideoMenu:                        q.VideoMenu.replaceDB(db),
 		VideoMenuAPI:                     q.VideoMenuAPI.replaceDB(db),
@@ -427,6 +444,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoUpload:                      q.VideoUpload.replaceDB(db),
 		VideoUser:                        q.VideoUser.replaceDB(db),
 		VideoUserAttribution:             q.VideoUserAttribution.replaceDB(db),
+		VideoUserAttributionHistory:      q.VideoUserAttributionHistory.replaceDB(db),
 		VideoUserGenerationTask:          q.VideoUserGenerationTask.replaceDB(db),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.replaceDB(db),
 		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.replaceDB(db),
@@ -446,6 +464,7 @@ type queryCtx struct {
 	CasbinRule                       ICasbinRuleDo
 	VideoAPI                         IVideoAPIDo
 	VideoAdjustAttribution           IVideoAdjustAttributionDo
+	VideoAdjustMediaAd               IVideoAdjustMediaAdDo
 	VideoAdjustPendingEvent          IVideoAdjustPendingEventDo
 	VideoAdmin                       IVideoAdminDo
 	VideoAdminRole                   IVideoAdminRoleDo
@@ -462,6 +481,7 @@ type queryCtx struct {
 	VideoCountry                     IVideoCountryDo
 	VideoDelayConfig                 IVideoDelayConfigDo
 	VideoDisplayPosition             IVideoDisplayPositionDo
+	VideoMediaAd                     IVideoMediaAdDo
 	VideoMedium                      IVideoMediumDo
 	VideoMenu                        IVideoMenuDo
 	VideoMenuAPI                     IVideoMenuAPIDo
@@ -495,6 +515,7 @@ type queryCtx struct {
 	VideoUpload                      IVideoUploadDo
 	VideoUser                        IVideoUserDo
 	VideoUserAttribution             IVideoUserAttributionDo
+	VideoUserAttributionHistory      IVideoUserAttributionHistoryDo
 	VideoUserGenerationTask          IVideoUserGenerationTaskDo
 	VideoUserPointsLedger            IVideoUserPointsLedgerDo
 	VideoUserTemplateComplaint       IVideoUserTemplateComplaintDo
@@ -514,6 +535,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		CasbinRule:                       q.CasbinRule.WithContext(ctx),
 		VideoAPI:                         q.VideoAPI.WithContext(ctx),
 		VideoAdjustAttribution:           q.VideoAdjustAttribution.WithContext(ctx),
+		VideoAdjustMediaAd:               q.VideoAdjustMediaAd.WithContext(ctx),
 		VideoAdjustPendingEvent:          q.VideoAdjustPendingEvent.WithContext(ctx),
 		VideoAdmin:                       q.VideoAdmin.WithContext(ctx),
 		VideoAdminRole:                   q.VideoAdminRole.WithContext(ctx),
@@ -530,6 +552,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoCountry:                     q.VideoCountry.WithContext(ctx),
 		VideoDelayConfig:                 q.VideoDelayConfig.WithContext(ctx),
 		VideoDisplayPosition:             q.VideoDisplayPosition.WithContext(ctx),
+		VideoMediaAd:                     q.VideoMediaAd.WithContext(ctx),
 		VideoMedium:                      q.VideoMedium.WithContext(ctx),
 		VideoMenu:                        q.VideoMenu.WithContext(ctx),
 		VideoMenuAPI:                     q.VideoMenuAPI.WithContext(ctx),
@@ -563,6 +586,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoUpload:                      q.VideoUpload.WithContext(ctx),
 		VideoUser:                        q.VideoUser.WithContext(ctx),
 		VideoUserAttribution:             q.VideoUserAttribution.WithContext(ctx),
+		VideoUserAttributionHistory:      q.VideoUserAttributionHistory.WithContext(ctx),
 		VideoUserGenerationTask:          q.VideoUserGenerationTask.WithContext(ctx),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.WithContext(ctx),
 		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.WithContext(ctx),

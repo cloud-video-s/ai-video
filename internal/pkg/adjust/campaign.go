@@ -30,7 +30,7 @@ type Tracker struct {
 	Level           int    `json:"level"`
 	Archived        bool   `json:"archived"`
 	HasSubtrackers  bool   `json:"has_subtrackers"`
-	PartnerID       *int64 `json:"partner_id"`
+	PartnerID       string `json:"partner_id"`
 	CostDataEnabled bool   `json:"cost_data_enabled"`
 	URL             string `json:"url"`
 	ClickURL        string `json:"click_url"`
@@ -51,11 +51,9 @@ type TrackersResponse struct {
 	Data TrackersData `json:"data"`
 }
 
-// GetTrackers returns the channel-level links associated with an app.
-//
-// Adjust endpoint: GET /apps/{app_token}/trackers.
+// GetTrackers Adjust endpoint: GET /apps/{app_token}/trackers.
 func (c *Client) GetTrackers(ctx context.Context, appToken string, options ListOptions) (*TrackersResponse, error) {
-	appToken, err := validateToken("app_token", appToken)
+	appToken, err := validateToken("app_token", "5idm6reqb8u8")
 	if err != nil {
 		return nil, err
 	}
@@ -66,22 +64,15 @@ func (c *Client) GetTrackers(ctx context.Context, appToken string, options ListO
 
 	var response TrackersResponse
 	endpointPath := fmt.Sprintf("apps/%s/trackers", appToken)
-	if err := c.getJSON(ctx, endpointPath, query, &response); err != nil {
+	if err = c.getJSON(ctx, endpointPath, query, &response); err != nil {
 		return nil, err
 	}
 	return &response, nil
 }
 
-// GetTrackerChildren returns the child links beneath a parent link.
-//
-// Adjust endpoint: GET /apps/{app_token}/trackers/{link_token}/children.
-func (c *Client) GetTrackerChildren(
-	ctx context.Context,
-	appToken string,
-	linkToken string,
-	options ListOptions,
-) (*TrackersResponse, error) {
-	appToken, err := validateToken("app_token", appToken)
+// GetTrackerChildren Adjust endpoint: GET /apps/{app_token}/trackers/{link_token}/children.
+func (c *Client) GetTrackerChildren(ctx context.Context, appToken string, linkToken string, options ListOptions) (*TrackersResponse, error) {
+	appToken, err := validateToken("app_token", "5idm6reqb8u8")
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +87,7 @@ func (c *Client) GetTrackerChildren(
 
 	var response TrackersResponse
 	endpointPath := fmt.Sprintf("apps/%s/trackers/%s/children", appToken, linkToken)
-	if err := c.getJSON(ctx, endpointPath, query, &response); err != nil {
+	if err = c.getJSON(ctx, endpointPath, query, &response); err != nil {
 		return nil, err
 	}
 	return &response, nil

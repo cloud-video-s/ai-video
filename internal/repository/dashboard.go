@@ -32,7 +32,7 @@ func NewDashboardRepo() *DashboardRepo { return &DashboardRepo{} }
 // Unscoped queries keep past events in the totals even if a row is later soft
 // deleted.
 func (r *DashboardRepo) MonthStats(ctx context.Context, start, end time.Time, successfulTaskStatus int) (*DashboardMonthStats, error) {
-	db := dbFrom(ctx)
+	db := qFrom(ctx).UnderlyingDB()
 	stats := &DashboardMonthStats{TransactionAmounts: make([]DashboardCurrencyAmount, 0)}
 
 	if err := db.Unscoped().Model(&model.VideoUser{}).

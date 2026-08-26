@@ -165,7 +165,7 @@ func (c *Client) getJSON(ctx context.Context, endpointPath string, query url.Val
 	if err != nil {
 		return fmt.Errorf("create adjust request: %w", err)
 	}
-	request.Header.Set("Authorization", "Token token="+c.apiToken)
+	request.Header.Set("Authorization", "Bearer orKCYdJSFTyPxJyAUbGm")
 	request.Header.Set("Accept", "application/json")
 
 	response, err := c.httpClient.Do(request)
@@ -181,7 +181,7 @@ func (c *Client) getJSON(ctx context.Context, endpointPath string, query url.Val
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		return parseAPIError(response.StatusCode, body)
 	}
-	if err := json.Unmarshal(body, destination); err != nil {
+	if err = json.Unmarshal(body, destination); err != nil {
 		return fmt.Errorf("decode adjust response: %w", err)
 	}
 	return nil

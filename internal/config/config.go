@@ -160,20 +160,22 @@ type OIDCProviderConfig struct {
 	JWKSURL   string   `mapstructure:"jwks_url"`
 }
 
-// AdjustConfig controls inbound attribution callbacks and outbound S2S events
-// independently. CallbackToken is an application-defined callback credential;
-// Adjust does not prescribe its length. Tracker channel keys may be Adjust
-// tracker tokens or tracker names; token matches win.
+// AdjustConfig controls inbound attribution callbacks, outbound S2S events,
+// and Campaign API tracker synchronization independently. CallbackToken is an
+// application-defined callback credential; Adjust does not prescribe its
+// length. Tracker channel keys may be Adjust tracker tokens or tracker names;
+// token matches win.
 type AdjustConfig struct {
-	Enabled          bool              `mapstructure:"enabled"`
-	EventEnabled     bool              `mapstructure:"event_enabled"`
-	CallbackToken    string            `mapstructure:"callback_token"`
-	MaxBodyBytes     int64             `mapstructure:"max_body_bytes"`
-	TrackerChannels  map[string]string `mapstructure:"tracker_channels"`
-	EventAuthToken   string            `mapstructure:"event_auth_token"`
-	EventBaseURL     string            `mapstructure:"event_base_url"`
-	EventEnvironment string            `mapstructure:"event_environment"`
-	EventAppTokens   map[string]string `mapstructure:"event_app_tokens"`
+	Enabled            bool              `mapstructure:"enabled"`
+	EventEnabled       bool              `mapstructure:"event_enabled"`
+	TrackerSyncEnabled bool              `mapstructure:"tracker_sync_enabled"`
+	MaxBodyBytes       int64             `mapstructure:"max_body_bytes"`
+	TrackerChannels    map[string]string `mapstructure:"tracker_channels"`
+	CampaignAppToken   string            `mapstructure:"campaign_app_token"`
+	CampaignBaseURL    string            `mapstructure:"campaign_base_url"`
+	EventBaseURL       string            `mapstructure:"event_base_url"`
+	EventEnvironment   string            `mapstructure:"event_environment"`
+	EventAppTokens     map[string]string `mapstructure:"event_app_tokens"`
 }
 
 // AppStoreConfig contains the App Store Connect API key metadata used to call
@@ -275,9 +277,13 @@ func setConfigDefaults() {
 	viper.SetDefault("third_party_auth.apple.jwks_url", "https://appleid.apple.com/auth/keys")
 	viper.SetDefault("adjust.enabled", false)
 	viper.SetDefault("adjust.event_enabled", true)
+	viper.SetDefault("adjust.tracker_sync_enabled", false)
 	viper.SetDefault("adjust.callback_token", "")
 	viper.SetDefault("adjust.max_body_bytes", int64(65536))
 	viper.SetDefault("adjust.tracker_channels", map[string]string{})
+	viper.SetDefault("adjust.campaign_api_token", "")
+	viper.SetDefault("adjust.campaign_app_token", "")
+	viper.SetDefault("adjust.campaign_base_url", "https://api.adjust.com/public/v2")
 	viper.SetDefault("adjust.event_auth_token", "")
 	viper.SetDefault("adjust.event_base_url", "https://s2s.adjust.com")
 	viper.SetDefault("adjust.event_environment", "production")
@@ -412,10 +418,44 @@ func validateConfig() error {
 			}
 		}
 	}
+	if Cfg.Adjust.TrackerSyncEnabled {
+		if len(Cfg.Task.Queues) > 0 {
+			hasDefaultQueue := false
+			for _, queue := range Cfg.Task.Queues {
+				if strings.TrimSpace(queue) == "default" {
+					hasDefaultQueue = true
+					break
+				}
+			}
+			if !hasDefaultQueue {
+				return fmt.Errorf("task.queues must contain default when Adjust tracker sync is enabled")
+			}
+		}
+		if !isConfigAlphaNumeric(strings.TrimSpace(Cfg.Adjust.CampaignAppToken)) {
+			return fmt.Errorf("adjust.campaign_app_token must be a non-empty alphanumeric token when tracker sync is enabled")
+		}
+		if strings.TrimSpace(Cfg.Adjust.CampaignBaseURL) == "" {
+			return fmt.Errorf("adjust.campaign_base_url is required when tracker sync is enabled")
+		}
+	}
 	if Cfg.Server.Mode == "release" {
 		if len(Cfg.JWT.Secret) < 32 {
 			return fmt.Errorf("jwt.secret must be at least 32 bytes in release mode")
 		}
 	}
 	return nil
+}
+
+func isConfigAlphaNumeric(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, character := range value {
+		if (character < 'a' || character > 'z') &&
+			(character < 'A' || character > 'Z') &&
+			(character < '0' || character > '9') {
+			return false
+		}
+	}
+	return true
 }

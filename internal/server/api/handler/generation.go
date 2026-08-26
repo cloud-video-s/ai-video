@@ -51,10 +51,6 @@ func (h *GenerationHandler) Create(c *gin.Context) {
 		response.Fail(c, errcode.ErrParam, "参数错误: "+err.Error())
 		return
 	}
-	if !h.authService.CheckUserVIP(c, middleware.GetAPIUserID(c)) {
-		response.Fail(c, errcode.ErrParam, "You don’t have an active subscription, or it has expired.")
-		return
-	}
 	task, err := h.manager.CreateTask(c.Request.Context(), middleware.GetAPIUserID(c), &request)
 	if err != nil {
 		response.FailWithStatus(c, http.StatusBadGateway, errcode.ErrServer, err.Error())
@@ -69,10 +65,6 @@ func (h *GenerationHandler) CreateFromTemplate(c *gin.Context) {
 	var request generation.CreateTemplateTaskRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		response.Fail(c, errcode.ErrParam, "invalid parameters: "+err.Error())
-		return
-	}
-	if !h.authService.CheckUserVIP(c, middleware.GetAPIUserID(c)) {
-		response.Fail(c, errcode.ErrParam, "You don’t have an active subscription, or it has expired.")
 		return
 	}
 	task, err := h.manager.CreateTemplateTask(c.Request.Context(), middleware.GetAPIUserID(c), &request)

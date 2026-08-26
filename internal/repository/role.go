@@ -215,7 +215,7 @@ func (d *RoleRepo) ReplacePolicies(ctx context.Context, roleCode string, policie
 		return fmt.Errorf("角色编码不能为空")
 	}
 	return Transaction(ctx, func(txCtx context.Context) error {
-		db := dbFrom(txCtx)
+		db := qFrom(txCtx).UnderlyingDB()
 		if err := db.Where("ptype = ? AND v0 = ?", "p", roleCode).
 			Delete(&model.CasbinRule{}).Error; err != nil {
 			return err

@@ -79,7 +79,7 @@
         <el-table-column label="投放范围" min-width="300">
           <template #default="{ row }">
             <div class="scope-summary"><span>应用</span>{{ targetSummary(row.apps, 'name', '全部应用') }}</div>
-            <div class="scope-summary"><span>安装包</span>{{ targetSummary(row.packages, 'package_name', '未关联安装包') }}</div>
+            <div class="scope-summary"><span>安装包</span>{{ targetSummary(row.packages, 'package_name', '全部安装包') }}</div>
             <div class="scope-summary"><span>版本</span>{{ targetSummary(row.package_version, 'version_code', '全部版本') }}</div>
             <div class="scope-summary"><span>地区/渠道</span>{{ countryChannelSummary(row) }}</div>
           </template>
@@ -104,19 +104,9 @@
             <div class="secondary-text">{{ resourceTypeLabel(row.resource_type) }}</div>
           </template>
         </el-table-column>
-        <el-table-column prop="icon" label="角标图片" width="116" align="center">
+        <el-table-column prop="icon" label="角标文案" min-width="140" align="center">
           <template #default="{ row }">
-            <el-image
-              v-if="row.icon"
-              class="badge-image"
-              :src="toMediaURL(row.icon)"
-              fit="contain"
-              preview-teleported
-              :preview-src-list="[toMediaURL(row.icon)]"
-            >
-              <template #error><span class="badge-image-error">加载失败</span></template>
-            </el-image>
-            <span v-else>-</span>
+            <span>{{ row.icon || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="90" align="center" fixed="right">
@@ -188,14 +178,14 @@
             <el-select v-if="targetModes.packages === 'selected'" v-model="form.package_codes" multiple collapse-tags collapse-tags-tooltip clearable filterable placeholder="请选择安装包" style="width: 100%" @change="handlePackageSelectionChange">
               <el-option v-for="item in formPackageOptions" :key="item.package_code" :label="packageLabel(item)" :value="item.package_code" />
             </el-select>
-            <div class="scope-tip">积分购买必须至少关联一个安装包；“全部”会写入当前应用范围内的所有安装包。</div>
+            <div class="scope-tip">全部安装包不写入安装包和版本关联记录。</div>
           </div>
         </el-form-item>
-        <el-form-item v-if="form.package_codes.length" label="版本">
+        <el-form-item v-if="(targetModes.apps === 'all' || form.app_codes.length) && (targetModes.packages === 'all' || form.package_codes.length)" label="版本">
           <div class="scope-field">
             <el-radio-group v-model="targetModes.versions" @change="handleVersionModeChange">
               <el-radio-button value="all">全部版本</el-radio-button>
-              <el-radio-button value="selected">指定版本</el-radio-button>
+              <el-radio-button value="selected" :disabled="targetModes.packages === 'all'">指定版本</el-radio-button>
             </el-radio-group>
             <el-select v-if="targetModes.versions === 'selected'" v-model="form.version_codes" multiple collapse-tags collapse-tags-tooltip clearable filterable placeholder="请选择版本" style="width: 100%">
               <el-option v-for="item in formVersionOptions" :key="item.version_code" :label="item.label" :value="item.version_code" />
@@ -223,15 +213,7 @@
           <el-form-item label="销售金额" prop="sale_price"><el-input-number v-model="form.sale_price" :min="0" :max="9999999999.99" :precision="2" controls-position="right" /></el-form-item>
           <el-form-item label="实际收入" prop="actual_revenue"><el-input-number v-model="form.actual_revenue" :min="0" :max="9999999999.99" :precision="2" controls-position="right" /></el-form-item>
           <el-form-item label="划线价" prop="original_price"><el-input-number v-model="form.original_price" :min="0" :max="9999999999.99" :precision="2" controls-position="right" /></el-form-item>
-          <el-form-item label="角标图片" class="full-grid-item">
-            <LogoImageUploader
-              v-model="form.icon"
-              image-name="积分套餐角标"
-              placeholder="上传图片或输入图片 URL"
-              :max-file-size="5 * 1024 * 1024"
-              :upload-disabled="!canUpload"
-            />
-          </el-form-item>
+          <el-form-item label="角标文案"><el-input v-model="form.icon" maxlength="100" placeholder="例如：限时优惠、最受欢迎" /></el-form-item>
           <el-form-item label="按钮文案"><el-input v-model="form.button_text" maxlength="128" placeholder="例如：获取更多积分" /></el-form-item>
           <el-form-item label="排序"><el-input-number v-model="form.sort" :min="0" :max="999999" controls-position="right" /></el-form-item>
           <el-form-item label="是否默认"><el-switch v-model="form.is_default" active-text="是" inactive-text="否" /></el-form-item>
@@ -245,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { getBannerDeliveryOptions, type BannerDeliveryApp, type BannerDeliveryPackage, type BannerDeliveryVersion } from '@/api/banner'
 import { getChannelOptions, type Channel } from '@/api/channel'
@@ -261,9 +243,7 @@ import {
   type PointsPackagePayload,
 } from '@/api/points'
 import { useUserStore } from '@/store/user'
-import LogoImageUploader from '@/components/LogoImageUploader.vue'
 import { useRemoteTableSort } from '@/utils/tableSort'
-import { toMediaURL } from '@/utils/mediaUrl'
 
 type TargetMode = 'all' | 'selected'
 type PointsForm = PointsPackagePayload & { id: number }
@@ -272,7 +252,6 @@ const userStore = useUserStore()
 const canAdd = computed(() => userStore.hasPermission('subscription:points:add'))
 const canEdit = computed(() => userStore.hasPermission('subscription:points:edit'))
 const canDelete = computed(() => userStore.hasPermission('subscription:points:delete'))
-const canUpload = computed(() => userStore.hasPermission('system:upload'))
 const allSystemOptions = ['android', 'ios', 'pc', 'harmony', 'web', 'other']
 const resourceTypeOptions = [{ value: 'credits', label: '积分包' }, { value: 'word_pack', label: '字数包' }, { value: 'image_pack', label: '图片包' }]
 const countryOptions = ref<Country[]>([])
@@ -290,7 +269,7 @@ const total = ref(0)
 const { sortParams, handleSortChange } = useRemoteTableSort(page, fetchData)
 const query = reactive({ app_code: '', package_code: '', version_code: '', country_code: '', channel_code: '', system: '', user_type: '', resource_type: '', status: '', keyword: '' })
 const targetModes = reactive<Record<'countries' | 'apps' | 'packages' | 'versions' | 'channels', TargetMode>>({
-  countries: 'all', apps: 'selected', packages: 'selected', versions: 'all', channels: 'all',
+  countries: 'all', apps: 'all', packages: 'all', versions: 'all', channels: 'all',
 })
 
 function createDefaultForm(): PointsForm {
@@ -304,7 +283,6 @@ const form = reactive<PointsForm>(createDefaultForm())
 const rules: FormRules = {
   product_code: [{ required: true, message: '请输入产品 ID', trigger: 'blur' }, { pattern: /^[A-Za-z0-9._-]+$/, message: '仅支持字母、数字、点、下划线和中划线', trigger: 'blur' }],
   name: [{ required: true, message: '请输入积分名称', trigger: 'blur' }],
-  package_codes: [{ type: 'array', required: true, min: 1, message: '请至少选择一个安装包', trigger: 'change' }],
   systems: [{ required: true, type: 'array', min: 1, message: '请至少选择一个系统', trigger: 'change' }],
   user_types: [{ required: true, type: 'array', min: 1, message: '请至少选择一种用户类型', trigger: 'change' }],
   resource_type: [{ required: true, message: '请选择资源类型', trigger: 'change' }],
@@ -382,7 +360,6 @@ async function fetchOptions() {
   countryOptions.value = arrayValue(countryRes.data)
   channelOptions.value = arrayValue(channelRes.data)
   deliveryOptions.value = arrayValue(deliveryRes.data)
-  syncAllPackageCodes()
 }
 async function fetchData() {
   loading.value = true
@@ -405,7 +382,7 @@ function handleFilterAppChange() { query.package_code = ''; query.version_code =
 
 function openCreate() {
   Object.assign(form, createDefaultForm())
-  Object.assign(targetModes, { countries: 'all', apps: 'selected', packages: 'selected', versions: 'all', channels: 'all' })
+  Object.assign(targetModes, { countries: 'all', apps: 'all', packages: 'all', versions: 'all', channels: 'all' })
   dialogVisible.value = true
 }
 function openEdit(row: Points) {
@@ -424,26 +401,44 @@ function openEdit(row: Points) {
   })
   Object.assign(targetModes, {
     countries: countryCodes.length ? 'selected' : 'all', apps: appCodes.length ? 'selected' : 'all',
-    packages: 'selected', versions: versionCodes.length ? 'selected' : 'all', channels: channelCodes.length ? 'selected' : 'all',
+    packages: packageCodes.length ? 'selected' : 'all', versions: versionCodes.length ? 'selected' : 'all', channels: channelCodes.length ? 'selected' : 'all',
   })
   const availablePackages = formPackageOptions.value.map((item) => item.package_code)
-  if (availablePackages.length && availablePackages.length === packageCodes.length && availablePackages.every((code) => packageCodes.includes(code))) targetModes.packages = 'all'
+  if (!packageCodes.length || (availablePackages.length && availablePackages.length === packageCodes.length && availablePackages.every((code) => packageCodes.includes(code)))) {
+    targetModes.packages = 'all'
+    form.package_codes = []
+    targetModes.versions = 'all'
+    form.version_codes = []
+  }
   dialogVisible.value = true
 }
 
 function handleCountryModeChange(value: string | number | boolean | undefined) { if (value === 'all') form.country_codes = [] }
 function handleChannelModeChange(value: string | number | boolean | undefined) { if (value === 'all') form.channel_codes = [] }
-function handleAppModeChange(value: string | number | boolean | undefined) { if (value === 'all') form.app_codes = []; handleAppSelectionChange() }
-function handlePackageModeChange(value: string | number | boolean | undefined) { if (value === 'all') syncAllPackageCodes(); handlePackageSelectionChange(); clearPackageValidation() }
+function handleAppModeChange(value: string | number | boolean | undefined) {
+  if (value === 'all') {
+    form.app_codes = []
+    targetModes.packages = 'all'
+    form.package_codes = []
+    targetModes.versions = 'all'
+    form.version_codes = []
+  }
+  handleAppSelectionChange()
+}
+function handlePackageModeChange(value: string | number | boolean | undefined) {
+  if (value === 'all') {
+    form.package_codes = []
+    targetModes.versions = 'all'
+    form.version_codes = []
+  }
+  handlePackageSelectionChange()
+}
 function handleVersionModeChange(value: string | number | boolean | undefined) { if (value === 'all') form.version_codes = [] }
-function syncAllPackageCodes() { if (targetModes.packages === 'all') form.package_codes = formPackageOptions.value.map((item) => item.package_code) }
-function clearPackageValidation() { void nextTick(() => { if (form.package_codes.length) formRef.value?.clearValidate('package_codes') }) }
 function handleAppSelectionChange() {
   const allowed = new Set(formPackageOptions.value.map((item) => item.package_code))
-  if (targetModes.packages === 'all') syncAllPackageCodes()
+  if (targetModes.packages === 'all') form.package_codes = []
   else form.package_codes = form.package_codes.filter((code) => allowed.has(code))
   handlePackageSelectionChange()
-  clearPackageValidation()
 }
 function handlePackageSelectionChange() {
   const allowed = new Set(formVersionOptions.value.map((item) => item.version_code))
@@ -452,19 +447,17 @@ function handlePackageSelectionChange() {
 }
 
 async function handleSubmit() {
-  syncAllPackageCodes()
-  await nextTick()
   await formRef.value?.validate()
   if (targetModes.countries === 'selected' && !form.country_codes.length) return void ElMessage.warning('请选择国家，或切换为全部国家')
   if (targetModes.apps === 'selected' && !form.app_codes.length) return void ElMessage.warning('请选择应用，或切换为全部应用')
-  if (!form.package_codes.length) return void ElMessage.warning('请至少选择一个安装包')
+  if (targetModes.packages === 'selected' && !form.package_codes.length) return void ElMessage.warning('请选择安装包，或切换为全部安装包')
   if (targetModes.versions === 'selected' && !form.version_codes.length) return void ElMessage.warning('请选择版本，或切换为全部版本')
   if (targetModes.channels === 'selected' && !form.channel_codes.length) return void ElMessage.warning('请选择渠道，或切换为全部渠道')
   submitting.value = true
   try {
     const payload: PointsPackagePayload = {
       product_code: form.product_code.trim(), name: form.name.trim(), app_codes: targetModes.apps === 'all' ? [] : [...form.app_codes],
-      package_codes: [...form.package_codes], version_codes: targetModes.versions === 'all' ? [] : [...form.version_codes],
+      package_codes: targetModes.packages === 'all' ? [] : [...form.package_codes], version_codes: targetModes.versions === 'all' ? [] : [...form.version_codes],
       country_codes: targetModes.countries === 'all' ? [] : [...form.country_codes], channel_codes: targetModes.channels === 'all' ? [] : [...form.channel_codes],
       systems: form.systems.map((value) => value.toLowerCase()), user_types: [...form.user_types], resource_type: form.resource_type.trim().toLowerCase(),
       points: form.points, currency: form.currency.trim().toUpperCase(), sale_price: Number(form.sale_price), actual_revenue: Number(form.actual_revenue),
@@ -502,8 +495,6 @@ onMounted(() => Promise.all([fetchOptions(), fetchData()]))
 .scope-summary { overflow: hidden; margin: 2px 0; color: #606266; text-overflow: ellipsis; white-space: nowrap; }
 .scope-summary span { display: inline-block; width: 58px; color: #909399; }
 .points-value { color: #409eff; font-size: 16px; }
-.badge-image { width: 72px; height: 40px; border: 1px solid #ebeef5; border-radius: 4px; background: #fafafa; }
-.badge-image-error { color: #c0c4cc; font-size: 11px; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; overflow-x: auto; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; }
 .full-grid-item { grid-column: 1 / -1; }

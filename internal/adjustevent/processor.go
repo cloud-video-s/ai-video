@@ -241,7 +241,7 @@ func (processor *processor) processReport(ctx context.Context, message Message) 
 	if err != nil {
 		return err
 	}
-	appToken := config.Cfg.Adjust.EventAuthToken
+	appToken := config.Cfg.Adjust.CampaignAppToken
 	deviceIDs := map[adjust.DeviceIDType]string{}
 	if attribution.Idfa == "" {
 		if attribution.AndroidID != "" {

@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"ai-video/internal/config"
+	"ai-video/internal/pkg/utils"
 	"context"
 	"errors"
 	"strings"
@@ -191,17 +193,11 @@ func (r *UserAttributionRepo) Update(ctx context.Context, item *model.VideoUserA
 }
 
 // ApplyFusedAttribution locks the user-level acquisition snapshot and applies
-// a completed Adjust fusion. The first valid install wins; install_update may
-// only correct the same ADID and can never replace another acquisition.
-func (r *UserAttributionRepo) ApplyFusedAttribution(
-	ctx context.Context,
-	item *FusedUserAttribution,
-	allowCorrection bool,
-) (bool, error) {
+func (r *UserAttributionRepo) ApplyFusedAttribution(ctx context.Context, item *model.VideoUserAttribution) (bool, error) {
 	if item == nil || item.UserID == 0 {
 		return false, gorm.ErrInvalidData
 	}
-	adjustADID := strings.TrimSpace(item.AdjustADID)
+	adjustADID := strings.TrimSpace(item.AdjustAdid)
 	if adjustADID == "" {
 		return false, gorm.ErrInvalidData
 	}
@@ -223,13 +219,13 @@ func (r *UserAttributionRepo) ApplyFusedAttribution(
 	if boundErr != nil && !errors.Is(boundErr, gorm.ErrRecordNotFound) {
 		return false, boundErr
 	}
-
 	now := time.Now()
 	updates := map[string]any{
 		"app_code": item.AppCode, "user_id": item.UserID, "adjust_adid": adjustADID,
 		"channel_id": item.ChannelID, "media_id": item.MediaID,
 		"attributed_ad_id": item.AttributedAdID, "attributed_point_id": item.AttributedPointID,
 		"oaid": item.Idfa, "imei": item.IMEI, "android_id": "", "google_ad_id": item.GoogleAdID,
+		"ad_account_id": item.AdAccountID, "network": item.Network, "campaign": item.Campaign, "adgroup": item.Adgroup, "creative": item.Creative,
 		"idfa": item.Idfa, "idfv": item.Idfa, "user_agent": item.UserAgent, "device_ip": item.DeviceIP,
 		"activity_kind": item.ActivityKind, "attribution_type": item.AttributionType,
 		"is_organic": item.IsOrganic, "reattributed": item.Reattributed, "is_redownload": item.IsRedownload,
@@ -258,17 +254,19 @@ func (r *UserAttributionRepo) ApplyFusedAttribution(
 		if createErr != nil {
 			return false, createErr
 		}
+		go r.SaveUserAttribution(ctx, item)
 		return true, nil
 	}
 
 	existingADID := strings.TrimSpace(existing.AdjustAdid)
-	if existingADID != "" && (!allowCorrection || existingADID != adjustADID) {
+	if existingADID != "" && existingADID != adjustADID {
 		return false, nil
 	}
 	_, err = q.WithContext(ctx).Unscoped().Where(q.ID.Eq(existing.ID)).Updates(updates)
 	if err != nil {
 		return false, err
 	}
+	go r.SaveUserAttribution(ctx, item)
 	return true, nil
 }
 
@@ -361,19 +359,57 @@ func (r *UserAttributionRepo) SyncUsers(ctx context.Context) (int64, error) {
 	}
 }
 
-func reachedColumn(event string) string {
-	switch strings.TrimSpace(event) {
-	case domain.AttributionEventActivation:
-		return "activated"
-	case domain.AttributionEventKeyBehavior:
-		return "key_behavior_met"
-	case domain.AttributionEventPayment:
-		return "payment_met"
-	case domain.AttributionEventFirstPayment:
-		return "first_payment_met"
-	case domain.AttributionEventRegistration:
-		return "registered"
-	default:
-		return ""
+func (r *UserAttributionRepo) SaveUserAttribution(ctx context.Context, item *model.VideoUserAttribution) {
+	newTime := time.Now()
+	err := qFrom(ctx).VideoUserAttributionHistory.WithContext(ctx).Create(&model.VideoUserAttributionHistory{
+		AppCode:                 item.AppCode,
+		UserID:                  item.UserID,
+		AdjustAdid:              item.AdjustAdid,
+		ChannelID:               item.ChannelID,
+		MediaID:                 item.MediaID,
+		AttributedAdID:          item.AttributedAdID,
+		AttributedPointID:       item.AttributedPointID,
+		OAID:                    item.OAID,
+		IMEI:                    item.IMEI,
+		AndroidID:               item.AndroidID,
+		GoogleAdID:              item.GoogleAdID,
+		ActivityKind:            item.ActivityKind,
+		AttributionType:         item.AttributionType,
+		IsOrganic:               item.IsOrganic,
+		Reattributed:            item.Reattributed,
+		IsRedownload:            item.IsRedownload,
+		ClickTime:               item.ClickTime,
+		InstallTime:             item.InstallTime,
+		AttributedAt:            item.AttributedAt,
+		ReattributedAt:          item.ReattributedAt,
+		AttributionUpdatedAt:    item.AttributionUpdatedAt,
+		LastOperatedAt:          &newTime,
+		ActivationCallbackCount: 1,
+		AdjustCreatedAt:         item.AdjustCreatedAt,
+		GpsAdid:                 item.GpsAdid,
+		Idfa:                    item.Idfa,
+		Idfv:                    item.Idfv,
+		UserAgent:               item.UserAgent,
+		DeviceIP:                item.DeviceIP,
+	})
+	if err != nil {
+		config.Logger(ctx).Error("UserAttributionHistory Create err:", err)
+	}
+	campaignStr := utils.ExtractBracketContent(item.Campaign)
+	adgroupStr := utils.ExtractBracketContent(item.Adgroup)
+	creativeStr := utils.ExtractBracketContent(item.Creative)
+	videoMediaAd := model.VideoMediaAd{
+		MediaID:      item.MediaID,
+		AdAccountID:  item.AdAccountID,
+		CampaignID:   utils.StrInt(campaignStr),
+		CampaignName: item.Campaign,
+		AdgroupID:    uint64(utils.StrInt(adgroupStr)),
+		AdgroupName:  item.Adgroup,
+		CreativeID:   utils.StrInt(creativeStr),
+		CreativeName: item.Creative,
+	}
+	err = qFrom(ctx).VideoMediaAd.WithContext(ctx).Create(&videoMediaAd)
+	if err != nil {
+		config.Logger(ctx).Error("VideoMediaAd Create err:", err)
 	}
 }

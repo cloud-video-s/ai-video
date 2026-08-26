@@ -19,6 +19,7 @@ type VideoToolConfig struct {
 	Icon            string         `gorm:"column:icon;type:varchar(1024);not null;comment:工具图标 URL" json:"icon"`                                                                              // 工具图标 URL
 	BackgroundImage string         `gorm:"column:background_image;type:varchar(1024);not null;comment:工具背景图 URL" json:"background_image"`                                                     // 工具背景图 URL
 	ToolType        uint8          `gorm:"column:tool_type;type:tinyint unsigned;not null;index:idx_video_tool_config_type,priority:1;comment:工具类型：1 图片生成，2 视频生成；与模型类型一致" json:"tool_type"`   // 工具类型：1 图片生成，2 视频生成；与模型类型一致
+	ToolsType       string         `gorm:"column:tools_type;type:varchar(50);comment:前端界面标识" json:"tools_type"`                                                                               // 前端界面标识
 	ModelID         int64          `gorm:"column:model_id;type:bigint;not null;index:idx_video_tool_config_model_id,priority:1;comment:关联 video_model.id" json:"model_id"`                    // 关联 video_model.id
 	ConfigType      uint8          `gorm:"column:config_type;type:tinyint unsigned;not null;index:idx_video_tool_config_type,priority:2;comment:配置类型：0 无，1 参考图，2 年龄，3 比例" json:"config_type"` // 配置类型：0 无，1 参考图，2 年龄，3 比例
 	ConfigData      string         `gorm:"column:config_data;type:json;not null;comment:配置内容；按 config_type 存储参考图、比例选项或年龄范围" json:"config_data"`                                               // 配置内容；按 config_type 存储参考图、比例选项或年龄范围

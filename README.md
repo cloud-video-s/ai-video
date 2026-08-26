@@ -51,7 +51,15 @@ go run ./cmd/admin-server
 go run ./cmd/admin-server -config path/to/config.yaml
 ```
 
-服务默认监听 `http://localhost:8080`。首次初始化会创建管理员 `admin/admin123`，登录后应立即修改密码。
+服务默认监听 `http://localhost:8080`。
+
+首次部署或需要修复后台权限元数据时，显式执行：
+
+```bash
+go run ./cmd/admin-seed -config path/to/config.yaml
+```
+
+该命令幂等创建或修复内置“超级管理员”角色、后台菜单/API 元数据，并确保默认账号 `admin` 拥有超级管理员角色；不会修改数据库结构，也不会随服务启动自动执行。首次创建的账号密码为 `admin123`，登录后应立即修改。
 
 ### 启动管理后台
 

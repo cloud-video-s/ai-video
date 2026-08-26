@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -29,4 +30,18 @@ func DesensitizeEmail(email string) (string, error) {
 	}
 
 	return maskedUsername + "@" + domain, nil
+}
+
+func ExtractBracketContent(s string) string {
+	left := strings.Index(s, "(")
+	right := strings.LastIndex(s, ")")
+	if left == -1 || right == -1 || left >= right {
+		return ""
+	}
+	return s[left+1 : right]
+}
+
+func StrInt(str string) int64 {
+	res, _ := strconv.ParseInt(str, 10, 64)
+	return res
 }

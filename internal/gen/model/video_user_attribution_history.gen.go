@@ -10,10 +10,10 @@ import (
 	"gorm.io/gorm"
 )
 
-const TableNameVideoUserAttribution = "video_user_attribution"
+const TableNameVideoUserAttributionHistory = "video_user_attribution_history"
 
-// VideoUserAttribution 用户归因表
-type VideoUserAttribution struct {
+// VideoUserAttributionHistory 用户归因表
+type VideoUserAttributionHistory struct {
 	ID                        uint64         `gorm:"column:id;type:bigint unsigned;primaryKey;autoIncrement:true;comment:自增主键ID" json:"id"`                                               // 自增主键ID
 	AppCode                   string         `gorm:"column:app_code;type:varchar(100);not null;comment:appcode" json:"app_code"`                                                          // appcode
 	UserID                    uint64         `gorm:"column:user_id;type:bigint unsigned;uniqueIndex:uk_user_id,priority:1;comment:客户端用户ID（关联用户表；可为空，非空时唯一）" json:"user_id"`               // 客户端用户ID（关联用户表；可为空，非空时唯一）
@@ -66,7 +66,7 @@ type VideoUserAttribution struct {
 	Channel                   VideoChannel   `gorm:"foreignKey:ChannelID;references:ID" json:"channel"`
 }
 
-// TableName VideoUserAttribution's table name
-func (*VideoUserAttribution) TableName() string {
-	return TableNameVideoUserAttribution
+// TableName VideoUserAttributionHistory's table name
+func (*VideoUserAttributionHistory) TableName() string {
+	return TableNameVideoUserAttributionHistory
 }

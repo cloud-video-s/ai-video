@@ -79,6 +79,40 @@ func run() error {
 		},
 	})
 	defer taskManager.Close()
+	var recurringScheduler *task.Scheduler
+	if config.Cfg.Adjust.TrackerSyncEnabled {
+		trackerClient, trackerErr := adjust.NewClient(adjust.ClientConfig{
+			APIToken: config.Cfg.Adjust.CampaignAppToken,
+			BaseURL:  config.Cfg.Adjust.CampaignBaseURL,
+		})
+		if trackerErr != nil {
+			return fmt.Errorf("init Adjust tracker sync client failed: %w", trackerErr)
+		}
+		recurringScheduler = task.NewSchedulerWithUsername(
+			config.Cfg.Redis.Addr(), config.Cfg.Redis.Username,
+			config.Cfg.Redis.Password, config.Cfg.Redis.DB,
+		)
+		defer recurringScheduler.Stop()
+		if trackerErr = scheduledtask.RegisterAdjustTrackerSync(
+			taskManager,
+			recurringScheduler,
+			trackerClient,
+			config.Cfg.Adjust.CampaignAppToken,
+			func(ctx context.Context, result scheduledtask.AdjustTrackerSyncResult) {
+				config.Logger(ctx).Infof(
+					"Adjust tracker sync completed: root_token=%s requests=%d trackers=%d",
+					result.RootToken,
+					result.Requests,
+					result.Trackers,
+				)
+			},
+		); trackerErr != nil {
+			return fmt.Errorf("register Adjust tracker sync task failed: %w", trackerErr)
+		}
+		config.Log.Infof("Adjust tracker sync scheduled: cron=%s", scheduledtask.AdjustTrackerSyncCron)
+	} else {
+		config.Log.Info("Adjust tracker sync is disabled by adjust.tracker_sync_enabled")
+	}
 
 	eventContext, stopAdjustEvents := context.WithCancel(context.Background())
 	defer stopAdjustEvents()
@@ -86,7 +120,7 @@ func run() error {
 	if config.Cfg.Adjust.EventEnabled {
 		createdAdjustEvents, eventErr := adjustevent.NewRuntime(adjustevent.RuntimeConfig{
 			Client: taskManager.Client, Worker: taskManager.Worker,
-			AuthToken: config.Cfg.Adjust.EventAuthToken, BaseURL: config.Cfg.Adjust.EventBaseURL,
+			AuthToken: config.Cfg.Adjust.CampaignAppToken, BaseURL: config.Cfg.Adjust.EventBaseURL,
 			Environment: adjust.Environment(strings.ToLower(strings.TrimSpace(config.Cfg.Adjust.EventEnvironment))),
 		})
 		if eventErr != nil {
@@ -135,7 +169,7 @@ func run() error {
 	addr := fmt.Sprintf(":%d", config.Cfg.Server.Port)
 	srv := &http.Server{Addr: addr, Handler: engine}
 	generation.Start()
-	runtimeErr := make(chan error, 2)
+	runtimeErr := make(chan error, 3)
 	if adjustEvents != nil {
 		go func() {
 			for {
@@ -165,6 +199,14 @@ func run() error {
 			runtimeErr <- fmt.Errorf("task worker stopped: %w", workerErr)
 		}
 	}()
+	if recurringScheduler != nil {
+		go func() {
+			defer reportComponentPanic("task_scheduler", runtimeErr)
+			if schedulerErr := recurringScheduler.Start(); schedulerErr != nil {
+				runtimeErr <- fmt.Errorf("task scheduler stopped: %w", schedulerErr)
+			}
+		}()
+	}
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -181,6 +223,9 @@ func run() error {
 	stopAdjustEvents()
 	adjustevent.SetDefault(nil)
 	generation.Stop()
+	if recurringScheduler != nil {
+		recurringScheduler.Stop()
+	}
 	taskManager.Worker.Stop()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

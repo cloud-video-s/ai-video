@@ -23,6 +23,7 @@ type ToolConfig struct {
 	Icon            string          `json:"icon"`
 	BackgroundImage string          `json:"background_image"`
 	ToolType        uint8           `json:"tool_type"`
+	ToolsType       string          `json:"tools_type"`
 	ModelID         int64           `json:"model_id"`
 	ModelName       string          `json:"model_name"`
 	ConfigType      uint8           `json:"config_type"`

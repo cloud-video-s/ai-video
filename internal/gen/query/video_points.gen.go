@@ -179,9 +179,9 @@ type videoPoint struct {
 	ResourceType  field.String  // resource type
 	Points        field.Uint64  // granted points quantity
 	Currency      field.String  // ISO currency code
-	SalePrice     field.Float64 // sale price
-	ActualRevenue field.Float64 // net revenue
-	OriginalPrice field.Float64 // strikethrough price
+	SalePrice     field.Float64 // 销售价格
+	ActualRevenue field.Float64 // 实际收入（净收入）
+	OriginalPrice field.Float64 // 原价（划线价）
 	Icon          field.String  // badge copy
 	Description   field.String  // package description
 	ButtonText    field.String  // purchase button copy

@@ -29,9 +29,7 @@ func (r *AdjustAttributionRepo) Create(ctx context.Context, item *model.VideoAdj
 	return q.WithContext(ctx).Create(item)
 }
 
-func (r *AdjustAttributionRepo) GetByADID(
-	ctx context.Context, adid string, lock bool,
-) (*model.VideoAdjustAttribution, error) {
+func (r *AdjustAttributionRepo) GetByADID(ctx context.Context, adid string, lock bool) (*model.VideoAdjustAttribution, error) {
 	q := qFrom(ctx).VideoAdjustAttribution
 	dao := q.WithContext(ctx).Where(q.AdjustADID.Eq(adid))
 	if lock {
@@ -40,9 +38,7 @@ func (r *AdjustAttributionRepo) GetByADID(
 	return dao.First()
 }
 
-func (r *AdjustAttributionRepo) GetByUserID(
-	ctx context.Context, userID uint64, lock bool,
-) (*model.VideoAdjustAttribution, error) {
+func (r *AdjustAttributionRepo) GetByUserID(ctx context.Context, userID uint64, lock bool) (*model.VideoAdjustAttribution, error) {
 	q := qFrom(ctx).VideoAdjustAttribution
 	dao := q.WithContext(ctx).Where(q.UserID.Eq(userID))
 	if lock {

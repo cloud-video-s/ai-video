@@ -1,6 +1,7 @@
 package apidoc
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -525,6 +526,16 @@ var responseDataExamples = map[string]any{
 			Status: 1, Sort: 10, CreatedAt: 1784859371, UpdatedAt: 1784859371,
 		},
 	},
+	"GET /api/tools/list": []apiservice.ClientTool{
+		{
+			ID: 16, Name: "照片转视频", Icon: "/uploads/images/tools/photo-video-icon.png",
+			BackgroundImage: "/uploads/images/tools/photo-video-background.png",
+			ToolType:        2, ModelID: 9, ConfigType: 3,
+			ConfigData: json.RawMessage(`{"ratio_options":[{"name":"16:9","value":"16:9","sort":1}]}`),
+			BadgeImage: "/uploads/images/tools/new.png", Sort: 10,
+			Prompt: "让照片自然动起来", Status: 1,
+		},
+	},
 }
 
 var endpointTypes = map[string]endpointType{
@@ -561,6 +572,7 @@ var endpointTypes = map[string]endpointType{
 	"GET /api/vip/recommend":                           {query: typeOf[apiservice.VipRecommendRequest](), response: typeOf[apiservice.VIPRecommendResponse]()},
 	"GET /api/vip/list":                                {query: typeOf[apiservice.VipVipListRequest](), response: typeOf[[]apiservice.VIPRecommendResponse]()},
 	"GET /api/points/list":                             {response: typeOf[[]apiservice.ClientPointProductResponse]()},
+	"GET /api/tools/list":                              {response: typeOf[[]apiservice.ClientTool]()},
 	"POST /api/tracking/events":                        {body: typeOf[trackingEventDocRequest](), response: typeOf[trackingEventDocResponse]()},
 	"POST /api/orders":                                 {body: typeOf[commerce.CreatePaymentOrderRequest](), response: typeOf[commerce.CreatePaymentOrderResponse]()},
 	"POST /api/payments/apple/pay":                     {body: typeOf[commerce.ApplePurchaseRequest](), response: typeOf[commerce.ApplePurchaseResponse]()},
@@ -601,6 +613,7 @@ var operationDescriptions = map[string]string{
 	"GET /api/vip/recommend":                "查询当前用户适用的推荐 VIP 套餐。",
 	"GET /api/vip/list":                     "按必填的 vip_types 查询当前应用、包、版本及登录用户状态下可展示的 VIP 套餐列表，仅返回 status=1、display_mode=1 的套餐。",
 	"GET /api/points/list":                  "查询当前客户端可购买的积分商品。服务端按登录用户类型以及公共请求上下文中的国家、应用、安装包、APP 版本、系统和渠道进行 AND 筛选，仅返回 status=1 的商品。应用、安装包、版本、国家和渠道未配置关联时表示支持全部。系统从 Video_System_Type 读取，未提供时根据 User-Agent 推断 iOS 或 Android。结果按 is_default DESC、sort ASC、id DESC 排序。",
+	"GET /api/tools/list":                   "查询全部正常展示的客户端工具。仅返回 status=1 且未删除的工具，不分页；结果按 sort ASC、id ASC 排序。",
 	"POST /api/tracking/events":             "上报单个客户端埋点事件。tracking_type 仅支持当前九个事件名且大小写敏感；Payment_Create、Payment_Suc 和 Case_create 必须提供 extension_type。model_id 可选，不适用时可省略。每次成功请求都会新增一条记录，不去重、不覆盖。",
 	"POST /api/orders":                      "为当前登录用户创建待支付订单。shop_type=1 表示 VIP 订阅，shop_type=2 表示积分商品；pay_type=1 表示 Apple IAP，pay_type=2 表示 Google Play。创建积分商品订单时，服务端会再次按用户类型、国家、应用、安装包、APP 版本、系统和渠道校验商品投放范围，并返回原生商店支付参数；积分商品的 payment_info.product_type 固定为 inapp。client_request_id 用于幂等重试，未提供时由服务端生成。",
 	"POST /api/payments/apple/pay":          "校验 StoreKit 交易、创建订单并发放对应商品。标准三段式 JWS 直接验签，其他客户端凭证通过 transactionID 调用 App Store Server API 获取已签名交易后验签。接口按 Apple 交易 ID 幂等处理。请求中的 isActive 是客户端上报值；响应中的 is_active 由已验签交易的撤销时间和到期时间按服务端当前时间计算。",
@@ -622,6 +635,7 @@ var operationSummaries = map[string]string{
 	"DELETE /api/templates/:id/favorite": "取消收藏模板", "POST /api/templates/complaint": "投诉模板", "GET /api/vip/recommend": "查询推荐 VIP 套餐",
 	"GET /api/vip/list":          "查询 VIP 套餐列表",
 	"GET /api/points/list":       "查询积分商品列表",
+	"GET /api/tools/list":        "查询工具列表",
 	"POST /api/tracking/events":  "上报客户端埋点事件",
 	"POST /api/orders":           "创建支付订单",
 	"GET /api/generation/models": "查询生成模型", "POST /api/generation/tasks": "创建生成任务", "POST /api/generation/template-tasks": "按模板创建生成任务",
@@ -699,6 +713,8 @@ var fieldDescriptions = map[string]string{
 	"free_trial": "是否启用免费试用", "is_subscription": "是否循环订阅", "is_default": "是否为默认套餐",
 	"subscription_description": "订阅说明", "subscription_price": "当前用户适用的订阅价格",
 	"original_price": "原价", "subscription_points": "订阅赠送积分", "subscription_period": "订阅周期：1 周，2 月，3 季，4 年",
+	"background_image": "工具背景图片地址", "tool_type": "工具类型：1=图片生成，2=视频生成", "config_type": "工具配置类型：0=无，1=参考图，2=年龄，3=比例",
+	"config_data": "工具配置内容，结构由 config_type 决定", "badge_image": "工具角标图片地址",
 	"files": "待上传文件列表", "file_name": "文件名", "size": "文件字节数", "content_type": "MIME 类型", "sha256": "文件 SHA-256",
 	"media_type": "上传媒体类型：image 或 video", "method": "OSS 直传 HTTP 方法，固定为 PUT", "upload_url": "短时效 OSS V4 预签名上传地址",
 	"headers": "直传 OSS 时必须携带的签名请求头", "object_key": "服务端生成的 OSS 对象键",
@@ -711,7 +727,7 @@ var fieldDescriptions = map[string]string{
 
 var resourceNames = map[string]string{
 	"health": "健康检查", "configs": "系统配置", "auth": "认证", "users": "用户",
-	"banners": "Banner", "templates": "视频模板", "generation": "内容生成", "payments": "支付", "vip": "VIP", "points": "积分商品",
+	"banners": "Banner", "templates": "视频模板", "tools": "工具", "generation": "内容生成", "payments": "支付", "vip": "VIP", "points": "积分商品",
 	"orders": "支付订单", "uploads": "文件上传", "tracking": "数据埋点", "profile": "个人资料",
 }
 
@@ -1070,6 +1086,9 @@ func schemaForType(valueType reflect.Type) map[string]any {
 	}
 	if valueType == reflect.TypeOf(time.Time{}) {
 		return map[string]any{"type": "string", "format": "date-time", "nullable": nullable}
+	}
+	if valueType == reflect.TypeOf(json.RawMessage{}) {
+		return map[string]any{"type": "object", "additionalProperties": true, "nullable": nullable}
 	}
 	var schema map[string]any
 	switch valueType.Kind() {

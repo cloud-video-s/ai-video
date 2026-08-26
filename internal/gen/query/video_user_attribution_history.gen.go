@@ -20,63 +20,63 @@ import (
 	"ai-video/internal/gen/model"
 )
 
-func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribution {
-	_videoUserAttribution := videoUserAttribution{}
+func newVideoUserAttributionHistory(db *gorm.DB, opts ...gen.DOOption) videoUserAttributionHistory {
+	_videoUserAttributionHistory := videoUserAttributionHistory{}
 
-	_videoUserAttribution.videoUserAttributionDo.UseDB(db, opts...)
-	_videoUserAttribution.videoUserAttributionDo.UseModel(&model.VideoUserAttribution{})
+	_videoUserAttributionHistory.videoUserAttributionHistoryDo.UseDB(db, opts...)
+	_videoUserAttributionHistory.videoUserAttributionHistoryDo.UseModel(&model.VideoUserAttributionHistory{})
 
-	tableName := _videoUserAttribution.videoUserAttributionDo.TableName()
-	_videoUserAttribution.ALL = field.NewAsterisk(tableName)
-	_videoUserAttribution.ID = field.NewUint64(tableName, "id")
-	_videoUserAttribution.AppCode = field.NewString(tableName, "app_code")
-	_videoUserAttribution.UserID = field.NewUint64(tableName, "user_id")
-	_videoUserAttribution.AdjustAdid = field.NewString(tableName, "adjust_adid")
-	_videoUserAttribution.ChannelID = field.NewUint64(tableName, "channel_id")
-	_videoUserAttribution.MediaID = field.NewUint64(tableName, "media_id")
-	_videoUserAttribution.AttributedAdID = field.NewUint64(tableName, "attributed_ad_id")
-	_videoUserAttribution.AttributedPointID = field.NewUint64(tableName, "attributed_point_id")
-	_videoUserAttribution.AdAccountID = field.NewUint64(tableName, "ad_account_id")
-	_videoUserAttribution.Network = field.NewString(tableName, "network")
-	_videoUserAttribution.Campaign = field.NewString(tableName, "campaign")
-	_videoUserAttribution.Adgroup = field.NewString(tableName, "adgroup")
-	_videoUserAttribution.Creative = field.NewString(tableName, "creative")
-	_videoUserAttribution.OAID = field.NewString(tableName, "oaid")
-	_videoUserAttribution.IMEI = field.NewString(tableName, "imei")
-	_videoUserAttribution.AndroidID = field.NewString(tableName, "android_id")
-	_videoUserAttribution.GoogleAdID = field.NewString(tableName, "google_ad_id")
-	_videoUserAttribution.ActivityKind = field.NewString(tableName, "activity_kind")
-	_videoUserAttribution.AttributionType = field.NewString(tableName, "attribution_type")
-	_videoUserAttribution.IsOrganic = field.NewUint32(tableName, "is_organic")
-	_videoUserAttribution.Reattributed = field.NewUint32(tableName, "reattributed")
-	_videoUserAttribution.IsRedownload = field.NewUint32(tableName, "is_redownload")
-	_videoUserAttribution.ClickTime = field.NewTime(tableName, "click_time")
-	_videoUserAttribution.InstallTime = field.NewTime(tableName, "install_time")
-	_videoUserAttribution.AttributedAt = field.NewTime(tableName, "attributed_at")
-	_videoUserAttribution.ReattributedAt = field.NewTime(tableName, "reattributed_at")
-	_videoUserAttribution.AttributionUpdatedAt = field.NewTime(tableName, "attribution_updated_at")
-	_videoUserAttribution.LastOperatedAt = field.NewTime(tableName, "last_operated_at")
-	_videoUserAttribution.AdjustCreatedAt = field.NewTime(tableName, "adjust_created_at")
-	_videoUserAttribution.ActivationCallbackCount = field.NewUint64(tableName, "activation_callback_count")
-	_videoUserAttribution.ActivationDeductCount = field.NewUint64(tableName, "activation_deduct_count")
-	_videoUserAttribution.KeyBehaviorCallbackCount = field.NewUint64(tableName, "key_behavior_callback_count")
-	_videoUserAttribution.KeyBehaviorDeductCount = field.NewUint64(tableName, "key_behavior_deduct_count")
-	_videoUserAttribution.PaymentCallbackCount = field.NewUint64(tableName, "payment_callback_count")
-	_videoUserAttribution.PaymentDeductCount = field.NewUint64(tableName, "payment_deduct_count")
-	_videoUserAttribution.FirstPaymentCallbackCount = field.NewUint64(tableName, "first_payment_callback_count")
-	_videoUserAttribution.FirstPaymentDeductCount = field.NewUint64(tableName, "first_payment_deduct_count")
-	_videoUserAttribution.RegistrationCallbackCount = field.NewUint64(tableName, "registration_callback_count")
-	_videoUserAttribution.RegistrationDeductCount = field.NewUint64(tableName, "registration_deduct_count")
-	_videoUserAttribution.Remark = field.NewString(tableName, "remark")
-	_videoUserAttribution.GpsAdid = field.NewString(tableName, "gps_adid")
-	_videoUserAttribution.Idfa = field.NewString(tableName, "idfa")
-	_videoUserAttribution.Idfv = field.NewString(tableName, "idfv")
-	_videoUserAttribution.UserAgent = field.NewString(tableName, "user_agent")
-	_videoUserAttribution.DeviceIP = field.NewString(tableName, "device_ip")
-	_videoUserAttribution.CreatedAt = field.NewTime(tableName, "created_at")
-	_videoUserAttribution.UpdatedAt = field.NewTime(tableName, "updated_at")
-	_videoUserAttribution.DeletedAt = field.NewField(tableName, "deleted_at")
-	_videoUserAttribution.User = videoUserAttributionBelongsToUser{
+	tableName := _videoUserAttributionHistory.videoUserAttributionHistoryDo.TableName()
+	_videoUserAttributionHistory.ALL = field.NewAsterisk(tableName)
+	_videoUserAttributionHistory.ID = field.NewUint64(tableName, "id")
+	_videoUserAttributionHistory.AppCode = field.NewString(tableName, "app_code")
+	_videoUserAttributionHistory.UserID = field.NewUint64(tableName, "user_id")
+	_videoUserAttributionHistory.AdjustAdid = field.NewString(tableName, "adjust_adid")
+	_videoUserAttributionHistory.ChannelID = field.NewUint64(tableName, "channel_id")
+	_videoUserAttributionHistory.MediaID = field.NewUint64(tableName, "media_id")
+	_videoUserAttributionHistory.AttributedAdID = field.NewUint64(tableName, "attributed_ad_id")
+	_videoUserAttributionHistory.AttributedPointID = field.NewUint64(tableName, "attributed_point_id")
+	_videoUserAttributionHistory.AdAccountID = field.NewUint64(tableName, "ad_account_id")
+	_videoUserAttributionHistory.Network = field.NewString(tableName, "network")
+	_videoUserAttributionHistory.Campaign = field.NewString(tableName, "campaign")
+	_videoUserAttributionHistory.Adgroup = field.NewString(tableName, "adgroup")
+	_videoUserAttributionHistory.Creative = field.NewString(tableName, "creative")
+	_videoUserAttributionHistory.OAID = field.NewString(tableName, "oaid")
+	_videoUserAttributionHistory.IMEI = field.NewString(tableName, "imei")
+	_videoUserAttributionHistory.AndroidID = field.NewString(tableName, "android_id")
+	_videoUserAttributionHistory.GoogleAdID = field.NewString(tableName, "google_ad_id")
+	_videoUserAttributionHistory.ActivityKind = field.NewString(tableName, "activity_kind")
+	_videoUserAttributionHistory.AttributionType = field.NewString(tableName, "attribution_type")
+	_videoUserAttributionHistory.IsOrganic = field.NewUint32(tableName, "is_organic")
+	_videoUserAttributionHistory.Reattributed = field.NewUint32(tableName, "reattributed")
+	_videoUserAttributionHistory.IsRedownload = field.NewUint32(tableName, "is_redownload")
+	_videoUserAttributionHistory.ClickTime = field.NewTime(tableName, "click_time")
+	_videoUserAttributionHistory.InstallTime = field.NewTime(tableName, "install_time")
+	_videoUserAttributionHistory.AttributedAt = field.NewTime(tableName, "attributed_at")
+	_videoUserAttributionHistory.ReattributedAt = field.NewTime(tableName, "reattributed_at")
+	_videoUserAttributionHistory.AttributionUpdatedAt = field.NewTime(tableName, "attribution_updated_at")
+	_videoUserAttributionHistory.LastOperatedAt = field.NewTime(tableName, "last_operated_at")
+	_videoUserAttributionHistory.AdjustCreatedAt = field.NewTime(tableName, "adjust_created_at")
+	_videoUserAttributionHistory.ActivationCallbackCount = field.NewUint64(tableName, "activation_callback_count")
+	_videoUserAttributionHistory.ActivationDeductCount = field.NewUint64(tableName, "activation_deduct_count")
+	_videoUserAttributionHistory.KeyBehaviorCallbackCount = field.NewUint64(tableName, "key_behavior_callback_count")
+	_videoUserAttributionHistory.KeyBehaviorDeductCount = field.NewUint64(tableName, "key_behavior_deduct_count")
+	_videoUserAttributionHistory.PaymentCallbackCount = field.NewUint64(tableName, "payment_callback_count")
+	_videoUserAttributionHistory.PaymentDeductCount = field.NewUint64(tableName, "payment_deduct_count")
+	_videoUserAttributionHistory.FirstPaymentCallbackCount = field.NewUint64(tableName, "first_payment_callback_count")
+	_videoUserAttributionHistory.FirstPaymentDeductCount = field.NewUint64(tableName, "first_payment_deduct_count")
+	_videoUserAttributionHistory.RegistrationCallbackCount = field.NewUint64(tableName, "registration_callback_count")
+	_videoUserAttributionHistory.RegistrationDeductCount = field.NewUint64(tableName, "registration_deduct_count")
+	_videoUserAttributionHistory.Remark = field.NewString(tableName, "remark")
+	_videoUserAttributionHistory.GpsAdid = field.NewString(tableName, "gps_adid")
+	_videoUserAttributionHistory.Idfa = field.NewString(tableName, "idfa")
+	_videoUserAttributionHistory.Idfv = field.NewString(tableName, "idfv")
+	_videoUserAttributionHistory.UserAgent = field.NewString(tableName, "user_agent")
+	_videoUserAttributionHistory.DeviceIP = field.NewString(tableName, "device_ip")
+	_videoUserAttributionHistory.CreatedAt = field.NewTime(tableName, "created_at")
+	_videoUserAttributionHistory.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_videoUserAttributionHistory.DeletedAt = field.NewField(tableName, "deleted_at")
+	_videoUserAttributionHistory.User = videoUserAttributionHistoryBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("User", "model.VideoUser"),
@@ -279,7 +279,7 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 		},
 	}
 
-	_videoUserAttribution.Channel = videoUserAttributionBelongsToChannel{
+	_videoUserAttributionHistory.Channel = videoUserAttributionHistoryBelongsToChannel{
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("Channel", "model.VideoChannel"),
@@ -351,14 +351,14 @@ func newVideoUserAttribution(db *gorm.DB, opts ...gen.DOOption) videoUserAttribu
 		},
 	}
 
-	_videoUserAttribution.fillFieldMap()
+	_videoUserAttributionHistory.fillFieldMap()
 
-	return _videoUserAttribution
+	return _videoUserAttributionHistory
 }
 
-// videoUserAttribution 用户归因表
-type videoUserAttribution struct {
-	videoUserAttributionDo videoUserAttributionDo
+// videoUserAttributionHistory 用户归因表
+type videoUserAttributionHistory struct {
+	videoUserAttributionHistoryDo videoUserAttributionHistoryDo
 
 	ALL                       field.Asterisk
 	ID                        field.Uint64 // 自增主键ID
@@ -409,24 +409,24 @@ type videoUserAttribution struct {
 	CreatedAt                 field.Time   // 记录创建时间
 	UpdatedAt                 field.Time   // 记录更新时间
 	DeletedAt                 field.Field  // 删除时间（软删除）
-	User                      videoUserAttributionBelongsToUser
+	User                      videoUserAttributionHistoryBelongsToUser
 
-	Channel videoUserAttributionBelongsToChannel
+	Channel videoUserAttributionHistoryBelongsToChannel
 
 	fieldMap map[string]field.Expr
 }
 
-func (v videoUserAttribution) Table(newTableName string) *videoUserAttribution {
-	v.videoUserAttributionDo.UseTable(newTableName)
+func (v videoUserAttributionHistory) Table(newTableName string) *videoUserAttributionHistory {
+	v.videoUserAttributionHistoryDo.UseTable(newTableName)
 	return v.updateTableName(newTableName)
 }
 
-func (v videoUserAttribution) As(alias string) *videoUserAttribution {
-	v.videoUserAttributionDo.DO = *(v.videoUserAttributionDo.As(alias).(*gen.DO))
+func (v videoUserAttributionHistory) As(alias string) *videoUserAttributionHistory {
+	v.videoUserAttributionHistoryDo.DO = *(v.videoUserAttributionHistoryDo.As(alias).(*gen.DO))
 	return v.updateTableName(alias)
 }
 
-func (v *videoUserAttribution) updateTableName(table string) *videoUserAttribution {
+func (v *videoUserAttributionHistory) updateTableName(table string) *videoUserAttributionHistory {
 	v.ALL = field.NewAsterisk(table)
 	v.ID = field.NewUint64(table, "id")
 	v.AppCode = field.NewString(table, "app_code")
@@ -482,19 +482,21 @@ func (v *videoUserAttribution) updateTableName(table string) *videoUserAttributi
 	return v
 }
 
-func (v *videoUserAttribution) WithContext(ctx context.Context) IVideoUserAttributionDo {
-	return v.videoUserAttributionDo.WithContext(ctx)
+func (v *videoUserAttributionHistory) WithContext(ctx context.Context) IVideoUserAttributionHistoryDo {
+	return v.videoUserAttributionHistoryDo.WithContext(ctx)
 }
 
-func (v videoUserAttribution) TableName() string { return v.videoUserAttributionDo.TableName() }
-
-func (v videoUserAttribution) Alias() string { return v.videoUserAttributionDo.Alias() }
-
-func (v videoUserAttribution) Columns(cols ...field.Expr) gen.Columns {
-	return v.videoUserAttributionDo.Columns(cols...)
+func (v videoUserAttributionHistory) TableName() string {
+	return v.videoUserAttributionHistoryDo.TableName()
 }
 
-func (v *videoUserAttribution) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
+func (v videoUserAttributionHistory) Alias() string { return v.videoUserAttributionHistoryDo.Alias() }
+
+func (v videoUserAttributionHistory) Columns(cols ...field.Expr) gen.Columns {
+	return v.videoUserAttributionHistoryDo.Columns(cols...)
+}
+
+func (v *videoUserAttributionHistory) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := v.fieldMap[fieldName]
 	if !ok || _f == nil {
 		return nil, false
@@ -503,7 +505,7 @@ func (v *videoUserAttribution) GetFieldByName(fieldName string) (field.OrderExpr
 	return _oe, ok
 }
 
-func (v *videoUserAttribution) fillFieldMap() {
+func (v *videoUserAttributionHistory) fillFieldMap() {
 	v.fieldMap = make(map[string]field.Expr, 50)
 	v.fieldMap["id"] = v.ID
 	v.fieldMap["app_code"] = v.AppCode
@@ -556,8 +558,8 @@ func (v *videoUserAttribution) fillFieldMap() {
 
 }
 
-func (v videoUserAttribution) clone(db *gorm.DB) videoUserAttribution {
-	v.videoUserAttributionDo.ReplaceConnPool(db.Statement.ConnPool)
+func (v videoUserAttributionHistory) clone(db *gorm.DB) videoUserAttributionHistory {
+	v.videoUserAttributionHistoryDo.ReplaceConnPool(db.Statement.ConnPool)
 	v.User.db = db.Session(&gorm.Session{Initialized: true})
 	v.User.db.Statement.ConnPool = db.Statement.ConnPool
 	v.Channel.db = db.Session(&gorm.Session{Initialized: true})
@@ -565,14 +567,14 @@ func (v videoUserAttribution) clone(db *gorm.DB) videoUserAttribution {
 	return v
 }
 
-func (v videoUserAttribution) replaceDB(db *gorm.DB) videoUserAttribution {
-	v.videoUserAttributionDo.ReplaceDB(db)
+func (v videoUserAttributionHistory) replaceDB(db *gorm.DB) videoUserAttributionHistory {
+	v.videoUserAttributionHistoryDo.ReplaceDB(db)
 	v.User.db = db.Session(&gorm.Session{})
 	v.Channel.db = db.Session(&gorm.Session{})
 	return v
 }
 
-type videoUserAttributionBelongsToUser struct {
+type videoUserAttributionHistoryBelongsToUser struct {
 	db *gorm.DB
 
 	field.RelationField
@@ -636,7 +638,7 @@ type videoUserAttributionBelongsToUser struct {
 	}
 }
 
-func (a videoUserAttributionBelongsToUser) Where(conds ...field.Expr) *videoUserAttributionBelongsToUser {
+func (a videoUserAttributionHistoryBelongsToUser) Where(conds ...field.Expr) *videoUserAttributionHistoryBelongsToUser {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -649,32 +651,32 @@ func (a videoUserAttributionBelongsToUser) Where(conds ...field.Expr) *videoUser
 	return &a
 }
 
-func (a videoUserAttributionBelongsToUser) WithContext(ctx context.Context) *videoUserAttributionBelongsToUser {
+func (a videoUserAttributionHistoryBelongsToUser) WithContext(ctx context.Context) *videoUserAttributionHistoryBelongsToUser {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a videoUserAttributionBelongsToUser) Session(session *gorm.Session) *videoUserAttributionBelongsToUser {
+func (a videoUserAttributionHistoryBelongsToUser) Session(session *gorm.Session) *videoUserAttributionHistoryBelongsToUser {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a videoUserAttributionBelongsToUser) Model(m *model.VideoUserAttribution) *videoUserAttributionBelongsToUserTx {
-	return &videoUserAttributionBelongsToUserTx{a.db.Model(m).Association(a.Name())}
+func (a videoUserAttributionHistoryBelongsToUser) Model(m *model.VideoUserAttributionHistory) *videoUserAttributionHistoryBelongsToUserTx {
+	return &videoUserAttributionHistoryBelongsToUserTx{a.db.Model(m).Association(a.Name())}
 }
 
-func (a videoUserAttributionBelongsToUser) Unscoped() *videoUserAttributionBelongsToUser {
+func (a videoUserAttributionHistoryBelongsToUser) Unscoped() *videoUserAttributionHistoryBelongsToUser {
 	a.db = a.db.Unscoped()
 	return &a
 }
 
-type videoUserAttributionBelongsToUserTx struct{ tx *gorm.Association }
+type videoUserAttributionHistoryBelongsToUserTx struct{ tx *gorm.Association }
 
-func (a videoUserAttributionBelongsToUserTx) Find() (result *model.VideoUser, err error) {
+func (a videoUserAttributionHistoryBelongsToUserTx) Find() (result *model.VideoUser, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a videoUserAttributionBelongsToUserTx) Append(values ...*model.VideoUser) (err error) {
+func (a videoUserAttributionHistoryBelongsToUserTx) Append(values ...*model.VideoUser) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -682,7 +684,7 @@ func (a videoUserAttributionBelongsToUserTx) Append(values ...*model.VideoUser) 
 	return a.tx.Append(targetValues...)
 }
 
-func (a videoUserAttributionBelongsToUserTx) Replace(values ...*model.VideoUser) (err error) {
+func (a videoUserAttributionHistoryBelongsToUserTx) Replace(values ...*model.VideoUser) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -690,7 +692,7 @@ func (a videoUserAttributionBelongsToUserTx) Replace(values ...*model.VideoUser)
 	return a.tx.Replace(targetValues...)
 }
 
-func (a videoUserAttributionBelongsToUserTx) Delete(values ...*model.VideoUser) (err error) {
+func (a videoUserAttributionHistoryBelongsToUserTx) Delete(values ...*model.VideoUser) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -698,20 +700,20 @@ func (a videoUserAttributionBelongsToUserTx) Delete(values ...*model.VideoUser) 
 	return a.tx.Delete(targetValues...)
 }
 
-func (a videoUserAttributionBelongsToUserTx) Clear() error {
+func (a videoUserAttributionHistoryBelongsToUserTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a videoUserAttributionBelongsToUserTx) Count() int64 {
+func (a videoUserAttributionHistoryBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
 }
 
-func (a videoUserAttributionBelongsToUserTx) Unscoped() *videoUserAttributionBelongsToUserTx {
+func (a videoUserAttributionHistoryBelongsToUserTx) Unscoped() *videoUserAttributionHistoryBelongsToUserTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }
 
-type videoUserAttributionBelongsToChannel struct {
+type videoUserAttributionHistoryBelongsToChannel struct {
 	db *gorm.DB
 
 	field.RelationField
@@ -736,7 +738,7 @@ type videoUserAttributionBelongsToChannel struct {
 	}
 }
 
-func (a videoUserAttributionBelongsToChannel) Where(conds ...field.Expr) *videoUserAttributionBelongsToChannel {
+func (a videoUserAttributionHistoryBelongsToChannel) Where(conds ...field.Expr) *videoUserAttributionHistoryBelongsToChannel {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -749,32 +751,32 @@ func (a videoUserAttributionBelongsToChannel) Where(conds ...field.Expr) *videoU
 	return &a
 }
 
-func (a videoUserAttributionBelongsToChannel) WithContext(ctx context.Context) *videoUserAttributionBelongsToChannel {
+func (a videoUserAttributionHistoryBelongsToChannel) WithContext(ctx context.Context) *videoUserAttributionHistoryBelongsToChannel {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a videoUserAttributionBelongsToChannel) Session(session *gorm.Session) *videoUserAttributionBelongsToChannel {
+func (a videoUserAttributionHistoryBelongsToChannel) Session(session *gorm.Session) *videoUserAttributionHistoryBelongsToChannel {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a videoUserAttributionBelongsToChannel) Model(m *model.VideoUserAttribution) *videoUserAttributionBelongsToChannelTx {
-	return &videoUserAttributionBelongsToChannelTx{a.db.Model(m).Association(a.Name())}
+func (a videoUserAttributionHistoryBelongsToChannel) Model(m *model.VideoUserAttributionHistory) *videoUserAttributionHistoryBelongsToChannelTx {
+	return &videoUserAttributionHistoryBelongsToChannelTx{a.db.Model(m).Association(a.Name())}
 }
 
-func (a videoUserAttributionBelongsToChannel) Unscoped() *videoUserAttributionBelongsToChannel {
+func (a videoUserAttributionHistoryBelongsToChannel) Unscoped() *videoUserAttributionHistoryBelongsToChannel {
 	a.db = a.db.Unscoped()
 	return &a
 }
 
-type videoUserAttributionBelongsToChannelTx struct{ tx *gorm.Association }
+type videoUserAttributionHistoryBelongsToChannelTx struct{ tx *gorm.Association }
 
-func (a videoUserAttributionBelongsToChannelTx) Find() (result *model.VideoChannel, err error) {
+func (a videoUserAttributionHistoryBelongsToChannelTx) Find() (result *model.VideoChannel, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a videoUserAttributionBelongsToChannelTx) Append(values ...*model.VideoChannel) (err error) {
+func (a videoUserAttributionHistoryBelongsToChannelTx) Append(values ...*model.VideoChannel) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -782,7 +784,7 @@ func (a videoUserAttributionBelongsToChannelTx) Append(values ...*model.VideoCha
 	return a.tx.Append(targetValues...)
 }
 
-func (a videoUserAttributionBelongsToChannelTx) Replace(values ...*model.VideoChannel) (err error) {
+func (a videoUserAttributionHistoryBelongsToChannelTx) Replace(values ...*model.VideoChannel) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -790,7 +792,7 @@ func (a videoUserAttributionBelongsToChannelTx) Replace(values ...*model.VideoCh
 	return a.tx.Replace(targetValues...)
 }
 
-func (a videoUserAttributionBelongsToChannelTx) Delete(values ...*model.VideoChannel) (err error) {
+func (a videoUserAttributionHistoryBelongsToChannelTx) Delete(values ...*model.VideoChannel) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -798,61 +800,61 @@ func (a videoUserAttributionBelongsToChannelTx) Delete(values ...*model.VideoCha
 	return a.tx.Delete(targetValues...)
 }
 
-func (a videoUserAttributionBelongsToChannelTx) Clear() error {
+func (a videoUserAttributionHistoryBelongsToChannelTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a videoUserAttributionBelongsToChannelTx) Count() int64 {
+func (a videoUserAttributionHistoryBelongsToChannelTx) Count() int64 {
 	return a.tx.Count()
 }
 
-func (a videoUserAttributionBelongsToChannelTx) Unscoped() *videoUserAttributionBelongsToChannelTx {
+func (a videoUserAttributionHistoryBelongsToChannelTx) Unscoped() *videoUserAttributionHistoryBelongsToChannelTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }
 
-type videoUserAttributionDo struct{ gen.DO }
+type videoUserAttributionHistoryDo struct{ gen.DO }
 
-type IVideoUserAttributionDo interface {
+type IVideoUserAttributionHistoryDo interface {
 	gen.SubQuery
-	Debug() IVideoUserAttributionDo
-	WithContext(ctx context.Context) IVideoUserAttributionDo
+	Debug() IVideoUserAttributionHistoryDo
+	WithContext(ctx context.Context) IVideoUserAttributionHistoryDo
 	WithResult(fc func(tx gen.Dao)) gen.ResultInfo
 	ReplaceDB(db *gorm.DB)
-	ReadDB() IVideoUserAttributionDo
-	WriteDB() IVideoUserAttributionDo
+	ReadDB() IVideoUserAttributionHistoryDo
+	WriteDB() IVideoUserAttributionHistoryDo
 	As(alias string) gen.Dao
-	Session(config *gorm.Session) IVideoUserAttributionDo
+	Session(config *gorm.Session) IVideoUserAttributionHistoryDo
 	Columns(cols ...field.Expr) gen.Columns
-	Clauses(conds ...clause.Expression) IVideoUserAttributionDo
-	Not(conds ...gen.Condition) IVideoUserAttributionDo
-	Or(conds ...gen.Condition) IVideoUserAttributionDo
-	Select(conds ...field.Expr) IVideoUserAttributionDo
-	Where(conds ...gen.Condition) IVideoUserAttributionDo
-	Order(conds ...field.Expr) IVideoUserAttributionDo
-	Distinct(cols ...field.Expr) IVideoUserAttributionDo
-	Omit(cols ...field.Expr) IVideoUserAttributionDo
-	Join(table schema.Tabler, on ...field.Expr) IVideoUserAttributionDo
-	LeftJoin(table schema.Tabler, on ...field.Expr) IVideoUserAttributionDo
-	RightJoin(table schema.Tabler, on ...field.Expr) IVideoUserAttributionDo
-	Group(cols ...field.Expr) IVideoUserAttributionDo
-	Having(conds ...gen.Condition) IVideoUserAttributionDo
-	Limit(limit int) IVideoUserAttributionDo
-	Offset(offset int) IVideoUserAttributionDo
+	Clauses(conds ...clause.Expression) IVideoUserAttributionHistoryDo
+	Not(conds ...gen.Condition) IVideoUserAttributionHistoryDo
+	Or(conds ...gen.Condition) IVideoUserAttributionHistoryDo
+	Select(conds ...field.Expr) IVideoUserAttributionHistoryDo
+	Where(conds ...gen.Condition) IVideoUserAttributionHistoryDo
+	Order(conds ...field.Expr) IVideoUserAttributionHistoryDo
+	Distinct(cols ...field.Expr) IVideoUserAttributionHistoryDo
+	Omit(cols ...field.Expr) IVideoUserAttributionHistoryDo
+	Join(table schema.Tabler, on ...field.Expr) IVideoUserAttributionHistoryDo
+	LeftJoin(table schema.Tabler, on ...field.Expr) IVideoUserAttributionHistoryDo
+	RightJoin(table schema.Tabler, on ...field.Expr) IVideoUserAttributionHistoryDo
+	Group(cols ...field.Expr) IVideoUserAttributionHistoryDo
+	Having(conds ...gen.Condition) IVideoUserAttributionHistoryDo
+	Limit(limit int) IVideoUserAttributionHistoryDo
+	Offset(offset int) IVideoUserAttributionHistoryDo
 	Count() (count int64, err error)
-	Scopes(funcs ...func(gen.Dao) gen.Dao) IVideoUserAttributionDo
-	Unscoped() IVideoUserAttributionDo
-	Create(values ...*model.VideoUserAttribution) error
-	CreateInBatches(values []*model.VideoUserAttribution, batchSize int) error
-	Save(values ...*model.VideoUserAttribution) error
-	First() (*model.VideoUserAttribution, error)
-	Take() (*model.VideoUserAttribution, error)
-	Last() (*model.VideoUserAttribution, error)
-	Find() ([]*model.VideoUserAttribution, error)
-	FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.VideoUserAttribution, err error)
-	FindInBatches(result *[]*model.VideoUserAttribution, batchSize int, fc func(tx gen.Dao, batch int) error) error
+	Scopes(funcs ...func(gen.Dao) gen.Dao) IVideoUserAttributionHistoryDo
+	Unscoped() IVideoUserAttributionHistoryDo
+	Create(values ...*model.VideoUserAttributionHistory) error
+	CreateInBatches(values []*model.VideoUserAttributionHistory, batchSize int) error
+	Save(values ...*model.VideoUserAttributionHistory) error
+	First() (*model.VideoUserAttributionHistory, error)
+	Take() (*model.VideoUserAttributionHistory, error)
+	Last() (*model.VideoUserAttributionHistory, error)
+	Find() ([]*model.VideoUserAttributionHistory, error)
+	FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.VideoUserAttributionHistory, err error)
+	FindInBatches(result *[]*model.VideoUserAttributionHistory, batchSize int, fc func(tx gen.Dao, batch int) error) error
 	Pluck(column field.Expr, dest interface{}) error
-	Delete(...*model.VideoUserAttribution) (info gen.ResultInfo, err error)
+	Delete(...*model.VideoUserAttributionHistory) (info gen.ResultInfo, err error)
 	Update(column field.Expr, value interface{}) (info gen.ResultInfo, err error)
 	UpdateSimple(columns ...field.AssignExpr) (info gen.ResultInfo, err error)
 	Updates(value interface{}) (info gen.ResultInfo, err error)
@@ -860,165 +862,165 @@ type IVideoUserAttributionDo interface {
 	UpdateColumnSimple(columns ...field.AssignExpr) (info gen.ResultInfo, err error)
 	UpdateColumns(value interface{}) (info gen.ResultInfo, err error)
 	UpdateFrom(q gen.SubQuery) gen.Dao
-	Attrs(attrs ...field.AssignExpr) IVideoUserAttributionDo
-	Assign(attrs ...field.AssignExpr) IVideoUserAttributionDo
-	Joins(fields ...field.RelationField) IVideoUserAttributionDo
-	Preload(fields ...field.RelationField) IVideoUserAttributionDo
-	FirstOrInit() (*model.VideoUserAttribution, error)
-	FirstOrCreate() (*model.VideoUserAttribution, error)
-	FindByPage(offset int, limit int) (result []*model.VideoUserAttribution, count int64, err error)
+	Attrs(attrs ...field.AssignExpr) IVideoUserAttributionHistoryDo
+	Assign(attrs ...field.AssignExpr) IVideoUserAttributionHistoryDo
+	Joins(fields ...field.RelationField) IVideoUserAttributionHistoryDo
+	Preload(fields ...field.RelationField) IVideoUserAttributionHistoryDo
+	FirstOrInit() (*model.VideoUserAttributionHistory, error)
+	FirstOrCreate() (*model.VideoUserAttributionHistory, error)
+	FindByPage(offset int, limit int) (result []*model.VideoUserAttributionHistory, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
 	Rows() (*sql.Rows, error)
 	Row() *sql.Row
 	Scan(result interface{}) (err error)
-	Returning(value interface{}, columns ...string) IVideoUserAttributionDo
+	Returning(value interface{}, columns ...string) IVideoUserAttributionHistoryDo
 	UnderlyingDB() *gorm.DB
 	schema.Tabler
 }
 
-func (v videoUserAttributionDo) Debug() IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Debug() IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Debug())
 }
 
-func (v videoUserAttributionDo) WithContext(ctx context.Context) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) WithContext(ctx context.Context) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.WithContext(ctx))
 }
 
-func (v videoUserAttributionDo) ReadDB() IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) ReadDB() IVideoUserAttributionHistoryDo {
 	return v.Clauses(dbresolver.Read)
 }
 
-func (v videoUserAttributionDo) WriteDB() IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) WriteDB() IVideoUserAttributionHistoryDo {
 	return v.Clauses(dbresolver.Write)
 }
 
-func (v videoUserAttributionDo) Session(config *gorm.Session) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Session(config *gorm.Session) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Session(config))
 }
 
-func (v videoUserAttributionDo) Clauses(conds ...clause.Expression) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Clauses(conds ...clause.Expression) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Clauses(conds...))
 }
 
-func (v videoUserAttributionDo) Returning(value interface{}, columns ...string) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Returning(value interface{}, columns ...string) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Returning(value, columns...))
 }
 
-func (v videoUserAttributionDo) Not(conds ...gen.Condition) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Not(conds ...gen.Condition) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Not(conds...))
 }
 
-func (v videoUserAttributionDo) Or(conds ...gen.Condition) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Or(conds ...gen.Condition) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Or(conds...))
 }
 
-func (v videoUserAttributionDo) Select(conds ...field.Expr) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Select(conds ...field.Expr) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Select(conds...))
 }
 
-func (v videoUserAttributionDo) Where(conds ...gen.Condition) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Where(conds ...gen.Condition) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Where(conds...))
 }
 
-func (v videoUserAttributionDo) Order(conds ...field.Expr) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Order(conds ...field.Expr) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Order(conds...))
 }
 
-func (v videoUserAttributionDo) Distinct(cols ...field.Expr) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Distinct(cols ...field.Expr) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Distinct(cols...))
 }
 
-func (v videoUserAttributionDo) Omit(cols ...field.Expr) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Omit(cols ...field.Expr) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Omit(cols...))
 }
 
-func (v videoUserAttributionDo) Join(table schema.Tabler, on ...field.Expr) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Join(table schema.Tabler, on ...field.Expr) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Join(table, on...))
 }
 
-func (v videoUserAttributionDo) LeftJoin(table schema.Tabler, on ...field.Expr) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) LeftJoin(table schema.Tabler, on ...field.Expr) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.LeftJoin(table, on...))
 }
 
-func (v videoUserAttributionDo) RightJoin(table schema.Tabler, on ...field.Expr) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) RightJoin(table schema.Tabler, on ...field.Expr) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.RightJoin(table, on...))
 }
 
-func (v videoUserAttributionDo) Group(cols ...field.Expr) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Group(cols ...field.Expr) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Group(cols...))
 }
 
-func (v videoUserAttributionDo) Having(conds ...gen.Condition) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Having(conds ...gen.Condition) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Having(conds...))
 }
 
-func (v videoUserAttributionDo) Limit(limit int) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Limit(limit int) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Limit(limit))
 }
 
-func (v videoUserAttributionDo) Offset(offset int) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Offset(offset int) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Offset(offset))
 }
 
-func (v videoUserAttributionDo) Scopes(funcs ...func(gen.Dao) gen.Dao) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Scopes(funcs ...func(gen.Dao) gen.Dao) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Scopes(funcs...))
 }
 
-func (v videoUserAttributionDo) Unscoped() IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Unscoped() IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Unscoped())
 }
 
-func (v videoUserAttributionDo) Create(values ...*model.VideoUserAttribution) error {
+func (v videoUserAttributionHistoryDo) Create(values ...*model.VideoUserAttributionHistory) error {
 	if len(values) == 0 {
 		return nil
 	}
 	return v.DO.Create(values)
 }
 
-func (v videoUserAttributionDo) CreateInBatches(values []*model.VideoUserAttribution, batchSize int) error {
+func (v videoUserAttributionHistoryDo) CreateInBatches(values []*model.VideoUserAttributionHistory, batchSize int) error {
 	return v.DO.CreateInBatches(values, batchSize)
 }
 
 // Save : !!! underlying implementation is different with GORM
 // The method is equivalent to executing the statement: db.Clauses(clause.OnConflict{UpdateAll: true}).Create(values)
-func (v videoUserAttributionDo) Save(values ...*model.VideoUserAttribution) error {
+func (v videoUserAttributionHistoryDo) Save(values ...*model.VideoUserAttributionHistory) error {
 	if len(values) == 0 {
 		return nil
 	}
 	return v.DO.Save(values)
 }
 
-func (v videoUserAttributionDo) First() (*model.VideoUserAttribution, error) {
+func (v videoUserAttributionHistoryDo) First() (*model.VideoUserAttributionHistory, error) {
 	if result, err := v.DO.First(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.VideoUserAttribution), nil
+		return result.(*model.VideoUserAttributionHistory), nil
 	}
 }
 
-func (v videoUserAttributionDo) Take() (*model.VideoUserAttribution, error) {
+func (v videoUserAttributionHistoryDo) Take() (*model.VideoUserAttributionHistory, error) {
 	if result, err := v.DO.Take(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.VideoUserAttribution), nil
+		return result.(*model.VideoUserAttributionHistory), nil
 	}
 }
 
-func (v videoUserAttributionDo) Last() (*model.VideoUserAttribution, error) {
+func (v videoUserAttributionHistoryDo) Last() (*model.VideoUserAttributionHistory, error) {
 	if result, err := v.DO.Last(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.VideoUserAttribution), nil
+		return result.(*model.VideoUserAttributionHistory), nil
 	}
 }
 
-func (v videoUserAttributionDo) Find() ([]*model.VideoUserAttribution, error) {
+func (v videoUserAttributionHistoryDo) Find() ([]*model.VideoUserAttributionHistory, error) {
 	result, err := v.DO.Find()
-	return result.([]*model.VideoUserAttribution), err
+	return result.([]*model.VideoUserAttributionHistory), err
 }
 
-func (v videoUserAttributionDo) FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.VideoUserAttribution, err error) {
-	buf := make([]*model.VideoUserAttribution, 0, batchSize)
+func (v videoUserAttributionHistoryDo) FindInBatch(batchSize int, fc func(tx gen.Dao, batch int) error) (results []*model.VideoUserAttributionHistory, err error) {
+	buf := make([]*model.VideoUserAttributionHistory, 0, batchSize)
 	err = v.DO.FindInBatches(&buf, batchSize, func(tx gen.Dao, batch int) error {
 		defer func() { results = append(results, buf...) }()
 		return fc(tx, batch)
@@ -1026,49 +1028,49 @@ func (v videoUserAttributionDo) FindInBatch(batchSize int, fc func(tx gen.Dao, b
 	return results, err
 }
 
-func (v videoUserAttributionDo) FindInBatches(result *[]*model.VideoUserAttribution, batchSize int, fc func(tx gen.Dao, batch int) error) error {
+func (v videoUserAttributionHistoryDo) FindInBatches(result *[]*model.VideoUserAttributionHistory, batchSize int, fc func(tx gen.Dao, batch int) error) error {
 	return v.DO.FindInBatches(result, batchSize, fc)
 }
 
-func (v videoUserAttributionDo) Attrs(attrs ...field.AssignExpr) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Attrs(attrs ...field.AssignExpr) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Attrs(attrs...))
 }
 
-func (v videoUserAttributionDo) Assign(attrs ...field.AssignExpr) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Assign(attrs ...field.AssignExpr) IVideoUserAttributionHistoryDo {
 	return v.withDO(v.DO.Assign(attrs...))
 }
 
-func (v videoUserAttributionDo) Joins(fields ...field.RelationField) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Joins(fields ...field.RelationField) IVideoUserAttributionHistoryDo {
 	for _, _f := range fields {
 		v = *v.withDO(v.DO.Joins(_f))
 	}
 	return &v
 }
 
-func (v videoUserAttributionDo) Preload(fields ...field.RelationField) IVideoUserAttributionDo {
+func (v videoUserAttributionHistoryDo) Preload(fields ...field.RelationField) IVideoUserAttributionHistoryDo {
 	for _, _f := range fields {
 		v = *v.withDO(v.DO.Preload(_f))
 	}
 	return &v
 }
 
-func (v videoUserAttributionDo) FirstOrInit() (*model.VideoUserAttribution, error) {
+func (v videoUserAttributionHistoryDo) FirstOrInit() (*model.VideoUserAttributionHistory, error) {
 	if result, err := v.DO.FirstOrInit(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.VideoUserAttribution), nil
+		return result.(*model.VideoUserAttributionHistory), nil
 	}
 }
 
-func (v videoUserAttributionDo) FirstOrCreate() (*model.VideoUserAttribution, error) {
+func (v videoUserAttributionHistoryDo) FirstOrCreate() (*model.VideoUserAttributionHistory, error) {
 	if result, err := v.DO.FirstOrCreate(); err != nil {
 		return nil, err
 	} else {
-		return result.(*model.VideoUserAttribution), nil
+		return result.(*model.VideoUserAttributionHistory), nil
 	}
 }
 
-func (v videoUserAttributionDo) FindByPage(offset int, limit int) (result []*model.VideoUserAttribution, count int64, err error) {
+func (v videoUserAttributionHistoryDo) FindByPage(offset int, limit int) (result []*model.VideoUserAttributionHistory, count int64, err error) {
 	result, err = v.Offset(offset).Limit(limit).Find()
 	if err != nil {
 		return
@@ -1083,7 +1085,7 @@ func (v videoUserAttributionDo) FindByPage(offset int, limit int) (result []*mod
 	return
 }
 
-func (v videoUserAttributionDo) ScanByPage(result interface{}, offset int, limit int) (count int64, err error) {
+func (v videoUserAttributionHistoryDo) ScanByPage(result interface{}, offset int, limit int) (count int64, err error) {
 	count, err = v.Count()
 	if err != nil {
 		return
@@ -1093,15 +1095,15 @@ func (v videoUserAttributionDo) ScanByPage(result interface{}, offset int, limit
 	return
 }
 
-func (v videoUserAttributionDo) Scan(result interface{}) (err error) {
+func (v videoUserAttributionHistoryDo) Scan(result interface{}) (err error) {
 	return v.DO.Scan(result)
 }
 
-func (v videoUserAttributionDo) Delete(models ...*model.VideoUserAttribution) (result gen.ResultInfo, err error) {
+func (v videoUserAttributionHistoryDo) Delete(models ...*model.VideoUserAttributionHistory) (result gen.ResultInfo, err error) {
 	return v.DO.Delete(models)
 }
 
-func (v *videoUserAttributionDo) withDO(do gen.Dao) *videoUserAttributionDo {
+func (v *videoUserAttributionHistoryDo) withDO(do gen.Dao) *videoUserAttributionHistoryDo {
 	v.DO = *do.(*gen.DO)
 	return v
 }

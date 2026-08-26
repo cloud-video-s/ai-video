@@ -27,6 +27,7 @@ const routes: RouteRecordRaw[] = [
 	  { path: 'user', redirect: '/user/list' },
 	  { path: 'attribution', redirect: '/attribution/list' },
 	  { path: 'model', redirect: '/model/list' },
+	  { path: 'tool', redirect: '/tool/configs' },
       {
         path: 'dashboard',
         name: 'Dashboard',
@@ -164,6 +165,12 @@ const routes: RouteRecordRaw[] = [
         name: 'BannerPlacementList',
         component: () => import('@/views/banner/BannerPlacementList.vue'),
         meta: { title: 'Banner 位置管理' },
+      },
+      {
+        path: 'tool/configs',
+        name: 'ToolConfigList',
+        component: () => import('@/views/tool/ToolConfigList.vue'),
+        meta: { title: '工具配置' },
       },
       {
         path: 'template/display-configs',
