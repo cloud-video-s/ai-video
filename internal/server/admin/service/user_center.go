@@ -315,7 +315,7 @@ func (s *AppUserService) TerminateVIP(ctx context.Context, id uint64) error {
 	}
 	now := time.Now()
 	return s.repo.Update(ctx, id, map[string]interface{}{
-		"vip_level": 0, "vip_expires_at": now, "user_type": domain.AppUserTypeFree,
+		"vip_level": 0, "vip_points": 0, "vip_expires_at": now, "user_type": domain.AppUserTypeFree,
 		"subscription_status": domain.AppUserSubscriptionCancelled,
 	})
 }

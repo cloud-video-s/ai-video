@@ -14,14 +14,7 @@ import (
 var ErrTemplateUnavailable = errors.New("template does not exist or is disabled")
 
 // CreateTemplateTask resolves all server-owned generation settings from a
-// template and then uses the normal durable task creation path. This keeps
-// provider submission, polling, result storage, and idempotency identical to
-// tasks created by explicitly selecting a model.
-func (m *Manager) CreateTemplateTask(
-	ctx context.Context,
-	userID uint64,
-	request *CreateTemplateTaskRequest,
-) (*model.VideoUserGenerationTask, error) {
+func (m *Manager) CreateTemplateTask(ctx context.Context, userID uint64, request *CreateTemplateTaskRequest) (*model.VideoUserGenerationTask, error) {
 	if request == nil || request.TemplateID == 0 {
 		return nil, errors.New("template_id is required")
 	}

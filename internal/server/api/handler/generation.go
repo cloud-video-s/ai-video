@@ -69,11 +69,12 @@ func (h *GenerationHandler) CreateFromTemplate(c *gin.Context) {
 	}
 	task, err := h.manager.CreateTemplateTask(c.Request.Context(), middleware.GetAPIUserID(c), &request)
 	if err != nil {
-		if errors.Is(err, generation.ErrTemplateUnavailable) {
-			response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, err.Error())
-			return
-		}
-		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, err.Error())
+		response.Fail(c, errcode.ErrParam, err.Error())
+		//if errors.Is(err, generation.ErrTemplateUnavailable) {
+		//	response.FailWithStatus(c, http.StatusNotFound, errcode.ErrNotFound, err.Error())
+		//	return
+		//}
+		//response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, err.Error())
 		return
 	}
 	response.OK(c, generation.ViewOf(task))

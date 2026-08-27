@@ -1,7 +1,7 @@
 package task
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -9,34 +9,29 @@ import (
 	"github.com/hibiken/asynq"
 )
 
-// CronTask defines a scheduled task with cron expression.
-type CronTask struct {
-	Cron     string        // cron expression, e.g. "0 2 * * *" or "@every 5m"
-	TypeName string        // task type name
-	Payload  interface{}   // task payload (will be JSON-marshaled)
-	Queue    string        // target queue (optional, defaults to "default")
-	Unique   time.Duration // if > 0, dedupe enqueues within this TTL
+const defaultPeriodicUniqueTTL = 2 * time.Hour
+
+// PeriodicTask is the complete public definition of a recurring task.
+// Infrastructure details such as cron syntax, queue selection, payloads and
+// deduplication are intentionally kept inside Manager.
+type PeriodicTask struct {
+	Every time.Duration
+	Run   func(context.Context) error
 }
 
-// Scheduler wraps asynq.Scheduler for cron jobs.
-//
-// asynq.Scheduler does NOT perform leader election: running it in N processes
-// enqueues each cron task N times. Deploy exactly ONE scheduler instance
-// (see cmd/scheduler). As a safety net, give each CronTask a Unique TTL so that
-// duplicate enqueues — e.g. from an accidentally started second instance — are
-// deduplicated by Redis.
-type Scheduler struct {
+type PeriodicTasks map[string]PeriodicTask
+
+type scheduler struct {
 	scheduler *asynq.Scheduler
-	stopOnce  sync.Once
+
+	mu      sync.Mutex
+	entries int
+	started bool
+	active  bool
+	stopped bool
 }
 
-func NewScheduler(redisAddr, password string, db int) *Scheduler {
-	return NewSchedulerWithUsername(redisAddr, "", password, db)
-}
-
-// NewSchedulerWithUsername creates a scheduler for Redis deployments that use
-// ACL usernames. NewScheduler remains available for password-only deployments.
-func NewSchedulerWithUsername(redisAddr, username, password string, db int) *Scheduler {
+func newScheduler(redisAddr, username, password string, db int) *scheduler {
 	s := asynq.NewScheduler(
 		asynq.RedisClientOpt{
 			Addr:     redisAddr,
@@ -44,45 +39,91 @@ func NewSchedulerWithUsername(redisAddr, username, password string, db int) *Sch
 			Password: password,
 			DB:       db,
 		},
-		// Location follows the process-wide time.Local (set by app.InitTimezone),
-		// so cron expressions like DailyAt(2,0) fire in the configured timezone
-		// instead of asynq's default UTC.
 		&asynq.SchedulerOpts{Location: time.Local},
 	)
-	return &Scheduler{scheduler: s}
+	return &scheduler{scheduler: s}
 }
 
-// Register adds a cron task to the scheduler.
-func (s *Scheduler) Register(ct CronTask) (string, error) {
-	data, err := json.Marshal(ct.Payload)
-	if err != nil {
-		return "", fmt.Errorf("marshal cron task payload: %w", err)
+func (s *scheduler) register(typeName string, every time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.started || s.stopped {
+		return fmt.Errorf("register periodic task %q after task manager start", typeName)
 	}
-	task := asynq.NewTask(ct.TypeName, data)
 
-	var opts []asynq.Option
-	if ct.Queue != "" {
-		opts = append(opts, asynq.Queue(ct.Queue))
-	}
-	if ct.Unique > 0 {
-		opts = append(opts, asynq.Unique(ct.Unique))
-	}
-	entryID, err := s.scheduler.Register(ct.Cron, task, opts...)
+	uniqueTTL := max(every, defaultPeriodicUniqueTTL)
+	_, err := s.scheduler.Register(
+		periodicSpec(every),
+		asynq.NewTask(typeName, nil),
+		asynq.Queue("default"),
+		asynq.Unique(uniqueTTL),
+	)
 	if err != nil {
-		return "", fmt.Errorf("register cron task [%s]: %w", ct.TypeName, err)
+		return fmt.Errorf("register periodic task %q: %w", typeName, err)
 	}
-	return entryID, nil
+	s.entries++
+	return nil
 }
 
-// Start starts the scheduler (blocking).
-func (s *Scheduler) Start() error {
-	return s.scheduler.Start()
+// periodicSpec keeps common minute/hour/day intervals aligned to wall-clock
+// boundaries. This lets parallel app instances enqueue at the same instant so
+// Asynq's uniqueness lock can collapse duplicate schedules.
+func periodicSpec(every time.Duration) string {
+	if every%time.Minute != 0 {
+		return "@every " + every.String()
+	}
+	minutes := int(every / time.Minute)
+	if minutes < 60 && 60%minutes == 0 {
+		return fmt.Sprintf("*/%d * * * *", minutes)
+	}
+	if minutes%60 == 0 {
+		hours := minutes / 60
+		if hours < 24 && 24%hours == 0 {
+			return fmt.Sprintf("0 */%d * * *", hours)
+		}
+		if hours == 24 {
+			return "0 0 * * *"
+		}
+	}
+	return "@every " + every.String()
+}
+
+// Start starts the Asynq scheduler. Asynq starts its own goroutines, so this
+// call is intentionally non-blocking. An empty scheduler is not started.
+func (s *scheduler) Start() error {
+	if s == nil || s.scheduler == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.stopped {
+		return nil
+	}
+	s.started = true
+	if s.entries == 0 {
+		return nil
+	}
+	if err := s.scheduler.Start(); err != nil {
+		return err
+	}
+	s.active = true
+	return nil
 }
 
 // Stop shuts down the scheduler.
-func (s *Scheduler) Stop() {
+func (s *scheduler) Stop() {
 	if s == nil || s.scheduler == nil {
 		return
 	}
-	s.stopOnce.Do(s.scheduler.Shutdown)
+	s.mu.Lock()
+	if s.stopped {
+		s.mu.Unlock()
+		return
+	}
+	s.stopped = true
+	active := s.active
+	s.mu.Unlock()
+	if active {
+		s.scheduler.Shutdown()
+	}
 }

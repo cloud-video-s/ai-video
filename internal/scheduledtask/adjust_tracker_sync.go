@@ -11,16 +11,14 @@ import (
 
 	"ai-video/internal/gen/model"
 	"ai-video/internal/pkg/adjust"
-	"ai-video/internal/pkg/task"
 	"ai-video/internal/repository"
 )
 
 const (
-	TypeSyncAdjustTrackers = "adjust:trackers:sync"
-	AdjustTrackerSyncCron  = "*/15 * * * *"
+	TypeSyncAdjustTrackers    = "adjust:trackers:sync"
+	AdjustTrackerSyncInterval = 20 * time.Minute
 
-	adjustTrackerSyncUniqueTTL   = 120 * time.Minute
-	adjustTrackerRequestInterval = 100 * time.Millisecond
+	adjustTrackerRequestInterval = 1000 * time.Millisecond
 )
 
 type adjustTrackerClient interface {
@@ -49,7 +47,7 @@ type adjustTrackerSyncHandler struct {
 	running         atomic.Bool
 }
 
-func (h *adjustTrackerSyncHandler) Handle(ctx context.Context, _ []byte) error {
+func (h *adjustTrackerSyncHandler) Handle(ctx context.Context) error {
 	// A failed recurring task can coexist with a later cron enqueue while Asynq
 	// is retrying it. Discard duplicates instead of letting them contend for the
 	// same rows and multiply Campaign API calls.
@@ -239,22 +237,15 @@ func cloneTrackerTokens(source map[string]struct{}) map[string]struct{} {
 	return result
 }
 
-// RegisterAdjustTrackerSync registers the shared worker handler and its
-// fifteen-minute recurring enqueue. The uniqueness window prevents parallel app
-// instances from enqueueing the same run at the same instant.
-func RegisterAdjustTrackerSync(manager *task.Manager, scheduler *task.Scheduler, client adjustTrackerClient, appToken string, onCompleted func(context.Context, AdjustTrackerSyncResult)) error {
-	if manager == nil || manager.Worker == nil {
-		return errors.New("task manager and worker are required")
-	}
-	if scheduler == nil {
-		return errors.New("task scheduler is required")
-	}
+// NewAdjustTrackerSync builds the business handler. Scheduling and Asynq
+// lifecycle concerns are owned by task.Manager.
+func NewAdjustTrackerSync(client adjustTrackerClient, appToken string, onCompleted func(context.Context, AdjustTrackerSyncResult)) (func(context.Context) error, error) {
 	if client == nil {
-		return errors.New("Adjust tracker client is required")
+		return nil, errors.New("Adjust tracker client is required")
 	}
 	appToken = strings.TrimSpace(appToken)
 	if appToken == "" {
-		return errors.New("Adjust tracker app token is required")
+		return nil, errors.New("Adjust tracker app token is required")
 	}
 
 	handler := &adjustTrackerSyncHandler{
@@ -262,12 +253,5 @@ func RegisterAdjustTrackerSync(manager *task.Manager, scheduler *task.Scheduler,
 		appToken: appToken, onCompleted: onCompleted,
 		requestInterval: adjustTrackerRequestInterval,
 	}
-	manager.Worker.Handle(TypeSyncAdjustTrackers, handler.Handle)
-	if _, err := scheduler.Register(task.CronTask{
-		Cron: AdjustTrackerSyncCron, TypeName: TypeSyncAdjustTrackers,
-		Payload: struct{}{}, Queue: "default", Unique: adjustTrackerSyncUniqueTTL,
-	}); err != nil {
-		return fmt.Errorf("register Adjust tracker sync schedule: %w", err)
-	}
-	return nil
+	return handler.Handle, nil
 }
