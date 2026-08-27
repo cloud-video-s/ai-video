@@ -141,10 +141,6 @@ func (m *Manager) consumeFrozenTaskPoints(ctx context.Context, state *repository
 			return errors.New("frozen points are less than the task reservation")
 		}
 		available := uint64(user.VipPoints) + uint64(user.PointsBalance)
-		// Every active task has already moved its cost out of the available
-		// balances. Include the complete frozen balance so settlements for
-		// concurrent reservations form one continuous ledger sequence instead
-		// of all reusing available+this task's score as the same before value.
 		if available > math.MaxUint64-user.FrozenPoints {
 			return errors.New("points ledger balance overflow")
 		}
@@ -152,9 +148,6 @@ func (m *Manager) consumeFrozenTaskPoints(ctx context.Context, state *repository
 		afterBalance = beforeBalance - uint64(state.Score)
 		user.FrozenPoints -= uint64(state.Score)
 	} else {
-		// Tasks created before point reservations were introduced have no split
-		// allocation. Preserve their old success behavior without pretending
-		// they own points from the global frozen balance.
 		_, err = freezeTaskPoints(user, state.Score)
 		if err != nil {
 			return err

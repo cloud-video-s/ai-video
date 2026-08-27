@@ -104,6 +104,7 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 		user.LastLoginAt = &now
 		user.ServerCountry = serverCountry
 		updates := thirdPartyLoginBinding(req.ThirdType, clientIP, serverCountry, now)
+		updates["account_binding_time"] = now
 		updates["active_days"] = 1
 		updates["third_code"] = req.ThirdCode
 		updates["email"] = req.Email

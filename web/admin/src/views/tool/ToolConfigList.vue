@@ -242,13 +242,35 @@
           />
         </el-form-item>
         <el-form-item label="背景图" prop="background_image">
-          <el-input
-            v-model="form.background_image"
-            maxlength="1024"
-            clearable
-            placeholder="请输入背景图 URL 或选择图片上传"
-          />
-          <cover-image-uploader v-model="form.background_image" class="background-upload" />
+          <div class="background-field">
+            <el-input
+              v-model="form.background_image"
+              maxlength="1024"
+              clearable
+              placeholder="请输入背景图 URL 或选择图片上传"
+            />
+            <cover-image-uploader v-model="form.background_image" class="background-upload" />
+            <div v-if="form.background_image" class="background-form-preview">
+              <el-image
+                class="background-preview-image"
+                :src="toMediaURL(form.background_image)"
+                :preview-src-list="[toMediaURL(form.background_image)]"
+                preview-teleported
+                fit="cover"
+              >
+                <template #error>
+                  <div class="background-preview-error">
+                    <el-icon><Picture /></el-icon>
+                    <span>背景图加载失败</span>
+                  </div>
+                </template>
+              </el-image>
+              <div class="background-preview-meta">
+                <span>背景图预览</span>
+                <span>点击图片查看大图</span>
+              </div>
+            </div>
+          </div>
         </el-form-item>
 
         <el-form-item label="角标">
@@ -615,7 +637,14 @@ onMounted(() => Promise.all([fetchData(), fetchModelOptions(1)]))
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
 .page-wrap :deep(.el-input-number) { width: 180px; }
 .form-tip { margin-left: 10px; color: #909399; font-size: 12px; }
+.background-field { width: 100%; }
 .background-upload { margin-top: 10px; }
+.background-form-preview { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 10px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
+.background-preview-image { width: 240px; height: 135px; flex: 0 0 auto; border-radius: 6px; background: #f0f2f5; cursor: zoom-in; }
+.background-preview-error { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 5px; width: 100%; height: 100%; color: #a8abb2; font-size: 12px; }
+.background-preview-error .el-icon { font-size: 24px; }
+.background-preview-meta { display: flex; flex-direction: column; gap: 4px; color: #606266; font-size: 13px; }
+.background-preview-meta span:last-child { color: #a8abb2; font-size: 12px; }
 .config-editor { width: 100%; min-width: 0; }
 .config-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .config-tip { color: #909399; font-size: 12px; }
@@ -626,6 +655,8 @@ onMounted(() => Promise.all([fetchData(), fetchModelOptions(1)]))
 @media (max-width: 700px) {
   .page-header { align-items: stretch; flex-direction: column; }
   .filters, .form-grid { grid-template-columns: 1fr; max-width: none; }
+  .background-form-preview { align-items: flex-start; flex-direction: column; }
+  .background-preview-image { width: 100%; height: auto; aspect-ratio: 16 / 9; }
   .page-wrap :deep(.el-card__header), .page-wrap :deep(.el-card__body) { padding: 14px; }
   .page-wrap :deep(.el-dialog) { width: calc(100% - 24px) !important; }
 }
