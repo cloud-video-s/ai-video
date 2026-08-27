@@ -16,7 +16,7 @@ import (
 
 const (
 	TypeSyncAdjustTrackers    = "adjust:trackers:sync"
-	AdjustTrackerSyncInterval = 20 * time.Minute
+	AdjustTrackerSyncInterval = 15 * time.Minute
 
 	adjustTrackerRequestInterval = 1000 * time.Millisecond
 )
