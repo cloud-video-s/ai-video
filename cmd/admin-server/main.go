@@ -6,7 +6,6 @@ import (
 	"ai-video/internal/generation"
 	"ai-video/internal/pkg/adjust"
 	"ai-video/internal/pkg/monitor"
-	"ai-video/internal/pkg/setting"
 	"ai-video/internal/pkg/task"
 	"ai-video/internal/router"
 	"ai-video/internal/scheduledtask"
@@ -55,16 +54,17 @@ func run() error {
 	if err := config.Init(*cfgFile); err != nil {
 		return fmt.Errorf("init app failed: %w", err)
 	}
-	if err := setting.Init(context.Background()); err != nil {
-		config.Log.Warnf("init settings: %v", err)
-	}
 
 	workerRestartDelay, workerRestartMaxDelay := config.Cfg.Task.WorkerRestartBackoff()
 	taskManager := task.NewManager(task.ManagerConfig{
-		RedisAddr: config.Cfg.Redis.Addr(), RedisUsername: config.Cfg.Redis.Username,
-		RedisPassword: config.Cfg.Redis.Password, RedisDB: config.Cfg.Redis.DB,
-		Concurrency: config.Cfg.Task.Concurrency, Queues: config.Cfg.Task.Queues,
-		RestartDelay: workerRestartDelay, RestartMaxDelay: workerRestartMaxDelay,
+		RedisAddr:       config.Cfg.Redis.Addr(),
+		RedisUsername:   config.Cfg.Redis.Username,
+		RedisPassword:   config.Cfg.Redis.Password,
+		RedisDB:         config.Cfg.Redis.DB,
+		Concurrency:     config.Cfg.Task.Concurrency,
+		Queues:          config.Cfg.Task.Queues,
+		RestartDelay:    workerRestartDelay,
+		RestartMaxDelay: workerRestartMaxDelay,
 		ErrorHandler: func(ctx context.Context, taskType string, err error) {
 			monitor.Report(config.Logger(ctx), monitor.KindTaskFailure, "task_worker", err, "task_type", taskType)
 		},
@@ -79,7 +79,6 @@ func run() error {
 		},
 	})
 	defer taskManager.Close()
-	var recurringScheduler *task.Scheduler
 	if config.Cfg.Adjust.TrackerSyncEnabled {
 		trackerClient, trackerErr := adjust.NewClient(adjust.ClientConfig{
 			APIToken: config.Cfg.Adjust.CampaignAppToken,
@@ -88,14 +87,7 @@ func run() error {
 		if trackerErr != nil {
 			return fmt.Errorf("init Adjust tracker sync client failed: %w", trackerErr)
 		}
-		recurringScheduler = task.NewSchedulerWithUsername(
-			config.Cfg.Redis.Addr(), config.Cfg.Redis.Username,
-			config.Cfg.Redis.Password, config.Cfg.Redis.DB,
-		)
-		defer recurringScheduler.Stop()
-		if trackerErr = scheduledtask.RegisterAdjustTrackerSync(
-			taskManager,
-			recurringScheduler,
+		syncAdjustTrackers, trackerErr := scheduledtask.NewAdjustTrackerSync(
 			trackerClient,
 			config.Cfg.Adjust.CampaignAppToken,
 			func(ctx context.Context, result scheduledtask.AdjustTrackerSyncResult) {
@@ -106,10 +98,19 @@ func run() error {
 					result.Trackers,
 				)
 			},
-		); trackerErr != nil {
+		)
+		if trackerErr != nil {
+			return fmt.Errorf("init Adjust tracker sync task failed: %w", trackerErr)
+		}
+		if trackerErr = taskManager.RegisterPeriodic(task.PeriodicTasks{
+			scheduledtask.TypeSyncAdjustTrackers: {
+				Every: scheduledtask.AdjustTrackerSyncInterval,
+				Run:   syncAdjustTrackers,
+			},
+		}); trackerErr != nil {
 			return fmt.Errorf("register Adjust tracker sync task failed: %w", trackerErr)
 		}
-		config.Log.Infof("Adjust tracker sync scheduled: cron=%s", scheduledtask.AdjustTrackerSyncCron)
+		config.Log.Infof("Adjust tracker sync scheduled: interval=%s", scheduledtask.AdjustTrackerSyncInterval)
 	} else {
 		config.Log.Info("Adjust tracker sync is disabled by adjust.tracker_sync_enabled")
 	}
@@ -189,24 +190,16 @@ func run() error {
 	go func() {
 		config.Log.Infof("server starting at %s", addr)
 		defer reportComponentPanic("http_server", runtimeErr)
-		if serveErr := srv.ListenAndServe(); serveErr != nil && serveErr != http.ErrServerClosed {
+		if serveErr := srv.ListenAndServe(); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 			runtimeErr <- fmt.Errorf("server run failed: %w", serveErr)
 		}
 	}()
 	go func() {
-		defer reportComponentPanic("task_worker", runtimeErr)
-		if workerErr := taskManager.Worker.Start(); workerErr != nil {
-			runtimeErr <- fmt.Errorf("task worker stopped: %w", workerErr)
+		defer reportComponentPanic("task_runtime", runtimeErr)
+		if taskErr := taskManager.Start(); taskErr != nil {
+			runtimeErr <- fmt.Errorf("task runtime stopped: %w", taskErr)
 		}
 	}()
-	if recurringScheduler != nil {
-		go func() {
-			defer reportComponentPanic("task_scheduler", runtimeErr)
-			if schedulerErr := recurringScheduler.Start(); schedulerErr != nil {
-				runtimeErr <- fmt.Errorf("task scheduler stopped: %w", schedulerErr)
-			}
-		}()
-	}
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -223,10 +216,7 @@ func run() error {
 	stopAdjustEvents()
 	adjustevent.SetDefault(nil)
 	generation.Stop()
-	if recurringScheduler != nil {
-		recurringScheduler.Stop()
-	}
-	taskManager.Worker.Stop()
+	taskManager.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	var shutdownErr error

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"ai-video/internal/gen/model"
 	"context"
 	"errors"
 	"fmt"
@@ -26,16 +27,16 @@ func NewUserAttributionService() *UserAttributionService {
 
 type ListUserAttributionRequest struct {
 	ListSortRequest
-	Keyword     string `form:"keyword" binding:"max=128"`
-	ChannelCode string `form:"channel_code" binding:"max=64"`
-	Event       string `form:"event" binding:"omitempty,oneof=activation key_behavior payment first_payment registration"`
-	Reached     *bool  `form:"reached"`
-	StartedAt   string `form:"started_at" binding:"omitempty,datetime=2006-01-02"`
-	EndedAt     string `form:"ended_at" binding:"omitempty,datetime=2006-01-02"`
+	Keyword   string `form:"keyword" binding:"max=128"`
+	ChannelID uint64 `form:"channel_id" binding:"max=64"`
+	Event     string `form:"event" binding:"omitempty,oneof=activation key_behavior payment first_payment registration"`
+	Reached   *bool  `form:"reached"`
+	StartedAt string `form:"started_at" binding:"omitempty,datetime=2006-01-02"`
+	EndedAt   string `form:"ended_at" binding:"omitempty,datetime=2006-01-02"`
 }
 
 type UpdateUserAttributionRequest struct {
-	ChannelCode  string     `json:"channel_code" binding:"max=64"`
+	ChannelID    uint64     `json:"channel_id" binding:"max=64"`
 	OAID         string     `json:"oaid" binding:"max=128"`
 	IMEI         string     `json:"imei" binding:"max=128"`
 	AndroidID    string     `json:"android_id" binding:"max=128"`
@@ -50,9 +51,7 @@ type RecordAttributionEventRequest struct {
 	Action string `json:"action" binding:"required,oneof=callback deduct"`
 }
 
-func (s *UserAttributionService) List(
-	ctx context.Context, page, pageSize int, req *ListUserAttributionRequest,
-) ([]repository.UserAttributionRecord, int64, error) {
+func (s *UserAttributionService) List(ctx context.Context, page, pageSize int, req *ListUserAttributionRequest) ([]*model.VideoUserAttribution, int64, error) {
 	startedAt, err := parseAttributionDate(req.StartedAt, false)
 	if err != nil {
 		return nil, 0, err
@@ -66,7 +65,7 @@ func (s *UserAttributionService) List(
 	}
 	list, total, err := s.repo.PageList(ctx, page, pageSize, &repository.UserAttributionListFilter{
 		ListSort: req.listSort(),
-		Keyword:  strings.TrimSpace(req.Keyword), ChannelCode: strings.TrimSpace(req.ChannelCode),
+		Keyword:  strings.TrimSpace(req.Keyword), ChannelID: req.ChannelID,
 		Event: strings.TrimSpace(req.Event), Reached: req.Reached, StartedAt: startedAt, EndedAt: endedAt,
 	})
 	if err != nil {
@@ -76,7 +75,7 @@ func (s *UserAttributionService) List(
 	return list, total, nil
 }
 
-func (s *UserAttributionService) GetByID(ctx context.Context, id uint64) (*repository.UserAttributionRecord, error) {
+func (s *UserAttributionService) GetByID(ctx context.Context, id uint64) (*model.VideoUserAttribution, error) {
 	item, err := s.repo.GetByID(ctx, id, false)
 	if err != nil {
 		return nil, notFoundOr(err, "归因记录不存在")
@@ -84,38 +83,33 @@ func (s *UserAttributionService) GetByID(ctx context.Context, id uint64) (*repos
 	return item, nil
 }
 
-func (s *UserAttributionService) Update(
-	ctx context.Context, id uint64, req *UpdateUserAttributionRequest,
-) (*repository.UserAttributionRecord, error) {
+func (s *UserAttributionService) Update(ctx context.Context, id uint64, req *UpdateUserAttributionRequest) (*model.VideoUserAttribution, error) {
 	item, err := s.repo.GetByID(ctx, id, false)
 	if err != nil {
 		return nil, notFoundOr(err, "归因记录不存在")
 	}
-	channelCode := strings.TrimSpace(req.ChannelCode)
-	if channelCode != "" {
-		if _, err := s.channelRepo.GetByCodeOrID(ctx, channelCode); err != nil {
+	if req.ChannelID > 0 {
+		if _, err := s.channelRepo.GetByCodeOrID(ctx, req.ChannelID); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, errors.New("渠道不存在")
 			}
 			return nil, err
 		}
 	}
-	//item.ChannelID = channelCode
+	item.ChannelID = req.ChannelID
 	item.OAID = strings.TrimSpace(req.OAID)
 	item.IMEI = strings.TrimSpace(req.IMEI)
 	item.AndroidID = strings.TrimSpace(req.AndroidID)
-	//item.IP = strings.TrimSpace(req.IP)
-	//item.UserAgent = strings.TrimSpace(req.UserAgent)
+	item.DeviceIP = strings.TrimSpace(req.IP)
+	item.UserAgent = strings.TrimSpace(req.UserAgent)
 	item.Remark = strings.TrimSpace(req.Remark)
-	if err := s.repo.Update(ctx, &item.VideoUserAttribution); err != nil {
+	if err = s.repo.Update(ctx, item); err != nil {
 		return nil, err
 	}
 	return s.GetByID(ctx, id)
 }
 
-func (s *UserAttributionService) RecordEvent(
-	ctx context.Context, id uint64, req *RecordAttributionEventRequest,
-) (*repository.UserAttributionRecord, error) {
+func (s *UserAttributionService) RecordEvent(ctx context.Context, id uint64, req *RecordAttributionEventRequest) (*model.VideoUserAttribution, error) {
 	err := repository.Transaction(ctx, func(ctx context.Context) error {
 		item, err := s.repo.GetByID(ctx, id, true)
 		if err != nil {
@@ -161,18 +155,18 @@ func parseAttributionDate(value string, endOfDay bool) (*time.Time, error) {
 	return &parsed, nil
 }
 
-func attributionEventState(item *repository.UserAttributionRecord, event string) (uint64, uint64, bool, error) {
+func attributionEventState(item *model.VideoUserAttribution, event string) (uint64, uint64, bool, error) {
 	switch event {
 	case domain.AttributionEventActivation:
 		return item.ActivationCallbackCount, item.ActivationDeductCount, item.User.Activated != 0, nil
 	case domain.AttributionEventKeyBehavior:
 		return item.KeyBehaviorCallbackCount, item.KeyBehaviorDeductCount, item.User.KeyBehaviorMet != 0, nil
-	//case domain.AttributionEventPayment:
-	//	return item.PaymentCallbackCount, item.PaymentDeductCount, item.User.PaymentMet, nil
-	//case domain.AttributionEventFirstPayment:
-	//	return item.FirstPaymentCallbackCount, item.FirstPaymentDeductCount, item.User.FirstPaymentMet, nil
-	//case domain.AttributionEventRegistration:
-	//	return item.RegistrationCallbackCount, item.RegistrationDeductCount, item.User.Registered, nil
+	case domain.AttributionEventPayment:
+		return item.PaymentCallbackCount, item.PaymentDeductCount, item.User.PaymentMet != 0, nil
+	case domain.AttributionEventFirstPayment:
+		return item.FirstPaymentCallbackCount, item.FirstPaymentDeductCount, item.User.FirstPaymentMet != 0, nil
+	case domain.AttributionEventRegistration:
+		return item.RegistrationCallbackCount, item.RegistrationDeductCount, item.User.Registered != 0, nil
 	default:
 		return 0, 0, false, errors.New("不支持的归因事件")
 	}

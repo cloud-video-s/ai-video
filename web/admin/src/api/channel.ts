@@ -17,7 +17,7 @@ export interface ChannelCallbackConfig {
 }
 
 export interface Channel {
-  channel_id: number
+  id: number
   channel_code: string
   channel_name: string
   account_channel: string

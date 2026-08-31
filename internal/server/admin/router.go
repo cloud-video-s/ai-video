@@ -45,6 +45,7 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	vipSubscriptionLevelHandler := handler.NewVIPSubscriptionLevelHandler()
 	pointsHandler := handler.NewPointsHandler()
 	orderAdminHandler := handler.NewOrderAdminHandler()
+	templateComplaintHandler := handler.NewTemplateComplaintHandler()
 	userPointsLedgerHandler := handler.NewUserPointsLedgerHandler()
 	userGenerationTaskHandler := handler.NewUserGenerationTaskHandler()
 	bannerHandler := handler.NewBannerHandler()
@@ -305,6 +306,10 @@ func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 		// Read-only commerce orders
 		auth.GET("/orders", orderAdminHandler.List)
 		auth.GET("/orders/:id", orderAdminHandler.GetByID)
+
+		// Read-only user complaints about video templates
+		auth.GET("/template-complaints", templateComplaintHandler.List)
+		auth.GET("/template-complaints/:id", templateComplaintHandler.GetByID)
 
 		// Read-only user points ledger
 		auth.GET("/user-points-ledgers", userPointsLedgerHandler.List)

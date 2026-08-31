@@ -4330,6 +4330,11 @@
                                 "format": "int64",
                                 "type": "integer"
                               },
+                              "source_type": {
+                                "description": "任务来源：1=自定义，2=模板，3=工具",
+                                "format": "int64",
+                                "type": "integer"
+                              },
                               "started_at": {
                                 "description": "上游开始处理的时间",
                                 "format": "date-time",
@@ -4361,6 +4366,11 @@
                                 "format": "int64",
                                 "type": "integer"
                               },
+                              "tool_id": {
+                                "description": "工具 ID",
+                                "format": "int64",
+                                "type": "integer"
+                              },
                               "updated_at": {
                                 "description": "更新时间",
                                 "format": "date-time",
@@ -4376,6 +4386,7 @@
                             "required": [
                               "id",
                               "task_code",
+                              "source_type",
                               "task_type",
                               "status",
                               "progress",
@@ -4552,6 +4563,7 @@
               {
                 "id": 13,
                 "task_code": "eafe15f0-780f-4a7f-9c62-7e99484be521",
+                "source_type": 1,
                 "task_type": 2,
                 "status": 7,
                 "progress": 100,
@@ -4580,6 +4592,7 @@
               {
                 "id": 12,
                 "task_code": "c55e71fc-f2c1-4f8e-aae7-9f380fc0b0ea",
+                "source_type": 0,
                 "task_type": 2,
                 "status": 7,
                 "progress": 100,
@@ -4608,6 +4621,7 @@
               {
                 "id": 11,
                 "task_code": "d9dd18d6-6cd4-4df3-8dff-f7c3622990b7",
+                "source_type": 0,
                 "task_type": 2,
                 "status": 6,
                 "progress": 100,
@@ -4715,6 +4729,11 @@
                         "format": "int64",
                         "type": "integer"
                       },
+                      "source_type": {
+                        "description": "任务来源：1=自定义，2=模板，3=工具",
+                        "format": "int64",
+                        "type": "integer"
+                      },
                       "started_at": {
                         "description": "上游开始处理的时间",
                         "format": "date-time",
@@ -4746,6 +4765,11 @@
                         "format": "int64",
                         "type": "integer"
                       },
+                      "tool_id": {
+                        "description": "工具 ID",
+                        "format": "int64",
+                        "type": "integer"
+                      },
                       "updated_at": {
                         "description": "更新时间",
                         "format": "date-time",
@@ -4761,6 +4785,7 @@
                     "required": [
                       "id",
                       "task_code",
+                      "source_type",
                       "task_type",
                       "status",
                       "progress",
@@ -4866,6 +4891,11 @@
                     "format": "int64",
                     "type": "integer"
                   },
+                  "source_type": {
+                    "description": "任务来源：1=自定义，2=模板，3=工具",
+                    "format": "int64",
+                    "type": "integer"
+                  },
                   "started_at": {
                     "description": "上游开始处理的时间",
                     "format": "date-time",
@@ -4897,6 +4927,11 @@
                     "format": "int64",
                     "type": "integer"
                   },
+                  "tool_id": {
+                    "description": "工具 ID",
+                    "format": "int64",
+                    "type": "integer"
+                  },
                   "updated_at": {
                     "description": "更新时间",
                     "format": "date-time",
@@ -4912,6 +4947,7 @@
                 "required": [
                   "id",
                   "task_code",
+                  "source_type",
                   "task_type",
                   "status",
                   "progress",
@@ -5025,6 +5061,16 @@
             }
           },
           {
+            "description": "任务来源：1=自定义，2=模板，3=工具",
+            "name": "data.list[].source_type",
+            "required": true,
+            "schema": {
+              "description": "任务来源：1=自定义，2=模板，3=工具",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
             "description": "上游开始处理的时间",
             "name": "data.list[].started_at",
             "required": false,
@@ -5081,6 +5127,16 @@
             "required": false,
             "schema": {
               "description": "模板 ID",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "工具 ID",
+            "name": "data.list[].tool_id",
+            "required": false,
+            "schema": {
+              "description": "工具 ID",
               "format": "int64",
               "type": "integer"
             }
@@ -5285,6 +5341,11 @@
                           "format": "int64",
                           "type": "integer"
                         },
+                        "source_type": {
+                          "description": "任务来源：1=自定义，2=模板，3=工具",
+                          "format": "int64",
+                          "type": "integer"
+                        },
                         "started_at": {
                           "description": "上游开始处理的时间",
                           "format": "date-time",
@@ -5316,6 +5377,11 @@
                           "format": "int64",
                           "type": "integer"
                         },
+                        "tool_id": {
+                          "description": "工具 ID",
+                          "format": "int64",
+                          "type": "integer"
+                        },
                         "updated_at": {
                           "description": "更新时间",
                           "format": "date-time",
@@ -5331,6 +5397,7 @@
                       "required": [
                         "id",
                         "task_code",
+                        "source_type",
                         "task_type",
                         "status",
                         "progress",
@@ -5506,12 +5573,14 @@
               "key": "value"
             },
             "progress": 0,
+            "source_type": 0,
             "started_at": "2026-07-21T12:00:00+08:00",
             "status": 0,
             "submitted_at": "2026-07-21T12:00:00+08:00",
             "task_code": "string",
             "task_type": 0,
             "template_id": 1,
+            "tool_id": 1,
             "updated_at": "2026-07-21T12:00:00+08:00",
             "usage_duration": 0
           }
@@ -5587,6 +5656,11 @@
                   "format": "int64",
                   "type": "integer"
                 },
+                "source_type": {
+                  "description": "任务来源：1=自定义，2=模板，3=工具",
+                  "format": "int64",
+                  "type": "integer"
+                },
                 "started_at": {
                   "description": "上游开始处理的时间",
                   "format": "date-time",
@@ -5618,6 +5692,11 @@
                   "format": "int64",
                   "type": "integer"
                 },
+                "tool_id": {
+                  "description": "工具 ID",
+                  "format": "int64",
+                  "type": "integer"
+                },
                 "updated_at": {
                   "description": "更新时间",
                   "format": "date-time",
@@ -5633,6 +5712,7 @@
               "required": [
                 "id",
                 "task_code",
+                "source_type",
                 "task_type",
                 "status",
                 "progress",
@@ -5744,6 +5824,16 @@
             }
           },
           {
+            "description": "任务来源：1=自定义，2=模板，3=工具",
+            "name": "data.source_type",
+            "required": true,
+            "schema": {
+              "description": "任务来源：1=自定义，2=模板，3=工具",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
             "description": "上游开始处理的时间",
             "name": "data.started_at",
             "required": false,
@@ -5800,6 +5890,16 @@
             "required": false,
             "schema": {
               "description": "模板 ID",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "工具 ID",
+            "name": "data.tool_id",
+            "required": false,
+            "schema": {
+              "description": "工具 ID",
               "format": "int64",
               "type": "integer"
             }
@@ -6064,6 +6164,11 @@
                           "format": "int64",
                           "type": "integer"
                         },
+                        "source_type": {
+                          "description": "任务来源：1=自定义，2=模板，3=工具",
+                          "format": "int64",
+                          "type": "integer"
+                        },
                         "started_at": {
                           "description": "上游开始处理的时间",
                           "format": "date-time",
@@ -6095,6 +6200,11 @@
                           "format": "int64",
                           "type": "integer"
                         },
+                        "tool_id": {
+                          "description": "工具 ID",
+                          "format": "int64",
+                          "type": "integer"
+                        },
                         "updated_at": {
                           "description": "更新时间",
                           "format": "date-time",
@@ -6110,6 +6220,7 @@
                       "required": [
                         "id",
                         "task_code",
+                        "source_type",
                         "task_type",
                         "status",
                         "progress",
@@ -6205,6 +6316,7 @@
           "data": {
             "id": 13,
             "task_code": "eafe15f0-780f-4a7f-9c62-7e99484be521",
+            "source_type": 1,
             "task_type": 2,
             "status": 7,
             "progress": 100,
@@ -6302,6 +6414,11 @@
                   "format": "int64",
                   "type": "integer"
                 },
+                "source_type": {
+                  "description": "任务来源：1=自定义，2=模板，3=工具",
+                  "format": "int64",
+                  "type": "integer"
+                },
                 "started_at": {
                   "description": "上游开始处理的时间",
                   "format": "date-time",
@@ -6333,6 +6450,11 @@
                   "format": "int64",
                   "type": "integer"
                 },
+                "tool_id": {
+                  "description": "工具 ID",
+                  "format": "int64",
+                  "type": "integer"
+                },
                 "updated_at": {
                   "description": "更新时间",
                   "format": "date-time",
@@ -6348,6 +6470,7 @@
               "required": [
                 "id",
                 "task_code",
+                "source_type",
                 "task_type",
                 "status",
                 "progress",
@@ -6459,6 +6582,16 @@
             }
           },
           {
+            "description": "任务来源：1=自定义，2=模板，3=工具",
+            "name": "data.source_type",
+            "required": true,
+            "schema": {
+              "description": "任务来源：1=自定义，2=模板，3=工具",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
             "description": "上游开始处理的时间",
             "name": "data.started_at",
             "required": false,
@@ -6515,6 +6648,16 @@
             "required": false,
             "schema": {
               "description": "模板 ID",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "工具 ID",
+            "name": "data.tool_id",
+            "required": false,
+            "schema": {
+              "description": "工具 ID",
               "format": "int64",
               "type": "integer"
             }
@@ -6670,6 +6813,11 @@
                           "format": "int64",
                           "type": "integer"
                         },
+                        "source_type": {
+                          "description": "任务来源：1=自定义，2=模板，3=工具",
+                          "format": "int64",
+                          "type": "integer"
+                        },
                         "started_at": {
                           "description": "上游开始处理的时间",
                           "format": "date-time",
@@ -6701,6 +6849,11 @@
                           "format": "int64",
                           "type": "integer"
                         },
+                        "tool_id": {
+                          "description": "工具 ID",
+                          "format": "int64",
+                          "type": "integer"
+                        },
                         "updated_at": {
                           "description": "更新时间",
                           "format": "date-time",
@@ -6716,6 +6869,7 @@
                       "required": [
                         "id",
                         "task_code",
+                        "source_type",
                         "task_type",
                         "status",
                         "progress",
@@ -6863,12 +7017,14 @@
               "key": "value"
             },
             "progress": 0,
+            "source_type": 0,
             "started_at": "2026-07-21T12:00:00+08:00",
             "status": 0,
             "submitted_at": "2026-07-21T12:00:00+08:00",
             "task_code": "string",
             "task_type": 0,
             "template_id": 1,
+            "tool_id": 1,
             "updated_at": "2026-07-21T12:00:00+08:00",
             "usage_duration": 0
           }
@@ -6944,6 +7100,11 @@
                   "format": "int64",
                   "type": "integer"
                 },
+                "source_type": {
+                  "description": "任务来源：1=自定义，2=模板，3=工具",
+                  "format": "int64",
+                  "type": "integer"
+                },
                 "started_at": {
                   "description": "上游开始处理的时间",
                   "format": "date-time",
@@ -6975,6 +7136,11 @@
                   "format": "int64",
                   "type": "integer"
                 },
+                "tool_id": {
+                  "description": "工具 ID",
+                  "format": "int64",
+                  "type": "integer"
+                },
                 "updated_at": {
                   "description": "更新时间",
                   "format": "date-time",
@@ -6990,6 +7156,7 @@
               "required": [
                 "id",
                 "task_code",
+                "source_type",
                 "task_type",
                 "status",
                 "progress",
@@ -7101,6 +7268,16 @@
             }
           },
           {
+            "description": "任务来源：1=自定义，2=模板，3=工具",
+            "name": "data.source_type",
+            "required": true,
+            "schema": {
+              "description": "任务来源：1=自定义，2=模板，3=工具",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
             "description": "上游开始处理的时间",
             "name": "data.started_at",
             "required": false,
@@ -7157,6 +7334,743 @@
             "required": false,
             "schema": {
               "description": "模板 ID",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "工具 ID",
+            "name": "data.tool_id",
+            "required": false,
+            "schema": {
+              "description": "工具 ID",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "更新时间",
+            "name": "data.updated_at",
+            "required": true,
+            "schema": {
+              "description": "更新时间",
+              "format": "date-time",
+              "nullable": false,
+              "type": "string"
+            }
+          },
+          {
+            "description": "任务计费用时（秒）",
+            "name": "data.usage_duration",
+            "required": true,
+            "schema": {
+              "description": "任务计费用时（秒）",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "结果说明",
+            "name": "message",
+            "required": true,
+            "schema": {
+              "description": "结果说明",
+              "example": "success",
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/generation/tool-tasks": {
+      "post": {
+        "description": "使用独立工具协议创建生成任务。客户端传 tool_id、与工具一致的 config_type、单个 image、单个 video，以及可选 val 和 client_request_id；至少提供一种媒体。服务端从在线工具配置解析任务类型、启用模型和提示词，再使用模型默认参数进入统一异步生成链路。媒体支持半链接与 HTTP(S) 全链接。",
+        "operationId": "post_api_generation_tool_tasks",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "config_type": 2,
+                "image": "/uploads/images/2026/08/26/character.png",
+                "tool_id": 16,
+                "video": "/uploads/videos/2026/08/26/motion.mp4"
+              },
+              "schema": {
+                "properties": {
+                  "client_request_id": {
+                    "description": "客户端幂等请求 ID",
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "config_type": {
+                    "description": "工具配置类型：1=无，2=参考图，3=年龄，4=比例",
+                    "enum": [
+                      "1",
+                      "2",
+                      "3",
+                      "4"
+                    ],
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "image": {
+                    "description": "单张参考图片 URL",
+                    "maxLength": 4096,
+                    "type": "string"
+                  },
+                  "tool_id": {
+                    "description": "工具 ID",
+                    "exclusiveMinimum": true,
+                    "format": "int64",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "val": {
+                    "maxLength": 4096,
+                    "type": "string"
+                  },
+                  "video": {
+                    "description": "参考视频 URL",
+                    "maxLength": 4096,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "tool_id",
+                  "config_type"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "description": "业务状态码，0 表示成功",
+                      "example": 0,
+                      "type": "integer"
+                    },
+                    "data": {
+                      "description": "响应数据",
+                      "properties": {
+                        "cover_image_url": {
+                          "description": "模板封面图片地址",
+                          "type": "string"
+                        },
+                        "created_at": {
+                          "description": "创建时间",
+                          "format": "date-time",
+                          "nullable": false,
+                          "type": "string"
+                        },
+                        "error_message": {
+                          "description": "任务失败原因",
+                          "type": "string"
+                        },
+                        "finished_at": {
+                          "description": "任务结束时间",
+                          "format": "date-time",
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "id": {
+                          "description": "记录 ID",
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "input": {
+                          "additionalProperties": {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          "description": "生成任务输入参数",
+                          "type": "object"
+                        },
+                        "local_urls": {
+                          "description": "生成结果的持久化访问地址（本地或 OSS）",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "parameters": {
+                          "additionalProperties": {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          "description": "生成参数",
+                          "type": "object"
+                        },
+                        "progress": {
+                          "description": "任务进度，范围 0-100",
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "source_type": {
+                          "description": "任务来源：1=自定义，2=模板，3=工具",
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "started_at": {
+                          "description": "上游开始处理的时间",
+                          "format": "date-time",
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "status": {
+                          "description": "状态",
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "submitted_at": {
+                          "description": "任务提交到上游的时间",
+                          "format": "date-time",
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "task_code": {
+                          "description": "任务唯一编码",
+                          "type": "string"
+                        },
+                        "task_type": {
+                          "description": "任务类型：1=生成图片，2=生成视频；列表查询值 3 表示全部",
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "template_id": {
+                          "description": "模板 ID",
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "tool_id": {
+                          "description": "工具 ID",
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "updated_at": {
+                          "description": "更新时间",
+                          "format": "date-time",
+                          "nullable": false,
+                          "type": "string"
+                        },
+                        "usage_duration": {
+                          "description": "任务计费用时（秒）",
+                          "format": "int64",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "task_code",
+                        "source_type",
+                        "task_type",
+                        "status",
+                        "progress",
+                        "local_urls",
+                        "cover_image_url",
+                        "usage_duration",
+                        "created_at",
+                        "updated_at"
+                      ],
+                      "type": "object"
+                    },
+                    "message": {
+                      "description": "结果说明",
+                      "example": "success",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "请求成功"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIResponse"
+                }
+              }
+            },
+            "description": "请求参数错误"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIResponse"
+                }
+              }
+            },
+            "description": "未登录或令牌失效"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIResponse"
+                }
+              }
+            },
+            "description": "无权限"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIResponse"
+                }
+              }
+            },
+            "description": "服务器错误"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "按工具创建生成任务",
+        "tags": [
+          "客户端 / 内容生成"
+        ],
+        "x-request-parameters": [
+          {
+            "description": "客户端幂等请求 ID",
+            "in": "json",
+            "name": "client_request_id",
+            "required": false,
+            "schema": {
+              "description": "客户端幂等请求 ID",
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "工具配置类型：1=无，2=参考图，3=年龄，4=比例",
+            "in": "json",
+            "name": "config_type",
+            "required": true,
+            "schema": {
+              "description": "工具配置类型：1=无，2=参考图，3=年龄，4=比例",
+              "enum": [
+                "1",
+                "2",
+                "3",
+                "4"
+              ],
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "单张参考图片 URL",
+            "in": "json",
+            "name": "image",
+            "required": false,
+            "schema": {
+              "description": "单张参考图片 URL",
+              "maxLength": 4096,
+              "type": "string"
+            }
+          },
+          {
+            "description": "工具 ID",
+            "in": "json",
+            "name": "tool_id",
+            "required": true,
+            "schema": {
+              "description": "工具 ID",
+              "exclusiveMinimum": true,
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": null,
+            "in": "json",
+            "name": "val",
+            "required": false,
+            "schema": {
+              "maxLength": 4096,
+              "type": "string"
+            }
+          },
+          {
+            "description": "参考视频 URL",
+            "in": "json",
+            "name": "video",
+            "required": false,
+            "schema": {
+              "description": "参考视频 URL",
+              "maxLength": 4096,
+              "type": "string"
+            }
+          }
+        ],
+        "x-response-example": {
+          "code": 0,
+          "message": "success",
+          "data": {
+            "id": 13,
+            "task_code": "eafe15f0-780f-4a7f-9c62-7e99484be521",
+            "tool_id": 16,
+            "source_type": 3,
+            "task_type": 2,
+            "status": 7,
+            "progress": 100,
+            "input": {
+              "end_frame": "https://cdn.example.com/uploads/images/end-frame.png",
+              "first_frame": "https://cdn.example.com/uploads/images/first-frame.png",
+              "prompt": "生成一个可爱风格的动漫视频",
+              "video": "https://cdn.example.com/uploads/videos/reference.mp4"
+            },
+            "parameters": {
+              "aspect_ratio": "1:1",
+              "duration": 10,
+              "external_task_id": "eafe15f0-780f-4a7f-9c62-7e99484be521",
+              "mode": "std"
+            },
+            "local_urls": [],
+            "cover_image_url": "",
+            "error_message": "Generation failed. Please try again.",
+            "usage_duration": 10,
+            "submitted_at": "2026-07-30T14:44:41.602+08:00",
+            "started_at": "2026-07-30T14:44:43.804+08:00",
+            "finished_at": "2026-07-30T14:48:33.154+08:00",
+            "created_at": "2026-07-30T14:44:28.235+08:00",
+            "updated_at": "2026-07-30T14:48:33.155+08:00"
+          }
+        },
+        "x-response-parameters": [
+          {
+            "description": "业务状态码，0 表示成功",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "description": "业务状态码，0 表示成功",
+              "example": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "响应数据",
+            "name": "data",
+            "required": true,
+            "schema": {
+              "description": "响应数据",
+              "properties": {
+                "cover_image_url": {
+                  "description": "模板封面图片地址",
+                  "type": "string"
+                },
+                "created_at": {
+                  "description": "创建时间",
+                  "format": "date-time",
+                  "nullable": false,
+                  "type": "string"
+                },
+                "error_message": {
+                  "description": "任务失败原因",
+                  "type": "string"
+                },
+                "finished_at": {
+                  "description": "任务结束时间",
+                  "format": "date-time",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "id": {
+                  "description": "记录 ID",
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "input": {
+                  "additionalProperties": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "description": "生成任务输入参数",
+                  "type": "object"
+                },
+                "local_urls": {
+                  "description": "生成结果的持久化访问地址（本地或 OSS）",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "parameters": {
+                  "additionalProperties": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "description": "生成参数",
+                  "type": "object"
+                },
+                "progress": {
+                  "description": "任务进度，范围 0-100",
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "source_type": {
+                  "description": "任务来源：1=自定义，2=模板，3=工具",
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "started_at": {
+                  "description": "上游开始处理的时间",
+                  "format": "date-time",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "status": {
+                  "description": "状态",
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "submitted_at": {
+                  "description": "任务提交到上游的时间",
+                  "format": "date-time",
+                  "nullable": true,
+                  "type": "string"
+                },
+                "task_code": {
+                  "description": "任务唯一编码",
+                  "type": "string"
+                },
+                "task_type": {
+                  "description": "任务类型：1=生成图片，2=生成视频；列表查询值 3 表示全部",
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "template_id": {
+                  "description": "模板 ID",
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "tool_id": {
+                  "description": "工具 ID",
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "updated_at": {
+                  "description": "更新时间",
+                  "format": "date-time",
+                  "nullable": false,
+                  "type": "string"
+                },
+                "usage_duration": {
+                  "description": "任务计费用时（秒）",
+                  "format": "int64",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "task_code",
+                "source_type",
+                "task_type",
+                "status",
+                "progress",
+                "local_urls",
+                "cover_image_url",
+                "usage_duration",
+                "created_at",
+                "updated_at"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "description": "模板封面图片地址",
+            "name": "data.cover_image_url",
+            "required": true,
+            "schema": {
+              "description": "模板封面图片地址",
+              "type": "string"
+            }
+          },
+          {
+            "description": "创建时间",
+            "name": "data.created_at",
+            "required": true,
+            "schema": {
+              "description": "创建时间",
+              "format": "date-time",
+              "nullable": false,
+              "type": "string"
+            }
+          },
+          {
+            "description": "任务失败原因",
+            "name": "data.error_message",
+            "required": false,
+            "schema": {
+              "description": "任务失败原因",
+              "type": "string"
+            }
+          },
+          {
+            "description": "任务结束时间",
+            "name": "data.finished_at",
+            "required": false,
+            "schema": {
+              "description": "任务结束时间",
+              "format": "date-time",
+              "nullable": true,
+              "type": "string"
+            }
+          },
+          {
+            "description": "记录 ID",
+            "name": "data.id",
+            "required": true,
+            "schema": {
+              "description": "记录 ID",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "生成任务输入参数",
+            "name": "data.input",
+            "required": false,
+            "schema": {
+              "additionalProperties": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "description": "生成任务输入参数",
+              "type": "object"
+            }
+          },
+          {
+            "description": "生成结果的持久化访问地址（本地或 OSS）",
+            "name": "data.local_urls",
+            "required": true,
+            "schema": {
+              "description": "生成结果的持久化访问地址（本地或 OSS）",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
+            "description": "生成参数",
+            "name": "data.parameters",
+            "required": false,
+            "schema": {
+              "additionalProperties": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "description": "生成参数",
+              "type": "object"
+            }
+          },
+          {
+            "description": "任务进度，范围 0-100",
+            "name": "data.progress",
+            "required": true,
+            "schema": {
+              "description": "任务进度，范围 0-100",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "任务来源：1=自定义，2=模板，3=工具",
+            "name": "data.source_type",
+            "required": true,
+            "schema": {
+              "description": "任务来源：1=自定义，2=模板，3=工具",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "上游开始处理的时间",
+            "name": "data.started_at",
+            "required": false,
+            "schema": {
+              "description": "上游开始处理的时间",
+              "format": "date-time",
+              "nullable": true,
+              "type": "string"
+            }
+          },
+          {
+            "description": "状态",
+            "name": "data.status",
+            "required": true,
+            "schema": {
+              "description": "状态",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "任务提交到上游的时间",
+            "name": "data.submitted_at",
+            "required": false,
+            "schema": {
+              "description": "任务提交到上游的时间",
+              "format": "date-time",
+              "nullable": true,
+              "type": "string"
+            }
+          },
+          {
+            "description": "任务唯一编码",
+            "name": "data.task_code",
+            "required": true,
+            "schema": {
+              "description": "任务唯一编码",
+              "type": "string"
+            }
+          },
+          {
+            "description": "任务类型：1=生成图片，2=生成视频；列表查询值 3 表示全部",
+            "name": "data.task_type",
+            "required": true,
+            "schema": {
+              "description": "任务类型：1=生成图片，2=生成视频；列表查询值 3 表示全部",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "模板 ID",
+            "name": "data.template_id",
+            "required": false,
+            "schema": {
+              "description": "模板 ID",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "工具 ID",
+            "name": "data.tool_id",
+            "required": false,
+            "schema": {
+              "description": "工具 ID",
               "format": "int64",
               "type": "integer"
             }
@@ -14759,7 +15673,7 @@
                             "type": "array"
                           },
                           "config_type": {
-                            "description": "工具配置类型：0=无，1=参考图，2=年龄，3=比例",
+                            "description": "工具配置类型：1=无，2=参考图，3=年龄，4=比例",
                             "format": "int64",
                             "type": "integer"
                           },
@@ -14774,6 +15688,11 @@
                           },
                           "model_id": {
                             "description": "模板 ID；不适用时可省略或传 0",
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "model_score": {
+                            "description": "生成模型评分",
                             "format": "int64",
                             "type": "integer"
                           },
@@ -14799,6 +15718,9 @@
                             "description": "工具类型：1=图片生成，2=视频生成",
                             "format": "int64",
                             "type": "integer"
+                          },
+                          "tools_type": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -14807,13 +15729,15 @@
                           "icon",
                           "background_image",
                           "tool_type",
+                          "tools_type",
                           "model_id",
                           "config_type",
                           "config_data",
                           "badge_image",
                           "sort",
                           "prompt",
-                          "status"
+                          "status",
+                          "model_score"
                         ],
                         "type": "object"
                       },
@@ -14896,8 +15820,9 @@
               "icon": "/uploads/images/tools/photo-video-icon.png",
               "background_image": "/uploads/images/tools/photo-video-background.png",
               "tool_type": 2,
+              "tools_type": "",
               "model_id": 9,
-              "config_type": 3,
+              "config_type": 4,
               "config_data": {
                 "ratio_options": [
                   {
@@ -14910,7 +15835,8 @@
               "badge_image": "/uploads/images/tools/new.png",
               "sort": 10,
               "prompt": "让照片自然动起来",
-              "status": 1
+              "status": 1,
+              "model_score": 0
             }
           ]
         },
@@ -14950,7 +15876,7 @@
                     "type": "array"
                   },
                   "config_type": {
-                    "description": "工具配置类型：0=无，1=参考图，2=年龄，3=比例",
+                    "description": "工具配置类型：1=无，2=参考图，3=年龄，4=比例",
                     "format": "int64",
                     "type": "integer"
                   },
@@ -14965,6 +15891,11 @@
                   },
                   "model_id": {
                     "description": "模板 ID；不适用时可省略或传 0",
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "model_score": {
+                    "description": "生成模型评分",
                     "format": "int64",
                     "type": "integer"
                   },
@@ -14990,6 +15921,9 @@
                     "description": "工具类型：1=图片生成，2=视频生成",
                     "format": "int64",
                     "type": "integer"
+                  },
+                  "tools_type": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -14998,13 +15932,15 @@
                   "icon",
                   "background_image",
                   "tool_type",
+                  "tools_type",
                   "model_id",
                   "config_type",
                   "config_data",
                   "badge_image",
                   "sort",
                   "prompt",
-                  "status"
+                  "status",
+                  "model_score"
                 ],
                 "type": "object"
               },
@@ -15043,11 +15979,11 @@
             }
           },
           {
-            "description": "工具配置类型：0=无，1=参考图，2=年龄，3=比例",
+            "description": "工具配置类型：1=无，2=参考图，3=年龄，4=比例",
             "name": "data[].config_type",
             "required": true,
             "schema": {
-              "description": "工具配置类型：0=无，1=参考图，2=年龄，3=比例",
+              "description": "工具配置类型：1=无，2=参考图，3=年龄，4=比例",
               "format": "int64",
               "type": "integer"
             }
@@ -15077,6 +16013,16 @@
             "required": true,
             "schema": {
               "description": "模板 ID；不适用时可省略或传 0",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "生成模型评分",
+            "name": "data[].model_score",
+            "required": true,
+            "schema": {
+              "description": "生成模型评分",
               "format": "int64",
               "type": "integer"
             }
@@ -15127,6 +16073,14 @@
               "description": "工具类型：1=图片生成，2=视频生成",
               "format": "int64",
               "type": "integer"
+            }
+          },
+          {
+            "description": null,
+            "name": "data[].tools_type",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           },
           {

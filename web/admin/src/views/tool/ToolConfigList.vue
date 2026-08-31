@@ -238,7 +238,7 @@
             v-model="form.icon"
             image-name="工具图标"
             placeholder="请输入图标 URL 或选择图片上传"
-            :crop-aspect-ratio="1"
+            :crop-aspect-ratio="0"
           />
         </el-form-item>
         <el-form-item label="背景图" prop="background_image">
@@ -249,7 +249,12 @@
               clearable
               placeholder="请输入背景图 URL 或选择图片上传"
             />
-            <cover-image-uploader v-model="form.background_image" class="background-upload" />
+            <cover-image-uploader
+              v-model="form.background_image"
+              class="background-upload"
+              :target-width="0"
+              :target-height="0"
+            />
             <div v-if="form.background_image" class="background-form-preview">
               <el-image
                 class="background-preview-image"
@@ -278,7 +283,7 @@
             v-model="form.badge_image"
             image-name="工具角标"
             placeholder="可选，输入角标 URL 或选择上传"
-            :crop-aspect-ratio="1"
+            :crop-aspect-ratio="0"
           />
         </el-form-item>
         <el-form-item label="提示词" prop="prompt">

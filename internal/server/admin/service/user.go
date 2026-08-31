@@ -20,7 +20,7 @@ type CreateAppUserRequest struct {
 	DeviceCode               string     `json:"device_code" binding:"required,max=128"`
 	Username                 string     `json:"username" binding:"required,max=128"`
 	ClientCountry            string     `json:"client_country" binding:"max=64"`
-	ChannelID                string     `json:"channel_id" binding:"max=64"`
+	ChannelID                uint64     `json:"channel_id" binding:"max=64"`
 	AppVersion               string     `json:"app_version" binding:"max=32"`
 	AppName                  string     `json:"app_name" binding:"max=255"`
 	FirstOpenedAt            *time.Time `json:"first_opened_at"`
@@ -133,7 +133,7 @@ type ListAppUserRequest struct {
 	ClientCountry      string `form:"client_country" binding:"max=64"`
 	DeviceCountry      string `form:"device_country" binding:"max=64"`
 	ServerCountry      string `form:"server_country" binding:"max=255"`
-	ChannelID          string `form:"channel_id" binding:"max=64"`
+	ChannelID          uint64 `form:"channel_id" binding:"max=64"`
 	AppVersion         string `form:"app_version" binding:"max=32"`
 	AppName            string `form:"app_name" binding:"max=255"`
 	PackageCode        string `form:"package_code" binding:"max=128"`
@@ -192,7 +192,7 @@ func newAppUser(req *CreateAppUserRequest) *model.VideoUser {
 	user := &model.VideoUser{
 		DeviceCode: strings.TrimSpace(req.DeviceCode), IMEI: strings.TrimSpace(req.IMEI),
 		Username:      strings.TrimSpace(req.Username),
-		ClientCountry: strings.TrimSpace(req.ClientCountry), ChannelID: strings.TrimSpace(req.ChannelID),
+		ClientCountry: strings.TrimSpace(req.ClientCountry), ChannelID: req.ChannelID,
 		ServerCountry: strings.TrimSpace(req.ServerCountry), AppVersion: strings.TrimSpace(req.AppVersion),
 		AppName: appName, PackageCode: strings.TrimSpace(req.PackageCode), Phone: strings.TrimSpace(req.Phone),
 		FirstOpenedAt: req.FirstOpenedAt, LastOpenedAt: req.LastOpenedAt,
@@ -392,7 +392,7 @@ func (s *AppUserService) List(ctx context.Context, page, pageSize int, req *List
 	return s.repo.PageList(ctx, page, pageSize, &repository.AppUserListFilter{
 		ListSort: req.listSort(),
 		Keyword:  strings.TrimSpace(req.Keyword), ClientCountry: clientCountry,
-		ServerCountry: strings.TrimSpace(req.ServerCountry), ChannelID: strings.TrimSpace(req.ChannelID),
+		ServerCountry: strings.TrimSpace(req.ServerCountry), ChannelID: req.ChannelID,
 		AppVersion: strings.TrimSpace(req.AppVersion), AppName: strings.TrimSpace(req.AppName),
 		PackageCode: strings.TrimSpace(req.PackageCode), LoginType: req.LoginType,
 		UserType: req.UserType, SubscriptionStatus: req.SubscriptionStatus,

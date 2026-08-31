@@ -88,7 +88,7 @@ type UserResponse struct {
 	UUID               string `json:"uuid"`
 	Email              string `json:"email"`
 	DeviceCountry      string `json:"device_country"`      // 国家
-	ChannelID          string `json:"channel_id"`          // 渠道id
+	ChannelID          uint64 `json:"channel_id"`          // 渠道id
 	LoginType          uint32 `json:"login_type"`          // 登录方式 1=未登录 2=google 3=appid
 	UserType           uint32 `json:"user_type"`           // 用户类型 1=免费 2=付费
 	SubscriptionStatus uint32 `json:"subscription_status"` // 订阅状态 1未订阅 2订阅中 3=已过期

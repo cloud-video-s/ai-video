@@ -53,13 +53,13 @@ type FusedUserAttribution struct {
 }
 
 type UserAttributionListFilter struct {
-	ListSort    ListSort
-	Keyword     string
-	ChannelCode string
-	Event       string
-	Reached     *bool
-	StartedAt   *time.Time
-	EndedAt     *time.Time
+	ListSort  ListSort
+	Keyword   string
+	ChannelID uint64
+	Event     string
+	Reached   *bool
+	StartedAt *time.Time
+	EndedAt   *time.Time
 }
 
 type UserAttributionRecord struct {
@@ -67,11 +67,11 @@ type UserAttributionRecord struct {
 	User model.VideoUser `json:"user"`
 }
 
-func (r *UserAttributionRepo) PageList(ctx context.Context, page, pageSize int, filter *UserAttributionListFilter) ([]UserAttributionRecord, int64, error) {
+func (r *UserAttributionRepo) PageList(ctx context.Context, page, pageSize int, filter *UserAttributionListFilter) ([]*model.VideoUserAttribution, int64, error) {
 	q := qFrom(ctx)
 	attribution := q.VideoUserAttribution
 	user := q.VideoUser
-	dao := attribution.WithContext(ctx).Join(user, user.ID.EqCol(attribution.UserID))
+	dao := attribution.WithContext(ctx).Preload(attribution.Channel, attribution.User).Join(user, user.ID.EqCol(attribution.UserID))
 	if filter != nil {
 		if filter.Keyword != "" {
 			keyword := "%" + filter.Keyword + "%"
@@ -117,58 +117,20 @@ func (r *UserAttributionRepo) PageList(ctx context.Context, page, pageSize int, 
 		listSort = filter.ListSort
 	}
 	order := orderForList(listSort, map[string]field.OrderExpr{"id": attribution.ID}, attribution.ID, attribution.ID.Desc())
-	rows, err := dao.Select(attribution.ALL).
-		Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
+	rows, err := dao.Order(order...).Offset((page - 1) * pageSize).Limit(pageSize).Find()
 	if err != nil {
 		return nil, 0, err
 	}
-	records, err := r.loadRecords(ctx, valuesOf(rows))
-	return records, total, err
+	return rows, total, err
 }
 
-func (r *UserAttributionRepo) GetByID(ctx context.Context, id uint64, lock bool) (*UserAttributionRecord, error) {
+func (r *UserAttributionRepo) GetByID(ctx context.Context, id uint64, lock bool) (*model.VideoUserAttribution, error) {
 	q := qFrom(ctx).VideoUserAttribution
-	dao := q.WithContext(ctx).Where(q.ID.Eq(id))
+	dao := q.WithContext(ctx).Preload(q.Channel, q.Channel).Where(q.ID.Eq(id))
 	if lock {
 		dao = dao.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
-	item, err := dao.First()
-	if err != nil {
-		return nil, err
-	}
-	records, err := r.loadRecords(ctx, []model.VideoUserAttribution{*item})
-	if err != nil {
-		return nil, err
-	}
-	return &records[0], nil
-}
-
-func (r *UserAttributionRepo) loadRecords(ctx context.Context, items []model.VideoUserAttribution) ([]UserAttributionRecord, error) {
-	result := make([]UserAttributionRecord, 0, len(items))
-	if len(items) == 0 {
-		return result, nil
-	}
-	userIDs := make([]uint64, 0, len(items))
-	for i := range items {
-		userIDs = append(userIDs, items[i].UserID)
-	}
-	userQuery := qFrom(ctx).VideoUser
-	users, err := userQuery.WithContext(ctx).Where(userQuery.ID.In(userIDs...)).Find()
-	if err != nil {
-		return nil, err
-	}
-	userByID := make(map[uint64]model.VideoUser, len(users))
-	for _, user := range users {
-		if user != nil {
-			userByID[user.ID] = *user
-		}
-	}
-	for i := range items {
-		result = append(result, UserAttributionRecord{
-			VideoUserAttribution: items[i], User: userByID[items[i].UserID],
-		})
-	}
-	return result, nil
+	return dao.First()
 }
 
 func (r *UserAttributionRepo) GetByUserID(ctx context.Context, userID uint64) (*model.VideoUserAttribution, error) {

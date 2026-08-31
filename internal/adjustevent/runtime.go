@@ -114,15 +114,16 @@ func (runtime *Runtime) Enqueue(ctx context.Context, userID uint64, action adjus
 		UserID: userID, Action: action, ChannelID: channelID, OrderNo: strings.TrimSpace(options.OrderNo),
 		OrderCount: user.OrderCount, OccurredAt: options.OccurredAt,
 	}
+	if channelID == 0 {
+		if err := runtime.pending.Save(ctx, message); err != nil {
+			return fmt.Errorf("persist Adjust event awaiting attributed channel: %w", err)
+		}
+		config.Logger(ctx).Infow("Adjust event is waiting for attributed channel", "event_id", message.EventID,
+			"user_id", message.UserID, "action", message.Action)
+		return nil
+	}
+
 	message.normalize()
-	//if message.ChannelID == 0 {
-	//	if err := runtime.pending.Save(ctx, message); err != nil {
-	//		return fmt.Errorf("persist Adjust event awaiting attributed channel: %w", err)
-	//	}
-	//	config.Logger(ctx).Infow("Adjust event is waiting for attributed channel", "event_id", message.EventID,
-	//		"user_id", message.UserID, "action", message.Action)
-	//	return nil
-	//}
 	if err = runtime.PublishMessage(ctx, message); err == nil {
 		return nil
 	} else if pendingErr := runtime.pending.Save(ctx, message); pendingErr != nil {

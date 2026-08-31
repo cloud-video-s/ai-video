@@ -15,12 +15,12 @@
         <el-input v-model="query.keyword" clearable placeholder="用户、设备编号、OAID、IMEI、Android ID 或 IP" @keyup.enter="handleSearch">
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <el-select v-model="query.channel_code" clearable filterable placeholder="渠道">
+        <el-select v-model="query.channel_id" clearable filterable placeholder="渠道">
           <el-option
             v-for="item in channelOptions"
-            :key="item.channel_id"
+            :key="item.id"
             :label="`${item.channel_name} · ${item.channel_code}`"
-            :value="item.channel_code"
+            :value="item.id"
           />
         </el-select>
         <el-select v-model="query.event" clearable placeholder="事件">
@@ -40,7 +40,7 @@
         <el-table-column label="用户 / 渠道" min-width="190" fixed="left">
           <template #default="{ row }">
             <div class="primary-text">{{ row.user?.username || `用户 #${row.user_id}` }}</div>
-            <div class="secondary-text">{{ row.user?.imei || '-' }}</div>
+            <div class="secondary-text">{{ row.user?.device_code || '-' }}</div>
             <el-tag size="small" effect="plain">{{ channelLabel(row) }}</el-tag>
           </template>
         </el-table-column>
@@ -77,7 +77,7 @@
 
         <el-table-column label="设备标识" min-width="250">
           <template #default="{ row }">
-            <div class="identifier"><span>OAID</span><code>{{ row.oaid || '-' }}</code></div>
+            <div class="identifier"><span>OAID</span><code>{{ row.adjust_adid || '-' }}</code></div>
             <div class="identifier"><span>IMEI</span><code>{{ row.imei || '-' }}</code></div>
             <div class="identifier"><span>Android</span><code>{{ row.android_id || '-' }}</code></div>
           </template>
@@ -121,12 +121,12 @@
       <el-form ref="formRef" :model="form" label-width="104px">
         <div class="form-grid">
           <el-form-item label="渠道">
-            <el-select v-model="form.channel_code" clearable filterable style="width: 100%">
+            <el-select v-model="form.channel_id" clearable filterable style="width: 100%">
               <el-option
                 v-for="item in channelOptions"
-                :key="item.channel_id"
+                :key="item.id"
                 :label="`${item.channel_name} · ${item.channel_code}`"
-                :value="item.channel_code"
+                :value="item.id"
               />
             </el-select>
           </el-form-item>
@@ -177,7 +177,7 @@ const events: { key: AttributionEvent; label: string }[] = [
   { key: 'registration', label: '注册' },
 ]
 
-const query = reactive({ keyword: '', channel_code: '', event: '', reached: '' })
+const query = reactive({ keyword: '', channel_id: '', event: '', reached: '' })
 const dateRange = ref<string[]>([])
 const tableData = ref<AttributionRecord[]>([])
 const channelOptions = ref<Channel[]>([])
@@ -193,7 +193,7 @@ const total = ref(0)
 const dialogVisible = ref(false)
 const form = reactive({
   id: 0,
-  channel_code: '',
+  channel_id: '',
   oaid: '',
   imei: '',
   android_id: '',
@@ -231,13 +231,13 @@ function handleSearch() {
 }
 
 function handleReset() {
-  Object.assign(query, { keyword: '', channel_code: '', event: '', reached: '' })
+  Object.assign(query, { keyword: '', channel_id: '', event: '', reached: '' })
   dateRange.value = []
   handleSearch()
 }
 
 function channelLabel(row: AttributionRecord) {
-  return row.channel ? `${row.channel.channel_name} · ${row.channel.channel_code}` : (row.channel_code || row.user?.channel_id || '未归因渠道')
+  return row.channel ? `${row.channel.channel_name} · ${row.channel.channel_code}` : (row.id || row.user?.channel_id || '未归因渠道')
 }
 
 function isReached(row: AttributionRecord, event: AttributionEvent) {
@@ -288,7 +288,7 @@ async function handleSync() {
 function openEdit(row: AttributionRecord) {
   Object.assign(form, {
     id: row.id,
-    channel_code: row.channel_code || row.user?.channel_id || '',
+    channel_id: row.channel_id || row.user?.channel_id || '',
     oaid: row.oaid || '',
     imei: row.imei || '',
     android_id: row.android_id || '',

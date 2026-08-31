@@ -32,7 +32,7 @@ func newVideoUser(db *gorm.DB, opts ...gen.DOOption) videoUser {
 	_videoUser.DeviceCode = field.NewString(tableName, "device_code")
 	_videoUser.Username = field.NewString(tableName, "username")
 	_videoUser.ClientCountry = field.NewString(tableName, "client_country")
-	_videoUser.ChannelID = field.NewString(tableName, "channel_id")
+	_videoUser.ChannelID = field.NewUint64(tableName, "channel_id")
 	_videoUser.AppVersion = field.NewString(tableName, "app_version")
 	_videoUser.FirstOpenedAt = field.NewTime(tableName, "first_opened_at")
 	_videoUser.LastOpenedAt = field.NewTime(tableName, "last_opened_at")
@@ -255,7 +255,7 @@ type videoUser struct {
 	DeviceCode               field.String  // 设备编号
 	Username                 field.String  // 昵称
 	ClientCountry            field.String  // 国家
-	ChannelID                field.String  // 渠道id
+	ChannelID                field.Uint64  // 渠道id
 	AppVersion               field.String  // 激活版本号
 	FirstOpenedAt            field.Time    // 首次打开时间
 	LastOpenedAt             field.Time    // 上次打开时间
@@ -336,7 +336,7 @@ func (v *videoUser) updateTableName(table string) *videoUser {
 	v.DeviceCode = field.NewString(table, "device_code")
 	v.Username = field.NewString(table, "username")
 	v.ClientCountry = field.NewString(table, "client_country")
-	v.ChannelID = field.NewString(table, "channel_id")
+	v.ChannelID = field.NewUint64(table, "channel_id")
 	v.AppVersion = field.NewString(table, "app_version")
 	v.FirstOpenedAt = field.NewTime(table, "first_opened_at")
 	v.LastOpenedAt = field.NewTime(table, "last_opened_at")

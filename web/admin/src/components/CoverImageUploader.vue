@@ -4,7 +4,7 @@
     <el-button type="primary" plain :loading="uploading" @click="selectFile">
       {{ uploading ? `上传中 ${uploadProgress}%` : '选择图片' }}
     </el-button>
-    <span class="upload-tip">默认上传原图并保留原格式；也可按 {{ ratioLabel }} 比例裁剪后上传</span>
+    <span class="upload-tip">默认上传原图并保留原格式；{{ cropTip }}</span>
   </div>
 
   <ImageCropDialog
@@ -43,6 +43,9 @@ const ratioLabel = computed(() => {
   const divisor = greatestCommonDivisor(props.targetWidth, props.targetHeight)
   return divisor > 0 ? `${props.targetWidth / divisor}:${props.targetHeight / divisor}` : '自由'
 })
+const cropTip = computed(() => aspectRatio.value > 0
+  ? `也可按 ${ratioLabel.value} 比例裁剪后上传`
+  : '也可自由裁剪后上传')
 
 function selectFile() {
   if (!uploading.value) fileInput.value?.click()

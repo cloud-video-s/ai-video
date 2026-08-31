@@ -89,6 +89,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '订单管理' },
       },
       {
+        path: 'operation/complaints',
+        name: 'TemplateComplaintList',
+        component: () => import('@/views/operation/ComplaintList.vue'),
+        meta: { title: '投诉管理' },
+      },
+      {
         path: 'subscription/vip',
         name: 'VIPSubscriptionList',
         component: () => import('@/views/subscription/VIPSubscriptionList.vue'),

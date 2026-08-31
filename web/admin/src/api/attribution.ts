@@ -7,7 +7,7 @@ export interface AttributionUser {
   id: number
   username: string
   imei: string
-  channel_id: string
+  channel_id: number
   activated: number
   key_behavior_met: number
   payment_met: boolean
@@ -19,7 +19,7 @@ export interface AttributionUser {
 export interface AttributionRecord {
   id: number
   user_id: number
-  channel_code: string
+  channel_id: number
   oaid: string
   imei: string
   android_id: string
@@ -41,7 +41,7 @@ export interface AttributionRecord {
   created_at: string
   user: AttributionUser
   channel?: {
-    channel_id: number
+    id: number
     channel_code: string
     channel_name: string
   }

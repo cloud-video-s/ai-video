@@ -23,7 +23,7 @@ type AppUserListFilter struct {
 	Keyword            string
 	ClientCountry      string
 	ServerCountry      string
-	ChannelID          string
+	ChannelID          uint64
 	AppVersion         string
 	AppName            string
 	PackageCode        string
@@ -215,7 +215,7 @@ func (d *AppUserRepo) PageList(ctx context.Context, page, pageSize int, filter *
 		if filter.ServerCountry != "" {
 			dao = dao.Where(user.ServerCountry.Eq(filter.ServerCountry))
 		}
-		if filter.ChannelID != "" {
+		if filter.ChannelID > 0 {
 			dao = dao.Where(user.ChannelID.Eq(filter.ChannelID))
 		}
 		if filter.AppVersion != "" {

@@ -79,6 +79,7 @@ func SeedAdminMetadata() error {
 		{name: "VIP subscription levels", fn: SeedVIPSubscriptionLevelAdmin},
 		{name: "points packages", fn: SeedPointsPackageAdmin},
 		{name: "orders", fn: SeedOrderAdmin},
+		{name: "template complaints", fn: SeedTemplateComplaintAdmin},
 		{name: "users", fn: SeedAppUserAdmin},
 		{name: "user attribution", fn: SeedUserAttributionAdmin},
 		{name: "points ledgers", fn: SeedUserPointsLedgerAdmin},

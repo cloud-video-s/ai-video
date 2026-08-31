@@ -57,7 +57,7 @@ type eventDataStore interface {
 	GetAdjustAttribution(context.Context, string) (*model.VideoAdjustAttribution, error)
 	GetChannel(context.Context, uint64) (*model.VideoChannel, error)
 	GetOrder(context.Context, string) (*model.VideoOrder, error)
-	ResolveChannel(context.Context, string) (uint64, error)
+	ResolveChannel(context.Context, uint64) (uint64, error)
 	SavePending(context.Context, Message) error
 	DeletePending(context.Context, string) error
 }
@@ -99,9 +99,8 @@ func (store *gormEventStore) GetOrder(ctx context.Context, orderNo string) (*mod
 	return store.orders.GetByOrderNo(ctx, orderNo, false)
 }
 
-func (store *gormEventStore) ResolveChannel(ctx context.Context, channel string) (uint64, error) {
-	channel = strings.TrimSpace(channel)
-	if channel == "" || channel == "0" {
+func (store *gormEventStore) ResolveChannel(ctx context.Context, channel uint64) (uint64, error) {
+	if channel == 0 {
 		return 0, nil
 	}
 	item, err := store.channels.GetByCodeOrID(ctx, channel)

@@ -238,14 +238,12 @@ func (r *ChannelRepo) GetByCode(ctx context.Context, code string) (*model.VideoC
 	return q.WithContext(ctx).Where(q.ChannelCode.Eq(code)).First()
 }
 
-func (r *ChannelRepo) GetByCodeOrID(ctx context.Context, value string) (*model.VideoChannel, error) {
-	if id, err := strconv.ParseUint(value, 10, 64); err == nil && id > 0 {
-		q := qFrom(ctx).VideoChannel
-		if item, getErr := q.WithContext(ctx).Where(q.ID.Eq(id)).First(); getErr == nil {
-			return item, nil
-		}
+func (r *ChannelRepo) GetByCodeOrID(ctx context.Context, id uint64) (*model.VideoChannel, error) {
+	q := qFrom(ctx).VideoChannel
+	if item, getErr := q.WithContext(ctx).Where(q.ID.Eq(id)).First(); getErr == nil {
+		return item, nil
 	}
-	return r.GetByCode(ctx, value)
+	return nil, nil
 }
 
 func (r *ChannelRepo) TemplateCount(_ context.Context, _ uint64) (int64, error) {

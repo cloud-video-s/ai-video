@@ -18,7 +18,7 @@ type VideoUser struct {
 	DeviceCode               string                     `gorm:"column:device_code;type:varchar(128);not null;index:idx_video_user_login_account,priority:1;index:uidx_video_user_phone_registration,priority:1;comment:设备编号" json:"device_code"` // 设备编号
 	Username                 string                     `gorm:"column:username;type:varchar(128);index:idx_video_user_username,priority:1;comment:昵称" json:"username"`                                                                           // 昵称
 	ClientCountry            string                     `gorm:"column:client_country;type:varchar(64);index:idx_video_user_device_country,priority:1;comment:国家" json:"client_country"`                                                          // 国家
-	ChannelID                string                     `gorm:"column:channel_id;type:varchar(64);index:idx_video_user_channel_id,priority:1;comment:渠道id" json:"channel_id"`                                                                    // 渠道id
+	ChannelID                uint64                     `gorm:"column:channel_id;type:bigint unsigned;not null;index:idx_video_user_channel_id,priority:1;comment:渠道id" json:"channel_id"`                                                       // 渠道id
 	AppVersion               string                     `gorm:"column:app_version;type:varchar(32);index:idx_video_user_app_version,priority:1;comment:激活版本号" json:"app_version"`                                                                // 激活版本号
 	FirstOpenedAt            *time.Time                 `gorm:"column:first_opened_at;type:datetime(3);index:idx_video_user_first_opened_at,priority:1;comment:首次打开时间" json:"first_opened_at"`                                                   // 首次打开时间
 	LastOpenedAt             *time.Time                 `gorm:"column:last_opened_at;type:datetime(3);index:idx_video_user_last_opened_at,priority:1;comment:上次打开时间" json:"last_opened_at"`                                                      // 上次打开时间
@@ -72,7 +72,7 @@ type VideoUser struct {
 	CreatedAt                time.Time                  `gorm:"column:created_at;type:datetime(3);not null;index:idx_video_user_created_at,priority:1" json:"created_at"`
 	UpdatedAt                time.Time                  `gorm:"column:updated_at;type:datetime(3);not null" json:"updated_at"`
 	DeletedAt                gorm.DeletedAt             `gorm:"column:deleted_at;type:datetime(3);index:idx_video_user_deleted_at,priority:1" json:"deleted_at"`
-	Channel                  VideoChannel               `gorm:"foreignKey:ChannelID;references:ChannelCode" json:"channel"`
+	Channel                  VideoChannel               `gorm:"foreignKey:ChannelID;references:ID" json:"channel"`
 	PointsLedgers            []*VideoUserPointsLedger   `gorm:"foreignKey:UserID;references:ID" json:"points_ledgers"`
 	Works                    []*VideoUserGenerationTask `gorm:"foreignKey:UserID;references:ID" json:"works"`
 	Orders                   []*VideoOrder              `gorm:"foreignKey:UserID;references:ID" json:"orders"`

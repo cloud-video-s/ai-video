@@ -709,6 +709,7 @@ func main() {
 		gen.FieldType("attribution_clicked_at", "*time.Time"),
 		gen.FieldType("last_login_at", "*time.Time"),
 		gen.FieldType("vip_started_at", "*time.Time"),
+		gen.FieldType("account_binding_time", "*time.Time"),
 		gen.FieldRename("imei", "IMEI"),
 		gen.FieldRename("vip_level", "VIPLevel"),
 		gen.FieldRename("vip_started_at", "VIPStartedAt"),
@@ -716,7 +717,7 @@ func main() {
 			&field.RelateConfig{
 				GORMTag: field.GormTag{
 					"foreignKey": []string{"ChannelID"},
-					"references": []string{"ChannelCode"},
+					"references": []string{"ID"},
 				},
 			},
 		),
