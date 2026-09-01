@@ -190,20 +190,20 @@ func (s *AdjustAttributionService) resolveAttributionDimensions(ctx context.Cont
 	return nil
 }
 
-func (s *AdjustAttributionService) resolvedAttributionChannelCode(ctx context.Context, item *model.VideoAdjustAttribution) (string, error) {
+func (s *AdjustAttributionService) resolvedAttributionChannelCode(ctx context.Context, item *model.VideoAdjustAttribution) (uint64, error) {
 	if item.IsOrganic != 0 {
-		return "", nil
+		return 0, nil
 	}
 	if item.ChannelID != 0 {
 		channel, err := s.channelRepo.GetEnabledByID(ctx, item.ChannelID)
 		if err == nil {
-			return channel.ChannelCode, nil
+			return channel.ID, nil
 		}
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", err
+			return 0, err
 		}
 	}
-	return attributionChannelCode(item), nil
+	return 0, nil
 }
 
 // ReportApp idempotently binds an authenticated user to an ADID. The Adjust
@@ -442,7 +442,7 @@ func (s *AdjustAttributionService) completeFusion(ctx context.Context, fusion *m
 }
 
 func (s *AdjustAttributionService) applyInitialAcquisition(ctx context.Context, callback *model.VideoAdjustAttribution, user *model.VideoUser) (bool, error) {
-	channelCode, err := s.resolvedAttributionChannelCode(ctx, callback)
+	channelID, err := s.resolvedAttributionChannelCode(ctx, callback)
 	if err != nil {
 		return false, err
 	}
@@ -475,7 +475,7 @@ func (s *AdjustAttributionService) applyInitialAcquisition(ctx context.Context, 
 	if callback.IsOrganic != 0 {
 		userUpdates["channel_id"] = ""
 	} else {
-		userUpdates["channel_id"] = channelCode
+		userUpdates["channel_id"] = channelID
 		if callback.ClickTime != nil {
 			userUpdates["attribution_clicked_at"] = *callback.ClickTime
 		}

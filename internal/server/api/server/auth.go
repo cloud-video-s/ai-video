@@ -3,6 +3,7 @@ package service
 import (
 	"ai-video/internal/adjustevent"
 	"ai-video/internal/config"
+	"ai-video/internal/middleware"
 	"ai-video/internal/pkg/utils"
 	"context"
 	"crypto/rand"
@@ -10,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -88,7 +90,7 @@ type UserResponse struct {
 	UUID               string `json:"uuid"`
 	Email              string `json:"email"`
 	DeviceCountry      string `json:"device_country"`      // 国家
-	ChannelID          uint64 `json:"channel_id"`          // 渠道id
+	ChannelID          string `json:"channel_id"`          // 渠道id
 	LoginType          uint32 `json:"login_type"`          // 登录方式 1=未登录 2=google 3=appid
 	UserType           uint32 `json:"user_type"`           // 用户类型 1=免费 2=付费
 	SubscriptionStatus uint32 `json:"subscription_status"` // 订阅状态 1未订阅 2订阅中 3=已过期
@@ -166,6 +168,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 				return err
 			}
 			user, err = s.prepareLoginSession(ctx, user.ID)
+			go middleware.ActiveLog(ctx, user.ID)
 		} else {
 			if err = s.userRepo.Update(ctx, latest.ID, baseTrackingUpdates(ctx, latest, domain.AppUserLoginGuest, &req.AccountBaseRequest, clientIP, now)); err != nil {
 				return err
@@ -180,13 +183,13 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 			if lookupErr == nil {
 				latest, lookupErr = s.prepareLoginSession(ctx, latest.ID)
 				if lookupErr == nil {
-					return issueToken(latest, int(latest.LoginType))
+					return issueToken(ctx, latest, int(latest.LoginType))
 				}
 			}
 		}
 		return nil, err
 	}
-	result, err := issueToken(user, domain.AppUserLoginGuest)
+	result, err := issueToken(ctx, user, domain.AppUserLoginGuest)
 	if err == nil && firstDeviceRegistration {
 		enqueueAuthAdjustEvent(ctx.Request.Context(), user.ID, adjust.EventTokenActivation)
 	}
@@ -202,7 +205,7 @@ func enqueueAuthAdjustEvent(ctx context.Context, userID uint64, action adjust.Ev
 
 // LoginByAppleOrder resolves the user linked to an Apple original transaction
 // and issues the same client JWT used by the other login flows.
-func (s *AuthService) LoginByAppleOrder(ctx context.Context, loginUserID uint64, req *AppleOrderLoginRequest) (*AuthResponse, int, error) {
+func (s *AuthService) LoginByAppleOrder(ctx *gin.Context, loginUserID uint64, req *AppleOrderLoginRequest) (*AuthResponse, int, error) {
 	if len(req.OrderCode) == 0 {
 		return nil, 0, ErrAppleOrderNotFound
 	}
@@ -249,7 +252,7 @@ func (s *AuthService) LoginByAppleOrder(ctx context.Context, loginUserID uint64,
 	if err != nil {
 		return nil, 0, err
 	}
-	token, err := issueToken(user, int(user.LoginType))
+	token, err := issueToken(ctx, user, int(user.LoginType))
 	if token != nil && user.ID != loginUserID {
 		token.DeviceCode = user.DeviceCode
 	}
@@ -273,7 +276,7 @@ func (s *AuthService) Logout(token string) error {
 	return blacklistAPIToken(token, claims.ExpiresAt.Time)
 }
 
-func (s *AuthService) Refresh(ctx context.Context, userID uint64, tokenVersion int64, currentToken string) (*AuthResponse, error) {
+func (s *AuthService) Refresh(ctx *gin.Context, userID uint64, tokenVersion int64, currentToken string) (*AuthResponse, error) {
 	claims, err := jwt.ParseApiToken(currentToken)
 	if err != nil || claims.ExpiresAt == nil || claims.UserID != userID || claims.TokenVersion != tokenVersion {
 		return nil, ErrAuthStateInvalid
@@ -290,7 +293,7 @@ func (s *AuthService) Refresh(ctx context.Context, userID uint64, tokenVersion i
 		return nil, ErrAuthStateInvalid
 	}
 
-	result, err := issueToken(user, int(user.LoginType))
+	result, err := issueToken(ctx, user, int(user.LoginType))
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +316,7 @@ func (s *AuthService) GetProfile(ctx context.Context, userID uint64) (*UserRespo
 		UUID:               user.Username,
 		Email:              user.Email,
 		DeviceCountry:      user.ClientCountry,
-		ChannelID:          user.ChannelID,
+		ChannelID:          strconv.FormatUint(user.ChannelID, 10),
 		LoginType:          uint32(user.LoginType),
 		UserType:           uint32(user.UserType),
 		PointsBalance:      uint64(user.PointsBalance + user.VipPoints),
@@ -362,12 +365,13 @@ func (s *AuthService) SaveUserActiveLong(ctx context.Context, userID uint64, req
 	return nil, err
 }
 
-func issueToken(user *model.VideoUser, loginType int) (*AuthResponse, error) {
+func issueToken(ctx *gin.Context, user *model.VideoUser, loginType int) (*AuthResponse, error) {
 	token, err := jwt.GenerateApiToken(user.ID, user.DeviceCode, user.TokenVersion, uint32(loginType))
 	if err != nil {
 		return nil, fmt.Errorf("生成客户端 Token 失败: %w", err)
 	}
 	cfg := config.Cfg.ApiJwt
+	go middleware.LoginLog(ctx, user.ID, int32(loginType))
 	return &AuthResponse{
 		Token: token, LoginType: uint32(loginType), ExpireAt: time.Now().Add(time.Duration(cfg.Expire) * time.Second).Unix(), TokenVersion: user.TokenVersion,
 	}, nil

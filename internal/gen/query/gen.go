@@ -35,6 +35,7 @@ var (
 	VideoChannel                     *videoChannel
 	VideoConfig                      *videoConfig
 	VideoCountry                     *videoCountry
+	VideoDayCount                    *videoDayCount
 	VideoDelayConfig                 *videoDelayConfig
 	VideoDisplayPosition             *videoDisplayPosition
 	VideoMediaAd                     *videoMediaAd
@@ -70,9 +71,11 @@ var (
 	VideoTrackingEvent               *videoTrackingEvent
 	VideoUpload                      *videoUpload
 	VideoUser                        *videoUser
+	VideoUserActive                  *videoUserActive
 	VideoUserAttribution             *videoUserAttribution
 	VideoUserAttributionHistory      *videoUserAttributionHistory
 	VideoUserGenerationTask          *videoUserGenerationTask
+	VideoUserLoginLog                *videoUserLoginLog
 	VideoUserPointsLedger            *videoUserPointsLedger
 	VideoUserTemplateComplaint       *videoUserTemplateComplaint
 	VideoUserTemplateFavorite        *videoUserTemplateFavorite
@@ -106,6 +109,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoChannel = &Q.VideoChannel
 	VideoConfig = &Q.VideoConfig
 	VideoCountry = &Q.VideoCountry
+	VideoDayCount = &Q.VideoDayCount
 	VideoDelayConfig = &Q.VideoDelayConfig
 	VideoDisplayPosition = &Q.VideoDisplayPosition
 	VideoMediaAd = &Q.VideoMediaAd
@@ -141,9 +145,11 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	VideoTrackingEvent = &Q.VideoTrackingEvent
 	VideoUpload = &Q.VideoUpload
 	VideoUser = &Q.VideoUser
+	VideoUserActive = &Q.VideoUserActive
 	VideoUserAttribution = &Q.VideoUserAttribution
 	VideoUserAttributionHistory = &Q.VideoUserAttributionHistory
 	VideoUserGenerationTask = &Q.VideoUserGenerationTask
+	VideoUserLoginLog = &Q.VideoUserLoginLog
 	VideoUserPointsLedger = &Q.VideoUserPointsLedger
 	VideoUserTemplateComplaint = &Q.VideoUserTemplateComplaint
 	VideoUserTemplateFavorite = &Q.VideoUserTemplateFavorite
@@ -178,6 +184,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoChannel:                     newVideoChannel(db, opts...),
 		VideoConfig:                      newVideoConfig(db, opts...),
 		VideoCountry:                     newVideoCountry(db, opts...),
+		VideoDayCount:                    newVideoDayCount(db, opts...),
 		VideoDelayConfig:                 newVideoDelayConfig(db, opts...),
 		VideoDisplayPosition:             newVideoDisplayPosition(db, opts...),
 		VideoMediaAd:                     newVideoMediaAd(db, opts...),
@@ -213,9 +220,11 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		VideoTrackingEvent:               newVideoTrackingEvent(db, opts...),
 		VideoUpload:                      newVideoUpload(db, opts...),
 		VideoUser:                        newVideoUser(db, opts...),
+		VideoUserActive:                  newVideoUserActive(db, opts...),
 		VideoUserAttribution:             newVideoUserAttribution(db, opts...),
 		VideoUserAttributionHistory:      newVideoUserAttributionHistory(db, opts...),
 		VideoUserGenerationTask:          newVideoUserGenerationTask(db, opts...),
+		VideoUserLoginLog:                newVideoUserLoginLog(db, opts...),
 		VideoUserPointsLedger:            newVideoUserPointsLedger(db, opts...),
 		VideoUserTemplateComplaint:       newVideoUserTemplateComplaint(db, opts...),
 		VideoUserTemplateFavorite:        newVideoUserTemplateFavorite(db, opts...),
@@ -251,6 +260,7 @@ type Query struct {
 	VideoChannel                     videoChannel
 	VideoConfig                      videoConfig
 	VideoCountry                     videoCountry
+	VideoDayCount                    videoDayCount
 	VideoDelayConfig                 videoDelayConfig
 	VideoDisplayPosition             videoDisplayPosition
 	VideoMediaAd                     videoMediaAd
@@ -286,9 +296,11 @@ type Query struct {
 	VideoTrackingEvent               videoTrackingEvent
 	VideoUpload                      videoUpload
 	VideoUser                        videoUser
+	VideoUserActive                  videoUserActive
 	VideoUserAttribution             videoUserAttribution
 	VideoUserAttributionHistory      videoUserAttributionHistory
 	VideoUserGenerationTask          videoUserGenerationTask
+	VideoUserLoginLog                videoUserLoginLog
 	VideoUserPointsLedger            videoUserPointsLedger
 	VideoUserTemplateComplaint       videoUserTemplateComplaint
 	VideoUserTemplateFavorite        videoUserTemplateFavorite
@@ -327,6 +339,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoChannel:                     q.VideoChannel.clone(db),
 		VideoConfig:                      q.VideoConfig.clone(db),
 		VideoCountry:                     q.VideoCountry.clone(db),
+		VideoDayCount:                    q.VideoDayCount.clone(db),
 		VideoDelayConfig:                 q.VideoDelayConfig.clone(db),
 		VideoDisplayPosition:             q.VideoDisplayPosition.clone(db),
 		VideoMediaAd:                     q.VideoMediaAd.clone(db),
@@ -362,9 +375,11 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		VideoTrackingEvent:               q.VideoTrackingEvent.clone(db),
 		VideoUpload:                      q.VideoUpload.clone(db),
 		VideoUser:                        q.VideoUser.clone(db),
+		VideoUserActive:                  q.VideoUserActive.clone(db),
 		VideoUserAttribution:             q.VideoUserAttribution.clone(db),
 		VideoUserAttributionHistory:      q.VideoUserAttributionHistory.clone(db),
 		VideoUserGenerationTask:          q.VideoUserGenerationTask.clone(db),
+		VideoUserLoginLog:                q.VideoUserLoginLog.clone(db),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.clone(db),
 		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.clone(db),
 		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.clone(db),
@@ -408,6 +423,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoChannel:                     q.VideoChannel.replaceDB(db),
 		VideoConfig:                      q.VideoConfig.replaceDB(db),
 		VideoCountry:                     q.VideoCountry.replaceDB(db),
+		VideoDayCount:                    q.VideoDayCount.replaceDB(db),
 		VideoDelayConfig:                 q.VideoDelayConfig.replaceDB(db),
 		VideoDisplayPosition:             q.VideoDisplayPosition.replaceDB(db),
 		VideoMediaAd:                     q.VideoMediaAd.replaceDB(db),
@@ -443,9 +459,11 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		VideoTrackingEvent:               q.VideoTrackingEvent.replaceDB(db),
 		VideoUpload:                      q.VideoUpload.replaceDB(db),
 		VideoUser:                        q.VideoUser.replaceDB(db),
+		VideoUserActive:                  q.VideoUserActive.replaceDB(db),
 		VideoUserAttribution:             q.VideoUserAttribution.replaceDB(db),
 		VideoUserAttributionHistory:      q.VideoUserAttributionHistory.replaceDB(db),
 		VideoUserGenerationTask:          q.VideoUserGenerationTask.replaceDB(db),
+		VideoUserLoginLog:                q.VideoUserLoginLog.replaceDB(db),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.replaceDB(db),
 		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.replaceDB(db),
 		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.replaceDB(db),
@@ -479,6 +497,7 @@ type queryCtx struct {
 	VideoChannel                     IVideoChannelDo
 	VideoConfig                      IVideoConfigDo
 	VideoCountry                     IVideoCountryDo
+	VideoDayCount                    IVideoDayCountDo
 	VideoDelayConfig                 IVideoDelayConfigDo
 	VideoDisplayPosition             IVideoDisplayPositionDo
 	VideoMediaAd                     IVideoMediaAdDo
@@ -514,9 +533,11 @@ type queryCtx struct {
 	VideoTrackingEvent               IVideoTrackingEventDo
 	VideoUpload                      IVideoUploadDo
 	VideoUser                        IVideoUserDo
+	VideoUserActive                  IVideoUserActiveDo
 	VideoUserAttribution             IVideoUserAttributionDo
 	VideoUserAttributionHistory      IVideoUserAttributionHistoryDo
 	VideoUserGenerationTask          IVideoUserGenerationTaskDo
+	VideoUserLoginLog                IVideoUserLoginLogDo
 	VideoUserPointsLedger            IVideoUserPointsLedgerDo
 	VideoUserTemplateComplaint       IVideoUserTemplateComplaintDo
 	VideoUserTemplateFavorite        IVideoUserTemplateFavoriteDo
@@ -550,6 +571,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoChannel:                     q.VideoChannel.WithContext(ctx),
 		VideoConfig:                      q.VideoConfig.WithContext(ctx),
 		VideoCountry:                     q.VideoCountry.WithContext(ctx),
+		VideoDayCount:                    q.VideoDayCount.WithContext(ctx),
 		VideoDelayConfig:                 q.VideoDelayConfig.WithContext(ctx),
 		VideoDisplayPosition:             q.VideoDisplayPosition.WithContext(ctx),
 		VideoMediaAd:                     q.VideoMediaAd.WithContext(ctx),
@@ -585,9 +607,11 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		VideoTrackingEvent:               q.VideoTrackingEvent.WithContext(ctx),
 		VideoUpload:                      q.VideoUpload.WithContext(ctx),
 		VideoUser:                        q.VideoUser.WithContext(ctx),
+		VideoUserActive:                  q.VideoUserActive.WithContext(ctx),
 		VideoUserAttribution:             q.VideoUserAttribution.WithContext(ctx),
 		VideoUserAttributionHistory:      q.VideoUserAttributionHistory.WithContext(ctx),
 		VideoUserGenerationTask:          q.VideoUserGenerationTask.WithContext(ctx),
+		VideoUserLoginLog:                q.VideoUserLoginLog.WithContext(ctx),
 		VideoUserPointsLedger:            q.VideoUserPointsLedger.WithContext(ctx),
 		VideoUserTemplateComplaint:       q.VideoUserTemplateComplaint.WithContext(ctx),
 		VideoUserTemplateFavorite:        q.VideoUserTemplateFavorite.WithContext(ctx),

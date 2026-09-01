@@ -44,7 +44,7 @@ func (h *AuthHandler) AppleOrderLogin(c *gin.Context) {
 		response.FailWithStatus(c, http.StatusBadRequest, errcode.ErrParam, "Apple 支付订单参数错误: "+err.Error())
 		return
 	}
-	result, id, err := h.svc.LoginByAppleOrder(c.Request.Context(), middleware.GetAPIUserID(c), &req)
+	result, id, err := h.svc.LoginByAppleOrder(c, middleware.GetAPIUserID(c), &req)
 	switch {
 	case errors.Is(err, apiservice.ErrAppleOrderNotFound):
 		response.Fail(c, errcode.ErrNotFound, err.Error())
@@ -109,9 +109,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	result, err := h.svc.Refresh(
-		c.Request.Context(), middleware.GetAPIUserID(c), middleware.GetAPITokenVersion(c), bearerToken(c),
-	)
+	result, err := h.svc.Refresh(c, middleware.GetAPIUserID(c), middleware.GetAPITokenVersion(c), bearerToken(c))
 	if errors.Is(err, apiservice.ErrAuthStateInvalid) {
 		response.Unauthorized(c, err.Error())
 		return

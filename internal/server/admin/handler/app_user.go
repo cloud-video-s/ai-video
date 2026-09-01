@@ -176,7 +176,7 @@ func (h *AppUserHandler) TerminateVIP(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.svc.TerminateVIP(c.Request.Context(), id); err != nil {
+	if err := h.svc.TerminateVIP(c.Request.Context(), id, middleware.GetAdminID(c)); err != nil {
 		response.Fail(c, errcode.ErrServer, err.Error())
 		return
 	}

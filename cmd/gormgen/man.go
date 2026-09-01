@@ -1096,8 +1096,11 @@ func main() {
 			},
 		),
 	)
-
 	videoAdjustMediaAds := g.GenerateModel("video_adjust_media_ads")
+	videoUserActive := g.GenerateModel("video_user_active")
+	videoUserLoginLog := g.GenerateModel("video_user_login_log")
+
+	videoDayCount := g.GenerateModel("video_day_count")
 
 	allModels := []any{
 		casbinRule,
@@ -1167,6 +1170,9 @@ func main() {
 		videoTrackingEvent,
 		videoToolConfig,
 		videoAdjustMediaAds,
+		videoUserActive,
+		videoUserLoginLog,
+		videoDayCount,
 	}
 
 	g.ApplyBasic(allModels...)

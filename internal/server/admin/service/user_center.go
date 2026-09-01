@@ -269,7 +269,7 @@ func (s *AppUserService) GrantVIP(ctx context.Context, id, adminID uint64, req *
 		}
 		beforeBalance := user.VipPoints + user.PointsBalance
 		afterVIPPoints := user.VipPoints + req.VIPPoints
-		if err := s.repo.Update(ctx, id, map[string]interface{}{
+		if err = s.repo.Update(ctx, id, map[string]interface{}{
 			"vip_started_at": startedAt, "vip_expires_at": req.ExpiresAt,
 			"vip_level": uint(req.Level), "vip_points": afterVIPPoints,
 			"user_type": domain.AppUserTypePaid, "subscription_status": domain.AppUserSubscriptionSubscribed,
@@ -283,7 +283,7 @@ func (s *AppUserService) GrantVIP(ctx context.Context, id, adminID uint64, req *
 		return repository.NewUserPointsLedgerRepo().Create(ctx, &model.VideoUserPointsLedger{
 			UserID: id, Direction: int8(domain.PointsDirectionIncome), PointsChange: req.VIPPoints,
 			BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(beforeBalance + req.VIPPoints),
-			Description: "管理员添加 VIP 赠送积分", SourceType: uint32(domain.PointsSourceAdminOp),
+			Description: "Admin adds VIP and grants points", SourceType: uint32(domain.PointsSourceAdminOp),
 			AdminID: adminID, OccurredAt: now, CreatedAt: now, UpdatedAt: now,
 		})
 	})
@@ -309,14 +309,25 @@ func (s *AppUserService) ExtendVIP(ctx context.Context, id uint64, days uint32) 
 	return s.repo.Update(ctx, id, updates)
 }
 
-func (s *AppUserService) TerminateVIP(ctx context.Context, id uint64) error {
-	if _, err := s.GetByID(ctx, id); err != nil {
+func (s *AppUserService) TerminateVIP(ctx context.Context, id uint64, adminID uint64) error {
+	user, err := s.GetByID(ctx, id)
+	if err != nil {
 		return err
 	}
 	now := time.Now()
-	return s.repo.Update(ctx, id, map[string]interface{}{
+	err = s.repo.Update(ctx, user.ID, map[string]interface{}{
 		"vip_level": 0, "vip_points": 0, "vip_expires_at": now, "user_type": domain.AppUserTypeFree,
 		"subscription_status": domain.AppUserSubscriptionCancelled,
+	})
+	if err != nil {
+		return err
+	}
+	beforeBalance := user.VipPoints + user.PointsBalance
+	return repository.NewUserPointsLedgerRepo().Create(ctx, &model.VideoUserPointsLedger{
+		UserID: id, Direction: int8(domain.PointsDirectionExpense), PointsChange: user.VipPoints,
+		BalanceBefore: uint64(beforeBalance), BalanceAfter: uint64(user.PointsBalance),
+		Description: "Administrator terminates VIP and clears VIP points.", SourceType: uint32(domain.PointsSourceAdminOp),
+		AdminID: adminID, OccurredAt: now, CreatedAt: now, UpdatedAt: now,
 	})
 }
 

@@ -129,7 +129,7 @@ func (s *AuthService) loginVerifiedIdentity(ctx *gin.Context, req *ThirdPartyLog
 	if err != nil {
 		return nil, err
 	}
-	token, err := issueToken(user, int(providerLoginType(req.ThirdType)))
+	token, err := issueToken(ctx, user, int(providerLoginType(req.ThirdType)))
 	if err != nil {
 		return nil, err
 	}

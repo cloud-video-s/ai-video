@@ -496,7 +496,7 @@ function openCreate() {
 function openEdit(row: Channel) {
   const callbackRules = (row.callback_config?.rules || []).map(cloneCallbackRule)
   Object.assign(form, {
-    channel_id: row.channel_id,
+    id: row.id,
     channel_code: row.channel_code,
     channel_name: row.channel_name,
     account_channel: row.account_channel || '',
