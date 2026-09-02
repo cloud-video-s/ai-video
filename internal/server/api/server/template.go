@@ -260,36 +260,19 @@ func (s *ClientTemplateService) Recommend(ctx *gin.Context, req *ClientTemplateR
 	if err != nil {
 		return nil, err
 	}
-	GetCtxAccountBaseRequest(ctx, &req.AccountBaseRequest)
-	countryCode := strings.ToUpper(strings.TrimSpace(req.ClientCountry))
-	if countryCode == "" {
-		countryCode = strings.ToUpper(strings.TrimSpace(user.ClientCountry))
-	}
-	rows, err := s.displayRepo.ListForClient(ctx, repository.ClientTemplateDisplayTargets{
-		PositionKey: strings.TrimSpace(req.PositionKey), CountryCode: countryCode,
-		AppCode: strings.TrimSpace(req.AppName), PackageCode: strings.TrimSpace(req.AppPackage),
-		VersionCode: strings.TrimSpace(req.AppVersion),
-	})
+	rows, err := s.displayRepo.ListForClient(ctx, repository.ClientTemplateDisplayTargets{PositionKey: strings.TrimSpace(req.PositionKey)})
 	if err != nil {
 		return nil, err
 	}
-	templates := make([]model.VideoTemplate, 0, len(rows))
-	for i := range rows {
-		if rows[i].Template != nil {
-			templates = append(templates, rows[i].Template.VideoTemplate)
-		}
-	}
+
 	result := make([]ClientTemplate, 0, len(rows))
 	for i := range rows {
-		if rows[i].Template != nil {
-			template := &rows[i].Template.VideoTemplate
-			result = append(result, mapClientTemplate(ctx, user.ID, template))
-		}
+		result = append(result, mapClientTemplate(ctx, user.ID, &rows[i].Template))
 	}
 	return result, nil
 }
 
-func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *TemplateListRequest) (interface{}, error) {
+func (s *ClientTemplateService) CategoryTemplateList(ctx *gin.Context, req *TemplateListRequest) (any, error) {
 	user, err := s.userRepo.GetByID(ctx, middleware.GetAPIUserID(ctx))
 	if err != nil {
 		return nil, err

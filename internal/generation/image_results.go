@@ -88,7 +88,7 @@ func (m *Manager) finishImageTaskWithinDownloadSlot(
 	task.Progress = 100
 	task.ErrorMessage = ""
 	task.FinishedAt = now
-	if task.FinishedAt.IsZero() {
+	if task.StartedAt.IsZero() {
 		task.UsageDuration = uint32(task.FinishedAt.Unix() - task.CreatedAt.Unix())
 	} else {
 		task.UsageDuration = uint32(task.FinishedAt.Unix() - task.StartedAt.Unix())

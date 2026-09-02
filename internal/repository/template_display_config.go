@@ -120,46 +120,26 @@ func (r *TemplateDisplayConfigRepo) UpdateFields(ctx context.Context, item *mode
 
 type ClientTemplateDisplayTargets struct {
 	PositionKey string
-	CountryCode string
-	AppCode     string
-	PackageCode string
-	VersionCode string
 }
 
-func (r *TemplateDisplayConfigRepo) ListForClient(ctx context.Context, targets ClientTemplateDisplayTargets) ([]TemplateDisplayConfigRecord, error) {
-	// 分类的国家、展示位置和 APP/包/版本规则由 TemplateTypeRepo 统一解析。
-	types, err := NewTemplateTypeRepo().ListForClient(ctx, ClientTemplateTypeTargets{
-		PositionKey: targets.PositionKey, CountryCode: targets.CountryCode,
-		AppCode: targets.AppCode, PackageCode: targets.PackageCode, VersionCode: targets.VersionCode,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(types) == 0 {
-		return []TemplateDisplayConfigRecord{}, nil
-	}
-	typeIDs := make([]uint64, 0, len(types))
-	for i := range types {
-		typeIDs = append(typeIDs, types[i].ID)
-	}
-
+func (r *TemplateDisplayConfigRepo) ListForClient(ctx context.Context, targets ClientTemplateDisplayTargets) ([]*model.VideoTemplatePlacementConfig, error) {
 	q := qFrom(ctx)
 	config := q.VideoTemplatePlacementConfig
 	template := q.VideoTemplate
 	placement := q.VideoDisplayPosition
-	rows, err := config.WithContext(ctx).
+	rows, err := config.WithContext(ctx).Preload(config.Template).
 		Join(template, template.ID.EqCol(config.TemplateID)).
 		Join(placement, placement.PositionKey.EqCol(config.PlacementKey)).
 		Where(
 			config.PlacementKey.Eq(targets.PositionKey), config.Status.Eq(1),
-			template.Status.Eq(1), template.TemplateTypeID.In(typeIDs...), placement.Status.Eq(1),
+			template.Status.Eq(1), placement.Status.Eq(1),
 		).
 		Order(config.Sort.Desc(), template.Sort.Desc(), template.UsageCount.Desc(),
 			template.LikeCount.Desc(), template.ViewCount.Desc(), template.ID.Desc()).Find()
 	if err != nil {
 		return nil, err
 	}
-	return r.loadRecords(ctx, valuesOf(rows))
+	return rows, nil
 }
 
 func (r *TemplateDisplayConfigRepo) loadRecords(ctx context.Context, items []model.VideoTemplatePlacementConfig) ([]TemplateDisplayConfigRecord, error) {
