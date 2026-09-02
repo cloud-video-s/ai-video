@@ -1,22 +1,15 @@
 package middleware
 
 import (
-	"ai-video/internal/config"
+	"ai-video/internal/event"
 	"ai-video/internal/gen/model"
-	"ai-video/internal/repository"
-	"context"
-	"fmt"
-	"strings"
-	"time"
-
 	"ai-video/internal/pkg/cache"
 	"ai-video/internal/pkg/jwt"
 	"ai-video/internal/pkg/response"
 	"ai-video/internal/pkg/utils"
+	"strings"
 
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 const (
@@ -103,7 +96,11 @@ func ApiAuth(userRepo UserRepo) gin.HandlerFunc {
 			PhoneModel:     headerPhoneModel,
 			SystemType:     getClientSystemType(c),
 		})
-		go ActiveLog(c, claims.UserID)
+		//活跃事件触发
+		go event.EventActive(c, &model.VideoUser{
+			ID:         claims.UserID,
+			DeviceCode: claims.DeviceCode,
+		})
 		c.Next()
 	}
 }
@@ -338,40 +335,5 @@ func parseUA(ua string) string {
 		return "Linux"
 	default:
 		return "Other"
-	}
-}
-
-var ActiveDayKey = "active_day_key_user_id_"
-
-func ActiveLog(c context.Context, userID uint64) {
-	if config.Redis.Get(c, fmt.Sprintf("%s%d", ActiveDayKey, userID)).Val() == "" {
-		q := repository.QFrom(c).VideoUserActive
-		err := q.WithContext(c).Create(&model.VideoUserActive{
-			UserID:  userID,
-			DayTime: time.Now(),
-		})
-		if err != nil {
-			config.Logger(c).Error("create video_user_active failed", zap.Error(err))
-		} else {
-			config.Redis.Set(c, fmt.Sprintf("%s%d", ActiveDayKey, userID), 0, time.Hour*24)
-			u := repository.QFrom(c).VideoUser
-			_, err = u.WithContext(c).Where(u.ID.Eq(userID)).UpdateColumn(u.ActiveDays, gorm.Expr("active_days + 1"))
-			if err != nil {
-				config.Logger(c).Error("update video_user active_day failed", zap.Error(err))
-			}
-		}
-	}
-}
-
-func LoginLog(c *gin.Context, userID uint64, loginType int32) {
-	q := repository.QFrom(c).VideoUserLoginLog
-	err := q.WithContext(c).Create(&model.VideoUserLoginLog{
-		UserID:    userID,
-		LoginTime: time.Now(),
-		LoginType: loginType,
-		LoginIP:   c.ClientIP(),
-	})
-	if err != nil {
-		config.Logger(c).Error("create video_user_active failed", zap.Error(err))
 	}
 }

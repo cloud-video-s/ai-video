@@ -26,8 +26,8 @@ type VideoDayCount struct {
 	EstimatedTotalRevenue float64        `gorm:"column:estimated_total_revenue;type:decimal(10,2);not null;default:0.00;comment:预估总收入" json:"estimated_total_revenue"`         // 预估总收入
 	EstimatedTotalCost    float64        `gorm:"column:estimated_total_cost;type:decimal(10,2);not null;default:0.00;comment:预估总成本" json:"estimated_total_cost"`               // 预估总成本
 	EstimatedCashFlow     float64        `gorm:"column:estimated_cash_flow;type:decimal(10,2);not null;default:0.00;comment:预估现金流盈亏 (正为盈，负为亏)" json:"estimated_cash_flow"`     // 预估现金流盈亏 (正为盈，负为亏)
-	BookRoi               float64        `gorm:"column:book_roi;type:decimal(10,2);not null;default:0.00;comment:账面ROI" json:"book_roi"`                                       // 账面ROI
 	TransactionCount      uint32         `gorm:"column:transaction_count;type:int unsigned;not null;comment:支出数量（交易笔数）" json:"transaction_count"`                              // 支出数量（交易笔数）
+	ActivationCount       uint32         `gorm:"column:activation_count;type:int unsigned;not null;comment:激活数量" json:"activation_count"`                                      // 激活数量
 	DailyActiveUsers      uint32         `gorm:"column:daily_active_users;type:int unsigned;not null;comment:日活量（DAU，单位：人）" json:"daily_active_users"`                         // 日活量（DAU，单位：人）
 	NewUserPayerCount     uint32         `gorm:"column:new_user_payer_count;type:int unsigned;not null;comment:新用户付费人数（单位：人）" json:"new_user_payer_count"`                     // 新用户付费人数（单位：人）
 	NewUserPaymentAmount  float64        `gorm:"column:new_user_payment_amount;type:decimal(10,2);not null;default:0.00;comment:新用户付费金额（单位：元）" json:"new_user_payment_amount"` // 新用户付费金额（单位：元）

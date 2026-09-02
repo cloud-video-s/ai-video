@@ -1,6 +1,7 @@
 package commerce
 
 import (
+	"ai-video/internal/event"
 	"context"
 	"crypto/rand"
 	"crypto/x509"
@@ -438,6 +439,7 @@ func (s *Service) fulfillAppleOrder(ctx context.Context, order *model.VideoOrder
 			enqueueAdjustEvent(ctx, completedOrder.UserID, adjust.EventTokenSubscription, completedOrder.OrderNo, occurredAt)
 		}
 	}
+	go event.EventOrder(ctx, order)
 	return nil
 }
 

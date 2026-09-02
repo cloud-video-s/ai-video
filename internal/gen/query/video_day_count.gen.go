@@ -40,8 +40,8 @@ func newVideoDayCount(db *gorm.DB, opts ...gen.DOOption) videoDayCount {
 	_videoDayCount.EstimatedTotalRevenue = field.NewFloat64(tableName, "estimated_total_revenue")
 	_videoDayCount.EstimatedTotalCost = field.NewFloat64(tableName, "estimated_total_cost")
 	_videoDayCount.EstimatedCashFlow = field.NewFloat64(tableName, "estimated_cash_flow")
-	_videoDayCount.BookRoi = field.NewFloat64(tableName, "book_roi")
 	_videoDayCount.TransactionCount = field.NewUint32(tableName, "transaction_count")
+	_videoDayCount.ActivationCount = field.NewUint32(tableName, "activation_count")
 	_videoDayCount.DailyActiveUsers = field.NewUint32(tableName, "daily_active_users")
 	_videoDayCount.NewUserPayerCount = field.NewUint32(tableName, "new_user_payer_count")
 	_videoDayCount.NewUserPaymentAmount = field.NewFloat64(tableName, "new_user_payment_amount")
@@ -73,8 +73,8 @@ type videoDayCount struct {
 	EstimatedTotalRevenue field.Float64 // 预估总收入
 	EstimatedTotalCost    field.Float64 // 预估总成本
 	EstimatedCashFlow     field.Float64 // 预估现金流盈亏 (正为盈，负为亏)
-	BookRoi               field.Float64 // 账面ROI
 	TransactionCount      field.Uint32  // 支出数量（交易笔数）
+	ActivationCount       field.Uint32  // 激活数量
 	DailyActiveUsers      field.Uint32  // 日活量（DAU，单位：人）
 	NewUserPayerCount     field.Uint32  // 新用户付费人数（单位：人）
 	NewUserPaymentAmount  field.Float64 // 新用户付费金额（单位：元）
@@ -111,8 +111,8 @@ func (v *videoDayCount) updateTableName(table string) *videoDayCount {
 	v.EstimatedTotalRevenue = field.NewFloat64(table, "estimated_total_revenue")
 	v.EstimatedTotalCost = field.NewFloat64(table, "estimated_total_cost")
 	v.EstimatedCashFlow = field.NewFloat64(table, "estimated_cash_flow")
-	v.BookRoi = field.NewFloat64(table, "book_roi")
 	v.TransactionCount = field.NewUint32(table, "transaction_count")
+	v.ActivationCount = field.NewUint32(table, "activation_count")
 	v.DailyActiveUsers = field.NewUint32(table, "daily_active_users")
 	v.NewUserPayerCount = field.NewUint32(table, "new_user_payer_count")
 	v.NewUserPaymentAmount = field.NewFloat64(table, "new_user_payment_amount")
@@ -162,8 +162,8 @@ func (v *videoDayCount) fillFieldMap() {
 	v.fieldMap["estimated_total_revenue"] = v.EstimatedTotalRevenue
 	v.fieldMap["estimated_total_cost"] = v.EstimatedTotalCost
 	v.fieldMap["estimated_cash_flow"] = v.EstimatedCashFlow
-	v.fieldMap["book_roi"] = v.BookRoi
 	v.fieldMap["transaction_count"] = v.TransactionCount
+	v.fieldMap["activation_count"] = v.ActivationCount
 	v.fieldMap["daily_active_users"] = v.DailyActiveUsers
 	v.fieldMap["new_user_payer_count"] = v.NewUserPayerCount
 	v.fieldMap["new_user_payment_amount"] = v.NewUserPaymentAmount

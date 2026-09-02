@@ -2,6 +2,7 @@ package commerce
 
 import (
 	"ai-video/internal/config"
+	"ai-video/internal/event"
 	"context"
 	"errors"
 	"fmt"
@@ -528,6 +529,12 @@ func (s *Service) revokePaidAppleOrder(ctx context.Context, order *model.VideoOr
 		}
 		q := repository.QFrom(ctx).VideoOrder
 		_, err = q.WithContext(ctx).Where(q.ID.Eq(lockedOrder.ID)).Updates(orderUpdates)
+		if err == nil {
+			order.Status = domain.OrderStatusRefunded
+			order.RefundedAmount = lockedOrder.PaidAmount
+			order.CancelledAt = revokedAt
+			go event.EventOrder(ctx, order)
+		}
 		return err
 	})
 }

@@ -50,7 +50,7 @@ func (d *DelayConfigRepo) ExistsByKey(ctx context.Context, key string) (bool, er
 
 func (d *DelayConfigRepo) Update(ctx context.Context, config *model.VideoDelayConfig) error {
 	q := qFrom(ctx).VideoDelayConfig
-	return q.WithContext(ctx).Where(q.ID.Eq(uint64(config.ID))).UnderlyingDB().
+	return q.WithContext(ctx).Where(q.ID.Eq(config.ID)).UnderlyingDB().
 		Model(&model.VideoDelayConfig{}).
 		Select("Group", "Value", "Type", "Options", "Remark", "Sort").
 		Updates(config).Error
@@ -155,7 +155,6 @@ func parseDelayConfigNumber(strType, value string) (any, error) {
 		}
 		return parsed, nil
 	}
-	return value, nil
 }
 
 func (d *DelayConfigRepo) ListGroups(ctx context.Context) ([]string, error) {

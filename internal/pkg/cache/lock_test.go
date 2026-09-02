@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -79,5 +81,57 @@ func TestAcquireLockAllowsOnlyOneConcurrentOwner(t *testing.T) {
 	_, ok, err := AcquireLock("lock:favorite:1:9", time.Second)
 	if err != nil || !ok {
 		t.Fatalf("lock was not available after owner release: ok=%v err=%v", ok, err)
+	}
+}
+
+func TestAcquireLockWithRetryWaitsForCurrentOwner(t *testing.T) {
+	previous := GetStore()
+	memory := &memoryLockStore{locks: make(map[string]string)}
+	InitStore(memory)
+	t.Cleanup(func() { InitStore(previous) })
+
+	const lockKey = "lock:day-count:2026-09-01"
+	ownerToken, ok, err := AcquireLock(lockKey, time.Second)
+	if err != nil || !ok {
+		t.Fatalf("acquire initial lock: ok=%v err=%v", ok, err)
+	}
+
+	released := make(chan struct{})
+	go func() {
+		defer close(released)
+		time.Sleep(10 * time.Millisecond)
+		if releaseErr := ReleaseLock(lockKey, ownerToken); releaseErr != nil {
+			t.Errorf("release initial lock: %v", releaseErr)
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	token, err := AcquireLockWithRetry(ctx, lockKey, time.Second, time.Millisecond)
+	if err != nil {
+		t.Fatalf("AcquireLockWithRetry: %v", err)
+	}
+	if token == "" || token == ownerToken {
+		t.Fatalf("new owner token = %q, initial token = %q", token, ownerToken)
+	}
+	<-released
+}
+
+func TestAcquireLockWithRetryStopsWhenContextCanceled(t *testing.T) {
+	previous := GetStore()
+	memory := &memoryLockStore{locks: make(map[string]string)}
+	InitStore(memory)
+	t.Cleanup(func() { InitStore(previous) })
+
+	const lockKey = "lock:day-count:2026-09-01"
+	if _, ok, err := AcquireLock(lockKey, time.Second); err != nil || !ok {
+		t.Fatalf("acquire initial lock: ok=%v err=%v", ok, err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := AcquireLockWithRetry(ctx, lockKey, time.Second, time.Millisecond)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("AcquireLockWithRetry error = %v, want context.Canceled", err)
 	}
 }

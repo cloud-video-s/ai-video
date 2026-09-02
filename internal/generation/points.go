@@ -1,6 +1,7 @@
 package generation
 
 import (
+	"ai-video/internal/event"
 	"context"
 	"errors"
 	"fmt"
@@ -114,6 +115,7 @@ func (m *Manager) completeTask(ctx context.Context, task *model.VideoUserGenerat
 	if alreadyCompleted {
 		task.Status = TaskStatusSuccess
 		task.Progress = 100
+		go event.EventTask(ctx, task)
 	}
 	m.hub.Publish(task)
 	return nil

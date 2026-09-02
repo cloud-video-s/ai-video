@@ -2,6 +2,7 @@ package service
 
 import (
 	"ai-video/internal/adjustevent"
+	"ai-video/internal/event"
 	"ai-video/internal/pkg/utils"
 	"context"
 	"crypto/sha256"
@@ -394,6 +395,7 @@ func (s *AdjustAttributionService) Handle(ctx context.Context, input AdjustCallb
 		result.Matched, result.Applied = true, applied
 		matchedUserID = fusion.UserID
 		result.Status = fusion.MatchStatus
+
 		return nil
 	})
 	if err != nil {
@@ -452,7 +454,8 @@ func (s *AdjustAttributionService) applyInitialAcquisition(ctx context.Context, 
 	if appCode == "" {
 		appCode = strings.TrimSpace(user.AppName)
 	}
-	applied, err := s.attributionRepo.ApplyFusedAttribution(ctx, &model.VideoUserAttribution{
+
+	userAttribution := &model.VideoUserAttribution{
 		AppCode: appCode, UserID: user.ID, AdjustAdid: callback.AdjustADID,
 		ChannelID: callback.ChannelID, MediaID: callback.MediaID, IMEI: user.IMEI,
 		Idfa: callback.IDFA, Idfv: callback.IDFV, DeviceIP: callback.DeviceIP, UserAgent: callback.UserAgent,
@@ -463,7 +466,8 @@ func (s *AdjustAttributionService) applyInitialAcquisition(ctx context.Context, 
 		ClickTime: *callback.ClickTime, InstallTime: *callback.InstallTime,
 		AttributedAt: &attributedAt, ReattributedAt: *callback.ReattributedAt,
 		AttributionUpdatedAt: *callback.AttributionUpdatedAt, AdjustCreatedAt: *callback.AdjustCreatedAt,
-	})
+	}
+	applied, err := s.attributionRepo.ApplyFusedAttribution(ctx, userAttribution)
 	if err != nil {
 		return false, err
 	}
@@ -480,9 +484,10 @@ func (s *AdjustAttributionService) applyInitialAcquisition(ctx context.Context, 
 			userUpdates["attribution_clicked_at"] = *callback.ClickTime
 		}
 	}
-	if err := s.userRepo.Update(ctx, user.ID, userUpdates); err != nil {
+	if err = s.userRepo.Update(ctx, user.ID, userUpdates); err != nil {
 		return false, err
 	}
+	go event.EventAttribution(ctx, userAttribution)
 	return true, nil
 }
 

@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -29,6 +30,41 @@ func AcquireLock(key string, ttl time.Duration) (token string, acquired bool, er
 		return "", acquired, err
 	}
 	return token, true, nil
+}
+
+// AcquireLockWithRetry waits until a Redis-backed lock is acquired or ctx is
+// canceled. retryInterval controls how often a contended lock is retried.
+func AcquireLockWithRetry(ctx context.Context, key string, ttl, retryInterval time.Duration) (string, error) {
+	if ctx == nil {
+		return "", errors.New("lock context must not be nil")
+	}
+	if retryInterval <= 0 {
+		return "", errors.New("lock retry interval must be positive")
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		default:
+		}
+
+		token, acquired, err := AcquireLock(key, ttl)
+		if err != nil {
+			return "", err
+		}
+		if acquired {
+			return token, nil
+		}
+
+		timer := time.NewTimer(retryInterval)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return "", ctx.Err()
+		case <-timer.C:
+		}
+	}
 }
 
 func ReleaseLock(key, token string) error {

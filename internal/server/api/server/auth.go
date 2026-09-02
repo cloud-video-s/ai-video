@@ -3,7 +3,7 @@ package service
 import (
 	"ai-video/internal/adjustevent"
 	"ai-video/internal/config"
-	"ai-video/internal/middleware"
+	"ai-video/internal/event"
 	"ai-video/internal/pkg/utils"
 	"context"
 	"crypto/rand"
@@ -168,7 +168,7 @@ func (s *AuthService) Login(ctx *gin.Context, req *LoginRequest, clientIP string
 				return err
 			}
 			user, err = s.prepareLoginSession(ctx, user.ID)
-			go middleware.ActiveLog(ctx, user.ID)
+			go event.EventActivate(ctx, user)
 		} else {
 			if err = s.userRepo.Update(ctx, latest.ID, baseTrackingUpdates(ctx, latest, domain.AppUserLoginGuest, &req.AccountBaseRequest, clientIP, now)); err != nil {
 				return err
@@ -371,7 +371,9 @@ func issueToken(ctx *gin.Context, user *model.VideoUser, loginType int) (*AuthRe
 		return nil, fmt.Errorf("生成客户端 Token 失败: %w", err)
 	}
 	cfg := config.Cfg.ApiJwt
-	go middleware.LoginLog(ctx, user.ID, int32(loginType))
+	user.LoginType = uint8(loginType)
+	user.LastLoginIP = ctx.ClientIP()
+	go event.EventLogin(ctx, user)
 	return &AuthResponse{
 		Token: token, LoginType: uint32(loginType), ExpireAt: time.Now().Add(time.Duration(cfg.Expire) * time.Second).Unix(), TokenVersion: user.TokenVersion,
 	}, nil

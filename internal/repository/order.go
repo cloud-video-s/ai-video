@@ -100,6 +100,13 @@ func (r *OrderRepo) GetByAppleOriginalTransactionIDs(ctx context.Context, origin
 	).Order(q.ID.Desc()).First()
 }
 
+func (r *OrderRepo) GetUserOrderCount(ctx context.Context, userID uint64, startTime, endTime time.Time) (int64, error) {
+	q := qFrom(ctx).VideoOrder
+	return q.WithContext(ctx).Where(q.UserID.Eq(userID)).
+		Where(q.PayTime.Gte(startTime), q.PayTime.Lte(endTime)).
+		Count()
+}
+
 func (r *OrderRepo) CountPaidByProductType(ctx context.Context, userID uint64, productType uint32) (int64, error) {
 	q := qFrom(ctx).VideoOrder
 	return q.WithContext(ctx).Where(
