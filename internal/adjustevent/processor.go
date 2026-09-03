@@ -226,7 +226,7 @@ func (processor *processor) processTrigger(ctx context.Context, message Message)
 	}
 	reports := buildReportMessages(message, *rule, order)
 	for _, report := range reports {
-		if err := processor.publisher.PublishMessage(ctx, report); err != nil {
+		if err = processor.publisher.PublishMessage(ctx, report); err != nil {
 			return err
 		}
 	}

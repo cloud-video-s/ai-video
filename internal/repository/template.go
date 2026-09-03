@@ -679,7 +679,7 @@ func (r *TemplateRepo) GetWithType(ctx context.Context, id uint64) (*TemplateRec
 
 func (r *TemplateRepo) ListOptions(ctx context.Context) ([]TemplateRecord, error) {
 	q := qFrom(ctx).VideoTemplate
-	rows, err := q.WithContext(ctx).Order(q.Status.Desc(), q.Sort.Desc(), q.ID.Desc()).Find()
+	rows, err := q.WithContext(ctx).Where(q.Status.Eq(1)).Order(q.Status.Desc(), q.Sort.Desc(), q.ID.Desc()).Find()
 	if err != nil {
 		return nil, err
 	}

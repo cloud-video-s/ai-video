@@ -127,7 +127,7 @@ func (r *TemplateDisplayConfigRepo) ListForClient(ctx context.Context, targets C
 	config := q.VideoTemplatePlacementConfig
 	template := q.VideoTemplate
 	placement := q.VideoDisplayPosition
-	rows, err := config.WithContext(ctx).Preload(config.Template).
+	rows, err := config.WithContext(ctx).Preload(config.Template, template.AIModel).
 		Join(template, template.ID.EqCol(config.TemplateID)).
 		Join(placement, placement.PositionKey.EqCol(config.PlacementKey)).
 		Where(
